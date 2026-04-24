@@ -1,6 +1,7 @@
 import secrets
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
+from hmac import new as hmac_new
 
 import pyotp
 from flask import (
@@ -29,10 +30,13 @@ from hushline.auth import (
     set_session_user,
 )
 from hushline.db import db
+from hushline.external_urls import canonical_external_url
 from hushline.model import (
     AuthenticationLog,
     InviteCode,
     OrganizationSetting,
+    PasswordResetAttempt,
+    PasswordResetToken,
     User,
     Username,
 )
@@ -41,11 +45,147 @@ from hushline.password_hasher import (
     emit_password_rehash_on_auth_telemetry,
     prepare_password_rehash_on_auth,
 )
-from hushline.routes.forms import LoginForm, RegistrationForm, TwoFactorForm
+from hushline.routes.common import send_email_to_user_recipients
+from hushline.routes.forms import (
+    LoginForm,
+    PasswordResetForm,
+    PasswordResetRequestForm,
+    RegistrationForm,
+    TwoFactorForm,
+)
+
+PASSWORD_RESET_CONFIRMATION_MESSAGE = (
+    "If an eligible account exists, reset instructions will be sent."  # noqa: S105
+)
+PASSWORD_RESET_INVALID_LINK_MESSAGE = (
+    "Password reset links expire quickly and can only be used once. Request a new reset if needed."  # noqa: S105
+)
+
+
+def _now() -> datetime:
+    return datetime.now()
 
 
 def _password_hash_digest(stored_hash: str) -> str:
     return sha256(stored_hash.encode("utf-8")).hexdigest()
+
+
+def _password_reset_hmac(value: str) -> str:
+    secret = (
+        current_app.config.get("SECRET_KEY")
+        or current_app.config.get("SESSION_FERNET_KEY")
+        or current_app.config.get("ENCRYPTION_KEY")
+        or ""
+    )
+    return hmac_new(str(secret).encode("utf-8"), value.encode("utf-8"), sha256).hexdigest()
+
+
+def _password_reset_identifier_hash(identifier: str) -> str:
+    return _password_reset_hmac(identifier.strip().lower())
+
+
+def _password_reset_ip_hash() -> str:
+    return _password_reset_hmac(request.remote_addr or "unknown")
+
+
+def _password_reset_ttl() -> timedelta:
+    minutes = int(current_app.config.get("PASSWORD_RESET_TOKEN_TTL_MINUTES", 30))
+    return timedelta(minutes=minutes)
+
+
+def _password_reset_rate_limited(identifier_hash: str, ip_hash: str) -> bool:
+    now = _now()
+    window_minutes = int(current_app.config.get("PASSWORD_RESET_RATE_LIMIT_WINDOW_MINUTES", 60))
+    identifier_max = int(current_app.config.get("PASSWORD_RESET_RATE_LIMIT_IDENTIFIER_MAX", 5))
+    ip_max = int(current_app.config.get("PASSWORD_RESET_RATE_LIMIT_IP_MAX", 20))
+    window_start = now - timedelta(minutes=window_minutes)
+
+    identifier_count = db.session.scalar(
+        db.select(db.func.count())
+        .select_from(PasswordResetAttempt)
+        .where(
+            PasswordResetAttempt.identifier_hash == identifier_hash,
+            PasswordResetAttempt.created_at >= window_start,
+        )
+    )
+    ip_count = db.session.scalar(
+        db.select(db.func.count())
+        .select_from(PasswordResetAttempt)
+        .where(
+            PasswordResetAttempt.ip_hash == ip_hash,
+            PasswordResetAttempt.created_at >= window_start,
+        )
+    )
+
+    db.session.add(
+        PasswordResetAttempt(
+            identifier_hash=identifier_hash,
+            ip_hash=ip_hash,
+            created_at=now,
+        )
+    )
+    db.session.commit()
+    return bool(
+        identifier_count is not None
+        and identifier_count >= identifier_max
+        or ip_count is not None
+        and ip_count >= ip_max
+    )
+
+
+def _find_primary_username(identifier: str) -> Username | None:
+    try:
+        return db.session.scalars(
+            db.select(Username).where(
+                func.lower(Username._username) == identifier.strip().lower(),
+                Username.is_primary.is_(True),
+            )
+        ).one_or_none()
+    except MultipleResultsFound:
+        current_app.logger.error(
+            "Multiple primary usernames matched case-insensitive password reset lookup",
+            extra={"username_hash": _password_reset_identifier_hash(identifier)},
+        )
+        return None
+
+
+def _invalidate_password_reset_tokens(user: User, *, used_at: datetime) -> None:
+    for token in user.password_reset_tokens:
+        if token.used_at is None:
+            token.used_at = used_at
+            db.session.add(token)
+
+
+def _eligible_password_reset_user(identifier: str) -> User | None:
+    username = _find_primary_username(identifier)
+    if username is None:
+        return None
+
+    user = username.user
+    if not user.enable_email_notifications or not user.enabled_notification_recipients:
+        return None
+    return user
+
+
+def _send_password_reset_email(user: User, raw_token: str) -> None:
+    reset_url = canonical_external_url("reset_password", token=raw_token)
+    body = (
+        "A password reset was requested for your Hush Line account.\n\n"
+        f"Use this link to set a new password: {reset_url}\n\n"
+        "This link expires quickly and can only be used once. "
+        "If you did not request this reset, ignore this email."
+    )
+    send_email_to_user_recipients(user, "Hush Line password reset", body)
+
+
+def _load_active_password_reset_token(raw_token: str) -> PasswordResetToken | None:
+    token_hash = PasswordResetToken.hash_password_reset_token(raw_token)
+    token = db.session.scalars(
+        db.select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash)
+    ).one_or_none()
+    if token is None or token.used_at is not None or token.expires_at <= _now():
+        return None
+    return token
 
 
 def _stash_pending_password_rehash(*, replacement_hash: str, source_hash: str) -> None:
@@ -312,6 +452,61 @@ def register_auth_routes(app: Flask) -> None:
 
             flash("⛔️ Invalid username or password.")
         return render_template("login.html", form=form)
+
+    @app.route("/password-reset", methods=["GET", "POST"])
+    def request_password_reset() -> Response | str | tuple[str, int]:
+        form = PasswordResetRequestForm()
+        if request.method == "POST" and form.validate():
+            identifier = form.username.data or ""
+            identifier_hash = _password_reset_identifier_hash(identifier)
+            ip_hash = _password_reset_ip_hash()
+            if _password_reset_rate_limited(identifier_hash, ip_hash):
+                flash("⏲️ Please wait before requesting another password reset.")
+                return render_template("password_reset_requested.html"), 429
+
+            if user := _eligible_password_reset_user(identifier):
+                now = _now()
+                _invalidate_password_reset_tokens(user, used_at=now)
+                reset_token, raw_token = PasswordResetToken.create_for_user(
+                    user.id,
+                    ttl=_password_reset_ttl(),
+                )
+                db.session.add(reset_token)
+                db.session.commit()
+                _send_password_reset_email(user, raw_token)
+
+            return render_template("password_reset_requested.html")
+
+        return render_template("password_reset_request.html", form=form)
+
+    @app.route("/password-reset/<token>", methods=["GET", "POST"])
+    def reset_password(token: str) -> Response | str | tuple[str, int]:
+        reset_token = _load_active_password_reset_token(token)
+        if reset_token is None:
+            flash(PASSWORD_RESET_INVALID_LINK_MESSAGE)
+            return redirect(url_for("request_password_reset"))
+
+        form = PasswordResetForm()
+        if request.method == "POST":
+            if form.validate():
+                user = reset_token.user
+                new_password = form.password.data
+                if user.check_password(new_password):
+                    form.password.errors.append("Cannot choose a repeat password.")
+                    return render_template("password_reset.html", form=form), 400
+
+                now = _now()
+                user.password_hash = new_password
+                rotate_user_session_id(user)
+                _invalidate_password_reset_tokens(user, used_at=now)
+                db.session.commit()
+                session.clear()
+                flash("👍 Password successfully reset. Please log in.", "success")
+                return redirect(url_for("login"))
+
+            return render_template("password_reset.html", form=form), 400
+
+        return render_template("password_reset.html", form=form)
 
     @app.route("/verify-2fa-login", methods=["GET", "POST"])
     def verify_2fa_login() -> Response | str | tuple[Response | str, int]:

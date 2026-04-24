@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
     from hushline.model.message import Message
     from hushline.model.notification_recipient import NotificationRecipient
+    from hushline.model.password_reset_token import PasswordResetToken
     from hushline.model.username import Username
 else:
     Model = db.Model
@@ -79,6 +80,11 @@ class User(Model):
         back_populates="user",
         cascade="all, delete-orphan",
         order_by="NotificationRecipient.position.asc(), NotificationRecipient.id.asc()",
+    )
+    password_reset_tokens: Mapped[list["PasswordResetToken"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        order_by="PasswordResetToken.id.desc()",
     )
     messages: Mapped[list["Message"]] = relationship(
         secondary="usernames",

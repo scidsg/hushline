@@ -19,8 +19,10 @@ from hushline.auth import (
 )
 from hushline.config import PASSWORD_HASH_REHASH_ON_AUTH_ENABLED
 from hushline.db import db
-from hushline.model import InviteCode, OrganizationSetting, User
+from hushline.model import InviteCode, OrganizationSetting, PasswordResetToken, User
 from hushline.routes.auth import (
+    PASSWORD_RESET_CONFIRMATION_MESSAGE,
+    PASSWORD_RESET_INVALID_LINK_MESSAGE,
     _apply_pending_password_rehash,
     _lock_first_user_registration,
     _password_hash_digest,
@@ -287,6 +289,166 @@ def test_login_redirects_to_original_protected_page(
 
     with client.session_transaction() as sess:
         assert POST_AUTH_REDIRECT_SESSION_KEY not in sess
+
+
+def _enable_password_reset_email(user: User) -> None:
+    user.enable_email_notifications = True
+    user.email = "recipient@example.com"
+    db.session.commit()
+
+
+def _extract_reset_token(email_body: str) -> str:
+    marker = "/password-reset/"
+    assert marker in email_body
+    return email_body.split(marker, 1)[1].split()[0]
+
+
+def test_password_reset_request_is_generic_and_sends_only_for_eligible_account(
+    app: Flask, client: FlaskClient, user: User, user2: User
+) -> None:
+    app.config["PUBLIC_BASE_URL"] = "https://safe.example"
+    user2.enable_email_notifications = False
+    user2.email = "ineligible@example.com"
+    _enable_password_reset_email(user)
+
+    response = client.get(url_for("login"))
+    assert response.status_code == 200
+    assert url_for("request_password_reset") in response.text
+
+    with patch("hushline.routes.auth.send_email_to_user_recipients") as send_email_mock:
+        unknown_response = client.post(
+            url_for("request_password_reset"),
+            data={"username": "not-a-real-user"},
+        )
+        ineligible_response = client.post(
+            url_for("request_password_reset"),
+            data={"username": user2.primary_username.username},
+        )
+        eligible_response = client.post(
+            url_for("request_password_reset"),
+            data={"username": user.primary_username.username.upper()},
+        )
+
+    assert unknown_response.status_code == 200
+    assert ineligible_response.status_code == 200
+    assert eligible_response.status_code == 200
+    assert PASSWORD_RESET_CONFIRMATION_MESSAGE in unknown_response.text
+    assert PASSWORD_RESET_CONFIRMATION_MESSAGE in ineligible_response.text
+    assert PASSWORD_RESET_CONFIRMATION_MESSAGE in eligible_response.text
+    send_email_mock.assert_called_once()
+    sent_user, subject, body = send_email_mock.call_args.args
+    assert sent_user == user
+    assert subject == "Hush Line password reset"
+    assert "https://safe.example/password-reset/" in body
+    assert "localhost" not in body
+    raw_token = _extract_reset_token(body)
+    token_hash = PasswordResetToken.hash_password_reset_token(raw_token)
+    token_count = db.session.scalar(
+        db.select(db.func.count())
+        .select_from(PasswordResetToken)
+        .where(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.token_hash == token_hash,
+        )
+    )
+    assert token_count == 1
+
+
+def test_password_reset_sets_new_password_and_consumes_token(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    _enable_password_reset_email(user)
+    original_session_id = user.session_id
+
+    with patch("hushline.routes.auth.send_email_to_user_recipients") as send_email_mock:
+        client.post(
+            url_for("request_password_reset"),
+            data={"username": user.primary_username.username},
+        )
+
+    raw_token = _extract_reset_token(send_email_mock.call_args.args[2])
+
+    invalid_response = client.post(
+        url_for("reset_password", token=raw_token),
+        data={"password": "short"},
+    )
+    assert invalid_response.status_code == 400
+    assert "Field must be between" in invalid_response.text
+
+    repeat_response = client.post(
+        url_for("reset_password", token=raw_token),
+        data={"password": user_password},
+    )
+    assert repeat_response.status_code == 400
+    assert "Cannot choose a repeat password." in repeat_response.text
+
+    new_password = "ResetPassword123!!"
+    response = client.post(
+        url_for("reset_password", token=raw_token),
+        data={"password": new_password},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("login"))
+    db.session.refresh(user)
+    assert user.session_id != original_session_id
+    assert user.check_password(new_password)
+    assert not user.check_password(user_password)
+    token = db.session.scalars(db.select(PasswordResetToken)).one()
+    assert token.used_at is not None
+
+    reused_response = client.get(url_for("reset_password", token=raw_token), follow_redirects=True)
+    assert reused_response.status_code == 200
+    assert PASSWORD_RESET_INVALID_LINK_MESSAGE in reused_response.text
+    assert "Reset Password" in reused_response.text
+
+
+def test_password_reset_rejects_expired_and_unknown_tokens(client: FlaskClient, user: User) -> None:
+    reset_token, raw_token = PasswordResetToken.create_for_user(
+        user.id,
+        ttl=timedelta(minutes=-1),
+    )
+    db.session.add(reset_token)
+    db.session.commit()
+
+    response = client.get(url_for("reset_password", token=raw_token), follow_redirects=True)
+
+    assert response.status_code == 200
+    assert PASSWORD_RESET_INVALID_LINK_MESSAGE in response.text
+    assert "Reset Password" in response.text
+
+    response = client.get(
+        url_for("reset_password", token="not-a-token"),  # noqa: S106
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert PASSWORD_RESET_INVALID_LINK_MESSAGE in response.text
+    assert "Reset Password" in response.text
+
+
+def test_password_reset_request_rate_limits_repeated_identifier(
+    app: Flask, client: FlaskClient, user: User
+) -> None:
+    app.config["PASSWORD_RESET_RATE_LIMIT_IDENTIFIER_MAX"] = 1
+    app.config["PASSWORD_RESET_RATE_LIMIT_IP_MAX"] = 100
+    _enable_password_reset_email(user)
+
+    with patch("hushline.routes.auth.send_email_to_user_recipients") as send_email_mock:
+        first = client.post(
+            url_for("request_password_reset"),
+            data={"username": user.primary_username.username},
+        )
+        second = client.post(
+            url_for("request_password_reset"),
+            data={"username": user.primary_username.username},
+        )
+
+    assert first.status_code == 200
+    assert second.status_code == 429
+    assert PASSWORD_RESET_CONFIRMATION_MESSAGE in second.text
+    send_email_mock.assert_called_once()
 
 
 def test_stash_post_auth_redirect_skips_logout_and_preserves_session(app: Flask) -> None:

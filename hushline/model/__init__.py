@@ -27,6 +27,8 @@ from hushline.model.newsroom_directory_listing import (
 )
 from hushline.model.notification_recipient import NotificationRecipient
 from hushline.model.organization_setting import OrganizationSetting
+from hushline.model.password_reset_attempt import PasswordResetAttempt
+from hushline.model.password_reset_token import PasswordResetToken
 from hushline.model.public_record_listing import (
     PublicRecordListing,
     get_public_record_listing,

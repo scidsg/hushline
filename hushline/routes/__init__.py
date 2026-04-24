@@ -13,6 +13,8 @@ from hushline.routes.email_headers import register_email_headers_routes
 from hushline.routes.forms import (  # noqa: F401
     DynamicMessageForm,
     LoginForm,
+    PasswordResetForm,
+    PasswordResetRequestForm,
     RegistrationForm,
     TwoFactorForm,
 )
