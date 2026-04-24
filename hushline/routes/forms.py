@@ -97,6 +97,7 @@ class PasswordResetRequestForm(FlaskForm):
             Length(max=Username.USERNAME_MAX_LENGTH),
         ],
     )
+    captcha_answer = StringField("CAPTCHA", validators=[DataRequired()])
 
 
 class PasswordResetForm(FlaskForm):

@@ -46,6 +46,7 @@ from hushline.password_hasher import (
     prepare_password_rehash_on_auth,
 )
 from hushline.routes.common import send_email_to_user_recipients
+from hushline.routes.common import validate_captcha
 from hushline.routes.forms import (
     LoginForm,
     PasswordResetForm,
@@ -224,6 +225,18 @@ def _lock_first_user_registration() -> None:
     db.session.execute(db.select(func.pg_advisory_xact_lock(7255323892615124088)))
 
 
+def _get_math_problem(force_new: bool = False) -> str:
+    if not force_new and session.get("math_problem") and session.get("math_answer"):
+        return session["math_problem"]
+
+    num1 = secrets.randbelow(10) + 1
+    num2 = secrets.randbelow(10) + 1
+    math_problem = f"{num1} + {num2} ="
+    session["math_answer"] = str(num1 + num2)
+    session["math_problem"] = math_problem
+    return math_problem
+
+
 def register_auth_routes(app: Flask) -> None:
     @app.route("/register", methods=["GET", "POST"])
     def register() -> Response | str:
@@ -251,16 +264,7 @@ def register_auth_routes(app: Flask) -> None:
         if not registration_codes_enabled:
             del form.invite_code
 
-        # Generate a math CAPTCHA only for a GET request or if "math_answer" is not already set
-        if request.method == "GET" or "math_answer" not in session:
-            num1 = secrets.randbelow(10) + 1
-            num2 = secrets.randbelow(10) + 1
-            session["math_answer"] = str(num1 + num2)  # Store the answer in session
-            math_problem = f"{num1} + {num2} ="
-            session["math_problem"] = math_problem  # Store the problem in session
-        else:
-            # Use the existing math problem from the session
-            math_problem = session.get("math_problem", "Error: CAPTCHA not generated.")
+        math_problem = _get_math_problem(force_new=request.method == "GET")
 
         if request.method == "POST" and form.validate():
             captcha_answer = request.form.get("captcha_answer", "")
@@ -456,7 +460,11 @@ def register_auth_routes(app: Flask) -> None:
     @app.route("/password-reset", methods=["GET", "POST"])
     def request_password_reset() -> Response | str | tuple[str, int]:
         form = PasswordResetRequestForm()
+        math_problem = _get_math_problem(force_new=request.method == "GET")
         if request.method == "POST" and form.validate():
+            if not validate_captcha(form.captcha_answer.data):
+                return render_template("password_reset_request.html", form=form, math_problem=math_problem)
+
             identifier = form.username.data or ""
             identifier_hash = _password_reset_identifier_hash(identifier)
             ip_hash = _password_reset_ip_hash()
@@ -477,7 +485,7 @@ def register_auth_routes(app: Flask) -> None:
 
             return render_template("password_reset_requested.html")
 
-        return render_template("password_reset_request.html", form=form)
+        return render_template("password_reset_request.html", form=form, math_problem=math_problem)
 
     @app.route("/password-reset/<token>", methods=["GET", "POST"])
     def reset_password(token: str) -> Response | str | tuple[str, int]:
