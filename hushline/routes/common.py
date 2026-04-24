@@ -94,7 +94,7 @@ def get_ip_address() -> str:
     return ip_address
 
 
-def do_send_email(user: User, body: str) -> None:
+def send_email_to_user_recipients(user: User, subject: str, body: str) -> None:
     recipients = user.enabled_notification_recipients
     if not recipients or not user.enable_email_notifications:
         return
@@ -141,7 +141,7 @@ def do_send_email(user: User, body: str) -> None:
             try:
                 send_email(
                     recipient_email,
-                    "New Hush Line Message Received",
+                    subject,
                     body,
                     smtp_config,
                     reply_to,
@@ -152,6 +152,10 @@ def do_send_email(user: User, body: str) -> None:
                 )
     except (KeyError, OSError, TypeError, ValueError, smtplib.SMTPException) as e:
         current_app.logger.error(f"Error sending email: {str(e)}", exc_info=True)
+
+
+def do_send_email(user: User, body: str) -> None:
+    send_email_to_user_recipients(user, "New Hush Line Message Received", body)
 
 
 def notification_email_encryption_target(user: User) -> str | list[str] | None:

@@ -89,6 +89,27 @@ class LoginForm(FlaskForm):
     )
 
 
+class PasswordResetRequestForm(FlaskForm):
+    username = StringField(
+        "Username",
+        validators=[
+            DataRequired(),
+            Length(max=Username.USERNAME_MAX_LENGTH),
+        ],
+    )
+
+
+class PasswordResetForm(FlaskForm):
+    password = PasswordField(
+        "New Password",
+        validators=[
+            DataRequired(),
+            Length(min=User.PASSWORD_MIN_LENGTH, max=User.PASSWORD_MAX_LENGTH),
+            ComplexPassword(),
+        ],
+    )
+
+
 class OnboardingProfileForm(FlaskForm):
     display_name = StringField(
         "Display Name",

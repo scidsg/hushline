@@ -31,6 +31,20 @@ def test_profile_page_keeps_csp_enforced(client: FlaskClient, user: User) -> Non
     assert "script-src-elem 'self' 'unsafe-inline'" not in csp
 
 
+def test_password_reset_pages_keep_csp_enforced(client: FlaskClient) -> None:
+    paths = (
+        url_for("request_password_reset"),
+        url_for("reset_password", token="unknown"),  # noqa: S106
+    )
+    for path in paths:
+        response = client.get(path, follow_redirects=True)
+        assert response.status_code == 200
+        csp = (response.headers.get("Content-Security-Policy") or "").strip()
+        assert csp
+        assert "'unsafe-eval'" not in csp
+        assert "script-src-elem 'self' 'unsafe-inline'" not in csp
+
+
 def test_base_template_uses_external_no_js_bootstrap_script(client: FlaskClient) -> None:
     response = client.get(url_for("directory"), follow_redirects=True)
     assert response.status_code == 200
