@@ -31,6 +31,18 @@ printf '%s\\n' "$REPO_DIR"
     assert Path(result.stdout.strip()) == ROOT
 
 
+def test_runner_defaults_to_approved_codex_model_and_reasoning() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+printf '%s %s\\n' "$CODEX_MODEL" "$CODEX_REASONING_EFFORT"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "gpt-5.5 high"
+
+
 def test_prepare_runner_exec_snapshot_copies_script_for_stable_execution(
     tmp_path: Path,
 ) -> None:
@@ -1285,12 +1297,12 @@ def test_persisted_runner_log_redacts_developer_metadata(tmp_path: Path) -> None
     run_log_file.write_text(
         "\n".join(
             [
-                "Runner Codex config: model=gpt-5.4 reasoning_effort=high verbose_codex_output=0",
+                "Runner Codex config: model=gpt-5.5 reasoning_effort=high verbose_codex_output=0",
                 "Configured git identity: hushline-dev <git-dev@scidsg.org>",
                 "Run log file: /Users/scidsg/hushline/docs/agent-logs/run.log",
                 "Global log file: /Users/scidsg/.codex/logs/hushline-agent-runner.log",
                 "workdir: /Users/scidsg/hushline",
-                "model: gpt-5.4",
+                "model: gpt-5.5",
                 "provider: openai",
                 "approval: never",
                 "sandbox: workspace-write [workdir, /tmp, $TMPDIR, /Users/scidsg/.codex/memories]",
