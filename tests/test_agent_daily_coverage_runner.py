@@ -31,6 +31,18 @@ printf '%s\\n' "$REPO_DIR"
     assert Path(result.stdout.strip()) == ROOT
 
 
+def test_runner_defaults_to_approved_codex_model_and_reasoning() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+printf '%s %s\\n' "$CODEX_MODEL" "$CODEX_REASONING_EFFORT"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "gpt-5.5 high"
+
+
 def test_coverage_report_summary_text_sorts_and_compresses_ranges(tmp_path: Path) -> None:
     report_path = tmp_path / "coverage.json"
     report_path.write_text(
