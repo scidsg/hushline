@@ -5,7 +5,6 @@ import traceback
 import urllib.parse
 from typing import Generator
 
-import aiohttp
 import pytest
 import requests
 from flask import Flask, request, url_for
@@ -86,8 +85,7 @@ async def test_verify_url(user: User, verification_server: int) -> None:
     encoded_url = urllib.parse.quote(profile_url)
     url_to_verify = f"http://{HOSTNAME}:{verification_server}/?profile={encoded_url}"
 
-    async with aiohttp.ClientSession() as sess:
-        await verify_url(sess, username, 1, url_to_verify, profile_url)
+    await verify_url(username, 1, url_to_verify, profile_url)
     db.session.commit()
 
     db.session.refresh(username)
@@ -103,8 +101,7 @@ async def test_verify_url_fail(user: User, verification_server: int) -> None:
     profile_url = url_for("profile", username=username.username, _external=True)
     url_to_verify = f"http://{HOSTNAME}:{verification_server}/"
 
-    async with aiohttp.ClientSession() as sess:
-        await verify_url(sess, username, 1, url_to_verify, profile_url)
+    await verify_url(username, 1, url_to_verify, profile_url)
     db.session.commit()
 
     db.session.refresh(username)
@@ -176,8 +173,7 @@ async def test_verify_url_blocks_private_ip_in_production(app: Flask, user: User
     original_testing = app.config["TESTING"]
     app.config["TESTING"] = False
     try:
-        async with aiohttp.ClientSession() as sess:
-            await verify_url(sess, username, 1, url_to_verify, profile_url)
+        await verify_url(username, 1, url_to_verify, profile_url)
     finally:
         app.config["TESTING"] = original_testing
 
@@ -197,8 +193,7 @@ async def test_verify_url_blocks_localhost_in_production(app: Flask, user: User)
     original_testing = app.config["TESTING"]
     app.config["TESTING"] = False
     try:
-        async with aiohttp.ClientSession() as sess:
-            await verify_url(sess, username, 1, url_to_verify, profile_url)
+        await verify_url(username, 1, url_to_verify, profile_url)
     finally:
         app.config["TESTING"] = original_testing
 
@@ -220,8 +215,7 @@ async def test_verify_url_blocks_localhost_localdomain_in_production(
     original_testing = app.config["TESTING"]
     app.config["TESTING"] = False
     try:
-        async with aiohttp.ClientSession() as sess:
-            await verify_url(sess, username, 1, url_to_verify, profile_url)
+        await verify_url(username, 1, url_to_verify, profile_url)
     finally:
         app.config["TESTING"] = original_testing
 
@@ -241,8 +235,7 @@ async def test_verify_url_blocks_unspecified_ip_in_production(app: Flask, user: 
     original_testing = app.config["TESTING"]
     app.config["TESTING"] = False
     try:
-        async with aiohttp.ClientSession() as sess:
-            await verify_url(sess, username, 1, url_to_verify, profile_url)
+        await verify_url(username, 1, url_to_verify, profile_url)
     finally:
         app.config["TESTING"] = original_testing
 
