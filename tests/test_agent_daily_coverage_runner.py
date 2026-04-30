@@ -249,3 +249,94 @@ main
     assert "Configure bot git identity" in calls
     assert "runtime-bootstrap" in calls
     assert "coverage-scan" in calls
+
+
+def test_main_starts_from_base_when_stale_remote_coverage_branch_exists(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+count_open_human_prs() {{ printf '0\\n'; }}
+count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
+find_open_pr_for_head_branch() {{ :; }}
+configure_bot_git_identity() {{
+  printf 'configure-bot-git\\n' >> {shlex.quote(str(call_log))}
+}}
+remote_branch_exists() {{ return 0; }}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+}}
+run_coverage_scan() {{
+  printf 'coverage-scan\\n' >> {shlex.quote(str(call_log))}
+  CURRENT_COVERAGE_PERCENT="100.00"
+  CURRENT_COVERAGE_MISSING_LINES="0"
+  CURRENT_COVERAGE_MISSING_FILES="0"
+  CURRENT_COVERAGE_SUMMARY="- No uncovered files remain."
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "Create branch codex/daily-coverage" in calls
+    assert "Create branch codex/daily-coverage from origin/codex/daily-coverage" not in calls
+
+
+def test_main_resumes_remote_coverage_branch_when_open_pr_exists(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+run_step() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+count_open_human_prs() {{ printf '0\\n'; }}
+count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
+find_open_pr_for_head_branch() {{
+  printf '%s\\n' '{{"number":123,"url":"https://example.test/pr/123"}}'
+}}
+configure_bot_git_identity() {{
+  printf 'configure-bot-git\\n' >> {shlex.quote(str(call_log))}
+}}
+remote_branch_exists() {{ return 0; }}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+}}
+run_coverage_scan() {{
+  printf 'coverage-scan\\n' >> {shlex.quote(str(call_log))}
+  CURRENT_COVERAGE_PERCENT="100.00"
+  CURRENT_COVERAGE_MISSING_LINES="0"
+  CURRENT_COVERAGE_MISSING_FILES="0"
+  CURRENT_COVERAGE_SUMMARY="- No uncovered files remain."
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert "Create branch codex/daily-coverage from origin/codex/daily-coverage" in calls

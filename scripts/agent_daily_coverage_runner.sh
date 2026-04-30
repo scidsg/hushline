@@ -1273,7 +1273,7 @@ main() {
 
   run_step "Configure bot git identity" configure_bot_git_identity
 
-  if remote_branch_exists "$BRANCH_NAME"; then
+  if [[ -n "$existing_pr_json" ]] && remote_branch_exists "$BRANCH_NAME"; then
     run_step "Create branch $BRANCH_NAME from origin/$BRANCH_NAME" git checkout -B "$BRANCH_NAME" "origin/$BRANCH_NAME"
   else
     run_step "Create branch $BRANCH_NAME" git checkout -B "$BRANCH_NAME" "$BASE_BRANCH"
