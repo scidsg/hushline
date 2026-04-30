@@ -1,11 +1,13 @@
 import asyncio
 import ipaddress
+import socket
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import AsyncMock, patch
 
 import aiohttp
 import pytest
+from aiohttp.abc import ResolveResult
 from flask import Flask, session
 from sqlalchemy.exc import IntegrityError
 from werkzeug.datastructures import MultiDict
@@ -32,8 +34,12 @@ from hushline.model import (
     Username,
 )
 from hushline.settings.common import (
+    _fetch_verification_html,
     _is_blocked_ip,
     _is_safe_verification_url,
+    _resolve_safe_verification_url,
+    _SafeVerificationUrl,
+    _StaticVerificationResolver,
     build_field_forms,
     create_profile_forms,
     handle_change_password_form,
@@ -436,6 +442,99 @@ async def test_is_safe_verification_url_resolved_public_allowed(app: Flask) -> N
 
 
 @pytest.mark.asyncio()
+async def test_resolve_safe_verification_url_returns_pinned_addresses(app: Flask) -> None:
+    with app.app_context():
+        app.config["TESTING"] = False
+        with patch.object(
+            asyncio.get_running_loop(),
+            "getaddrinfo",
+            return_value=[
+                (
+                    socket.AF_INET,
+                    socket.SOCK_STREAM,
+                    socket.IPPROTO_TCP,
+                    "",
+                    ("93.184.216.34", 443),
+                )
+            ],
+        ):
+            safe_url = await _resolve_safe_verification_url("https://example.com/profile")
+
+    assert safe_url is not None
+    assert safe_url.hostname == "example.com"
+    assert safe_url.resolved_addresses is not None
+    assert safe_url.resolved_addresses[0]["host"] == "93.184.216.34"
+
+
+@pytest.mark.asyncio()
+async def test_static_verification_resolver_refuses_unvalidated_hosts() -> None:
+    resolver = _StaticVerificationResolver(
+        "example.com",
+        (
+            ResolveResult(
+                hostname="example.com",
+                host="93.184.216.34",
+                port=443,
+                family=socket.AF_INET,
+                proto=socket.IPPROTO_TCP,
+                flags=0,
+            ),
+        ),
+    )
+
+    resolved = await resolver.resolve("example.com", 443)
+
+    assert resolved[0]["host"] == "93.184.216.34"
+    with pytest.raises(OSError, match="refused unexpected host"):
+        await resolver.resolve("metadata.google.internal", 80)
+
+
+@pytest.mark.asyncio()
+async def test_fetch_verification_html_disables_redirects() -> None:
+    captured: dict[str, object] = {}
+
+    class _Response:
+        def raise_for_status(self) -> None:
+            return None
+
+        async def text(self) -> str:
+            return "<html></html>"
+
+    class _Context:
+        async def __aenter__(self) -> _Response:
+            return _Response()
+
+        async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
+            _ = (exc_type, exc, tb)
+
+    class _Session:
+        async def __aenter__(self) -> "_Session":
+            return self
+
+        async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
+            _ = (exc_type, exc, tb)
+
+        def get(
+            self,
+            url: str,
+            timeout: aiohttp.ClientTimeout,
+            allow_redirects: bool,
+        ) -> _Context:
+            captured["url"] = url
+            captured["timeout"] = timeout
+            captured["allow_redirects"] = allow_redirects
+            return _Context()
+
+    with patch("hushline.settings.common.aiohttp.ClientSession", return_value=_Session()):
+        html = await _fetch_verification_html(
+            _SafeVerificationUrl("https://example.com", "example.com", None)
+        )
+
+    assert html == "<html></html>"
+    assert captured["allow_redirects"] is False
+
+
+@pytest.mark.asyncio()
 async def test_is_safe_verification_url_direct_private_ip_rejected(app: Flask) -> None:
     with app.app_context():
         app.config["TESTING"] = False
@@ -459,27 +558,17 @@ async def test_verify_url_handles_client_error(user: User) -> None:
     username = user.primary_username
     profile_url = "https://example.com/profile"
 
-    class _FailingResponse:
-        def raise_for_status(self) -> None:
-            raise aiohttp.ClientError("boom")
-
-        async def text(self) -> str:
-            return ""
-
-    class _FailingContext:
-        async def __aenter__(self) -> _FailingResponse:
-            return _FailingResponse()
-
-        async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
-            _ = (exc_type, exc, tb)
-
-    class _Session:
-        def get(self, url: str, timeout: aiohttp.ClientTimeout) -> _FailingContext:
-            _ = (url, timeout)
-            return _FailingContext()
-
-    with patch("hushline.settings.common._is_safe_verification_url", return_value=True):
-        await verify_url(_Session(), username, 1, "https://example.com", profile_url)  # type: ignore[arg-type]
+    with (
+        patch(
+            "hushline.settings.common._resolve_safe_verification_url",
+            return_value=_SafeVerificationUrl("https://example.com", "example.com", None),
+        ),
+        patch(
+            "hushline.settings.common._fetch_verification_html",
+            side_effect=aiohttp.ClientError("boom"),
+        ),
+    ):
+        await verify_url(username, 1, "https://example.com", profile_url)
 
     db.session.refresh(username)
     assert username.extra_field_verified1 is False
@@ -489,20 +578,54 @@ async def test_verify_url_handles_client_error(user: User) -> None:
 async def test_verify_url_returns_early_when_url_is_not_safe(user: User) -> None:
     username = user.primary_username
 
-    class _Session:
-        def get(self, *_args: object, **_kwargs: object) -> object:
-            raise AssertionError("session.get should not be called for unsafe URLs")
-
-    with patch("hushline.settings.common._is_safe_verification_url", return_value=False):
-        await verify_url(
-            _Session(),  # type: ignore[arg-type]
-            username,
-            1,
-            "https://example.com",
-            "https://example.com/profile",
-        )
+    with (
+        patch("hushline.settings.common._resolve_safe_verification_url", return_value=None),
+        patch(
+            "hushline.settings.common._fetch_verification_html",
+            side_effect=AssertionError("_fetch_verification_html should not be called"),
+        ),
+    ):
+        await verify_url(username, 1, "https://example.com", "https://example.com/profile")
 
     assert username.extra_field_verified1 is False
+
+
+@pytest.mark.asyncio()
+async def test_verify_url_fetches_with_pinned_resolved_addresses(app: Flask, user: User) -> None:
+    username = user.primary_username
+    profile_url = "https://hushline.example/u/alice"
+    captured_safe_url: _SafeVerificationUrl | None = None
+
+    async def _fake_fetch(safe_url: _SafeVerificationUrl) -> str:
+        nonlocal captured_safe_url
+        captured_safe_url = safe_url
+        return f'<html><body><a href="{profile_url}" rel="me">Profile</a></body></html>'
+
+    with app.app_context():
+        app.config["TESTING"] = False
+        with (
+            patch.object(
+                asyncio.get_running_loop(),
+                "getaddrinfo",
+                return_value=[
+                    (
+                        socket.AF_INET,
+                        socket.SOCK_STREAM,
+                        socket.IPPROTO_TCP,
+                        "",
+                        ("93.184.216.34", 443),
+                    )
+                ],
+            ),
+            patch("hushline.settings.common._fetch_verification_html", side_effect=_fake_fetch),
+        ):
+            await verify_url(username, 1, "https://attacker.example/profile", profile_url)
+
+    assert captured_safe_url is not None
+    assert captured_safe_url.hostname == "attacker.example"
+    assert captured_safe_url.resolved_addresses is not None
+    assert captured_safe_url.resolved_addresses[0]["host"] == "93.184.216.34"
+    assert username.extra_field_verified1 is True
 
 
 @pytest.mark.asyncio()
@@ -510,30 +633,18 @@ async def test_verify_url_marks_field_verified_when_profile_link_present(user: U
     username = user.primary_username
     profile_url = "https://example.com/profile"
 
-    class _SuccessResponse:
-        def raise_for_status(self) -> None:
-            return None
+    html_content = (
+        '<html><body><a href="https://example.com/profile" ' 'rel="me">Profile</a></body></html>'
+    )
 
-        async def text(self) -> str:
-            return (
-                '<html><body><a href="https://example.com/profile" '
-                'rel="me">Profile</a></body></html>'
-            )
-
-    class _SuccessContext:
-        async def __aenter__(self) -> _SuccessResponse:
-            return _SuccessResponse()
-
-        async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
-            _ = (exc_type, exc, tb)
-
-    class _Session:
-        def get(self, url: str, timeout: aiohttp.ClientTimeout) -> _SuccessContext:
-            _ = (url, timeout)
-            return _SuccessContext()
-
-    with patch("hushline.settings.common._is_safe_verification_url", return_value=True):
-        await verify_url(_Session(), username, 1, "https://example.com", profile_url)  # type: ignore[arg-type]
+    with (
+        patch(
+            "hushline.settings.common._resolve_safe_verification_url",
+            return_value=_SafeVerificationUrl("https://example.com", "example.com", None),
+        ),
+        patch("hushline.settings.common._fetch_verification_html", return_value=html_content),
+    ):
+        await verify_url(username, 1, "https://example.com", profile_url)
 
     assert username.extra_field_verified1 is True
 
@@ -543,30 +654,18 @@ async def test_verify_url_leaves_field_unverified_when_no_matching_profile_link(
     username = user.primary_username
     profile_url = "https://example.com/profile"
 
-    class _SuccessResponse:
-        def raise_for_status(self) -> None:
-            return None
+    html_content = (
+        '<html><body><a href="https://elsewhere.example" ' 'rel="nofollow">Other</a></body></html>'
+    )
 
-        async def text(self) -> str:
-            return (
-                '<html><body><a href="https://elsewhere.example" '
-                'rel="nofollow">Other</a></body></html>'
-            )
-
-    class _SuccessContext:
-        async def __aenter__(self) -> _SuccessResponse:
-            return _SuccessResponse()
-
-        async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
-            _ = (exc_type, exc, tb)
-
-    class _Session:
-        def get(self, url: str, timeout: aiohttp.ClientTimeout) -> _SuccessContext:
-            _ = (url, timeout)
-            return _SuccessContext()
-
-    with patch("hushline.settings.common._is_safe_verification_url", return_value=True):
-        await verify_url(_Session(), username, 1, "https://example.com", profile_url)  # type: ignore[arg-type]
+    with (
+        patch(
+            "hushline.settings.common._resolve_safe_verification_url",
+            return_value=_SafeVerificationUrl("https://example.com", "example.com", None),
+        ),
+        patch("hushline.settings.common._fetch_verification_html", return_value=html_content),
+    ):
+        await verify_url(username, 1, "https://example.com", profile_url)
 
     assert username.extra_field_verified1 is False
 
@@ -651,7 +750,7 @@ async def test_handle_update_bio_uses_public_base_url_for_profile_verification(
     assert response.status_code == 302
     verify_url_mock.assert_awaited_once()
     assert verify_url_mock.await_args is not None
-    assert verify_url_mock.await_args.args[4] == f"https://safe.example/to/{username.username}"
+    assert verify_url_mock.await_args.args[3] == f"https://safe.example/to/{username.username}"
 
 
 def test_handle_new_alias_form_unique_violation_returns_none(

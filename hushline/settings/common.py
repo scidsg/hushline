@@ -2,10 +2,12 @@ import asyncio
 import ipaddress
 import socket
 import urllib.parse
+from dataclasses import dataclass
 from hmac import compare_digest as bytes_are_equal
 from typing import Optional
 
 import aiohttp
+from aiohttp.abc import AbstractResolver, ResolveResult
 from bs4 import BeautifulSoup
 from flask import (
     current_app,
@@ -93,7 +95,34 @@ def _is_blocked_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
     return False
 
 
-async def _is_safe_verification_url(url_to_verify: str) -> bool:
+@dataclass(frozen=True)
+class _SafeVerificationUrl:
+    url: str
+    hostname: str
+    resolved_addresses: tuple[ResolveResult, ...] | None
+
+
+class _StaticVerificationResolver(AbstractResolver):
+    def __init__(self, hostname: str, resolved_addresses: tuple[ResolveResult, ...]) -> None:
+        self._hostname = hostname.lower().rstrip(".")
+        self._resolved_addresses = resolved_addresses
+
+    async def resolve(
+        self,
+        host: str,
+        port: int = 0,
+        family: socket.AddressFamily = socket.AF_INET,
+    ) -> list[ResolveResult]:
+        _ = family
+        if host.lower().rstrip(".") != self._hostname:
+            raise OSError(f"URL verification resolver refused unexpected host: {host!r}")
+        return [ResolveResult(**{**address, "port": port}) for address in self._resolved_addresses]
+
+    async def close(self) -> None:
+        return None
+
+
+async def _resolve_safe_verification_url(url_to_verify: str) -> _SafeVerificationUrl | None:
     parsed_url = urllib.parse.urlparse(url_to_verify)
     hostname = parsed_url.hostname
 
@@ -101,22 +130,22 @@ async def _is_safe_verification_url(url_to_verify: str) -> bool:
         current_app.logger.warning(
             f"URL verification rejected due to non-HTTPS scheme: {url_to_verify!r}"
         )
-        return False
+        return None
 
     if not hostname:
         current_app.logger.warning(
             f"URL verification rejected due to missing hostname: {url_to_verify!r}"
         )
-        return False
+        return None
 
     if current_app.config["TESTING"]:
-        return True
+        return _SafeVerificationUrl(url_to_verify, hostname, None)
 
     if hostname.lower() in {"localhost", "localhost.localdomain"}:
         current_app.logger.warning(
             f"URL verification rejected due to localhost hostname: {url_to_verify!r}"
         )
-        return False
+        return None
 
     try:
         ip = ipaddress.ip_address(hostname)
@@ -128,21 +157,23 @@ async def _is_safe_verification_url(url_to_verify: str) -> bool:
             current_app.logger.warning(
                 f"URL verification rejected due to blocked IP: {url_to_verify!r}"
             )
-            return False
-        return True
+            return None
+        return _SafeVerificationUrl(url_to_verify, hostname, None)
 
     loop = asyncio.get_running_loop()
+    port = parsed_url.port or (443 if parsed_url.scheme == "https" else 80)
     try:
         addrinfo = await asyncio.wait_for(
-            loop.getaddrinfo(hostname, None, type=socket.SOCK_STREAM), timeout=2
+            loop.getaddrinfo(hostname, port, type=socket.SOCK_STREAM), timeout=2
         )
     except (OSError, asyncio.TimeoutError) as exc:
         current_app.logger.warning(
             f"URL verification rejected due to hostname resolution failure for {hostname!r}: {exc}"
         )
-        return False
+        return None
 
-    for _, _, _, _, sockaddr in addrinfo:
+    resolved_addresses: list[ResolveResult] = []
+    for family, _, proto, _, sockaddr in addrinfo:
         ip_str = sockaddr[0]
         try:
             resolved_ip = ipaddress.ip_address(ip_str)
@@ -152,27 +183,69 @@ async def _is_safe_verification_url(url_to_verify: str) -> bool:
             current_app.logger.warning(
                 f"URL verification rejected due to blocked resolved IP {ip_str!r} for {hostname!r}"
             )
-            return False
+            return None
+        resolved_addresses.append(
+            ResolveResult(
+                hostname=hostname,
+                host=ip_str,
+                port=port,
+                family=family,
+                proto=proto,
+                flags=0,
+            )
+        )
 
-    return True
+    if not resolved_addresses:
+        current_app.logger.warning(
+            "URL verification rejected because hostname resolved to no usable addresses: "
+            f"{hostname!r}"
+        )
+        return None
+
+    return _SafeVerificationUrl(url_to_verify, hostname, tuple(resolved_addresses))
+
+
+async def _is_safe_verification_url(url_to_verify: str) -> bool:
+    return await _resolve_safe_verification_url(url_to_verify) is not None
+
+
+async def _fetch_verification_html(safe_url: _SafeVerificationUrl) -> str:
+    timeout = aiohttp.ClientTimeout(total=5)
+
+    if safe_url.resolved_addresses is None:
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(safe_url.url, timeout=timeout, allow_redirects=False) as response,
+        ):
+            response.raise_for_status()
+            return await response.text()
+
+    connector = aiohttp.TCPConnector(
+        resolver=_StaticVerificationResolver(safe_url.hostname, safe_url.resolved_addresses),
+        use_dns_cache=False,
+        force_close=True,
+    )
+    async with (
+        aiohttp.ClientSession(connector=connector) as session,
+        session.get(safe_url.url, timeout=timeout, allow_redirects=False) as response,
+    ):
+        response.raise_for_status()
+        return await response.text()
 
 
 # Define the async function for URL verification
-async def verify_url(
-    session: aiohttp.ClientSession, username: Username, i: int, url_to_verify: str, profile_url: str
-) -> None:
+async def verify_url(username: Username, i: int, url_to_verify: str, profile_url: str) -> None:
     current_app.logger.debug(
         f"Verifying URL: {url_to_verify!r}. Expecting to find profile URL: {profile_url!r}"
     )
 
     # ensure that regardless of what caller sets this field to, we force it to be false
     setattr(username, f"extra_field_verified{i}", False)
-    if not await _is_safe_verification_url(url_to_verify):
+    safe_url = await _resolve_safe_verification_url(url_to_verify)
+    if safe_url is None:
         return
     try:
-        async with session.get(url_to_verify, timeout=aiohttp.ClientTimeout(total=5)) as response:
-            response.raise_for_status()
-            html_content = await response.text()
+        html_content = await _fetch_verification_html(safe_url)
     except aiohttp.ClientError as e:
         current_app.logger.error(f"Error fetching URL {url_to_verify!r} for field {i}: {e}")
         return
@@ -223,36 +296,35 @@ async def handle_update_bio(username: Username, form: ProfileForm) -> Response:
         username=username._username,
     )
 
-    async with aiohttp.ClientSession() as client_session:
-        tasks = []
-        for i in range(1, 5):
-            # always unverify all fields first
-            setattr(username, f"extra_field_verified{i}", False)
+    tasks = []
+    for i in range(1, 5):
+        # always unverify all fields first
+        setattr(username, f"extra_field_verified{i}", False)
 
-            label_field = getattr(form, f"extra_field_label{i}")
-            label = (getattr(label_field, "data") or "").strip() or None
-            setattr(username, f"extra_field_label{i}", label)
+        label_field = getattr(form, f"extra_field_label{i}")
+        label = (getattr(label_field, "data") or "").strip() or None
+        setattr(username, f"extra_field_label{i}", label)
 
-            value_field = getattr(form, f"extra_field_value{i}")
-            value = (getattr(value_field, "data") or "").strip() or None
-            setattr(username, f"extra_field_value{i}", value)
+        value_field = getattr(form, f"extra_field_value{i}")
+        value = (getattr(value_field, "data") or "").strip() or None
+        setattr(username, f"extra_field_value{i}", value)
 
-            # Verify the URL only if it starts with "https://"
-            if value and (
-                value.startswith("https://")
-                or (current_app.config["TESTING"] and value.startswith("http://"))
-            ):
-                task = verify_url(client_session, username, i, value, profile_url)
-                tasks.append(task)
+        # Verify the URL only if it starts with "https://"
+        if value and (
+            value.startswith("https://")
+            or (current_app.config["TESTING"] and value.startswith("http://"))
+        ):
+            task = verify_url(username, i, value, profile_url)
+            tasks.append(task)
 
-        if tasks:
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            for result in results:
-                if isinstance(result, Exception):
-                    if current_app.config["TESTING"]:
-                        raise result
-                    else:
-                        current_app.logger.warning(f"Exception raised verifying URL: {result}")
+    if tasks:
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for result in results:
+            if isinstance(result, Exception):
+                if current_app.config["TESTING"]:
+                    raise result
+                else:
+                    current_app.logger.warning(f"Exception raised verifying URL: {result}")
 
     db.session.commit()
     flash("👍 Bio and fields updated successfully.")
