@@ -127,6 +127,39 @@ cat "$PROMPT_FILE"
     assert result.returncode == 0, result.stderr
     assert "Do not change production behavior just to satisfy coverage." in result.stdout
     assert "Coverage target: 100%." in result.stdout
+    assert "human reviewer steps" in result.stdout
+    assert "automated checks belong under validation" in result.stdout
+    assert "what a human should click, submit, inspect, or verify" in result.stdout
+
+
+def test_write_pr_body_includes_human_manual_testing_guidance(tmp_path: Path) -> None:
+    pr_body_file = tmp_path / "pr-body.md"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+PR_BODY_FILE={shlex.quote(str(pr_body_file))}
+COVERAGE_TARGET_PERCENT=100
+INITIAL_COVERAGE_PERCENT=99.8
+FINAL_COVERAGE_PERCENT=100
+CURRENT_COVERAGE_MISSING_LINES=0
+CURRENT_COVERAGE_SUMMARY='- No remaining gaps'
+stream_changed_files() {{
+  printf 'tests/test_settings.py\\n'
+}}
+write_pr_body \
+  "codex/daily-coverage" \
+  "main" \
+  "docs/agent-logs/run-20260430T000000Z-coverage.txt"
+cat "$PR_BODY_FILE"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "## Manual Testing" in result.stdout
+    assert "reviewer-executed product checks" in result.stdout
+    assert "open the affected feature locally or in staging" in result.stdout
+    assert "not applicable beyond automated coverage" not in result.stdout.lower()
 
 
 def test_main_exits_before_runtime_bootstrap_when_human_pr_exists(tmp_path: Path) -> None:

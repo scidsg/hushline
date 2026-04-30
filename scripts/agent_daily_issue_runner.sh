@@ -2079,6 +2079,12 @@ EOF2
 EOF2
   cat >> "$PR_BODY_FILE" <<'EOF2'
 - Additional CI workflows run on the PR after branch push; the runner does not try to mirror the full workflow matrix locally.
+
+## Manual Testing
+- Manual testing is for reviewer-executed product checks, not a log of steps the runner or LLM took.
+- In a local or staging environment, open the feature or workflow changed by this issue.
+- Reproduce the issue scenario or perform the changed workflow end to end as a user.
+- Verify the expected behavior from the issue description and check the nearest adjacent core flow for regressions.
 EOF2
 }
 
@@ -2244,7 +2250,7 @@ sanitize_failure_excerpt() {
     -e 's#/tmp/[^[:space:]]+#/tmp/[redacted]#g' \
     -e 's#(https?://)[^/@[:space:]]+:[^/@[:space:]]+@#\1[redacted]@#g' \
     -e 's#(authorization[[:space:]]*:[[:space:]]*bearer)[[:space:]]+[^[:space:]]+#\1 [redacted]#Ig' \
-    -e 's#\b(Bearer|Basic)[[:space:]]+[^[:space:]]+#\1 [redacted]#Ig' \
+    -e 's#(^|[^[:alnum:]_])(Bearer|Basic)[[:space:]]+[^[:space:]]+#\1\2 [redacted]#Ig' \
     -e 's/\b(AKIA|ASIA)[A-Z0-9]{16}\b/[redacted-aws-access-key]/g' \
     -e 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/[redacted-email]/g' \
     -e 's#(^|[[:space:][:punct:]])(api[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|token|secret|password|passwd|pwd|cookie|session([_-]?id)?|client[_-]?secret|private[_-]?key)([[:space:]]*[:=][[:space:]]*|[[:space:]]+)[^[:space:],;]+#\1\2\4[redacted]#Ig'
@@ -2356,6 +2362,7 @@ Requirements:
 9) Do not run scripts/agent_issue_bootstrap.sh, Docker commands, or Dependabot/GitHub connectivity checks; this runner handles infra.
 10) Do not include meta-compliance statements like "per your constraints" in your final summary.
 11) Prefer repository-root searches and avoid scanning hardcoded directories that may not exist.
+12) If you mention manual testing in your final summary, list only human reviewer steps to run after the PR opens. Do not describe commands or actions you performed as the agent; automated checks belong under validation. Do not use wording such as "not applicable beyond automated coverage" for behavior or security changes; identify what a human should click, submit, inspect, or verify.
 EOF2
   } > "$PROMPT_FILE"
 }
@@ -2436,6 +2443,7 @@ Requirements:
 10) If failures mention migrations, revision heads, or upgrade/downgrade tests, inspect the migration file and its paired `tests/migrations/revision_*.py` fixture together before editing.
 11) Do not run scripts/agent_issue_bootstrap.sh, Docker commands, or Dependabot/GitHub connectivity checks; this runner handles infra.
 12) Do not include meta-compliance statements like "per your constraints" in your final summary.
+13) If you mention manual testing in your final summary, list only human reviewer steps to run after the PR opens. Do not describe commands or actions you performed as the agent; automated checks belong under validation. Do not use wording such as "not applicable beyond automated coverage" for behavior or security changes; identify what a human should click, submit, inspect, or verify.
 EOF2
   } > "$PROMPT_FILE"
 }

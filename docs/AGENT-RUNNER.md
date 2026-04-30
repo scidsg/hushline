@@ -91,7 +91,9 @@ This runner runs directly in the local repo and performs a narrow local gate bef
 15. Move the selected issue into project status `Ready for Review` once the PR exists.
 16. For child PRs targeting an epic branch, record `Linked issue: #<n>` in the PR body instead of relying on GitHub's default-branch-only close keywords.
 17. A dedicated workflow closes that linked child issue after the child PR is merged into the epic branch.
-18. Include runner log path in PR context and use a plain-language narrative lead for broad audiences, followed by the structured PR body sections (`Summary`, `Context`, `Changed Files`, `Validation`).
+18. Include runner log path in PR context and use a plain-language narrative lead for broad audiences, followed by the structured PR body sections (`Summary`, `Context`, `Changed Files`, `Validation`, `Manual Testing`).
+    - `Validation` lists automated checks run by the runner or CI.
+    - `Manual Testing` lists human reviewer steps to exercise the changed feature after the PR opens. It is not a log of actions the LLM or runner performed.
 19. Refresh run log after PR creation (including opened PR URL and post-check steps), commit/push that log update when changed.
 20. Wait 15 minutes by default, then fetch a one-time PR feedback summary (discussion comments, change-request reviews, unresolved review threads) and append it to the run log.
 21. Return to `main` on exit (explicit checkout + cleanup trap fallback).

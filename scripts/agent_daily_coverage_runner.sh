@@ -872,6 +872,7 @@ Requirements:
 6) Use repository make targets when you need local validation.
 7) Do not run Docker/bootstrap commands, git pushes, or GitHub/Dependabot triage; the runner handles infra and PR flow.
 8) Do not include meta-compliance statements in your final summary.
+9) If you mention manual testing in your final summary, list only human reviewer steps to run after the PR opens. Do not describe commands or actions you performed as the agent; automated checks belong under validation. Do not use wording such as "not applicable beyond automated coverage" for behavior or security changes; identify what a human should click, submit, inspect, or verify.
 EOF2
   } > "$PROMPT_FILE"
 }
@@ -925,6 +926,7 @@ Requirements:
 4) If remaining gaps are inherently unreachable, use the smallest justified coverage exclusion rather than broad config churn.
 5) Do not run Docker/bootstrap commands, git pushes, or GitHub/Dependabot triage; the runner handles infra and PR flow.
 6) Do not include meta-compliance statements in your final summary.
+7) If you mention manual testing in your final summary, list only human reviewer steps to run after the PR opens. Do not describe commands or actions you performed as the agent; automated checks belong under validation. Do not use wording such as "not applicable beyond automated coverage" for behavior or security changes; identify what a human should click, submit, inspect, or verify.
 EOF2
   } > "$PROMPT_FILE"
 }
@@ -1092,6 +1094,11 @@ EOF2
 - \`make lint\`
 - \`make test\` (full suite)
 - \`docker compose run --rm app poetry run pytest --cov hushline --cov-report json:/app/.coverage-runner/coverage.json --cov-report term-missing -q --skip-local-only\`
+
+## Manual Testing
+- Manual testing is for reviewer-executed product checks, not a log of steps the runner or LLM took.
+- If this coverage PR changes application behavior, open the affected feature locally or in staging and perform the changed workflow end to end as a user.
+- If this coverage PR changes only tests, inspect the changed tests to confirm they cover the intended behavior; no product workflow needs to be manually exercised.
 EOF2
 }
 

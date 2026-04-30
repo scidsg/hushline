@@ -1124,6 +1124,29 @@ cat "$PR_BODY_FILE"
     assert "- Epic: https://github.com/scidsg/hushline/issues/1735" in result.stdout
     assert "- Child issue: https://github.com/scidsg/hushline/issues/1732" in result.stdout
     assert "- Base branch: codex/epic-1735" in result.stdout
+    assert "## Manual Testing" in result.stdout
+    assert "reviewer-executed product checks" in result.stdout
+    assert "perform the changed workflow end to end as a user" in result.stdout
+    assert "not applicable beyond automated coverage" not in result.stdout.lower()
+
+
+def test_build_issue_prompt_defines_manual_testing_as_human_reviewer_steps() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+PROMPT_FILE="$(mktemp)"
+REPO_SLUG=scidsg/hushline
+build_issue_prompt 1900 "Fix settings flow" "Issue body"
+cat "$PROMPT_FILE"
+rm -f "$PROMPT_FILE"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "human reviewer steps" in result.stdout
+    assert "automated checks belong under validation" in result.stdout
+    assert "not applicable beyond automated coverage" in result.stdout
+    assert "what a human should click, submit, inspect, or verify" in result.stdout
 
 
 def test_main_marks_issue_ready_for_review_after_opening_pr(tmp_path: Path) -> None:
