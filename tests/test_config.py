@@ -8,6 +8,7 @@ from hushline.config import (
     _STRING_CFG_PREFIX,
     PASSWORD_HASH_REHASH_ON_AUTH_ENABLED,
     PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT,
+    SPLASH_SCREEN_DURATION_MS,
     AliasMode,
     ConfigParseError,
     load_config,
@@ -148,3 +149,15 @@ def test_password_hash_rehash_on_auth_flag_defaults_false_and_parses_true() -> N
     env[PASSWORD_HASH_REHASH_ON_AUTH_ENABLED] = "true"
     cfg = load_config(env)
     assert cfg[PASSWORD_HASH_REHASH_ON_AUTH_ENABLED] is True
+
+
+def test_splash_screen_duration_defaults_to_two_seconds_and_parses_override() -> None:
+    env = dict(**os.environ)
+    env.pop(SPLASH_SCREEN_DURATION_MS, None)
+
+    cfg = load_config(env)
+    assert cfg[SPLASH_SCREEN_DURATION_MS] == 2000
+
+    env[SPLASH_SCREEN_DURATION_MS] = "1250"
+    cfg = load_config(env)
+    assert cfg[SPLASH_SCREEN_DURATION_MS] == 1250

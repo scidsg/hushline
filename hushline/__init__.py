@@ -11,7 +11,7 @@ from hushline import admin, premium, routes, settings, storage
 from hushline.cli_password_hash import register_password_hash_commands
 from hushline.cli_reg import register_reg_commands
 from hushline.cli_stripe import register_stripe_commands
-from hushline.config import AliasMode, load_config
+from hushline.config import SPLASH_SCREEN_DURATION_MS, AliasMode, load_config
 from hushline.db import db, migrate
 from hushline.md import md_to_html
 from hushline.model import OrganizationSetting, User
@@ -218,6 +218,7 @@ def configure_jinja(app: Flask) -> None:
             registration_codes_required=data.get(
                 OrganizationSetting.REGISTRATION_CODES_REQUIRED, True
             ),
+            splash_screen_duration_ms=app.config.get(SPLASH_SCREEN_DURATION_MS, 2000),
             setup_incomplete=False,
             user=None,
         )

@@ -11,6 +11,7 @@ def test_csp(client: FlaskClient) -> None:
     csp = (response.headers.get("Content-Security-Policy") or "").strip()
     assert csp
     assert "'unsafe-eval'" not in csp
+    assert "img-src 'self' data: https:" in csp
 
 
 def test_csp_script_src_elem_disallows_inline_scripts(client: FlaskClient) -> None:
@@ -50,6 +51,7 @@ def test_base_template_uses_external_no_js_bootstrap_script(client: FlaskClient)
     assert response.status_code == 200
     assert 'src="/static/no-js.js"' in response.text
     assert 'document.documentElement.classList.remove("no-js");' not in response.text
+    assert "sessionStorage.getItem" not in response.text
 
 
 def test_x_frame_options(client: FlaskClient) -> None:
