@@ -487,6 +487,29 @@ async def test_static_verification_resolver_refuses_unvalidated_hosts() -> None:
     assert resolved[0]["host"] == "93.184.216.34"
     with pytest.raises(OSError, match="refused unexpected host"):
         await resolver.resolve("metadata.google.internal", 80)
+    await resolver.close()
+
+
+@pytest.mark.asyncio()
+async def test_resolve_safe_verification_url_rejects_when_no_usable_addresses(app: Flask) -> None:
+    with app.app_context():
+        app.config["TESTING"] = False
+        with patch.object(
+            asyncio.get_running_loop(),
+            "getaddrinfo",
+            return_value=[
+                (
+                    socket.AF_INET,
+                    socket.SOCK_STREAM,
+                    socket.IPPROTO_TCP,
+                    "",
+                    ("not-an-ip-address", 443),
+                )
+            ],
+        ):
+            safe_url = await _resolve_safe_verification_url("https://example.com/profile")
+
+    assert safe_url is None
 
 
 @pytest.mark.asyncio()
@@ -532,6 +555,79 @@ async def test_fetch_verification_html_disables_redirects() -> None:
 
     assert html == "<html></html>"
     assert captured["allow_redirects"] is False
+
+
+@pytest.mark.asyncio()
+async def test_fetch_verification_html_uses_pinned_address_connector() -> None:
+    captured: dict[str, object] = {}
+
+    class _Response:
+        def raise_for_status(self) -> None:
+            return None
+
+        async def text(self) -> str:
+            return "<html><body>pinned</body></html>"
+
+    class _Context:
+        async def __aenter__(self) -> _Response:
+            return _Response()
+
+        async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
+            _ = (exc_type, exc, tb)
+
+    class _Session:
+        async def __aenter__(self) -> "_Session":
+            return self
+
+        async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
+            _ = (exc_type, exc, tb)
+
+        def get(
+            self,
+            url: str,
+            timeout: aiohttp.ClientTimeout,
+            allow_redirects: bool,
+        ) -> _Context:
+            captured["url"] = url
+            captured["timeout"] = timeout
+            captured["allow_redirects"] = allow_redirects
+            return _Context()
+
+    def _fake_connector(*, resolver: object, use_dns_cache: bool, force_close: bool) -> object:
+        captured["resolver"] = resolver
+        captured["use_dns_cache"] = use_dns_cache
+        captured["force_close"] = force_close
+        return object()
+
+    resolved_addresses = (
+        ResolveResult(
+            hostname="example.com",
+            host="93.184.216.34",
+            port=443,
+            family=socket.AF_INET,
+            proto=socket.IPPROTO_TCP,
+            flags=0,
+        ),
+    )
+
+    with (
+        patch("hushline.settings.common.aiohttp.TCPConnector", side_effect=_fake_connector),
+        patch("hushline.settings.common.aiohttp.ClientSession", return_value=_Session()) as session,
+    ):
+        html = await _fetch_verification_html(
+            _SafeVerificationUrl(
+                "https://example.com/profile",
+                "example.com",
+                resolved_addresses,
+            )
+        )
+
+    assert html == "<html><body>pinned</body></html>"
+    assert captured["allow_redirects"] is False
+    assert captured["use_dns_cache"] is False
+    assert captured["force_close"] is True
+    assert isinstance(captured["resolver"], _StaticVerificationResolver)
+    assert session.call_args.kwargs["connector"] is not None
 
 
 @pytest.mark.asyncio()
