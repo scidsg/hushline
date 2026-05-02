@@ -118,6 +118,17 @@ def test_first_load_splash_hooks_exist() -> None:
     assert "@keyframes first-load-splash-spinner-rotate" in scss
 
 
+def test_custom_pwa_splash_screen_is_not_declared() -> None:
+    template = (ROOT / "hushline/templates/base.html").read_text(encoding="utf-8")
+    static_manifest = json.loads(
+        (ROOT / "hushline/static/manifest.json").read_text(encoding="utf-8")
+    )
+
+    assert "apple-touch-startup-image" not in template
+    assert "/static/splash/" not in template
+    assert "background_color" not in static_manifest
+
+
 def test_directory_search_accessibility_hooks_exist() -> None:
     directory_template = (ROOT / "hushline/templates/directory.html").read_text(encoding="utf-8")
     directory_js = (ROOT / "assets/js/directory.js").read_text(encoding="utf-8")

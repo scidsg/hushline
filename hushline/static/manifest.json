@@ -3,7 +3,6 @@
   "short_name": "Hush Line",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fbf3ff",
   "theme_color": "#7d25c1",
   "description": "Anonymous reporting and whistleblower management for organizations and individuals.",
   "icons": [
