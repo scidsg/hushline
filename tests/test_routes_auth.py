@@ -7,7 +7,7 @@ import pytest
 from flask import Flask, session, url_for
 from flask.testing import FlaskClient
 from passlib.hash import scrypt
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, MultipleResultsFound
 from werkzeug.security import generate_password_hash
 
 from hushline.auth import (
@@ -24,6 +24,7 @@ from hushline.routes.auth import (
     PASSWORD_RESET_CONFIRMATION_MESSAGE,
     PASSWORD_RESET_INVALID_LINK_MESSAGE,
     _apply_pending_password_rehash,
+    _find_primary_username,
     _lock_first_user_registration,
     _password_hash_digest,
 )
@@ -366,6 +367,25 @@ def test_password_reset_request_is_generic_and_sends_only_for_eligible_account(
     assert token_count == 1
 
 
+def test_find_primary_username_returns_none_and_logs_when_query_is_ambiguous(app: Flask) -> None:
+    with (
+        app.app_context(),
+        patch(
+            "hushline.routes.auth.db.session.scalars",
+            side_effect=MultipleResultsFound("duplicate primary usernames"),
+        ),
+        patch.object(app.logger, "error") as logger_error,
+    ):
+        username = _find_primary_username(" ExampleUser ")
+
+    assert username is None
+    logger_error.assert_called_once()
+    assert logger_error.call_args.args[0] == (
+        "Multiple primary usernames matched case-insensitive password reset lookup"
+    )
+    assert logger_error.call_args.kwargs["extra"]["username_hash"]
+
+
 def test_password_reset_sets_new_password_and_consumes_token(
     client: FlaskClient, user: User, user_password: str
 ) -> None:
@@ -415,6 +435,21 @@ def test_password_reset_sets_new_password_and_consumes_token(
     assert reused_response.status_code == 200
     assert PASSWORD_RESET_INVALID_LINK_MESSAGE in reused_response.text
     assert "Reset Password" in reused_response.text
+
+
+def test_password_reset_get_renders_form_for_active_token(client: FlaskClient, user: User) -> None:
+    reset_token, raw_token = PasswordResetToken.create_for_user(
+        user.id,
+        ttl=timedelta(hours=1),
+    )
+    db.session.add(reset_token)
+    db.session.commit()
+
+    response = client.get(url_for("reset_password", token=raw_token))
+
+    assert response.status_code == 200
+    assert "Reset Password" in response.text
+    assert 'name="password"' in response.text
 
 
 def test_password_reset_rejects_expired_and_unknown_tokens(client: FlaskClient, user: User) -> None:
