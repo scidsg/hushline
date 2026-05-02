@@ -4,6 +4,7 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = REPO_ROOT / "docs" / "screenshots" / "scenes.json"
+CAPTURE_SCRIPT_PATH = REPO_ROOT / "scripts" / "capture-doc-screenshots.mjs"
 INDUSTRY_FIELD_FORM_SELECTOR = (
     ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry'))"
 )
@@ -90,6 +91,17 @@ def test_docs_screenshots_manifest_disables_full_page_for_heavy_directory_scenes
     assert scenes["auth-admin-directory-all"]["captureModes"] == ["fold", "scroll"]
     assert scenes["guest-directory-newsrooms"]["captureModes"] == ["fold", "scroll"]
     assert scenes["guest-directory-all"]["captureModes"] == ["fold", "scroll"]
+
+
+def test_docs_screenshot_capture_suppresses_first_load_splash() -> None:
+    script = CAPTURE_SCRIPT_PATH.read_text(encoding="utf-8")
+
+    assert 'const FIRST_LOAD_SPLASH_SEEN_KEY = "hushline:first-load-splash-seen";' in script
+    assert 'sessionStorage.setItem(splashStorageKey, "true")' in script
+    assert "await context.addInitScript(" in script
+    assert 'await context.route("**/static/css/style.css*"' in script
+    assert "#first-load-splash" in script
+    assert ".first-load-splash" in script
 
 
 def test_docs_screenshots_manifest_artvandelay_notifications_waits_for_third_recipient() -> None:
