@@ -97,7 +97,7 @@ def test_docs_screenshot_capture_suppresses_first_load_splash() -> None:
     script = CAPTURE_SCRIPT_PATH.read_text(encoding="utf-8")
 
     assert 'const FIRST_LOAD_SPLASH_SEEN_KEY = "hushline:first-load-splash-seen";' in script
-    assert "sessionStorage.setItem(splashStorageKey, \"true\")" in script
+    assert 'sessionStorage.setItem(splashStorageKey, "true")' in script
     assert "await context.addInitScript(" in script
     assert 'await context.route("**/static/css/style.css*"' in script
     assert "#first-load-splash" in script
