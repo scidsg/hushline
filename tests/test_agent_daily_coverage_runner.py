@@ -221,7 +221,7 @@ run_step() {{
   printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
 }}
 count_open_human_prs() {{ printf '0\\n'; }}
-count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
+count_open_bot_prs_excluding_heads() {{ printf '2\\n'; }}
 find_open_pr_for_head_branch() {{ :; }}
 configure_bot_git_identity() {{
   printf 'configure-bot-git\\n' >> {shlex.quote(str(call_log))}
@@ -243,6 +243,7 @@ main
     result = _run_bash(shell_script)
 
     assert result.returncode == 0, result.stderr
+    assert "Open unrelated bot PR count: 2; continuing coverage runner." in result.stdout
     assert "Skipped: coverage already meets target at 100.00%." in result.stdout
 
     calls = call_log.read_text(encoding="utf-8").splitlines()

@@ -1265,11 +1265,7 @@ main() {
   fi
 
   open_bot_prs="$(count_open_bot_prs_excluding_heads "$BRANCH_NAME")"
-  echo "Open unrelated bot PR count: ${open_bot_prs}"
-  if [[ "$open_bot_prs" != "0" ]]; then
-    runner_status "Skipped: found ${open_bot_prs} unrelated open PR(s) by ${BOT_LOGIN}."
-    exit 0
-  fi
+  echo "Open unrelated bot PR count: ${open_bot_prs}; continuing coverage runner."
 
   run_step "Configure bot git identity" configure_bot_git_identity
 
