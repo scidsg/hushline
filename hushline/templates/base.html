@@ -159,6 +159,7 @@
   </head>
 
   <body class="{% block body_class %}{% endblock %}">
+    {% set splash_logo_url = brand_logo_url or url_for('static', filename='favicon/android-chrome-512x512.png') %}
     <div
       id="first-load-splash"
       class="first-load-splash"
@@ -167,7 +168,7 @@
     >
       <img
         class="first-load-splash-logo"
-        src="https://hushline.app/assets/img/social/logo.png"
+        src="{{ splash_logo_url }}"
         alt=""
         loading="eager"
         decoding="async"
