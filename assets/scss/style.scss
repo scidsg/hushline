@@ -1762,13 +1762,13 @@ img.empty {
 .first-load-splash-logo {
   display: block;
   width: clamp(8rem, 50vw, 13rem);
-  max-width: 70vw;
+  max-width: 42vw;
   height: auto;
 }
 
 .first-load-splash-spinner {
-  width: 3rem;
-  height: 3rem;
+  width: 2.5rem;
+  height: 2.5rem;
   box-sizing: border-box;
   border: 0.25rem solid currentColor;
   border-right-color: transparent;
