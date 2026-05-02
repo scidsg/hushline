@@ -159,6 +159,23 @@
   </head>
 
   <body class="{% block body_class %}{% endblock %}">
+    {% set splash_logo_url = brand_logo_url or url_for('static', filename='img/splash-logo.png') %}
+    <div
+      id="first-load-splash"
+      class="first-load-splash"
+      aria-hidden="true"
+      data-splash-duration-ms="{{ splash_screen_duration_ms }}"
+    >
+      <img
+        class="first-load-splash-logo"
+        src="{{ splash_logo_url }}"
+        alt=""
+        loading="eager"
+        decoding="async"
+        referrerpolicy="no-referrer"
+      />
+      <span class="first-load-splash-spinner" aria-hidden="true"></span>
+    </div>
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <div class="noscript-warning" role="status" aria-live="polite" aria-atomic="true">
       ‼️ Enable JavaScript for full functionality, including end-to-end encrypted messages.

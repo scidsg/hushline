@@ -87,6 +87,34 @@ def test_submit_spinner_hooks_exist_for_scoped_forms() -> None:
     assert "@keyframes submit-button-spinner-rotate" in scss
 
 
+def test_first_load_splash_hooks_exist() -> None:
+    template = (ROOT / "hushline/templates/base.html").read_text(encoding="utf-8")
+    js = (ROOT / "assets/js/global.js").read_text(encoding="utf-8")
+    no_js = (ROOT / "hushline/static/no-js.js").read_text(encoding="utf-8")
+    scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
+
+    assert 'id="first-load-splash"' in template
+    assert 'aria-hidden="true"' in template
+    assert 'data-splash-duration-ms="{{ splash_screen_duration_ms }}"' in template
+    assert "brand_logo_url or url_for('static', filename='img/splash-logo.png')" in template
+    assert 'src="{{ splash_logo_url }}"' in template
+    assert "https://hushline.app/assets/img/social/logo.png" not in template
+    assert (ROOT / "hushline/static/img/splash-logo.png").is_file()
+    assert 'class="first-load-splash-spinner"' in template
+    assert "FIRST_LOAD_SPLASH_SEEN_KEY" in js
+    assert "hushline:first-load-splash-seen" in js
+    assert "Number.parseInt(" in js
+    assert "const duration = configuredDuration >= 0 ? configuredDuration : 2000;" in js
+    assert 'document.documentElement.classList.add("splash-seen");' in js
+    assert 'sessionStorage.getItem("hushline:first-load-splash-seen")' in no_js
+    assert ".no-js .first-load-splash" in scss
+    assert ".splash-seen .first-load-splash" in scss
+    assert "width: clamp(8rem, 50vw, 13rem);" in scss
+    assert "width: clamp(9rem, 15vw, 12rem);" in scss
+    assert "border-right-color: transparent;" in scss
+    assert "@keyframes first-load-splash-spinner-rotate" in scss
+
+
 def test_directory_search_accessibility_hooks_exist() -> None:
     directory_template = (ROOT / "hushline/templates/directory.html").read_text(encoding="utf-8")
     directory_js = (ROOT / "assets/js/directory.js").read_text(encoding="utf-8")

@@ -53,6 +53,55 @@ function navController() {
   setupMobileNav();
 }
 
+const FIRST_LOAD_SPLASH_SEEN_KEY = "hushline:first-load-splash-seen";
+
+function hasSeenFirstLoadSplash() {
+  try {
+    return sessionStorage.getItem(FIRST_LOAD_SPLASH_SEEN_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function markFirstLoadSplashSeen() {
+  try {
+    sessionStorage.setItem(FIRST_LOAD_SPLASH_SEEN_KEY, "true");
+  } catch {}
+}
+
+function setupFirstLoadSplash() {
+  const splash = document.getElementById("first-load-splash");
+  if (!splash) {
+    return;
+  }
+
+  if (hasSeenFirstLoadSplash()) {
+    splash.remove();
+    return;
+  }
+
+  const configuredDuration = Number.parseInt(
+    splash.dataset.splashDurationMs || "",
+    10,
+  );
+  const duration = configuredDuration >= 0 ? configuredDuration : 2000;
+  const hideSplash = () => {
+    markFirstLoadSplashSeen();
+    document.documentElement.classList.add("splash-seen");
+    splash.classList.add("is-hidden");
+
+    const removeSplash = () => {
+      splash.remove();
+    };
+    splash.addEventListener("transitionend", removeSplash, { once: true });
+    window.setTimeout(removeSplash, 500);
+  };
+
+  window.setTimeout(hideSplash, duration);
+}
+
+setupFirstLoadSplash();
+
 document.addEventListener("DOMContentLoaded", function () {
   navController();
 

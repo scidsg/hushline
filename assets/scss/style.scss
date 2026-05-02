@@ -1730,6 +1730,68 @@ img.empty {
   margin-top: calc(7rem + env(safe-area-inset-top)) !important;
 }
 
+.first-load-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 2rem;
+  background: oklch(0.9738 0.0179 314.736);
+  color: var(--color-brand);
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
+}
+
+.no-js .first-load-splash,
+.splash-seen .first-load-splash,
+.first-load-splash.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.first-load-splash-logo {
+  display: block;
+  width: clamp(8rem, 50vw, 13rem);
+  max-width: 42vw;
+  height: auto;
+}
+
+.first-load-splash-spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  box-sizing: border-box;
+  border: 0.25rem solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: first-load-splash-spinner-rotate 0.75s linear infinite;
+}
+
+@media (min-width: 48rem) {
+  .first-load-splash-logo {
+    width: clamp(9rem, 15vw, 12rem);
+  }
+}
+
+@keyframes first-load-splash-spinner-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .flash-message-text {
   flex: 1;
 }

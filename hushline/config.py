@@ -15,6 +15,7 @@ _STRING_CFG_PREFIX = "HL_CFG_"
 _JSON_CFG_PREFIX = "HL_CFG_JSON_"
 PASSWORD_HASH_REHASH_ON_AUTH_ENABLED = "PASSWORD_HASH_REHASH_ON_AUTH_ENABLED"  # noqa: S105
 PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT = "PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT"  # noqa: S105
+SPLASH_SCREEN_DURATION_MS = "SPLASH_SCREEN_DURATION_MS"
 
 
 class ConfigParseError(Exception):
@@ -160,6 +161,12 @@ def _load_hushline_misc(env: Mapping[str, str]) -> Mapping[str, Any]:
 
     if onion := env.get("ONION_HOSTNAME"):
         data["ONION_HOSTNAME"] = onion
+
+    data[SPLASH_SCREEN_DURATION_MS] = if_not_none(
+        env.get(SPLASH_SCREEN_DURATION_MS), int, allow_falsey=False
+    )
+    if data[SPLASH_SCREEN_DURATION_MS] is None:
+        data[SPLASH_SCREEN_DURATION_MS] = 2000
 
     bool_configs = [
         ("DIRECTORY_VERIFIED_TAB_ENABLED", True),
