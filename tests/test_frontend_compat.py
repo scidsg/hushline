@@ -99,6 +99,9 @@ def test_first_load_splash_hooks_exist() -> None:
     assert "brand_logo_url or url_for('static', filename='img/splash-logo.png')" in template
     assert 'src="{{ splash_logo_url }}"' in template
     assert "https://hushline.app/assets/img/social/logo.png" not in template
+    image_loader = (ROOT / "assets/js/images.js").read_text(encoding="utf-8")
+    assert 'import "./../img/splash-logo.png";' in image_loader
+    assert (ROOT / "assets/img/splash-logo.png").is_file()
     assert (ROOT / "hushline/static/img/splash-logo.png").is_file()
     assert 'class="first-load-splash-spinner"' in template
     assert "FIRST_LOAD_SPLASH_SEEN_KEY" in js
