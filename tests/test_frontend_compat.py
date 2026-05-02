@@ -96,8 +96,8 @@ def test_first_load_splash_hooks_exist() -> None:
     assert 'id="first-load-splash"' in template
     assert 'aria-hidden="true"' in template
     assert 'data-splash-duration-ms="{{ splash_screen_duration_ms }}"' in template
-    assert "brand_logo_url or url_for('static', filename='img/splash-logo.png')" in template
-    assert 'src="{{ splash_logo_url }}"' in template
+    assert "splash_logo_url or url_for('static', filename='img/splash-logo.png')" in template
+    assert 'src="{{ first_load_splash_logo_url }}"' in template
     assert "https://hushline.app/assets/img/social/logo.png" not in template
     image_loader = (ROOT / "assets/js/images.js").read_text(encoding="utf-8")
     assert 'import "./../img/splash-logo.png";' in image_loader

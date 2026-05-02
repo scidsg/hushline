@@ -61,6 +61,20 @@
     {% endif %}
   </form>
 
+  <h4>Splash Logo</h4>
+  <form
+    method="POST"
+    enctype="multipart/form-data"
+    class="formBody"
+  >
+    {{ update_splash_logo_form.hidden_tag() }}
+    {{ update_splash_logo_form.logo(id="splash-logo", accept=".png") }}
+    {{ update_splash_logo_form.submit(class="btn") }}
+    {% if splash_logo_url %}
+      {{ delete_splash_logo_form.submit(class="btn-danger") }}
+    {% endif %}
+  </form>
+
   <h4>Donate Button</h4>
   <p>Hide the donate button that links to the Hush Line donation page.</p>
   <form method="POST" class="formBody auto-submit donate-form">

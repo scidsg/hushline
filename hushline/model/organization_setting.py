@@ -20,6 +20,7 @@ class OrganizationSetting(Model):
     BRAND_NAME = "brand_name"
     BRAND_PRIMARY_COLOR = "brand_primary_color"
     BRAND_PROFILE_HEADER_TEMPLATE = "brand_profile_header_template"
+    BRAND_SPLASH_LOGO = "brand_splash_logo"
     DIRECTORY_INTRO_TEXT = "directory_intro_text"
     GUIDANCE_ENABLED = "guidance_enabled"
     GUIDANCE_EXIT_BUTTON_TEXT = "guidance_exit_button_text"
@@ -32,6 +33,7 @@ class OrganizationSetting(Model):
 
     # non-default values
     BRAND_LOGO_VALUE = "brand/logo.png"
+    BRAND_SPLASH_LOGO_VALUE = "brand/splash-logo.png"
 
     _DEFAULT_VALUES: dict[str, Any] = {
         BRAND_NAME: "🤫 Hush Line",

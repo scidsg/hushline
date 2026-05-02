@@ -246,10 +246,15 @@ def configure_jinja(app: Flask) -> None:
 
     @app.context_processor
     def inject_logo() -> dict[str, str | None]:
-        val = None
+        brand_logo_url = None
         if setting := OrganizationSetting.fetch_one(OrganizationSetting.BRAND_LOGO):
-            val = url_for("storage.public", path=setting)
-        return {"brand_logo_url": val}
+            brand_logo_url = url_for("storage.public", path=setting)
+
+        splash_logo_url = None
+        if setting := OrganizationSetting.fetch_one(OrganizationSetting.BRAND_SPLASH_LOGO):
+            splash_logo_url = url_for("storage.public", path=setting)
+
+        return {"brand_logo_url": brand_logo_url, "splash_logo_url": splash_logo_url}
 
 
 def register_error_handlers(app: Flask) -> None:

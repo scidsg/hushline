@@ -26,12 +26,14 @@ from hushline.settings.common import (
 )
 from hushline.settings.forms import (
     DeleteBrandLogoForm,
+    DeleteSplashLogoForm,
     SetHomepageUsernameForm,
     UpdateBrandAppNameForm,
     UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
     UpdateDirectoryTextForm,
     UpdateProfileHeaderForm,
+    UpdateSplashLogoForm,
 )
 from hushline.storage import public_store
 from hushline.utils import redirect_to_self
@@ -53,6 +55,8 @@ def register_branding_routes(bp: Blueprint) -> None:
         )
         update_brand_logo_form = UpdateBrandLogoForm()
         delete_brand_logo_form = DeleteBrandLogoForm()
+        update_splash_logo_form = UpdateSplashLogoForm()
+        delete_splash_logo_form = DeleteSplashLogoForm()
         update_brand_primary_color_form = UpdateBrandPrimaryColorForm()
         update_brand_app_name_form = UpdateBrandAppNameForm()
         toggle_donate_button_form = ToggleDonateButtonForm(
@@ -122,6 +126,38 @@ def register_branding_routes(bp: Blueprint) -> None:
                 db.session.commit()
                 public_store.delete(OrganizationSetting.BRAND_LOGO_VALUE)
                 flash("👍 Brand logo deleted.")
+            elif (
+                update_splash_logo_form.submit.name in request.form
+                and update_splash_logo_form.validate()
+            ):
+                public_store.put(
+                    OrganizationSetting.BRAND_SPLASH_LOGO_VALUE, update_splash_logo_form.logo.data
+                )
+                OrganizationSetting.upsert(
+                    key=OrganizationSetting.BRAND_SPLASH_LOGO,
+                    value=OrganizationSetting.BRAND_SPLASH_LOGO_VALUE,
+                )
+                db.session.commit()
+                flash("👍 Splash logo updated successfully.")
+            elif (
+                delete_splash_logo_form.submit.name in request.form
+                and delete_splash_logo_form.validate()
+            ):
+                row_count = db.session.execute(
+                    db.delete(OrganizationSetting).where(
+                        OrganizationSetting.key == OrganizationSetting.BRAND_SPLASH_LOGO
+                    )
+                ).rowcount
+                if row_count > 1:
+                    current_app.logger.error(
+                        "Would have deleted multiple rows for OrganizationSetting key="
+                        + OrganizationSetting.BRAND_SPLASH_LOGO
+                    )
+                    db.session.rollback()
+                    abort(503)
+                db.session.commit()
+                public_store.delete(OrganizationSetting.BRAND_SPLASH_LOGO_VALUE)
+                flash("👍 Splash logo deleted.")
             elif (
                 update_brand_primary_color_form.submit.name in request.form
                 and update_brand_primary_color_form.validate()
@@ -233,6 +269,8 @@ def register_branding_routes(bp: Blueprint) -> None:
             update_directory_text_form=update_directory_text_form,
             update_brand_logo_form=update_brand_logo_form,
             delete_brand_logo_form=delete_brand_logo_form,
+            update_splash_logo_form=update_splash_logo_form,
+            delete_splash_logo_form=delete_splash_logo_form,
             toggle_donate_button_form=toggle_donate_button_form,
             update_brand_primary_color_form=update_brand_primary_color_form,
             update_brand_app_name_form=update_brand_app_name_form,

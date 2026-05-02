@@ -5,6 +5,8 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 
 from hushline.config import SPLASH_SCREEN_DURATION_MS
+from hushline.db import db
+from hushline.model import OrganizationSetting
 
 
 def _get_splash(client: FlaskClient) -> Any:
@@ -35,3 +37,30 @@ def test_first_load_splash_duration_uses_runtime_config(app: Flask, client: Flas
     splash = _get_splash(client)
 
     assert splash.get("data-splash-duration-ms") == "750"
+
+
+def test_first_load_splash_ignores_custom_header_logo(client: FlaskClient) -> None:
+    OrganizationSetting.upsert(OrganizationSetting.BRAND_LOGO, OrganizationSetting.BRAND_LOGO_VALUE)
+    db.session.commit()
+
+    splash = _get_splash(client)
+
+    assert splash.find("img", src=url_for("static", filename="img/splash-logo.png"))
+    assert not splash.find(
+        "img", src=url_for("storage.public", path=OrganizationSetting.BRAND_LOGO_VALUE)
+    )
+
+
+def test_first_load_splash_uses_custom_splash_logo(client: FlaskClient) -> None:
+    OrganizationSetting.upsert(
+        OrganizationSetting.BRAND_SPLASH_LOGO, OrganizationSetting.BRAND_SPLASH_LOGO_VALUE
+    )
+    db.session.commit()
+
+    splash = _get_splash(client)
+
+    splash_logo_url = url_for("storage.public", path=OrganizationSetting.BRAND_SPLASH_LOGO_VALUE)
+    logo = splash.find("img", src=splash_logo_url)
+    assert logo
+    assert logo.get("referrerpolicy") == "no-referrer"
+    assert not splash.find("img", src=url_for("static", filename="img/splash-logo.png"))

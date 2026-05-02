@@ -31,6 +31,7 @@ from hushline.settings import (
     ChangeUsernameForm,
     DeleteAliasForm,
     DeleteBrandLogoForm,
+    DeleteSplashLogoForm,
     DisplayNameForm,
     EmailForwardingForm,
     NewAliasForm,
@@ -41,6 +42,7 @@ from hushline.settings import (
     UpdateBrandPrimaryColorForm,
     UpdateDirectoryTextForm,
     UpdateProfileHeaderForm,
+    UpdateSplashLogoForm,
     UserGuidanceAddPromptForm,
     UserGuidanceEmergencyExitForm,
     UserGuidanceForm,
@@ -58,6 +60,11 @@ from hushline.settings.notifications import (
 )
 from hushline.settings.profile import _business_tier_display_price
 from tests.helpers import form_to_data
+
+ONE_PIXEL_WHITE_PNG = b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+    "AAAAC0lEQVQIW2P4DwQACfsD/Z8fLAAAAAAASUVORK5CYII="
+)
 
 
 def test_user_account_category_persists(user: User) -> None:
@@ -2382,9 +2389,7 @@ def test_update_brand_app_name(client: FlaskClient, admin: User) -> None:
 @pytest.mark.usefixtures("_authenticated_admin")
 def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
     # 1x1 pixel white png
-    png = b64decode(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQIW2P4DwQACfsD/Z8fLAAAAAAASUVORK5CYII="
-    )
+    png = ONE_PIXEL_WHITE_PNG
 
     resp = client.post(
         url_for("settings.branding"),
@@ -2427,6 +2432,75 @@ def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
 
     # check the file is not accessible
     resp = client.get(logo_url, follow_redirects=True)
+    assert resp.status_code == 404
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_splash_logo_does_not_change_brand_logo(client: FlaskClient, admin: User) -> None:
+    # 1x1 pixel white png
+    png = ONE_PIXEL_WHITE_PNG
+
+    brand_resp = client.post(
+        url_for("settings.branding"),
+        data={
+            "logo": (BytesIO(png), "brand.png"),
+            UpdateBrandLogoForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+    assert brand_resp.status_code == 200
+    assert "Brand logo updated successfully" in brand_resp.text
+
+    resp = client.post(
+        url_for("settings.branding"),
+        data={
+            "logo": (BytesIO(png), "splash.png"),
+            UpdateSplashLogoForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+    assert "Splash logo updated successfully" in resp.text
+
+    brand_logo_url = url_for("storage.public", path=OrganizationSetting.BRAND_LOGO_VALUE)
+    splash_logo_url = url_for("storage.public", path=OrganizationSetting.BRAND_SPLASH_LOGO_VALUE)
+    soup = BeautifulSoup(resp.text, "html.parser")
+    assert soup.select_one(f'header img[src="{brand_logo_url}"]')
+    splash = soup.find(id="first-load-splash")
+    assert splash is not None
+    assert splash.find("img", src=splash_logo_url)
+
+    brand_setting = db.session.get(OrganizationSetting, OrganizationSetting.BRAND_LOGO)
+    splash_setting = db.session.get(OrganizationSetting, OrganizationSetting.BRAND_SPLASH_LOGO)
+    assert brand_setting is not None
+    assert brand_setting.value == OrganizationSetting.BRAND_LOGO_VALUE
+    assert splash_setting is not None
+    assert splash_setting.value == OrganizationSetting.BRAND_SPLASH_LOGO_VALUE
+
+    resp = client.get(splash_logo_url, follow_redirects=True)
+    assert resp.status_code == 200
+    assert resp.data == png
+
+    resp = client.post(
+        url_for("settings.branding"),
+        data=form_to_data(DeleteSplashLogoForm()),
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Splash logo deleted" in resp.text
+    soup = BeautifulSoup(resp.text, "html.parser")
+    assert soup.select_one(f'header img[src="{brand_logo_url}"]')
+    splash = soup.find(id="first-load-splash")
+    assert splash is not None
+    assert splash.find("img", src=url_for("static", filename="img/splash-logo.png"))
+    assert db.session.get(OrganizationSetting, OrganizationSetting.BRAND_LOGO) is not None
+    assert db.session.get(OrganizationSetting, OrganizationSetting.BRAND_SPLASH_LOGO) is None
+
+    resp = client.get(brand_logo_url, follow_redirects=True)
+    assert resp.status_code == 200
+    resp = client.get(splash_logo_url, follow_redirects=True)
     assert resp.status_code == 404
 
 
