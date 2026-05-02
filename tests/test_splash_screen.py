@@ -21,8 +21,9 @@ def test_first_load_splash_markup_uses_default_duration(client: FlaskClient) -> 
 
     assert splash.get("aria-hidden") == "true"
     assert splash.get("data-splash-duration-ms") == "2000"
-    logo = splash.find("img", src="https://hushline.app/assets/img/social/logo.png")
+    logo = splash.find("img", src=url_for("static", filename="img/splash-logo.png"))
     assert logo
+    assert not splash.find("img", src="https://hushline.app/assets/img/social/logo.png")
     assert logo.get("referrerpolicy") == "no-referrer"
     assert splash.find("span", class_="first-load-splash-spinner")
     assert not splash.find(["a", "button", "input", "select", "textarea"])
