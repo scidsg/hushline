@@ -824,13 +824,15 @@ fetch_pr_feedback_json() {
               nodes {
                 isResolved
                 isOutdated
+                path
+                line
+                originalLine
                 comments(first: 10) {
                   nodes {
                     author {
                       login
                     }
                     body
-                    path
                     createdAt
                     url
                   }
@@ -939,9 +941,7 @@ summarize_pr_feedback() {
           ? pr.reviewThreads.nodes
           : [];
 
-      const unresolvedThreads = reviewThreads.filter(
-        (thread) => thread && !thread.isResolved && !thread.isOutdated,
-      );
+      const unresolvedThreads = reviewThreads.filter((thread) => thread && !thread.isResolved);
       const failingChecks = checks.filter(
         (check) => String(check && check.bucket ? check.bucket : "") === "fail",
       );
@@ -973,10 +973,20 @@ summarize_pr_feedback() {
           comment && comment.author && comment.author.login
             ? String(comment.author.login)
             : "unknown";
-        const path = comment && comment.path ? String(comment.path) : "general";
+        const path =
+          thread && thread.path
+            ? String(thread.path)
+            : comment && comment.path
+              ? String(comment.path)
+              : "general";
+        const location =
+          thread && (thread.line || thread.originalLine)
+            ? `:${thread.line || thread.originalLine}`
+            : "";
+        const outdated = thread && thread.isOutdated ? " (outdated)" : "";
         const body = clip(cleanText(comment && comment.body ? comment.body : ""));
         lines.push(
-          `Feedback ${index + 1}: unresolved review thread by @${login} on ${path}${body ? ` :: ${body}` : ""}`,
+          `Feedback ${index + 1}: unresolved review thread by @${login} on ${path}${location}${outdated}${body ? ` :: ${body}` : ""}`,
         );
       });
 

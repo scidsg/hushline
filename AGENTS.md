@@ -203,6 +203,7 @@ When behavior changes or features are added/removed, update relevant documentati
 - Include known risks or follow-ups.
 - If PR scope changes after opening, update the PR description so it reflects the final state before merge.
 - Keep title specific and behavior-oriented.
+- Do not prepend `[codex]` or other agent-identifying prefixes to PR titles.
 - Check when the PR was created and explicitly flag if it appears stale or no longer relevant before proceeding.
 - Never interpolate untrusted GitHub event text fields (issue/PR/comment title or body) directly in shell `run:` steps in workflows.
 - Enforce branch protection required checks before merge: `Workflow Security Checks`, CodeQL scanning, and `Run Linter and Tests`.

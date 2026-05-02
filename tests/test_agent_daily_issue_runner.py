@@ -2162,6 +2162,61 @@ summarize_pr_feedback "$feedback_json"
     )
 
 
+def test_summarize_pr_feedback_reports_unresolved_outdated_threads() -> None:
+    feedback_json = json.dumps(
+        {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "number": 2000,
+                        "url": "https://github.com/scidsg/hushline/pull/2000",
+                        "reviewDecision": "REVIEW_REQUIRED",
+                        "comments": {"nodes": []},
+                        "latestReviews": {"nodes": []},
+                        "reviewThreads": {
+                            "nodes": [
+                                {
+                                    "isResolved": False,
+                                    "isOutdated": True,
+                                    "path": "hushline/templates/base.html",
+                                    "line": None,
+                                    "originalLine": 170,
+                                    "comments": {
+                                        "nodes": [
+                                            {
+                                                "author": {"login": "chatgpt-codex-connector"},
+                                                "body": ("Serve splash logo from local assets."),
+                                                "createdAt": "2026-05-01T05:27:30Z",
+                                                "url": "https://example.test/thread/1",
+                                            }
+                                        ]
+                                    },
+                                }
+                            ]
+                        },
+                    }
+                }
+            }
+        }
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+BOT_LOGIN=hushline-dev
+feedback_json={shlex.quote(feedback_json)}
+summarize_pr_feedback "$feedback_json"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Post-PR feedback summary: unresolved_review_threads=1" in result.stdout
+    assert (
+        "unresolved review thread by @chatgpt-codex-connector "
+        "on hushline/templates/base.html:170 (outdated)"
+    ) in result.stdout
+
+
 def test_summarize_pr_feedback_reports_failing_and_pending_checks() -> None:
     feedback_json = json.dumps(
         {
