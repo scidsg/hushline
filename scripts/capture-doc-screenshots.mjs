@@ -29,6 +29,16 @@ async function sleep(ms) {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+const GUIDANCE_STORAGE_KEY = "hasFinishedGuidance";
+const FIRST_LOAD_SPLASH_SEEN_KEY = "hushline:first-load-splash-seen";
+const SCREENSHOT_SPLASH_SUPPRESSION_CSS = `
+/* Capture-only: docs screenshots need the target screen, not the first-load splash. */
+#first-load-splash,
+.first-load-splash {
+  display: none !important;
+}
+`;
+
 function resolveTimeoutMs(value, fallbackMs) {
   const parsed = Number(value);
   if (Number.isFinite(parsed) && parsed > 0) {
@@ -37,14 +47,55 @@ function resolveTimeoutMs(value, fallbackMs) {
   return fallbackMs;
 }
 
+async function markCaptureStorage(page) {
+  await page.evaluate(
+    ({ guidanceStorageKey, splashStorageKey }) => {
+      try {
+        localStorage.setItem(guidanceStorageKey, "true");
+      } catch {}
+      try {
+        sessionStorage.setItem(splashStorageKey, "true");
+      } catch {}
+    },
+    {
+      guidanceStorageKey: GUIDANCE_STORAGE_KEY,
+      splashStorageKey: FIRST_LOAD_SPLASH_SEEN_KEY,
+    },
+  );
+}
+
+async function installCaptureGuards(context) {
+  await context.addInitScript(
+    ({ guidanceStorageKey, splashStorageKey }) => {
+      try {
+        localStorage.setItem(guidanceStorageKey, "true");
+      } catch {}
+      try {
+        sessionStorage.setItem(splashStorageKey, "true");
+      } catch {}
+    },
+    {
+      guidanceStorageKey: GUIDANCE_STORAGE_KEY,
+      splashStorageKey: FIRST_LOAD_SPLASH_SEEN_KEY,
+    },
+  );
+
+  await context.route("**/static/css/style.css*", async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    await route.fulfill({
+      response,
+      body: `${body}\n${SCREENSHOT_SPLASH_SUPPRESSION_CSS}`,
+    });
+  });
+}
+
 async function login(baseUrl, context, username, password) {
   await context.clearCookies();
   const page = await context.newPage();
-  // Ensure the guidance modal does not block login interactions in auth sessions.
+  // Ensure capture-only overlays do not block login interactions in auth sessions.
   await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
-  await page.evaluate(() => {
-    localStorage.setItem("hasFinishedGuidance", "true");
-  });
+  await markCaptureStorage(page);
   await page.goto(`${baseUrl}/login`, { waitUntil: "networkidle" });
   await page.fill("#username", username);
   await page.fill("#password", password);
@@ -77,9 +128,9 @@ async function runAction(page, action, defaultWaitTimeoutMs) {
       }
       let dialogPromise = null;
       if (action.acceptDialog === true) {
-        dialogPromise = page.waitForEvent("dialog", { timeout: timeoutMs }).then((dialog) =>
-          dialog.accept(),
-        );
+        dialogPromise = page
+          .waitForEvent("dialog", { timeout: timeoutMs })
+          .then((dialog) => dialog.accept());
       }
       await page.click(action.selector);
       if (dialogPromise) {
@@ -331,13 +382,12 @@ async function main() {
     const ctx = await browser.newContext(
       makeContextOptions(viewport, jsEnabled, theme),
     );
+    await installCaptureGuards(ctx);
     if (jsEnabled) {
-      // Hide guidance modal by default; explicit modal scenes can clear this.
+      // Hide capture-only overlays by default; explicit modal scenes can clear guidance state.
       const page = await ctx.newPage();
       await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
-      await page.evaluate(() => {
-        localStorage.setItem("hasFinishedGuidance", "true");
-      });
+      await markCaptureStorage(page);
       await page.close();
     }
     contexts.set(key, ctx);
