@@ -2494,7 +2494,7 @@ def test_update_splash_logo_does_not_change_brand_logo(client: FlaskClient, admi
     assert soup.select_one(f'header img[src="{brand_logo_url}"]')
     splash = soup.find(id="first-load-splash")
     assert splash is not None
-    assert splash.find("img", src=url_for("static", filename="img/splash-logo.png"))
+    assert splash.find("img", src=brand_logo_url)
     assert db.session.get(OrganizationSetting, OrganizationSetting.BRAND_LOGO) is not None
     assert db.session.get(OrganizationSetting, OrganizationSetting.BRAND_SPLASH_LOGO) is None
 

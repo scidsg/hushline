@@ -97,7 +97,7 @@
   </head>
 
   <body class="{% block body_class %}{% endblock %}">
-    {% set first_load_splash_logo_url = splash_logo_url or url_for('static', filename='img/splash-logo.png') %}
+    {% set first_load_splash_logo_url = splash_logo_url or brand_logo_url or url_for('static', filename='img/splash-logo.png') %}
     <div
       id="first-load-splash"
       class="first-load-splash"

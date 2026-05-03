@@ -39,19 +39,21 @@ def test_first_load_splash_duration_uses_runtime_config(app: Flask, client: Flas
     assert splash.get("data-splash-duration-ms") == "750"
 
 
-def test_first_load_splash_ignores_custom_header_logo(client: FlaskClient) -> None:
+def test_first_load_splash_uses_brand_logo_fallback(client: FlaskClient) -> None:
     OrganizationSetting.upsert(OrganizationSetting.BRAND_LOGO, OrganizationSetting.BRAND_LOGO_VALUE)
     db.session.commit()
 
     splash = _get_splash(client)
 
-    assert splash.find("img", src=url_for("static", filename="img/splash-logo.png"))
-    assert not splash.find(
-        "img", src=url_for("storage.public", path=OrganizationSetting.BRAND_LOGO_VALUE)
-    )
+    brand_logo_url = url_for("storage.public", path=OrganizationSetting.BRAND_LOGO_VALUE)
+    logo = splash.find("img", src=brand_logo_url)
+    assert logo
+    assert logo.get("referrerpolicy") == "no-referrer"
+    assert not splash.find("img", src=url_for("static", filename="img/splash-logo.png"))
 
 
 def test_first_load_splash_uses_custom_splash_logo(client: FlaskClient) -> None:
+    OrganizationSetting.upsert(OrganizationSetting.BRAND_LOGO, OrganizationSetting.BRAND_LOGO_VALUE)
     OrganizationSetting.upsert(
         OrganizationSetting.BRAND_SPLASH_LOGO, OrganizationSetting.BRAND_SPLASH_LOGO_VALUE
     )
@@ -63,4 +65,7 @@ def test_first_load_splash_uses_custom_splash_logo(client: FlaskClient) -> None:
     logo = splash.find("img", src=splash_logo_url)
     assert logo
     assert logo.get("referrerpolicy") == "no-referrer"
+    assert not splash.find(
+        "img", src=url_for("storage.public", path=OrganizationSetting.BRAND_LOGO_VALUE)
+    )
     assert not splash.find("img", src=url_for("static", filename="img/splash-logo.png"))
