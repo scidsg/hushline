@@ -8,6 +8,37 @@ from hushline.config import SPLASH_SCREEN_DURATION_MS
 from hushline.db import db
 from hushline.model import OrganizationSetting
 
+NATIVE_STARTUP_SPLASH_MEDIA = {
+    "launch-1125x2436.png": (
+        "(width: 375px) and (height: 812px) and (-webkit-device-pixel-ratio: 3) "
+        "and (orientation: portrait)"
+    ),
+    "launch-828x1792.png": (
+        "(width: 414px) and (height: 896px) and (-webkit-device-pixel-ratio: 2) "
+        "and (orientation: portrait)"
+    ),
+    "launch-1242x2688.png": (
+        "(width: 414px) and (height: 896px) and (-webkit-device-pixel-ratio: 3) "
+        "and (orientation: portrait)"
+    ),
+    "launch-1080x2340.png": (
+        "(width: 360px) and (height: 780px) and (-webkit-device-pixel-ratio: 3) "
+        "and (orientation: portrait)"
+    ),
+    "launch-1170x2532.png": (
+        "(width: 390px) and (height: 844px) and (-webkit-device-pixel-ratio: 3) "
+        "and (orientation: portrait)"
+    ),
+    "launch-1179x2556.png": (
+        "(width: 393px) and (height: 852px) and (-webkit-device-pixel-ratio: 3) "
+        "and (orientation: portrait)"
+    ),
+    "launch-1284x2778.png": (
+        "(width: 428px) and (height: 926px) and (-webkit-device-pixel-ratio: 3) "
+        "and (orientation: portrait)"
+    ),
+}
+
 
 def _get_splash(client: FlaskClient) -> Any:
     OrganizationSetting.upsert(OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED, True)
@@ -19,6 +50,16 @@ def _get_splash(client: FlaskClient) -> Any:
     splash = soup.find(id="first-load-splash")
     assert splash is not None
     return splash
+
+
+def _native_startup_splash_links(soup: BeautifulSoup) -> dict[str, str]:
+    links = soup.find_all("link", rel="apple-touch-startup-image")
+    return {
+        link.get("href", "").removeprefix("/static/splash/"): " ".join(
+            (link.get("media") or "").split()
+        )
+        for link in links
+    }
 
 
 def test_first_load_splash_markup_uses_default_duration(client: FlaskClient) -> None:
@@ -33,6 +74,26 @@ def test_first_load_splash_markup_uses_default_duration(client: FlaskClient) -> 
     assert logo.get("referrerpolicy") == "no-referrer"
     assert splash.find("span", class_="first-load-splash-spinner")
     assert not splash.find(["a", "button", "input", "select", "textarea"])
+
+
+def test_native_pwa_startup_splash_defaults_to_declared(client: FlaskClient) -> None:
+    response = client.get(url_for("register"))
+
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    assert _native_startup_splash_links(soup) == NATIVE_STARTUP_SPLASH_MEDIA
+    assert soup.find(id="first-load-splash") is None
+    assert soup.find("meta", attrs={"name": "first-load-splash-logo-src"}) is None
+
+
+def test_native_pwa_startup_splash_is_not_declared_with_first_load_splash(
+    client: FlaskClient,
+) -> None:
+    splash = _get_splash(client)
+    soup = BeautifulSoup(str(splash.find_parent("html")), "html.parser")
+
+    assert _native_startup_splash_links(soup) == {}
+    assert soup.find("meta", attrs={"name": "first-load-splash-logo-src"}) is not None
 
 
 def test_first_load_splash_duration_uses_runtime_config(app: Flask, client: FlaskClient) -> None:
@@ -99,6 +160,7 @@ def test_first_load_splash_defaults_to_disabled(client: FlaskClient) -> None:
     soup = BeautifulSoup(response.text, "html.parser")
     assert soup.find(id="first-load-splash") is None
     assert soup.find("meta", attrs={"name": "first-load-splash-logo-src"}) is None
+    assert _native_startup_splash_links(soup) == NATIVE_STARTUP_SPLASH_MEDIA
 
 
 def test_first_load_splash_can_be_disabled(client: FlaskClient) -> None:
@@ -111,3 +173,4 @@ def test_first_load_splash_can_be_disabled(client: FlaskClient) -> None:
     soup = BeautifulSoup(response.text, "html.parser")
     assert soup.find(id="first-load-splash") is None
     assert soup.find("meta", attrs={"name": "first-load-splash-logo-src"}) is None
+    assert _native_startup_splash_links(soup) == NATIVE_STARTUP_SPLASH_MEDIA

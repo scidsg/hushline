@@ -52,6 +52,7 @@ def register_index_routes(app: Flask) -> None:
             "short_name": brand_name,
             "start_url": "/",
             "display": "standalone",
+            "background_color": "#fbf3ff",
             "theme_color": brand_primary_color,
             "description": (
                 "Anonymous reporting and whistleblower management for organizations "
