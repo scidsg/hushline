@@ -2540,6 +2540,180 @@ rm -f "$counter_file"
     assert "PR #2000 is MERGED; returning to main." in result.stdout
 
 
+def test_pr_feedback_action_ignores_pending_only_changes() -> None:
+    pending_only_summary = (
+        "Post-PR feedback summary: unresolved_review_threads=0 "
+        "changes_requested_reviews=0 discussion_comments=0 failing_checks=0 pending_checks=3\n"
+        "Feedback pending check 1: pending PR check Run Linter and Tests / test (IN_PROGRESS)"
+    )
+    unresolved_summary = (
+        "Post-PR feedback summary: unresolved_review_threads=1 "
+        "changes_requested_reviews=0 discussion_comments=0 failing_checks=0 pending_checks=3\n"
+        "Feedback 1: unresolved review thread by @reviewer on hushline/templates/base.html:100"
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+pending_only_summary={shlex.quote(pending_only_summary)}
+unresolved_summary={shlex.quote(unresolved_summary)}
+set +e
+pr_feedback_summary_requires_runner_action "$pending_only_summary"
+pending_rc=$?
+pr_feedback_summary_requires_runner_action "$unresolved_summary"
+unresolved_rc=$?
+set -e
+printf 'pending_rc=%s\\n' "$pending_rc"
+printf 'unresolved_rc=%s\\n' "$unresolved_rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "pending_rc=1" in result.stdout
+    assert "unresolved_rc=0" in result.stdout
+
+
+def test_pr_feedback_action_key_ignores_pending_count_changes() -> None:
+    first_summary = (
+        "Post-PR feedback summary: unresolved_review_threads=1 "
+        "changes_requested_reviews=0 discussion_comments=0 failing_checks=0 pending_checks=12\n"
+        "Feedback 1: unresolved review thread by @reviewer on hushline/templates/base.html:100\n"
+        "Feedback pending check 1: pending PR check Run Linter and Tests / test (IN_PROGRESS)"
+    )
+    second_summary = (
+        "Post-PR feedback summary: unresolved_review_threads=1 "
+        "changes_requested_reviews=0 discussion_comments=0 failing_checks=0 pending_checks=4\n"
+        "Feedback 1: unresolved review thread by @reviewer on hushline/templates/base.html:100\n"
+        "Feedback pending check 1: pending PR check Lighthouse / lighthouse (IN_PROGRESS)"
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+first_summary={shlex.quote(first_summary)}
+second_summary={shlex.quote(second_summary)}
+first_key="$(pr_feedback_action_key "$first_summary")"
+second_key="$(pr_feedback_action_key "$second_summary")"
+[[ "$first_key" == "$second_key" ]]
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_check_pr_feedback_after_delay_addresses_actionable_feedback_once(
+    tmp_path: Path,
+) -> None:
+    counter_file = tmp_path / "pr-feedback-counter.txt"
+    calls_file = tmp_path / "calls.txt"
+    unresolved_feedback_json = json.dumps(
+        {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "number": 2000,
+                        "state": "OPEN",
+                        "url": "https://github.com/scidsg/hushline/pull/2000",
+                        "reviewDecision": None,
+                        "comments": {"nodes": []},
+                        "latestReviews": {"nodes": []},
+                        "reviewThreads": {
+                            "nodes": [
+                                {
+                                    "isResolved": False,
+                                    "isOutdated": False,
+                                    "path": "hushline/templates/base.html",
+                                    "line": 100,
+                                    "originalLine": 100,
+                                    "comments": {
+                                        "nodes": [
+                                            {
+                                                "author": {"login": "reviewer"},
+                                                "body": "Keep the brand fallback.",
+                                                "createdAt": "2026-05-02T00:00:00Z",
+                                                "url": "https://example.test/thread/1",
+                                            }
+                                        ]
+                                    },
+                                }
+                            ]
+                        },
+                    }
+                }
+            }
+        }
+    )
+    closed_feedback_json = json.dumps(
+        {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "number": 2000,
+                        "state": "MERGED",
+                        "url": "https://github.com/scidsg/hushline/pull/2000",
+                        "reviewDecision": None,
+                        "comments": {"nodes": []},
+                        "latestReviews": {"nodes": []},
+                        "reviewThreads": {"nodes": []},
+                    }
+                }
+            }
+        }
+    )
+    pending_checks_json = json.dumps(
+        [
+            {
+                "bucket": "pending",
+                "name": "test",
+                "state": "IN_PROGRESS",
+                "workflow": "Run Linter and Tests",
+            }
+        ]
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+POST_PR_FEEDBACK_DELAY_SECONDS=60
+counter_file={shlex.quote(str(counter_file))}
+calls_file={shlex.quote(str(calls_file))}
+rm -f "$counter_file" "$calls_file"
+sleep() {{
+  printf 'sleep:%s\\n' "$1"
+}}
+fetch_pr_feedback_json() {{
+  local fetch_count=0
+  if [[ -f "$counter_file" ]]; then
+    fetch_count="$(cat "$counter_file")"
+  fi
+  fetch_count=$((fetch_count + 1))
+  printf '%s\\n' "$fetch_count" > "$counter_file"
+  case "$fetch_count" in
+    1|2) printf '%s\\n' {shlex.quote(unresolved_feedback_json)} ;;
+    *) printf '%s\\n' {shlex.quote(closed_feedback_json)} ;;
+  esac
+}}
+fetch_pr_checks_json() {{
+  case "$(cat "$counter_file")" in
+    1) printf '%s\\n' {shlex.quote(pending_checks_json)} ;;
+    *) printf '[]\\n' ;;
+  esac
+}}
+address_pr_feedback() {{
+  printf 'address:%s:%s:%s:%s\\n' "$1" "$2" "$3" "$5" >> "$calls_file"
+}}
+check_pr_feedback_after_delay 2000 1558 "Title" "label-one" "codex/daily-issue-1558"
+rm -f "$counter_file"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    calls = calls_file.read_text(encoding="utf-8").splitlines()
+    assert calls == ["address:2000:1558:Title:codex/daily-issue-1558"]
+    assert result.stdout.count("==> Check PR #2000 feedback and checks") == 3
+    assert "PR #2000 is MERGED; returning to main." in result.stdout
+
+
 def test_resolve_pr_number_from_ref_prefers_pr_url_without_gh_lookup() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
