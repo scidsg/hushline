@@ -37,6 +37,18 @@ def test_custom_splash_logo_keeps_csp_enforced(client: FlaskClient) -> None:
     assert "script-src-elem 'self' 'unsafe-inline'" not in csp
 
 
+def test_native_pwa_startup_splash_keeps_csp_enforced(client: FlaskClient) -> None:
+    response = client.get(url_for("register"), follow_redirects=True)
+    assert response.status_code == 200
+    assert 'rel="apple-touch-startup-image"' in response.text
+
+    csp = (response.headers.get("Content-Security-Policy") or "").strip()
+    assert csp
+    assert "'unsafe-eval'" not in csp
+    assert "img-src 'self' data: https:" in csp
+    assert "script-src-elem 'self' 'unsafe-inline'" not in csp
+
+
 def test_profile_page_keeps_csp_enforced(client: FlaskClient, user: User) -> None:
     response = client.get(url_for("profile", username=user.primary_username.username))
     assert response.status_code == 200

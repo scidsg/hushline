@@ -134,15 +134,26 @@ def test_first_load_splash_hooks_exist() -> None:
     assert "@keyframes first-load-splash-spinner-rotate" in scss
 
 
-def test_custom_pwa_splash_screen_is_not_declared() -> None:
+def test_native_pwa_splash_assets_and_manifest_fallback_exist() -> None:
     template = (ROOT / "hushline/templates/base.html").read_text(encoding="utf-8")
     static_manifest = json.loads(
         (ROOT / "hushline/static/manifest.json").read_text(encoding="utf-8")
     )
 
-    assert "apple-touch-startup-image" not in template
-    assert "/static/splash/" not in template
-    assert "background_color" not in static_manifest
+    assert "{% else %}" in template
+    assert "apple-touch-startup-image" in template
+    assert "url_for('static', filename='splash/launch-" in template
+    assert static_manifest["background_color"] == "#fbf3ff"
+    for filename in (
+        "launch-828x1792.png",
+        "launch-1080x2340.png",
+        "launch-1125x2436.png",
+        "launch-1170x2532.png",
+        "launch-1179x2556.png",
+        "launch-1242x2688.png",
+        "launch-1284x2778.png",
+    ):
+        assert (ROOT / "hushline/static/splash" / filename).is_file()
 
 
 def test_service_worker_does_not_cache_navigation_html() -> None:

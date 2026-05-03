@@ -35,8 +35,8 @@ def test_site_webmanifest_reflects_branding(app: Flask) -> None:
         payload = response.get_json()
         assert payload["name"] == "Test Brand"
         assert payload["short_name"] == "Test Brand"
+        assert payload["background_color"] == "#fbf3ff"
         assert payload["theme_color"] == "#112233"
-        assert "background_color" not in payload
 
 
 def test_site_webmanifest_includes_uploaded_logo_icon(app: Flask) -> None:
