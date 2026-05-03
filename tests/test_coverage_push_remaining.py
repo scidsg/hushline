@@ -29,7 +29,7 @@ from hushline.model.enums import FieldType as EnumFieldType
 from hushline.model.enums import MessageStatus
 from hushline.premium import worker
 from hushline.settings.common import _is_blocked_ip, _is_safe_verification_url, handle_field_post
-from hushline.settings.forms import DeleteAliasForm, DeleteBrandLogoForm
+from hushline.settings.forms import DeleteAliasForm, DeleteBrandLogoForm, DeleteSplashLogoForm
 
 
 def test_enums_defensive_paths() -> None:
@@ -229,6 +229,20 @@ def test_branding_delete_logo_multirow_safety(client: FlaskClient, mocker) -> No
     response = client.post(
         url_for("settings.branding"),
         data={DeleteBrandLogoForm.submit.name: ""},
+        follow_redirects=False,
+    )
+    assert response.status_code == 503
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_branding_delete_splash_logo_multirow_safety(client: FlaskClient, mocker) -> None:  # type: ignore[no-untyped-def]
+    mocker.patch(
+        "hushline.settings.branding.db.session.execute",
+        return_value=SimpleNamespace(rowcount=3),
+    )
+    response = client.post(
+        url_for("settings.branding"),
+        data={DeleteSplashLogoForm.submit.name: ""},
         follow_redirects=False,
     )
     assert response.status_code == 503
