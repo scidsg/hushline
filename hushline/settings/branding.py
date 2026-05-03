@@ -190,6 +190,8 @@ def register_branding_routes(bp: Blueprint) -> None:
                     key=OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED,
                     value=toggle_splash_screen_form.splash_screen_enabled.data,
                 )
+                if toggle_splash_screen_form.splash_screen_enabled.data:
+                    session["skip_first_load_splash_seen_mark"] = True
                 db.session.commit()
                 if toggle_splash_screen_form.splash_screen_enabled.data:
                     flash("👍 Splash screen enabled.")

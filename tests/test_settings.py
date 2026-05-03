@@ -2572,6 +2572,7 @@ def test_toggle_splash_screen(client: FlaskClient) -> None:
     )
     assert resp.status_code == 200
     assert "Splash screen enabled" in resp.text
+    assert 'data-splash-skip-seen-mark="true"' in resp.text
 
     setting = db.session.get(OrganizationSetting, OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED)
     assert setting is not None
@@ -2580,6 +2581,7 @@ def test_toggle_splash_screen(client: FlaskClient) -> None:
     resp = client.get(url_for("settings.branding"))
     assert resp.status_code == 200
     assert 'id="first-load-splash"' in resp.text
+    assert 'data-splash-skip-seen-mark="false"' in resp.text
     assert 'id="splash-logo"' in resp.text
 
     resp = client.post(

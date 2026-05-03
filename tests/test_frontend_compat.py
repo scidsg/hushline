@@ -115,6 +115,8 @@ def test_first_load_splash_hooks_exist() -> None:
     assert "hushline:first-load-splash-seen" in js
     assert "hushline:first-load-splash-logo-src" in js
     assert "getFirstLoadSplashLogoSrc(splash)" in js
+    assert "const shouldSkipSeenMark =" in js
+    assert "!shouldSkipSeenMark && hasSeenFirstLoadSplash(splash)" in js
     assert 'splash.dataset.splashSkipSeenMark === "true"' in js
     assert "Number.parseInt(" in js
     assert "const duration = configuredDuration >= 0 ? configuredDuration : 2000;" in js

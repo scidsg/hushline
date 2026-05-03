@@ -93,7 +93,8 @@ function setupFirstLoadSplash() {
     return;
   }
 
-  if (hasSeenFirstLoadSplash(splash)) {
+  const shouldSkipSeenMark = splash.dataset.splashSkipSeenMark === "true";
+  if (!shouldSkipSeenMark && hasSeenFirstLoadSplash(splash)) {
     splash.remove();
     return;
   }
