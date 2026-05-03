@@ -143,6 +143,15 @@ def test_custom_pwa_splash_screen_is_not_declared() -> None:
     assert "background_color" not in static_manifest
 
 
+def test_service_worker_does_not_cache_navigation_html() -> None:
+    service_worker = (ROOT / "assets/js/service-worker.js").read_text(encoding="utf-8")
+
+    assert 'const CACHE_NAME = "hushline-cache-v3";' in service_worker
+    assert '"/"' not in service_worker
+    assert 'event.request.mode === "navigate"' in service_worker
+    assert "event.respondWith(fetch(event.request));" in service_worker
+
+
 def test_directory_search_accessibility_hooks_exist() -> None:
     directory_template = (ROOT / "hushline/templates/directory.html").read_text(encoding="utf-8")
     directory_js = (ROOT / "assets/js/directory.js").read_text(encoding="utf-8")
