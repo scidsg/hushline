@@ -25,5 +25,6 @@ This directory now includes a GitHub-first mirror of the public Hush Line Librar
 - [Python 3.13 upgrade readiness](./PYTHON-3.13-UPGRADE-READINESS.md)
 - [Public-record provenance roadmap](./PUBLIC-RECORD-PROVENANCE-ROADMAP.md)
 - [Embeddable E2EE profile forms feasibility study](./EMBEDDABLE-E2EE-PROFILE-FORMS-FEASIBILITY.md)
+- [Embeddable E2EE profile forms MVP epic and child issues](./EMBEDDABLE-E2EE-PROFILE-FORMS-MVP-EPIC.md)
 - [Whistleblower-protection accountability wall feasibility memo](./WHISTLEBLOWER-PROTECTION-ACCOUNTABILITY-WALL-FEASIBILITY.md)
 - [Screenshots](./screenshots/README.md)
