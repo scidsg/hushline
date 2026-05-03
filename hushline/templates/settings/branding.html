@@ -85,7 +85,7 @@
     </div>
     {{ toggle_splash_screen_form.submit }}
   </form>
-  {% if toggle_splash_screen_form.splash_screen_enabled.data %}
+  {% if toggle_splash_screen_form.splash_screen_enabled.data or update_splash_logo_form.logo.errors %}
     <form
       method="POST"
       enctype="multipart/form-data"
