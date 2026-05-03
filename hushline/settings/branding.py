@@ -99,15 +99,17 @@ def register_branding_routes(bp: Blueprint) -> None:
                 update_brand_logo_form.submit.name in request.form
                 and update_brand_logo_form.validate()
             ):
-                public_store.put(
-                    OrganizationSetting.BRAND_LOGO_VALUE, update_brand_logo_form.logo.data
-                )
-                OrganizationSetting.upsert(
-                    key=OrganizationSetting.BRAND_LOGO,
-                    value=OrganizationSetting.BRAND_LOGO_VALUE,
-                )
-                db.session.commit()
-                flash("👍 Brand logo updated successfully.")
+                if logo := update_brand_logo_form.logo.data:
+                    public_store.put(OrganizationSetting.BRAND_LOGO_VALUE, logo)
+                    OrganizationSetting.upsert(
+                        key=OrganizationSetting.BRAND_LOGO,
+                        value=OrganizationSetting.BRAND_LOGO_VALUE,
+                    )
+                    db.session.commit()
+                    flash("👍 Brand logo updated successfully.")
+                else:
+                    update_brand_logo_form.logo.errors.append("This field is required.")
+                    status_code = 400
             elif (
                 delete_brand_logo_form.submit.name in request.form
                 and delete_brand_logo_form.validate()
@@ -131,19 +133,22 @@ def register_branding_routes(bp: Blueprint) -> None:
                 update_splash_logo_form.submit.name in request.form
                 and update_splash_logo_form.validate()
             ):
-                public_store.put(
-                    OrganizationSetting.BRAND_SPLASH_LOGO_VALUE, update_splash_logo_form.logo.data
-                )
-                OrganizationSetting.upsert(
-                    key=OrganizationSetting.BRAND_SPLASH_LOGO,
-                    value=OrganizationSetting.BRAND_SPLASH_LOGO_VALUE,
-                )
-                OrganizationSetting.upsert(
-                    key=OrganizationSetting.BRAND_SPLASH_LOGO_CACHE_BUSTER,
-                    value=str(time_ns()),
-                )
-                db.session.commit()
-                flash("👍 Splash logo updated successfully.")
+                if logo := update_splash_logo_form.logo.data:
+                    public_store.put(OrganizationSetting.BRAND_SPLASH_LOGO_VALUE, logo)
+                    OrganizationSetting.upsert(
+                        key=OrganizationSetting.BRAND_SPLASH_LOGO,
+                        value=OrganizationSetting.BRAND_SPLASH_LOGO_VALUE,
+                    )
+                    OrganizationSetting.upsert(
+                        key=OrganizationSetting.BRAND_SPLASH_LOGO_CACHE_BUSTER,
+                        value=str(time_ns()),
+                    )
+                    session["skip_first_load_splash_seen_mark"] = True
+                    db.session.commit()
+                    flash("👍 Splash logo updated successfully.")
+                else:
+                    update_splash_logo_form.logo.errors.append("This field is required.")
+                    status_code = 400
             elif (
                 delete_splash_logo_form.submit.name in request.form
                 and delete_splash_logo_form.validate()

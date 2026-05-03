@@ -74,6 +74,10 @@ function hasSeenFirstLoadSplash(splash) {
 }
 
 function markFirstLoadSplashSeen(splash) {
+  if (splash.dataset.splashSkipSeenMark === "true") {
+    return;
+  }
+
   try {
     sessionStorage.setItem(FIRST_LOAD_SPLASH_SEEN_KEY, "true");
     sessionStorage.setItem(

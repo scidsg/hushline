@@ -23,6 +23,7 @@ def test_first_load_splash_markup_uses_default_duration(client: FlaskClient) -> 
 
     assert splash.get("aria-hidden") == "true"
     assert splash.get("data-splash-duration-ms") == "2000"
+    assert splash.get("data-splash-skip-seen-mark") == "false"
     logo = splash.find("img", src=url_for("static", filename="img/splash-logo.png"))
     assert logo
     assert not splash.find("img", src="https://hushline.app/assets/img/social/logo.png")

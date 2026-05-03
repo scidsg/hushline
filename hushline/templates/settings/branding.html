@@ -55,6 +55,13 @@
   >
     {{ update_brand_logo_form.hidden_tag() }}
     {{ update_brand_logo_form.logo(accept=".png") }}
+    {% if update_brand_logo_form.logo.errors %}
+      <div>
+        {% for error in update_brand_logo_form.logo.errors %}
+          <span class="error">{{ error }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
     {{ update_brand_logo_form.submit(class="btn") }}
     {% if brand_logo_url %}
       {{ delete_brand_logo_form.submit(class="btn-danger") }}
@@ -69,6 +76,13 @@
   >
     {{ update_splash_logo_form.hidden_tag() }}
     {{ update_splash_logo_form.logo(id="splash-logo", accept=".png") }}
+    {% if update_splash_logo_form.logo.errors %}
+      <div>
+        {% for error in update_splash_logo_form.logo.errors %}
+          <span class="error">{{ error }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
     {{ update_splash_logo_form.submit(class="btn") }}
     {% if splash_logo_url %}
       {{ delete_splash_logo_form.submit(class="btn-danger") }}

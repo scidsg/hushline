@@ -2436,6 +2436,20 @@ def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_admin")
+def test_update_brand_logo_requires_file(client: FlaskClient) -> None:
+    resp = client.post(
+        url_for("settings.branding"),
+        data={UpdateBrandLogoForm.submit.name: ""},
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+
+    assert resp.status_code == 400
+    assert "This field is required" in resp.text
+    assert db.session.get(OrganizationSetting, OrganizationSetting.BRAND_LOGO) is None
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
 def test_update_splash_logo_does_not_change_brand_logo(client: FlaskClient, admin: User) -> None:
     # 1x1 pixel white png
     png = ONE_PIXEL_WHITE_PNG
@@ -2470,6 +2484,7 @@ def test_update_splash_logo_does_not_change_brand_logo(client: FlaskClient, admi
     assert soup.select_one(f'header img[src="{brand_logo_url}"]')
     splash = soup.find(id="first-load-splash")
     assert splash is not None
+    assert splash.get("data-splash-skip-seen-mark") == "true"
     splash_logo = splash.find("img", class_="first-load-splash-logo")
     assert splash_logo is not None
     splash_logo_src = splash_logo.get("src")
@@ -2491,6 +2506,13 @@ def test_update_splash_logo_does_not_change_brand_logo(client: FlaskClient, admi
     resp = client.get(splash_logo_src, follow_redirects=True)
     assert resp.status_code == 200
     assert resp.data == png
+
+    resp = client.get(url_for("settings.branding"))
+    assert resp.status_code == 200
+    soup = BeautifulSoup(resp.text, "html.parser")
+    splash = soup.find(id="first-load-splash")
+    assert splash is not None
+    assert splash.get("data-splash-skip-seen-mark") == "false"
 
     resp = client.post(
         url_for("settings.branding"),
@@ -2515,6 +2537,24 @@ def test_update_splash_logo_does_not_change_brand_logo(client: FlaskClient, admi
     assert resp.status_code == 200
     resp = client.get(splash_logo_url, follow_redirects=True)
     assert resp.status_code == 404
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_splash_logo_requires_file(client: FlaskClient) -> None:
+    resp = client.post(
+        url_for("settings.branding"),
+        data={UpdateSplashLogoForm.submit.name: ""},
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+
+    assert resp.status_code == 400
+    assert "This field is required" in resp.text
+    assert db.session.get(OrganizationSetting, OrganizationSetting.BRAND_SPLASH_LOGO) is None
+    assert (
+        db.session.get(OrganizationSetting, OrganizationSetting.BRAND_SPLASH_LOGO_CACHE_BUSTER)
+        is None
+    )
 
 
 @pytest.mark.usefixtures("_authenticated_admin")

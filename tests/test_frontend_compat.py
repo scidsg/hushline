@@ -94,8 +94,11 @@ def test_first_load_splash_hooks_exist() -> None:
     scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
 
     assert 'id="first-load-splash"' in template
+    assert 'name="first-load-splash-logo-src"' in template
+    assert 'content="{{ first_load_splash_logo_url }}"' in template
     assert 'aria-hidden="true"' in template
     assert 'data-splash-duration-ms="{{ splash_screen_duration_ms }}"' in template
+    assert 'data-splash-skip-seen-mark="{{' in template
     assert (
         "splash_logo_url or brand_logo_url or url_for('static', filename='img/splash-logo.png')"
         in template
@@ -112,11 +115,15 @@ def test_first_load_splash_hooks_exist() -> None:
     assert "hushline:first-load-splash-seen" in js
     assert "hushline:first-load-splash-logo-src" in js
     assert "getFirstLoadSplashLogoSrc(splash)" in js
+    assert 'splash.dataset.splashSkipSeenMark === "true"' in js
     assert "Number.parseInt(" in js
     assert "const duration = configuredDuration >= 0 ? configuredDuration : 2000;" in js
     assert 'document.documentElement.classList.remove("splash-seen");' in js
     assert 'document.documentElement.classList.add("splash-seen");' in js
     assert 'sessionStorage.getItem("hushline:first-load-splash-seen")' in no_js
+    assert 'meta[name="first-load-splash-logo-src"]' in no_js
+    assert 'sessionStorage.getItem("hushline:first-load-splash-logo-src")' in no_js
+    assert "seenSplashLogoSrc === splashLogoSrc" in no_js
     assert ".no-js .first-load-splash" in scss
     assert ".splash-seen .first-load-splash" in scss
     assert "width: clamp(8rem, 50vw, 13rem);" in scss
