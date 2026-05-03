@@ -45,6 +45,11 @@ class ToggleDonateButtonForm(FlaskForm):
     submit = SubmitField("Submit", name="toggle_notifications", widget=DisplayNoneButton())
 
 
+class ToggleSplashScreenForm(FlaskForm):
+    splash_screen_enabled = BooleanField("Show splash screen", validators=[OptionalField()])
+    submit = SubmitField("Submit", name="toggle_splash_screen", widget=DisplayNoneButton())
+
+
 def register_branding_routes(bp: Blueprint) -> None:
     @bp.route("/branding", methods=["GET", "POST"])
     @admin_authentication_required
@@ -58,6 +63,11 @@ def register_branding_routes(bp: Blueprint) -> None:
         delete_brand_logo_form = DeleteBrandLogoForm()
         update_splash_logo_form = UpdateSplashLogoForm()
         delete_splash_logo_form = DeleteSplashLogoForm()
+        toggle_splash_screen_form = ToggleSplashScreenForm(
+            splash_screen_enabled=OrganizationSetting.fetch_one(
+                OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED
+            )
+        )
         update_brand_primary_color_form = UpdateBrandPrimaryColorForm()
         update_brand_app_name_form = UpdateBrandAppNameForm()
         toggle_donate_button_form = ToggleDonateButtonForm(
@@ -173,6 +183,19 @@ def register_branding_routes(bp: Blueprint) -> None:
                 public_store.delete(OrganizationSetting.BRAND_SPLASH_LOGO_VALUE)
                 flash("👍 Splash logo deleted.")
             elif (
+                toggle_splash_screen_form.submit.name in request.form
+                and toggle_splash_screen_form.validate()
+            ):
+                OrganizationSetting.upsert(
+                    key=OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED,
+                    value=toggle_splash_screen_form.splash_screen_enabled.data,
+                )
+                db.session.commit()
+                if toggle_splash_screen_form.splash_screen_enabled.data:
+                    flash("👍 Splash screen enabled.")
+                else:
+                    flash("👍 Splash screen disabled.")
+            elif (
                 update_brand_primary_color_form.submit.name in request.form
                 and update_brand_primary_color_form.validate()
             ):
@@ -285,6 +308,7 @@ def register_branding_routes(bp: Blueprint) -> None:
             delete_brand_logo_form=delete_brand_logo_form,
             update_splash_logo_form=update_splash_logo_form,
             delete_splash_logo_form=delete_splash_logo_form,
+            toggle_splash_screen_form=toggle_splash_screen_form,
             toggle_donate_button_form=toggle_donate_button_form,
             update_brand_primary_color_form=update_brand_primary_color_form,
             update_brand_app_name_form=update_brand_app_name_form,

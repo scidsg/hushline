@@ -10,6 +10,9 @@ from hushline.model import OrganizationSetting
 
 
 def _get_splash(client: FlaskClient) -> Any:
+    OrganizationSetting.upsert(OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED, True)
+    db.session.commit()
+
     response = client.get(url_for("register"))
     assert response.status_code == 200
     soup = BeautifulSoup(response.text, "html.parser")
@@ -87,3 +90,24 @@ def test_first_load_splash_uses_versioned_custom_splash_logo(client: FlaskClient
         v="12345",
     )
     assert splash.find("img", src=splash_logo_url)
+
+
+def test_first_load_splash_defaults_to_disabled(client: FlaskClient) -> None:
+    response = client.get(url_for("register"))
+
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    assert soup.find(id="first-load-splash") is None
+    assert soup.find("meta", attrs={"name": "first-load-splash-logo-src"}) is None
+
+
+def test_first_load_splash_can_be_disabled(client: FlaskClient) -> None:
+    OrganizationSetting.upsert(OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED, False)
+    db.session.commit()
+
+    response = client.get(url_for("register"))
+
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    assert soup.find(id="first-load-splash") is None
+    assert soup.find("meta", attrs={"name": "first-load-splash-logo-src"}) is None

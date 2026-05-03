@@ -36,8 +36,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="{{ brand_name }}">
-    {% set first_load_splash_logo_url = splash_logo_url or brand_logo_url or url_for('static', filename='img/splash-logo.png') %}
-    <meta name="first-load-splash-logo-src" content="{{ first_load_splash_logo_url }}" />
+    {% if splash_screen_enabled %}
+      {% set first_load_splash_logo_url = splash_logo_url or brand_logo_url or url_for('static', filename='img/splash-logo.png') %}
+      <meta name="first-load-splash-logo-src" content="{{ first_load_splash_logo_url }}" />
+    {% endif %}
     <title>{% block title %}{% endblock %} - {{ brand_name }}</title>
     <link rel="manifest" href="{{ url_for('site_webmanifest') }}" />
     {% if brand_logo_url %}
@@ -99,23 +101,25 @@
   </head>
 
   <body class="{% block body_class %}{% endblock %}">
-    <div
-      id="first-load-splash"
-      class="first-load-splash"
-      aria-hidden="true"
-      data-splash-duration-ms="{{ splash_screen_duration_ms }}"
-      data-splash-skip-seen-mark="{{ 'true' if skip_splash_seen_mark else 'false' }}"
-    >
-      <img
-        class="first-load-splash-logo"
-        src="{{ first_load_splash_logo_url }}"
-        alt=""
-        loading="eager"
-        decoding="async"
-        referrerpolicy="no-referrer"
-      />
-      <span class="first-load-splash-spinner" aria-hidden="true"></span>
-    </div>
+    {% if splash_screen_enabled %}
+      <div
+        id="first-load-splash"
+        class="first-load-splash"
+        aria-hidden="true"
+        data-splash-duration-ms="{{ splash_screen_duration_ms }}"
+        data-splash-skip-seen-mark="{{ 'true' if skip_splash_seen_mark else 'false' }}"
+      >
+        <img
+          class="first-load-splash-logo"
+          src="{{ first_load_splash_logo_url }}"
+          alt=""
+          loading="eager"
+          decoding="async"
+          referrerpolicy="no-referrer"
+        />
+        <span class="first-load-splash-spinner" aria-hidden="true"></span>
+      </div>
+    {% endif %}
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <div class="noscript-warning" role="status" aria-live="polite" aria-atomic="true">
       ‼️ Enable JavaScript for full functionality, including end-to-end encrypted messages.

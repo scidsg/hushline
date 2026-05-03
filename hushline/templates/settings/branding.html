@@ -69,25 +69,43 @@
   </form>
 
   <h4>Splash Logo</h4>
-  <form
-    method="POST"
-    enctype="multipart/form-data"
-    class="formBody"
-  >
-    {{ update_splash_logo_form.hidden_tag() }}
-    {{ update_splash_logo_form.logo(id="splash-logo", accept=".png") }}
-    {% if update_splash_logo_form.logo.errors %}
-      <div>
-        {% for error in update_splash_logo_form.logo.errors %}
-          <span class="error">{{ error }}</span>
-        {% endfor %}
-      </div>
-    {% endif %}
-    {{ update_splash_logo_form.submit(class="btn") }}
-    {% if splash_logo_url %}
-      {{ delete_splash_logo_form.submit(class="btn-danger") }}
-    {% endif %}
+  <form method="POST" class="formBody auto-submit">
+    {{ toggle_splash_screen_form.hidden_tag() }}
+    <div class="checkbox-group toggle-ui">
+      {{ toggle_splash_screen_form.splash_screen_enabled }}
+      <label
+        for="{{ toggle_splash_screen_form.splash_screen_enabled.name }}"
+        class="toggle-label"
+      >
+        {{ toggle_splash_screen_form.splash_screen_enabled.label }}
+        <div class="toggle">
+          <div class="toggle__ball"></div>
+        </div>
+      </label>
+    </div>
+    {{ toggle_splash_screen_form.submit }}
   </form>
+  {% if toggle_splash_screen_form.splash_screen_enabled.data %}
+    <form
+      method="POST"
+      enctype="multipart/form-data"
+      class="formBody"
+    >
+      {{ update_splash_logo_form.hidden_tag() }}
+      {{ update_splash_logo_form.logo(id="splash-logo", accept=".png") }}
+      {% if update_splash_logo_form.logo.errors %}
+        <div>
+          {% for error in update_splash_logo_form.logo.errors %}
+            <span class="error">{{ error }}</span>
+          {% endfor %}
+        </div>
+      {% endif %}
+      {{ update_splash_logo_form.submit(class="btn") }}
+      {% if splash_logo_url %}
+        {{ delete_splash_logo_form.submit(class="btn-danger") }}
+      {% endif %}
+    </form>
+  {% endif %}
 
   <h4>Donate Button</h4>
   <p>Hide the donate button that links to the Hush Line donation page.</p>

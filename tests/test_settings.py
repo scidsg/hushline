@@ -48,7 +48,7 @@ from hushline.settings import (
     UserGuidanceForm,
     UserGuidancePromptContentForm,
 )
-from hushline.settings.branding import ToggleDonateButtonForm
+from hushline.settings.branding import ToggleDonateButtonForm, ToggleSplashScreenForm
 from hushline.settings.notifications import (
     ToggleEncryptEntireBodyForm,
     ToggleIncludeContentForm,
@@ -2453,6 +2453,8 @@ def test_update_brand_logo_requires_file(client: FlaskClient) -> None:
 def test_update_splash_logo_does_not_change_brand_logo(client: FlaskClient, admin: User) -> None:
     # 1x1 pixel white png
     png = ONE_PIXEL_WHITE_PNG
+    OrganizationSetting.upsert(OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED, True)
+    db.session.commit()
 
     brand_resp = client.post(
         url_for("settings.branding"),
@@ -2555,6 +2557,42 @@ def test_update_splash_logo_requires_file(client: FlaskClient) -> None:
         db.session.get(OrganizationSetting, OrganizationSetting.BRAND_SPLASH_LOGO_CACHE_BUSTER)
         is None
     )
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_toggle_splash_screen(client: FlaskClient) -> None:
+    assert OrganizationSetting.fetch_one(OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED) is False
+
+    resp = client.post(
+        url_for("settings.branding"),
+        data={
+            "splash_screen_enabled": True,
+            ToggleSplashScreenForm.submit.name: "",
+        },
+    )
+    assert resp.status_code == 200
+    assert "Splash screen enabled" in resp.text
+
+    setting = db.session.get(OrganizationSetting, OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED)
+    assert setting is not None
+    assert setting.value is True
+
+    resp = client.get(url_for("settings.branding"))
+    assert resp.status_code == 200
+    assert 'id="first-load-splash"' in resp.text
+    assert 'id="splash-logo"' in resp.text
+
+    resp = client.post(
+        url_for("settings.branding"),
+        data={ToggleSplashScreenForm.submit.name: ""},
+    )
+    assert resp.status_code == 200
+    assert "Splash screen disabled" in resp.text
+
+    setting = db.session.get(OrganizationSetting, OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED)
+    assert setting is not None
+    assert setting.value is False
+    assert 'id="splash-logo"' not in resp.text
 
 
 @pytest.mark.usefixtures("_authenticated_admin")

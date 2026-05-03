@@ -202,6 +202,7 @@ def configure_jinja(app: Flask) -> None:
             OrganizationSetting.GUIDANCE_EXIT_BUTTON_TEXT,
             OrganizationSetting.GUIDANCE_EXIT_BUTTON_LINK,
             OrganizationSetting.GUIDANCE_PROMPTS,
+            OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED,
             OrganizationSetting.HIDE_DONATE_BUTTON,
             OrganizationSetting.REGISTRATION_ENABLED,
             OrganizationSetting.REGISTRATION_CODES_REQUIRED,
@@ -218,6 +219,7 @@ def configure_jinja(app: Flask) -> None:
             registration_codes_required=data.get(
                 OrganizationSetting.REGISTRATION_CODES_REQUIRED, True
             ),
+            splash_screen_enabled=data.get(OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED, False),
             splash_screen_duration_ms=app.config.get(SPLASH_SCREEN_DURATION_MS, 2000),
             setup_incomplete=False,
             user=None,
