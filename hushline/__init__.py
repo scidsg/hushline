@@ -252,7 +252,17 @@ def configure_jinja(app: Flask) -> None:
 
         splash_logo_url = None
         if setting := OrganizationSetting.fetch_one(OrganizationSetting.BRAND_SPLASH_LOGO):
-            splash_logo_url = url_for("storage.public", path=setting)
+            cache_buster = OrganizationSetting.fetch_one(
+                OrganizationSetting.BRAND_SPLASH_LOGO_CACHE_BUSTER
+            )
+            if cache_buster:
+                splash_logo_url = url_for(
+                    "storage.public",
+                    path=setting,
+                    v=cache_buster,
+                )
+            else:
+                splash_logo_url = url_for("storage.public", path=setting)
 
         return {"brand_logo_url": brand_logo_url, "splash_logo_url": splash_logo_url}
 

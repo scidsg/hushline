@@ -8,7 +8,7 @@ from typing import Optional
 
 import boto3
 from botocore.config import Config as BotoConfig
-from flask import Blueprint, Flask, abort, current_app, redirect, send_from_directory
+from flask import Blueprint, Flask, abort, current_app, redirect, request, send_from_directory
 from werkzeug.wrappers.response import Response
 
 
@@ -183,6 +183,8 @@ class S3Driver(StorageDriver):
                 + ("" if self.__cdn_endpoint.endswith("/") or path.startswith("/") else "/")
                 + path
             )
+            if request.query_string:
+                url += "?" + request.query_string.decode("utf-8")
         else:
             url = self._client.generate_presigned_url(
                 ClientMethod="get_object",

@@ -108,9 +108,13 @@ def test_first_load_splash_hooks_exist() -> None:
     assert (ROOT / "hushline/static/img/splash-logo.png").is_file()
     assert 'class="first-load-splash-spinner"' in template
     assert "FIRST_LOAD_SPLASH_SEEN_KEY" in js
+    assert "FIRST_LOAD_SPLASH_LOGO_SRC_KEY" in js
     assert "hushline:first-load-splash-seen" in js
+    assert "hushline:first-load-splash-logo-src" in js
+    assert "getFirstLoadSplashLogoSrc(splash)" in js
     assert "Number.parseInt(" in js
     assert "const duration = configuredDuration >= 0 ? configuredDuration : 2000;" in js
+    assert 'document.documentElement.classList.remove("splash-seen");' in js
     assert 'document.documentElement.classList.add("splash-seen");' in js
     assert 'sessionStorage.getItem("hushline:first-load-splash-seen")' in no_js
     assert ".no-js .first-load-splash" in scss

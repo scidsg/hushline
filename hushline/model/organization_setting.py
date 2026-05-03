@@ -21,6 +21,7 @@ class OrganizationSetting(Model):
     BRAND_PRIMARY_COLOR = "brand_primary_color"
     BRAND_PROFILE_HEADER_TEMPLATE = "brand_profile_header_template"
     BRAND_SPLASH_LOGO = "brand_splash_logo"
+    BRAND_SPLASH_LOGO_CACHE_BUSTER = "brand_splash_logo_cache_buster"
     DIRECTORY_INTRO_TEXT = "directory_intro_text"
     GUIDANCE_ENABLED = "guidance_enabled"
     GUIDANCE_EXIT_BUTTON_TEXT = "guidance_exit_button_text"

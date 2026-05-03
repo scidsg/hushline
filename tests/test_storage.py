@@ -129,11 +129,12 @@ class TestS3Driver:
         data = b"waffles"
         public_store.put(PATH, BytesIO(data))
 
-        with app.test_request_context():
+        with app.test_request_context("/assets/public/data.bin?v=12345"):
             resp = public_store.serve(PATH)
         assert resp.status_code == 302
 
         location = resp.headers["location"]
+        assert location.endswith(f"/{PATH}?v=12345")
 
         s3_resp = requests.get(location, timeout=2)
         assert s3_resp.status_code == 200

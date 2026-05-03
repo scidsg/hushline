@@ -54,18 +54,32 @@ function navController() {
 }
 
 const FIRST_LOAD_SPLASH_SEEN_KEY = "hushline:first-load-splash-seen";
+const FIRST_LOAD_SPLASH_LOGO_SRC_KEY = "hushline:first-load-splash-logo-src";
 
-function hasSeenFirstLoadSplash() {
+function getFirstLoadSplashLogoSrc(splash) {
+  const logo = splash.querySelector(".first-load-splash-logo");
+  return logo ? logo.getAttribute("src") || "" : "";
+}
+
+function hasSeenFirstLoadSplash(splash) {
   try {
-    return sessionStorage.getItem(FIRST_LOAD_SPLASH_SEEN_KEY) === "true";
+    return (
+      sessionStorage.getItem(FIRST_LOAD_SPLASH_SEEN_KEY) === "true" &&
+      sessionStorage.getItem(FIRST_LOAD_SPLASH_LOGO_SRC_KEY) ===
+        getFirstLoadSplashLogoSrc(splash)
+    );
   } catch {
     return false;
   }
 }
 
-function markFirstLoadSplashSeen() {
+function markFirstLoadSplashSeen(splash) {
   try {
     sessionStorage.setItem(FIRST_LOAD_SPLASH_SEEN_KEY, "true");
+    sessionStorage.setItem(
+      FIRST_LOAD_SPLASH_LOGO_SRC_KEY,
+      getFirstLoadSplashLogoSrc(splash),
+    );
   } catch {}
 }
 
@@ -75,10 +89,12 @@ function setupFirstLoadSplash() {
     return;
   }
 
-  if (hasSeenFirstLoadSplash()) {
+  if (hasSeenFirstLoadSplash(splash)) {
     splash.remove();
     return;
   }
+
+  document.documentElement.classList.remove("splash-seen");
 
   const configuredDuration = Number.parseInt(
     splash.dataset.splashDurationMs || "",
@@ -86,7 +102,7 @@ function setupFirstLoadSplash() {
   );
   const duration = configuredDuration >= 0 ? configuredDuration : 2000;
   const hideSplash = () => {
-    markFirstLoadSplashSeen();
+    markFirstLoadSplashSeen(splash);
     document.documentElement.classList.add("splash-seen");
     splash.classList.add("is-hidden");
 
@@ -215,7 +231,10 @@ document.addEventListener("DOMContentLoaded", function () {
       });
 
       const observer = new MutationObserver(function () {
-        if (submitButton.classList.contains("is-loading") && !submitButton.disabled) {
+        if (
+          submitButton.classList.contains("is-loading") &&
+          !submitButton.disabled
+        ) {
           clearLoading();
         }
       });
@@ -491,9 +510,12 @@ document.addEventListener("DOMContentLoaded", () => {
       firstModalContent.style.opacity = "1";
     });
   }
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/static/js/service-worker.js')
-      .then(() => console.log('Service Worker registered'))
-      .catch((err) => console.error('Service Worker registration failed:', err));
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker
+      .register("/static/js/service-worker.js")
+      .then(() => console.log("Service Worker registered"))
+      .catch((err) =>
+        console.error("Service Worker registration failed:", err),
+      );
   }
 });

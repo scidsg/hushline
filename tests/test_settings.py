@@ -2470,16 +2470,25 @@ def test_update_splash_logo_does_not_change_brand_logo(client: FlaskClient, admi
     assert soup.select_one(f'header img[src="{brand_logo_url}"]')
     splash = soup.find(id="first-load-splash")
     assert splash is not None
-    assert splash.find("img", src=splash_logo_url)
+    splash_logo = splash.find("img", class_="first-load-splash-logo")
+    assert splash_logo is not None
+    splash_logo_src = splash_logo.get("src")
+    assert splash_logo_src is not None
+    assert splash_logo_src.startswith(f"{splash_logo_url}?v=")
 
     brand_setting = db.session.get(OrganizationSetting, OrganizationSetting.BRAND_LOGO)
     splash_setting = db.session.get(OrganizationSetting, OrganizationSetting.BRAND_SPLASH_LOGO)
+    splash_cache_buster = db.session.get(
+        OrganizationSetting, OrganizationSetting.BRAND_SPLASH_LOGO_CACHE_BUSTER
+    )
     assert brand_setting is not None
     assert brand_setting.value == OrganizationSetting.BRAND_LOGO_VALUE
     assert splash_setting is not None
     assert splash_setting.value == OrganizationSetting.BRAND_SPLASH_LOGO_VALUE
+    assert splash_cache_buster is not None
+    assert splash_cache_buster.value
 
-    resp = client.get(splash_logo_url, follow_redirects=True)
+    resp = client.get(splash_logo_src, follow_redirects=True)
     assert resp.status_code == 200
     assert resp.data == png
 
@@ -2497,6 +2506,10 @@ def test_update_splash_logo_does_not_change_brand_logo(client: FlaskClient, admi
     assert splash.find("img", src=brand_logo_url)
     assert db.session.get(OrganizationSetting, OrganizationSetting.BRAND_LOGO) is not None
     assert db.session.get(OrganizationSetting, OrganizationSetting.BRAND_SPLASH_LOGO) is None
+    assert (
+        db.session.get(OrganizationSetting, OrganizationSetting.BRAND_SPLASH_LOGO_CACHE_BUSTER)
+        is None
+    )
 
     resp = client.get(brand_logo_url, follow_redirects=True)
     assert resp.status_code == 200

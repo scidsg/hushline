@@ -1,3 +1,4 @@
+from time import time_ns
 from typing import Tuple
 
 from flask import (
@@ -137,21 +138,29 @@ def register_branding_routes(bp: Blueprint) -> None:
                     key=OrganizationSetting.BRAND_SPLASH_LOGO,
                     value=OrganizationSetting.BRAND_SPLASH_LOGO_VALUE,
                 )
+                OrganizationSetting.upsert(
+                    key=OrganizationSetting.BRAND_SPLASH_LOGO_CACHE_BUSTER,
+                    value=str(time_ns()),
+                )
                 db.session.commit()
                 flash("👍 Splash logo updated successfully.")
             elif (
                 delete_splash_logo_form.submit.name in request.form
                 and delete_splash_logo_form.validate()
             ):
+                splash_logo_setting_keys = [
+                    OrganizationSetting.BRAND_SPLASH_LOGO,
+                    OrganizationSetting.BRAND_SPLASH_LOGO_CACHE_BUSTER,
+                ]
                 row_count = db.session.execute(
                     db.delete(OrganizationSetting).where(
-                        OrganizationSetting.key == OrganizationSetting.BRAND_SPLASH_LOGO
+                        OrganizationSetting.key.in_(splash_logo_setting_keys)
                     )
                 ).rowcount
-                if row_count > 1:
+                if row_count > len(splash_logo_setting_keys):
                     current_app.logger.error(
-                        "Would have deleted multiple rows for OrganizationSetting key="
-                        + OrganizationSetting.BRAND_SPLASH_LOGO
+                        "Would have deleted multiple rows for OrganizationSetting keys="
+                        + ", ".join(splash_logo_setting_keys)
                     )
                     db.session.rollback()
                     abort(503)
