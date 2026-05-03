@@ -94,10 +94,16 @@ def test_first_load_splash_hooks_exist() -> None:
     scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
 
     assert 'id="first-load-splash"' in template
+    assert 'name="first-load-splash-logo-src"' in template
+    assert 'content="{{ first_load_splash_logo_url }}"' in template
     assert 'aria-hidden="true"' in template
     assert 'data-splash-duration-ms="{{ splash_screen_duration_ms }}"' in template
-    assert "brand_logo_url or url_for('static', filename='img/splash-logo.png')" in template
-    assert 'src="{{ splash_logo_url }}"' in template
+    assert 'data-splash-skip-seen-mark="{{' in template
+    assert (
+        "splash_logo_url or brand_logo_url or url_for('static', filename='img/splash-logo.png')"
+        in template
+    )
+    assert 'src="{{ first_load_splash_logo_url }}"' in template
     assert "https://hushline.app/assets/img/social/logo.png" not in template
     image_loader = (ROOT / "assets/js/images.js").read_text(encoding="utf-8")
     assert 'import "./../img/splash-logo.png";' in image_loader
@@ -105,11 +111,21 @@ def test_first_load_splash_hooks_exist() -> None:
     assert (ROOT / "hushline/static/img/splash-logo.png").is_file()
     assert 'class="first-load-splash-spinner"' in template
     assert "FIRST_LOAD_SPLASH_SEEN_KEY" in js
+    assert "FIRST_LOAD_SPLASH_LOGO_SRC_KEY" in js
     assert "hushline:first-load-splash-seen" in js
+    assert "hushline:first-load-splash-logo-src" in js
+    assert "getFirstLoadSplashLogoSrc(splash)" in js
+    assert "const shouldSkipSeenMark =" in js
+    assert "!shouldSkipSeenMark && hasSeenFirstLoadSplash(splash)" in js
+    assert 'splash.dataset.splashSkipSeenMark === "true"' in js
     assert "Number.parseInt(" in js
     assert "const duration = configuredDuration >= 0 ? configuredDuration : 2000;" in js
+    assert 'document.documentElement.classList.remove("splash-seen");' in js
     assert 'document.documentElement.classList.add("splash-seen");' in js
     assert 'sessionStorage.getItem("hushline:first-load-splash-seen")' in no_js
+    assert 'meta[name="first-load-splash-logo-src"]' in no_js
+    assert 'sessionStorage.getItem("hushline:first-load-splash-logo-src")' in no_js
+    assert "seenSplashLogoSrc === splashLogoSrc" in no_js
     assert ".no-js .first-load-splash" in scss
     assert ".splash-seen .first-load-splash" in scss
     assert "width: clamp(8rem, 50vw, 13rem);" in scss
@@ -127,6 +143,15 @@ def test_custom_pwa_splash_screen_is_not_declared() -> None:
     assert "apple-touch-startup-image" not in template
     assert "/static/splash/" not in template
     assert "background_color" not in static_manifest
+
+
+def test_service_worker_does_not_cache_navigation_html() -> None:
+    service_worker = (ROOT / "assets/js/service-worker.js").read_text(encoding="utf-8")
+
+    assert 'const CACHE_NAME = "hushline-cache-v3";' in service_worker
+    assert '"/"' not in service_worker
+    assert 'event.request.mode === "navigate"' in service_worker
+    assert "event.respondWith(fetch(event.request));" in service_worker
 
 
 def test_directory_search_accessibility_hooks_exist() -> None:

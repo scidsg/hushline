@@ -202,6 +202,7 @@ def configure_jinja(app: Flask) -> None:
             OrganizationSetting.GUIDANCE_EXIT_BUTTON_TEXT,
             OrganizationSetting.GUIDANCE_EXIT_BUTTON_LINK,
             OrganizationSetting.GUIDANCE_PROMPTS,
+            OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED,
             OrganizationSetting.HIDE_DONATE_BUTTON,
             OrganizationSetting.REGISTRATION_ENABLED,
             OrganizationSetting.REGISTRATION_CODES_REQUIRED,
@@ -218,6 +219,7 @@ def configure_jinja(app: Flask) -> None:
             registration_codes_required=data.get(
                 OrganizationSetting.REGISTRATION_CODES_REQUIRED, True
             ),
+            splash_screen_enabled=data.get(OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED, False),
             splash_screen_duration_ms=app.config.get(SPLASH_SCREEN_DURATION_MS, 2000),
             setup_incomplete=False,
             user=None,
@@ -245,11 +247,32 @@ def configure_jinja(app: Flask) -> None:
         return data
 
     @app.context_processor
-    def inject_logo() -> dict[str, str | None]:
-        val = None
+    def inject_logo() -> dict[str, bool | str | None]:
+        brand_logo_url = None
         if setting := OrganizationSetting.fetch_one(OrganizationSetting.BRAND_LOGO):
-            val = url_for("storage.public", path=setting)
-        return {"brand_logo_url": val}
+            brand_logo_url = url_for("storage.public", path=setting)
+
+        splash_logo_url = None
+        if setting := OrganizationSetting.fetch_one(OrganizationSetting.BRAND_SPLASH_LOGO):
+            cache_buster = OrganizationSetting.fetch_one(
+                OrganizationSetting.BRAND_SPLASH_LOGO_CACHE_BUSTER
+            )
+            if cache_buster:
+                splash_logo_url = url_for(
+                    "storage.public",
+                    path=setting,
+                    v=cache_buster,
+                )
+            else:
+                splash_logo_url = url_for("storage.public", path=setting)
+
+        skip_splash_seen_mark = bool(session.pop("skip_first_load_splash_seen_mark", False))
+
+        return {
+            "brand_logo_url": brand_logo_url,
+            "splash_logo_url": splash_logo_url,
+            "skip_splash_seen_mark": skip_splash_seen_mark,
+        }
 
 
 def register_error_handlers(app: Flask) -> None:

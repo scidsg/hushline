@@ -1,3 +1,4 @@
+from time import time_ns
 from typing import Tuple
 
 from flask import (
@@ -26,12 +27,14 @@ from hushline.settings.common import (
 )
 from hushline.settings.forms import (
     DeleteBrandLogoForm,
+    DeleteSplashLogoForm,
     SetHomepageUsernameForm,
     UpdateBrandAppNameForm,
     UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
     UpdateDirectoryTextForm,
     UpdateProfileHeaderForm,
+    UpdateSplashLogoForm,
 )
 from hushline.storage import public_store
 from hushline.utils import redirect_to_self
@@ -40,6 +43,11 @@ from hushline.utils import redirect_to_self
 class ToggleDonateButtonForm(FlaskForm):
     hide_button = BooleanField("Hide 'Donate' Button", validators=[OptionalField()])
     submit = SubmitField("Submit", name="toggle_notifications", widget=DisplayNoneButton())
+
+
+class ToggleSplashScreenForm(FlaskForm):
+    splash_screen_enabled = BooleanField("Show splash screen", validators=[OptionalField()])
+    submit = SubmitField("Submit", name="toggle_splash_screen", widget=DisplayNoneButton())
 
 
 def register_branding_routes(bp: Blueprint) -> None:
@@ -53,6 +61,13 @@ def register_branding_routes(bp: Blueprint) -> None:
         )
         update_brand_logo_form = UpdateBrandLogoForm()
         delete_brand_logo_form = DeleteBrandLogoForm()
+        update_splash_logo_form = UpdateSplashLogoForm()
+        delete_splash_logo_form = DeleteSplashLogoForm()
+        toggle_splash_screen_form = ToggleSplashScreenForm(
+            splash_screen_enabled=OrganizationSetting.fetch_one(
+                OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED
+            )
+        )
         update_brand_primary_color_form = UpdateBrandPrimaryColorForm()
         update_brand_app_name_form = UpdateBrandAppNameForm()
         toggle_donate_button_form = ToggleDonateButtonForm(
@@ -94,15 +109,17 @@ def register_branding_routes(bp: Blueprint) -> None:
                 update_brand_logo_form.submit.name in request.form
                 and update_brand_logo_form.validate()
             ):
-                public_store.put(
-                    OrganizationSetting.BRAND_LOGO_VALUE, update_brand_logo_form.logo.data
-                )
-                OrganizationSetting.upsert(
-                    key=OrganizationSetting.BRAND_LOGO,
-                    value=OrganizationSetting.BRAND_LOGO_VALUE,
-                )
-                db.session.commit()
-                flash("👍 Brand logo updated successfully.")
+                if logo := update_brand_logo_form.logo.data:
+                    public_store.put(OrganizationSetting.BRAND_LOGO_VALUE, logo)
+                    OrganizationSetting.upsert(
+                        key=OrganizationSetting.BRAND_LOGO,
+                        value=OrganizationSetting.BRAND_LOGO_VALUE,
+                    )
+                    db.session.commit()
+                    flash("👍 Brand logo updated successfully.")
+                else:
+                    update_brand_logo_form.logo.errors.append("This field is required.")
+                    status_code = 400
             elif (
                 delete_brand_logo_form.submit.name in request.form
                 and delete_brand_logo_form.validate()
@@ -122,6 +139,64 @@ def register_branding_routes(bp: Blueprint) -> None:
                 db.session.commit()
                 public_store.delete(OrganizationSetting.BRAND_LOGO_VALUE)
                 flash("👍 Brand logo deleted.")
+            elif (
+                update_splash_logo_form.submit.name in request.form
+                and update_splash_logo_form.validate()
+            ):
+                if logo := update_splash_logo_form.logo.data:
+                    public_store.put(OrganizationSetting.BRAND_SPLASH_LOGO_VALUE, logo)
+                    OrganizationSetting.upsert(
+                        key=OrganizationSetting.BRAND_SPLASH_LOGO,
+                        value=OrganizationSetting.BRAND_SPLASH_LOGO_VALUE,
+                    )
+                    OrganizationSetting.upsert(
+                        key=OrganizationSetting.BRAND_SPLASH_LOGO_CACHE_BUSTER,
+                        value=str(time_ns()),
+                    )
+                    session["skip_first_load_splash_seen_mark"] = True
+                    db.session.commit()
+                    flash("👍 Splash logo updated successfully.")
+                else:
+                    update_splash_logo_form.logo.errors.append("This field is required.")
+                    status_code = 400
+            elif (
+                delete_splash_logo_form.submit.name in request.form
+                and delete_splash_logo_form.validate()
+            ):
+                splash_logo_setting_keys = [
+                    OrganizationSetting.BRAND_SPLASH_LOGO,
+                    OrganizationSetting.BRAND_SPLASH_LOGO_CACHE_BUSTER,
+                ]
+                row_count = db.session.execute(
+                    db.delete(OrganizationSetting).where(
+                        OrganizationSetting.key.in_(splash_logo_setting_keys)
+                    )
+                ).rowcount
+                if row_count > len(splash_logo_setting_keys):
+                    current_app.logger.error(
+                        "Would have deleted multiple rows for OrganizationSetting keys="
+                        + ", ".join(splash_logo_setting_keys)
+                    )
+                    db.session.rollback()
+                    abort(503)
+                db.session.commit()
+                public_store.delete(OrganizationSetting.BRAND_SPLASH_LOGO_VALUE)
+                flash("👍 Splash logo deleted.")
+            elif (
+                toggle_splash_screen_form.submit.name in request.form
+                and toggle_splash_screen_form.validate()
+            ):
+                OrganizationSetting.upsert(
+                    key=OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED,
+                    value=toggle_splash_screen_form.splash_screen_enabled.data,
+                )
+                if toggle_splash_screen_form.splash_screen_enabled.data:
+                    session["skip_first_load_splash_seen_mark"] = True
+                db.session.commit()
+                if toggle_splash_screen_form.splash_screen_enabled.data:
+                    flash("👍 Splash screen enabled.")
+                else:
+                    flash("👍 Splash screen disabled.")
             elif (
                 update_brand_primary_color_form.submit.name in request.form
                 and update_brand_primary_color_form.validate()
@@ -233,6 +308,9 @@ def register_branding_routes(bp: Blueprint) -> None:
             update_directory_text_form=update_directory_text_form,
             update_brand_logo_form=update_brand_logo_form,
             delete_brand_logo_form=delete_brand_logo_form,
+            update_splash_logo_form=update_splash_logo_form,
+            delete_splash_logo_form=delete_splash_logo_form,
+            toggle_splash_screen_form=toggle_splash_screen_form,
             toggle_donate_button_form=toggle_donate_button_form,
             update_brand_primary_color_form=update_brand_primary_color_form,
             update_brand_app_name_form=update_brand_app_name_form,

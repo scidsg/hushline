@@ -1,7 +1,7 @@
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 
-from hushline.model import User
+from hushline.model import OrganizationSetting, User
 
 
 def test_csp(client: FlaskClient) -> None:
@@ -19,6 +19,21 @@ def test_csp_script_src_elem_disallows_inline_scripts(client: FlaskClient) -> No
     assert response.status_code == 200
     csp = response.headers["Content-Security-Policy"]
     assert "script-src-elem 'self' https://js.stripe.com https://cdn.jsdelivr.net" in csp
+    assert "script-src-elem 'self' 'unsafe-inline'" not in csp
+
+
+def test_custom_splash_logo_keeps_csp_enforced(client: FlaskClient) -> None:
+    OrganizationSetting.upsert(
+        OrganizationSetting.BRAND_SPLASH_LOGO, OrganizationSetting.BRAND_SPLASH_LOGO_VALUE
+    )
+
+    response = client.get(url_for("register"), follow_redirects=True)
+    assert response.status_code == 200
+
+    csp = (response.headers.get("Content-Security-Policy") or "").strip()
+    assert csp
+    assert "'unsafe-eval'" not in csp
+    assert "img-src 'self' data: https:" in csp
     assert "script-src-elem 'self' 'unsafe-inline'" not in csp
 
 

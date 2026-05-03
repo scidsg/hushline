@@ -391,8 +391,6 @@ class UpdateBrandLogoForm(FlaskForm):
     logo = FileField(
         "Logo (.png only)",
         validators=[
-            # NOTE: not present because the same form w/ 2 submit buttons is used for deletions
-            # FileRequired()
             FileAllowed(["png"], "Only PNG files are allowed"),
             FileSize(256 * 1000),  # 256 KB
         ],
@@ -402,6 +400,21 @@ class UpdateBrandLogoForm(FlaskForm):
 
 class DeleteBrandLogoForm(FlaskForm):
     submit = SubmitField("Delete Logo", name="submit_logo", widget=Button())
+
+
+class UpdateSplashLogoForm(FlaskForm):
+    logo = FileField(
+        "Splash Logo (.png only)",
+        validators=[
+            FileAllowed(["png"], "Only PNG files are allowed"),
+            FileSize(256 * 1000),  # 256 KB
+        ],
+    )
+    submit = SubmitField("Update Splash Logo", name="update_splash_logo", widget=Button())
+
+
+class DeleteSplashLogoForm(FlaskForm):
+    submit = SubmitField("Delete Splash Logo", name="submit_splash_logo", widget=Button())
 
 
 class UserGuidanceForm(FlaskForm):

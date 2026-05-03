@@ -5,9 +5,14 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 
 from hushline.config import SPLASH_SCREEN_DURATION_MS
+from hushline.db import db
+from hushline.model import OrganizationSetting
 
 
 def _get_splash(client: FlaskClient) -> Any:
+    OrganizationSetting.upsert(OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED, True)
+    db.session.commit()
+
     response = client.get(url_for("register"))
     assert response.status_code == 200
     soup = BeautifulSoup(response.text, "html.parser")
@@ -21,6 +26,7 @@ def test_first_load_splash_markup_uses_default_duration(client: FlaskClient) -> 
 
     assert splash.get("aria-hidden") == "true"
     assert splash.get("data-splash-duration-ms") == "2000"
+    assert splash.get("data-splash-skip-seen-mark") == "false"
     logo = splash.find("img", src=url_for("static", filename="img/splash-logo.png"))
     assert logo
     assert not splash.find("img", src="https://hushline.app/assets/img/social/logo.png")
@@ -35,3 +41,73 @@ def test_first_load_splash_duration_uses_runtime_config(app: Flask, client: Flas
     splash = _get_splash(client)
 
     assert splash.get("data-splash-duration-ms") == "750"
+
+
+def test_first_load_splash_uses_brand_logo_fallback(client: FlaskClient) -> None:
+    OrganizationSetting.upsert(OrganizationSetting.BRAND_LOGO, OrganizationSetting.BRAND_LOGO_VALUE)
+    db.session.commit()
+
+    splash = _get_splash(client)
+
+    brand_logo_url = url_for("storage.public", path=OrganizationSetting.BRAND_LOGO_VALUE)
+    logo = splash.find("img", src=brand_logo_url)
+    assert logo
+    assert logo.get("referrerpolicy") == "no-referrer"
+    assert not splash.find("img", src=url_for("static", filename="img/splash-logo.png"))
+
+
+def test_first_load_splash_uses_custom_splash_logo(client: FlaskClient) -> None:
+    OrganizationSetting.upsert(OrganizationSetting.BRAND_LOGO, OrganizationSetting.BRAND_LOGO_VALUE)
+    OrganizationSetting.upsert(
+        OrganizationSetting.BRAND_SPLASH_LOGO, OrganizationSetting.BRAND_SPLASH_LOGO_VALUE
+    )
+    db.session.commit()
+
+    splash = _get_splash(client)
+
+    splash_logo_url = url_for("storage.public", path=OrganizationSetting.BRAND_SPLASH_LOGO_VALUE)
+    logo = splash.find("img", src=splash_logo_url)
+    assert logo
+    assert logo.get("referrerpolicy") == "no-referrer"
+    assert not splash.find(
+        "img", src=url_for("storage.public", path=OrganizationSetting.BRAND_LOGO_VALUE)
+    )
+    assert not splash.find("img", src=url_for("static", filename="img/splash-logo.png"))
+
+
+def test_first_load_splash_uses_versioned_custom_splash_logo(client: FlaskClient) -> None:
+    OrganizationSetting.upsert(
+        OrganizationSetting.BRAND_SPLASH_LOGO, OrganizationSetting.BRAND_SPLASH_LOGO_VALUE
+    )
+    OrganizationSetting.upsert(OrganizationSetting.BRAND_SPLASH_LOGO_CACHE_BUSTER, "12345")
+    db.session.commit()
+
+    splash = _get_splash(client)
+
+    splash_logo_url = url_for(
+        "storage.public",
+        path=OrganizationSetting.BRAND_SPLASH_LOGO_VALUE,
+        v="12345",
+    )
+    assert splash.find("img", src=splash_logo_url)
+
+
+def test_first_load_splash_defaults_to_disabled(client: FlaskClient) -> None:
+    response = client.get(url_for("register"))
+
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    assert soup.find(id="first-load-splash") is None
+    assert soup.find("meta", attrs={"name": "first-load-splash-logo-src"}) is None
+
+
+def test_first_load_splash_can_be_disabled(client: FlaskClient) -> None:
+    OrganizationSetting.upsert(OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED, False)
+    db.session.commit()
+
+    response = client.get(url_for("register"))
+
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    assert soup.find(id="first-load-splash") is None
+    assert soup.find("meta", attrs={"name": "first-load-splash-logo-src"}) is None

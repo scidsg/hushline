@@ -136,7 +136,7 @@ The app and public directory support more than individual profiles. Current disc
 | Admin | Set directory intro text                                                       | Visitors understand the purpose and scope of this deployment                       | Settings -> Branding      |
 | Admin | Set the primary color                                                          | The instance can match organizational branding                                     | Settings -> Branding      |
 | Admin | Set the app name                                                               | The deployment can reflect the organization running it                             | Settings -> Branding      |
-| Admin | Upload or remove a logo                                                        | The instance can use trusted visual identity markers                               | Settings -> Branding      |
+| Admin | Upload or remove header and splash logos                                       | The instance can use trusted visual identity markers                               | Settings -> Branding      |
 | Admin | Hide or show the donation button                                               | The deployment can control whether global fundraising UI appears                   | Settings -> Branding      |
 | Admin | Customize the profile header template                                          | Public tip-line pages can use language that fits the deployment                    | Settings -> Branding      |
 | Admin | Set a specific homepage recipient                                              | The instance can land visitors on a named profile instead of the directory         | Settings -> Branding      |

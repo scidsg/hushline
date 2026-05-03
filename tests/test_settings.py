@@ -31,6 +31,7 @@ from hushline.settings import (
     ChangeUsernameForm,
     DeleteAliasForm,
     DeleteBrandLogoForm,
+    DeleteSplashLogoForm,
     DisplayNameForm,
     EmailForwardingForm,
     NewAliasForm,
@@ -41,12 +42,13 @@ from hushline.settings import (
     UpdateBrandPrimaryColorForm,
     UpdateDirectoryTextForm,
     UpdateProfileHeaderForm,
+    UpdateSplashLogoForm,
     UserGuidanceAddPromptForm,
     UserGuidanceEmergencyExitForm,
     UserGuidanceForm,
     UserGuidancePromptContentForm,
 )
-from hushline.settings.branding import ToggleDonateButtonForm
+from hushline.settings.branding import ToggleDonateButtonForm, ToggleSplashScreenForm
 from hushline.settings.notifications import (
     ToggleEncryptEntireBodyForm,
     ToggleIncludeContentForm,
@@ -58,6 +60,11 @@ from hushline.settings.notifications import (
 )
 from hushline.settings.profile import _business_tier_display_price
 from tests.helpers import form_to_data
+
+ONE_PIXEL_WHITE_PNG = b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+    "AAAAC0lEQVQIW2P4DwQACfsD/Z8fLAAAAAAASUVORK5CYII="
+)
 
 
 def test_user_account_category_persists(user: User) -> None:
@@ -2382,9 +2389,7 @@ def test_update_brand_app_name(client: FlaskClient, admin: User) -> None:
 @pytest.mark.usefixtures("_authenticated_admin")
 def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
     # 1x1 pixel white png
-    png = b64decode(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQIW2P4DwQACfsD/Z8fLAAAAAAASUVORK5CYII="
-    )
+    png = ONE_PIXEL_WHITE_PNG
 
     resp = client.post(
         url_for("settings.branding"),
@@ -2428,6 +2433,168 @@ def test_update_brand_logo(client: FlaskClient, admin: User) -> None:
     # check the file is not accessible
     resp = client.get(logo_url, follow_redirects=True)
     assert resp.status_code == 404
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_brand_logo_requires_file(client: FlaskClient) -> None:
+    resp = client.post(
+        url_for("settings.branding"),
+        data={UpdateBrandLogoForm.submit.name: ""},
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+
+    assert resp.status_code == 400
+    assert "This field is required" in resp.text
+    assert db.session.get(OrganizationSetting, OrganizationSetting.BRAND_LOGO) is None
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_splash_logo_does_not_change_brand_logo(client: FlaskClient, admin: User) -> None:
+    # 1x1 pixel white png
+    png = ONE_PIXEL_WHITE_PNG
+    OrganizationSetting.upsert(OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED, True)
+    db.session.commit()
+
+    brand_resp = client.post(
+        url_for("settings.branding"),
+        data={
+            "logo": (BytesIO(png), "brand.png"),
+            UpdateBrandLogoForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+    assert brand_resp.status_code == 200
+    assert "Brand logo updated successfully" in brand_resp.text
+
+    resp = client.post(
+        url_for("settings.branding"),
+        data={
+            "logo": (BytesIO(png), "splash.png"),
+            UpdateSplashLogoForm.submit.name: "",
+        },
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+    assert "Splash logo updated successfully" in resp.text
+
+    brand_logo_url = url_for("storage.public", path=OrganizationSetting.BRAND_LOGO_VALUE)
+    splash_logo_url = url_for("storage.public", path=OrganizationSetting.BRAND_SPLASH_LOGO_VALUE)
+    soup = BeautifulSoup(resp.text, "html.parser")
+    assert soup.select_one(f'header img[src="{brand_logo_url}"]')
+    splash = soup.find(id="first-load-splash")
+    assert splash is not None
+    assert splash.get("data-splash-skip-seen-mark") == "true"
+    splash_logo = splash.find("img", class_="first-load-splash-logo")
+    assert splash_logo is not None
+    splash_logo_src = splash_logo.get("src")
+    assert splash_logo_src is not None
+    assert splash_logo_src.startswith(f"{splash_logo_url}?v=")
+
+    brand_setting = db.session.get(OrganizationSetting, OrganizationSetting.BRAND_LOGO)
+    splash_setting = db.session.get(OrganizationSetting, OrganizationSetting.BRAND_SPLASH_LOGO)
+    splash_cache_buster = db.session.get(
+        OrganizationSetting, OrganizationSetting.BRAND_SPLASH_LOGO_CACHE_BUSTER
+    )
+    assert brand_setting is not None
+    assert brand_setting.value == OrganizationSetting.BRAND_LOGO_VALUE
+    assert splash_setting is not None
+    assert splash_setting.value == OrganizationSetting.BRAND_SPLASH_LOGO_VALUE
+    assert splash_cache_buster is not None
+    assert splash_cache_buster.value
+
+    resp = client.get(splash_logo_src, follow_redirects=True)
+    assert resp.status_code == 200
+    assert resp.data == png
+
+    resp = client.get(url_for("settings.branding"))
+    assert resp.status_code == 200
+    soup = BeautifulSoup(resp.text, "html.parser")
+    splash = soup.find(id="first-load-splash")
+    assert splash is not None
+    assert splash.get("data-splash-skip-seen-mark") == "false"
+
+    resp = client.post(
+        url_for("settings.branding"),
+        data=form_to_data(DeleteSplashLogoForm()),
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Splash logo deleted" in resp.text
+    soup = BeautifulSoup(resp.text, "html.parser")
+    assert soup.select_one(f'header img[src="{brand_logo_url}"]')
+    splash = soup.find(id="first-load-splash")
+    assert splash is not None
+    assert splash.find("img", src=brand_logo_url)
+    assert db.session.get(OrganizationSetting, OrganizationSetting.BRAND_LOGO) is not None
+    assert db.session.get(OrganizationSetting, OrganizationSetting.BRAND_SPLASH_LOGO) is None
+    assert (
+        db.session.get(OrganizationSetting, OrganizationSetting.BRAND_SPLASH_LOGO_CACHE_BUSTER)
+        is None
+    )
+
+    resp = client.get(brand_logo_url, follow_redirects=True)
+    assert resp.status_code == 200
+    resp = client.get(splash_logo_url, follow_redirects=True)
+    assert resp.status_code == 404
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_update_splash_logo_requires_file(client: FlaskClient) -> None:
+    resp = client.post(
+        url_for("settings.branding"),
+        data={UpdateSplashLogoForm.submit.name: ""},
+        follow_redirects=True,
+        content_type="multipart/form-data",
+    )
+
+    assert resp.status_code == 400
+    assert "This field is required" in resp.text
+    assert db.session.get(OrganizationSetting, OrganizationSetting.BRAND_SPLASH_LOGO) is None
+    assert (
+        db.session.get(OrganizationSetting, OrganizationSetting.BRAND_SPLASH_LOGO_CACHE_BUSTER)
+        is None
+    )
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_toggle_splash_screen(client: FlaskClient) -> None:
+    assert OrganizationSetting.fetch_one(OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED) is False
+
+    resp = client.post(
+        url_for("settings.branding"),
+        data={
+            "splash_screen_enabled": True,
+            ToggleSplashScreenForm.submit.name: "",
+        },
+    )
+    assert resp.status_code == 200
+    assert "Splash screen enabled" in resp.text
+    assert 'data-splash-skip-seen-mark="true"' in resp.text
+
+    setting = db.session.get(OrganizationSetting, OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED)
+    assert setting is not None
+    assert setting.value is True
+
+    resp = client.get(url_for("settings.branding"))
+    assert resp.status_code == 200
+    assert 'id="first-load-splash"' in resp.text
+    assert 'data-splash-skip-seen-mark="false"' in resp.text
+    assert 'id="splash-logo"' in resp.text
+
+    resp = client.post(
+        url_for("settings.branding"),
+        data={ToggleSplashScreenForm.submit.name: ""},
+    )
+    assert resp.status_code == 200
+    assert "Splash screen disabled" in resp.text
+
+    setting = db.session.get(OrganizationSetting, OrganizationSetting.BRAND_SPLASH_SCREEN_ENABLED)
+    assert setting is not None
+    assert setting.value is False
+    assert 'id="splash-logo"' not in resp.text
 
 
 @pytest.mark.usefixtures("_authenticated_admin")
