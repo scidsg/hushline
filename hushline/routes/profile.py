@@ -8,6 +8,7 @@ from flask import (
     abort,
     current_app,
     flash,
+    g,
     redirect,
     render_template,
     request,
@@ -91,6 +92,13 @@ def register_profile_routes(app: Flask) -> None:
         if not uname:
             abort(404)
 
+        if request.endpoint == "embed_profile":
+            if not uname.embed_is_eligible:
+                abort(404)
+            g.embed_frame_ancestors = " ".join(
+                Username.normalize_embed_allowed_origins(uname.embed_allowed_origins or [])
+            )
+
         uname.create_default_field_defs()
 
         dynamic_form = DynamicMessageForm([x for x in uname.message_fields if x.enabled])
@@ -135,6 +143,7 @@ def register_profile_routes(app: Flask) -> None:
                 message_submission_block_reason=message_submission_block_reason,
                 owner_guard_nonce=owner_guard_nonce,
                 owner_guard_signature=owner_guard_signature,
+                is_embedded=request.endpoint == "embed_profile",
             )
             if status_code is None:
                 return rendered
@@ -273,6 +282,13 @@ def register_profile_routes(app: Flask) -> None:
             return _render_profile(400)
 
         return _render_profile()
+
+    app.add_url_rule(
+        "/embed/<username>",
+        endpoint="embed_profile",
+        view_func=profile,
+        methods=["GET", "POST"],
+    )
 
     @app.route("/submit_message/<username>")
     def redirect_submit_message(username: str) -> Response:

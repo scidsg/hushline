@@ -112,7 +112,7 @@
 
   <form
     method="POST"
-    action="{{ url_for('profile', username=username.username) }}"
+    action="{% if is_embedded %}{{ url_for('embed_profile', username=username.username) }}{% else %}{{ url_for('profile', username=username.username) }}{% endif %}"
     id="messageForm"
     data-submit-spinner="true"
   >

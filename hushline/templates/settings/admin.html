@@ -19,6 +19,27 @@
     </div>
   </div>
 
+  <h4>Embeddable Forms</h4>
+  <p class="info">
+    Enable hosted iframe embeds globally. Recipients still need to opt in each
+    tip line and list exact allowed parent origins.
+  </p>
+  <form
+    action="{{ url_for('admin.toggle_embeddable_forms') }}"
+    method="POST"
+    class="formBody"
+  >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <input
+      type="hidden"
+      name="embeddable_forms_enabled"
+      value="{{ 'false' if embeddable_forms_enabled else 'true' }}"
+    />
+    <button type="submit">
+      {{ "Disable Embeds" if embeddable_forms_enabled else "Enable Embeds" }}
+    </button>
+  </form>
+
   <h4>All Usernames</h4>
   <div class="settings-search">
     <div class="search-box">
