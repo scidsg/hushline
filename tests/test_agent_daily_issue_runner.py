@@ -2714,6 +2714,167 @@ rm -f "$counter_file"
     assert "PR #2000 is MERGED; returning to main." in result.stdout
 
 
+def test_address_pr_feedback_replies_and_resolves_review_threads(
+    tmp_path: Path,
+) -> None:
+    calls_file = tmp_path / "calls.txt"
+    feedback_json = json.dumps(
+        {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "number": 2000,
+                        "state": "OPEN",
+                        "url": "https://github.com/scidsg/hushline/pull/2000",
+                        "reviewThreads": {
+                            "nodes": [
+                                {
+                                    "id": "PRRT_kwDOExample",
+                                    "isResolved": False,
+                                    "isOutdated": False,
+                                    "path": "scripts/agent_daily_issue_runner.sh",
+                                    "line": 100,
+                                    "originalLine": 100,
+                                    "comments": {
+                                        "nodes": [
+                                            {
+                                                "databaseId": 123456,
+                                                "author": {"login": "reviewer"},
+                                                "body": "Please resolve after pushing.",
+                                                "createdAt": "2026-05-02T00:00:00Z",
+                                                "url": "https://example.test/thread/1",
+                                            }
+                                        ]
+                                    },
+                                }
+                            ]
+                        },
+                    }
+                }
+            }
+        }
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_SLUG=scidsg/hushline
+calls_file={shlex.quote(str(calls_file))}
+expected_commit_message="fix: address PR feedback for #1558"
+reply_path="repos/scidsg/hushline/pulls/2000/comments/123456/replies"
+feedback_summary="Post-PR feedback summary: unresolved_review_threads=1 changes_requested_reviews=0"
+feedback_summary="$feedback_summary discussion_comments=0 failing_checks=0 pending_checks=0"
+ensure_worktree_on_branch() {{
+  printf 'ensure:%s\\n' "$1" >> "$calls_file"
+}}
+build_pr_feedback_prompt() {{
+  printf 'prompt:%s\\n' "$1" >> "$calls_file"
+}}
+run_codex_from_prompt() {{
+  printf 'codex\\n' >> "$calls_file"
+}}
+has_non_log_changes() {{
+  return 0
+}}
+run_fix_attempt_loop() {{
+  printf 'fix:%s:%s\\n' "$1" "$5" >> "$calls_file"
+  return 0
+}}
+persist_run_log() {{
+  printf 'log:%s\\n' "$1" >> "$calls_file"
+}}
+push_branch_for_pr() {{
+  printf 'push:%s\\n' "$1" >> "$calls_file"
+}}
+git() {{
+  if [[ "${{1-}}" == "commit" ]] &&
+    [[ "${{2-}}" == "-m" ]] &&
+    [[ "${{3-}}" == "$expected_commit_message" ]]; then
+    printf 'git:commit\\n' >> "$calls_file"
+    return 0
+  fi
+  case "${{1-}} ${{2-}} ${{3-}} ${{4-}}" in
+    "add -A  ")
+      printf 'git:add\\n' >> "$calls_file"
+      return 0
+      ;;
+    "diff --cached --quiet ")
+      return 1
+      ;;
+    "rev-parse --short HEAD ")
+      printf 'abc1234\\n'
+      return 0
+      ;;
+    "log -1 --pretty=%s ")
+      printf 'fix: address PR feedback for #1558\\n'
+      return 0
+      ;;
+    "diff-tree --no-commit-id --name-only -r")
+      printf 'scripts/agent_daily_issue_runner.sh\\n'
+      return 0
+      ;;
+  esac
+  return 0
+}}
+gh() {{
+  if [[ "${{1-}}" == "api" ]] &&
+    [[ "${{2-}}" == "--method" ]] &&
+    [[ "${{3-}}" == "POST" ]] &&
+    [[ "${{4-}}" == "$reply_path" ]]; then
+    local body_arg=""
+    for arg in "$@"; do
+      case "$arg" in
+        body=*) body_arg="${{arg#body=}}" ;;
+      esac
+    done
+    [[ "$body_arg" == *"Changes made:"* ]]
+    [[ "$body_arg" == *"fix: address PR feedback for #1558"* ]]
+    printf 'reply\\n' >> "$calls_file"
+    return 0
+  fi
+  if [[ "${{1-}} ${{2-}}" == "api graphql" ]]; then
+    local thread_arg=""
+    for arg in "$@"; do
+      case "$arg" in
+        threadId=*) thread_arg="${{arg#threadId=}}" ;;
+      esac
+    done
+    [[ "$thread_arg" == "PRRT_kwDOExample" ]]
+    printf 'resolve\\n' >> "$calls_file"
+    return 0
+  fi
+  return 99
+}}
+address_pr_feedback \
+  2000 \
+  1558 \
+  "Title" \
+  "" \
+  "codex/daily-issue-1558" \
+  "$feedback_summary" \
+  {shlex.quote(feedback_json)}
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    calls = calls_file.read_text(encoding="utf-8").splitlines()
+    assert calls == [
+        "ensure:codex/daily-issue-1558",
+        "prompt:2000",
+        "codex",
+        "fix:1558:codex/daily-issue-1558",
+        "ensure:codex/daily-issue-1558",
+        "log:1558",
+        "git:add",
+        "git:commit",
+        "push:codex/daily-issue-1558",
+        "reply",
+        "resolve",
+    ]
+    assert "Replied to PR #2000 review thread scripts/agent_daily_issue_runner.sh." in result.stdout
+    assert "Resolved PR #2000 review thread scripts/agent_daily_issue_runner.sh." in result.stdout
+
+
 def test_resolve_pr_number_from_ref_prefers_pr_url_without_gh_lookup() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
