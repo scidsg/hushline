@@ -91,6 +91,25 @@ def test_embed_origin_normalization_canonicalizes_host_and_ports() -> None:
     assert normalize_embed_origin("http://Tips.Example:80") == "http://tips.example"
 
 
+@pytest.mark.parametrize(
+    ("configured_origin", "browser_origin", "stored_origin"),
+    [
+        ("https://Tips.Example:443", "https://tips.example", "https://tips.example"),
+        ("http://Tips.Example:80", "http://tips.example", "http://tips.example"),
+    ],
+)
+def test_embed_default_port_allowlist_matches_browser_serialized_origin(
+    user: User, configured_origin: str, browser_origin: str, stored_origin: str
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username, configured_origin)
+    db.session.commit()
+
+    assert user.primary_username.embed_allowed_origins == [stored_origin]
+    assert user.primary_username.embed_allows_origin(browser_origin) is True
+
+
 def test_embed_requires_at_least_one_exact_allowed_origin(user: User) -> None:
     _enable_embeds_globally()
     _make_message_capable(user)
