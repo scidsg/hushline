@@ -2519,3 +2519,20 @@ Coverage HTML written to dir /tmp/hushline-htmlcov
 
 
 ========== 1615 passed, 1 deselected, 1 xfailed in 335.75s (0:05:35) ===========
+Pruning old runner logs, keeping newest 10.
+[codex/daily-issue-1916 b7b33153] chore: agent daily for #1916
+ 7 files changed, 2824 insertions(+), 8477 deletions(-)
+ delete mode 100644 docs/agent-logs/run-20260409T065108Z-issue-1865.txt
+ create mode 100644 docs/agent-logs/run-20260504T040439Z-issue-1916.txt
+ create mode 100644 migrations/versions/7b9c2d1e4f60_add_embeddable_form_policy_fields.py
+ create mode 100644 tests/test_embeddable_forms_model.py
+Remote branch 'codex/daily-issue-1916' does not exist; creating it with a standard push.
+remote: 
+remote: Create a pull request for 'codex/daily-issue-1916' on GitHub by visiting:        
+remote:      https://github.com/scidsg/hushline/pull/new/codex/daily-issue-1916        
+remote: 
+To github.com:scidsg/hushline.git
+ * [new branch]        codex/daily-issue-1916 -> codex/daily-issue-1916
+branch 'codex/daily-issue-1916' set up to track 'origin/codex/daily-issue-1916'.
+Opened PR: https://github.com/scidsg/hushline/pull/1922
+==> Mark issue #1916 as Ready for Review
