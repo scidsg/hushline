@@ -85,8 +85,10 @@ def test_embed_allowed_origins_reject_invalid_origin_rules(user: User, origin: s
         user.primary_username.set_embed_allowed_origins([origin])
 
 
-def test_embed_origin_normalization_preserves_exact_host_and_port() -> None:
+def test_embed_origin_normalization_canonicalizes_host_and_ports() -> None:
     assert normalize_embed_origin("https://Tips.Example:8443") == "https://tips.example:8443"
+    assert normalize_embed_origin("https://Tips.Example:443") == "https://tips.example"
+    assert normalize_embed_origin("http://Tips.Example:80") == "http://tips.example"
 
 
 def test_embed_requires_at_least_one_exact_allowed_origin(user: User) -> None:

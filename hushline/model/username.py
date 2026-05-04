@@ -57,8 +57,10 @@ def normalize_embed_origin(origin: str) -> str:
     if ":" in host and not host.startswith("["):
         host = f"[{host}]"
 
-    normalized_origin = f"{parsed.scheme.lower()}://{host}"
-    if port is not None:
+    scheme = parsed.scheme.lower()
+    normalized_origin = f"{scheme}://{host}"
+    default_port = 443 if scheme == "https" else 80
+    if port is not None and port != default_port:
         normalized_origin = f"{normalized_origin}:{port}"
     return normalized_origin
 
