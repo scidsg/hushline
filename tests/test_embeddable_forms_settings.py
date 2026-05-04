@@ -1,9 +1,9 @@
 from bs4 import BeautifulSoup
-from flask import url_for
+from flask import Flask, url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import OrganizationSetting, User, Username
+from hushline.model import Message, OrganizationSetting, User, Username
 
 
 def _make_message_capable(user: User) -> None:
@@ -36,6 +36,22 @@ def _iframe_from_snippet(response_text: str) -> BeautifulSoup:
     return BeautifulSoup(snippet_text, "html.parser")
 
 
+def _embed_submission_data(response_text: str) -> dict[str, str]:
+    page = BeautifulSoup(response_text, "html.parser")
+    label = page.find("label", attrs={"for": "captcha_answer"})
+    assert label is not None
+    left, right = label.get_text(strip=True).replace("=", "").split("+")
+
+    data = {"captcha_answer": str(int(left.strip()) + int(right.strip()))}
+    for name in ["owner_guard_nonce", "owner_guard_signature", "embed_captcha_token"]:
+        field = page.find("input", attrs={"name": name})
+        assert field is not None
+        value = field.get("value")
+        assert value
+        data[name] = str(value)
+    return data
+
+
 def test_admin_embeddable_forms_default_disabled(client: FlaskClient, admin_user: User) -> None:
     with client.session_transaction() as session:
         session["user_id"] = admin_user.id
@@ -60,6 +76,50 @@ def test_embed_profile_route_is_disabled_by_default(client: FlaskClient, user: U
     response = client.get(url_for("embed_profile", username=user.primary_username.username))
 
     assert response.status_code == 404
+
+
+def test_embed_profile_submission_does_not_require_session_cookie(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+) -> None:
+    prior_csrf_setting = app.config.get("WTF_CSRF_ENABLED")
+    app.config["WTF_CSRF_ENABLED"] = True
+    try:
+        _enable_embeds_globally()
+        _make_message_capable(user)
+        user.primary_username.embed_enabled = True
+        user.primary_username.set_embed_allowed_origins(["https://tips.example"])
+        db.session.commit()
+
+        response = client.get(url_for("embed_profile", username=user.primary_username.username))
+
+        assert response.status_code == 200
+        assert 'name="csrf_token"' not in response.text
+        with client.session_transaction() as session:
+            assert "math_answer" not in session
+            assert "math_problem" not in session
+
+        submission_data = _embed_submission_data(response.text)
+        with app.test_client() as cross_site_client:
+            post_response = cross_site_client.post(
+                url_for("embed_profile", username=user.primary_username.username),
+                data={
+                    "field_0": "Embedded Signal contact",
+                    "field_1": "Embedded sessionless message",
+                    **submission_data,
+                },
+            )
+
+        assert post_response.status_code == 200, post_response.text
+        assert "Message Submitted!" in post_response.text
+
+        message = db.session.scalars(
+            db.select(Message).filter_by(username_id=user.primary_username.id)
+        ).one()
+        assert len(message.field_values) == 2
+    finally:
+        app.config["WTF_CSRF_ENABLED"] = prior_csrf_setting
 
 
 def test_profile_embed_settings_do_not_show_snippet_when_globally_disabled(

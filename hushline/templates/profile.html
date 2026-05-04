@@ -119,6 +119,9 @@
     {{ form.hidden_tag() }}
     {{ form.owner_guard_nonce(type="hidden", value=owner_guard_nonce) }}
     {{ form.owner_guard_signature(type="hidden", value=owner_guard_signature) }}
+    {% if is_embedded %}
+      {{ form.embed_captcha_token(type="hidden", value=embed_captcha_token) }}
+    {% endif %}
 
     {% for data in field_data %}
       {% if data['field'].enabled %}
