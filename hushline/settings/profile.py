@@ -14,22 +14,27 @@ from werkzeug.wrappers.response import Response
 
 from hushline.auth import authentication_required
 from hushline.db import db
+from hushline.embeds import embed_iframe_snippet
 from hushline.geo import city_options_for_state, state_options
 from hushline.model import (
+    OrganizationSetting,
     Tier,
     User,
     Username,
 )
 from hushline.settings.common import (
     build_field_forms,
+    create_embed_settings_form,
     create_profile_forms,
     form_error,
+    handle_embed_settings_form,
     handle_field_post,
     handle_profile_post,
 )
 from hushline.settings.forms import (
     DirectoryVisibilityForm,
     DisplayNameForm,
+    EmbedSettingsForm,
     FieldForm,
     ProfileForm,
 )
@@ -48,17 +53,23 @@ def _business_tier_display_price() -> str:
     return f"{price_usd:.2f}"
 
 
-def _render_profile_page(
+def _render_profile_page(  # noqa: PLR0913
     user: User,
     username: Username,
     status_code: int = 200,
     forms: ProfileForms | None = None,
+    embed_settings_form: EmbedSettingsForm | None = None,
     submitted_field_form: FieldForm | None = None,
 ) -> tuple[str, int]:
     if forms is None:
         forms = create_profile_forms(username)
+    if embed_settings_form is None:
+        embed_settings_form = create_embed_settings_form(username)
     display_name_form, directory_visibility_form, profile_form = forms
     field_forms, new_field_form = build_field_forms(username, submitted_form=submitted_field_form)
+    embeddable_forms_enabled = bool(
+        OrganizationSetting.fetch_one(OrganizationSetting.EMBEDDABLE_FORMS_ENABLED)
+    )
 
     return (
         render_template(
@@ -68,6 +79,11 @@ def _render_profile_page(
             display_name_form=display_name_form,
             directory_visibility_form=directory_visibility_form,
             profile_form=profile_form,
+            embed_settings_form=embed_settings_form,
+            embeddable_forms_enabled=embeddable_forms_enabled,
+            embed_iframe_snippet=(
+                embed_iframe_snippet(username) if username.embed_is_eligible else ""
+            ),
             field_forms=field_forms,
             new_field_form=new_field_form,
             business_tier_display_price=_business_tier_display_price(),
@@ -89,6 +105,19 @@ def register_profile_routes(bp: Blueprint) -> None:
         status_code = 200
         if request.method == "POST":
             profile_forms = create_profile_forms(username)
+            if "update_embed_settings" in request.form:
+                embed_settings_form = create_embed_settings_form(username, submitted=True)
+                res = handle_embed_settings_form(username, embed_settings_form)
+                if res:
+                    return res
+                return _render_profile_page(
+                    user,
+                    username,
+                    status_code=400,
+                    forms=profile_forms,
+                    embed_settings_form=embed_settings_form,
+                )
+
             res = await handle_profile_post(*profile_forms, username)
             if res:
                 return res

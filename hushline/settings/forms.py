@@ -218,6 +218,27 @@ class DirectoryVisibilityForm(FlaskForm):
     submit = SubmitField("Update Visibilty", name="update_directory_visibility", widget=Button())
 
 
+class EmbedSettingsForm(FlaskForm):
+    embed_enabled = BooleanField("Allow this tip line to be embedded")
+    embed_allowed_origins = TextAreaField(
+        "Allowed Parent Origins",
+        validators=[OptionalField(), Length(max=5000)],
+    )
+    submit = SubmitField("Update Embed Settings", name="update_embed_settings", widget=Button())
+
+    normalized_origins: list[str]
+
+    def validate_embed_allowed_origins(self, field: TextAreaField) -> None:
+        origins = [line for line in (field.data or "").splitlines() if line.strip()]
+        try:
+            self.normalized_origins = Username.normalize_embed_allowed_origins(origins)
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
+
+        if self.embed_enabled.data and not self.normalized_origins:
+            raise ValidationError("Add at least one exact allowed origin before enabling embeds.")
+
+
 def strip_whitespace(value: Optional[Any]) -> Optional[str]:
     if value is not None and hasattr(value, "strip"):
         return value.strip()

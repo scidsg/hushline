@@ -181,6 +181,7 @@ class DynamicMessageForm:
             )
             owner_guard_nonce = StringField("Owner Guard Nonce", validators=[Optional()])
             owner_guard_signature = StringField("Owner Guard Signature", validators=[Optional()])
+            embed_captcha_token = StringField("Embed CAPTCHA Token", validators=[Optional()])
             captcha_answer = StringField("CAPTCHA", validators=[Optional()])
 
         self.F = F
@@ -275,8 +276,10 @@ class DynamicMessageForm:
                 return field
         return None
 
-    def form(self) -> FlaskForm:
+    def form(self, *, csrf_enabled: bool | None = None) -> FlaskForm:
         """
         Return an instance of the custom form class
         """
-        return self.F()
+        if csrf_enabled is None:
+            return self.F()
+        return self.F(meta={"csrf": csrf_enabled})

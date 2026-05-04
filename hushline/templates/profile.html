@@ -112,13 +112,16 @@
 
   <form
     method="POST"
-    action="{{ url_for('profile', username=username.username) }}"
+    action="{% if is_embedded %}{{ url_for('embed_profile', username=username.username) }}{% else %}{{ url_for('profile', username=username.username) }}{% endif %}"
     id="messageForm"
     data-submit-spinner="true"
   >
     {{ form.hidden_tag() }}
     {{ form.owner_guard_nonce(type="hidden", value=owner_guard_nonce) }}
     {{ form.owner_guard_signature(type="hidden", value=owner_guard_signature) }}
+    {% if is_embedded %}
+      {{ form.embed_captcha_token(type="hidden", value=embed_captcha_token) }}
+    {% endif %}
 
     {% for data in field_data %}
       {% if data['field'].enabled %}

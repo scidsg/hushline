@@ -8,7 +8,7 @@ from flask_wtf.csrf import generate_csrf
 
 from hushline.auth import admin_authentication_required
 from hushline.db import db
-from hushline.model import User, Username
+from hushline.model import OrganizationSetting, User, Username
 
 
 def register_admin_routes(bp: Blueprint) -> None:
@@ -38,5 +38,8 @@ def register_admin_routes(bp: Blueprint) -> None:
             two_fa_percentage=(two_fa_count / user_count * 100) if user_count else 0,
             pgp_key_percentage=(pgp_key_count / user_count * 100) if user_count else 0,
             user_verification_enabled=current_app.config.get("USER_VERIFICATION_ENABLED"),
+            embeddable_forms_enabled=bool(
+                OrganizationSetting.fetch_one(OrganizationSetting.EMBEDDABLE_FORMS_ENABLED)
+            ),
             csrf_token=generate_csrf(),
         )

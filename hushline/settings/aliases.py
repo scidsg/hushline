@@ -14,17 +14,21 @@ from werkzeug.wrappers.response import Response
 
 from hushline.auth import authentication_required
 from hushline.db import db
+from hushline.embeds import embed_iframe_snippet
 from hushline.model import (
     FieldDefinition,
     FieldValue,
     Message,
+    OrganizationSetting,
     User,
     Username,
 )
 from hushline.settings.common import (
     build_field_forms,
+    create_embed_settings_form,
     create_profile_forms,
     form_error,
+    handle_embed_settings_form,
     handle_field_post,
     handle_new_alias_form,
     handle_profile_post,
@@ -33,6 +37,7 @@ from hushline.settings.forms import (
     DeleteAliasForm,
     DirectoryVisibilityForm,
     DisplayNameForm,
+    EmbedSettingsForm,
     FieldForm,
     NewAliasForm,
     ProfileForm,
@@ -45,12 +50,18 @@ def _render_alias_page(
     alias: Username,
     status_code: int = 200,
     forms: ProfileForms | None = None,
+    embed_settings_form: EmbedSettingsForm | None = None,
     submitted_field_form: FieldForm | None = None,
 ) -> tuple[str, int]:
     if forms is None:
         forms = create_profile_forms(alias)
+    if embed_settings_form is None:
+        embed_settings_form = create_embed_settings_form(alias)
     display_name_form, directory_visibility_form, profile_form = forms
     field_forms, new_field_form = build_field_forms(alias, submitted_form=submitted_field_form)
+    embeddable_forms_enabled = bool(
+        OrganizationSetting.fetch_one(OrganizationSetting.EMBEDDABLE_FORMS_ENABLED)
+    )
 
     return (
         render_template(
@@ -60,6 +71,9 @@ def _render_alias_page(
             display_name_form=display_name_form,
             directory_visibility_form=directory_visibility_form,
             profile_form=profile_form,
+            embed_settings_form=embed_settings_form,
+            embeddable_forms_enabled=embeddable_forms_enabled,
+            embed_iframe_snippet=(embed_iframe_snippet(alias) if alias.embed_is_eligible else ""),
             field_forms=field_forms,
             new_field_form=new_field_form,
             delete_alias_form=DeleteAliasForm(),
@@ -117,6 +131,17 @@ def register_aliases_routes(bp: Blueprint) -> None:
                 and delete_alias_form.validate_on_submit()
             ):
                 return delete_alias(alias.id)
+            if "update_embed_settings" in request.form:
+                embed_settings_form = create_embed_settings_form(alias, submitted=True)
+                res = handle_embed_settings_form(alias, embed_settings_form)
+                if res:
+                    return res
+                return _render_alias_page(
+                    alias,
+                    status_code=400,
+                    forms=profile_forms,
+                    embed_settings_form=embed_settings_form,
+                )
             res = await handle_profile_post(*profile_forms, alias)
             if res:
                 return res
