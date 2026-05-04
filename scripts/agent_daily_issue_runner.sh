@@ -822,6 +822,7 @@ fetch_pr_feedback_json() {
             }
             reviewThreads(first: 50) {
               nodes {
+                id
                 isResolved
                 isOutdated
                 path
@@ -829,6 +830,7 @@ fetch_pr_feedback_json() {
                 originalLine
                 comments(first: 10) {
                   nodes {
+                    databaseId
                     author {
                       login
                     }
@@ -1107,6 +1109,140 @@ pr_feedback_action_key() {
     | sed '/^Feedback pending check /d'
 }
 
+pr_feedback_unresolved_review_thread_targets() {
+  local feedback_json="$1"
+
+  printf '%s\n' "$feedback_json" \
+    | node -e '
+      const fs = require("fs");
+      const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+      const pr =
+        payload &&
+        payload.data &&
+        payload.data.repository &&
+        payload.data.repository.pullRequest
+          ? payload.data.repository.pullRequest
+          : null;
+      const threads =
+        pr && pr.reviewThreads && Array.isArray(pr.reviewThreads.nodes)
+          ? pr.reviewThreads.nodes
+          : [];
+      const seen = new Set();
+      for (const thread of threads) {
+        if (!thread || thread.isResolved || !thread.id || seen.has(thread.id)) {
+          continue;
+        }
+        seen.add(thread.id);
+        const comments =
+          thread.comments && Array.isArray(thread.comments.nodes)
+            ? thread.comments.nodes
+            : [];
+        const firstComment = comments.find(
+          (comment) => comment && Number.isInteger(comment.databaseId),
+        );
+        const commentId = firstComment ? String(firstComment.databaseId) : "";
+        const path = String(thread.path || "").replace(/\t/g, " ");
+        process.stdout.write(`${thread.id}\t${commentId}\t${path}\n`);
+      }
+    '
+}
+
+build_pr_feedback_reply_body() {
+  local short_sha=""
+  local subject=""
+  local changed_files=""
+  local file_count=0
+
+  short_sha="$(git rev-parse --short HEAD 2>/dev/null || true)"
+  subject="$(git log -1 --pretty=%s 2>/dev/null || true)"
+  changed_files="$(git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null | sed -n '1,8p' || true)"
+
+  printf 'Addressed in'
+  if [[ -n "$short_sha" ]]; then
+    printf ' `%s`' "$short_sha"
+  else
+    printf ' the latest pushed commit'
+  fi
+  printf '.\n\nChanges made:\n'
+
+  if [[ -n "$subject" ]]; then
+    printf -- '- %s\n' "$subject"
+  else
+    printf -- '- Updated the PR branch to address this feedback.\n'
+  fi
+
+  while IFS= read -r changed_file; do
+    [[ -n "$changed_file" ]] || continue
+    printf -- '- Updated `%s`\n' "$changed_file"
+    file_count=$((file_count + 1))
+  done <<<"$changed_files"
+
+  if (( file_count == 8 )); then
+    printf -- '- Additional changed files are included in the pushed commit.\n'
+  fi
+}
+
+acknowledge_pr_feedback_review_threads() {
+  local pr_number="$1"
+  local feedback_json="$2"
+  local reply_body=""
+  local thread_id=""
+  local comment_id=""
+  local thread_path=""
+  local target_count=0
+  local reply_ok=0
+
+  [[ -n "$feedback_json" ]] || return 0
+
+  reply_body="$(build_pr_feedback_reply_body)"
+
+  while IFS=$'\t' read -r thread_id comment_id thread_path; do
+    [[ -n "$thread_id" ]] || continue
+    target_count=$((target_count + 1))
+    reply_ok=0
+
+    if [[ -n "$comment_id" ]]; then
+      if gh api \
+        --method POST \
+        "repos/${REPO_SLUG}/pulls/${pr_number}/comments/${comment_id}/replies" \
+        -f body="$reply_body" >/dev/null; then
+        echo "Replied to PR #${pr_number} review thread ${thread_path:-$thread_id}."
+        reply_ok=1
+      else
+        echo "Warning: failed to reply to PR #${pr_number} review thread ${thread_path:-$thread_id}." >&2
+      fi
+    else
+      echo "Warning: PR #${pr_number} review thread ${thread_path:-$thread_id} had no replyable comment id." >&2
+    fi
+
+    if (( reply_ok == 0 )); then
+      echo "Warning: leaving PR #${pr_number} review thread ${thread_path:-$thread_id} unresolved because no reply was posted." >&2
+      continue
+    fi
+
+    if gh api graphql \
+      -f threadId="$thread_id" \
+      -f query='
+        mutation($threadId: ID!) {
+          resolveReviewThread(input: {threadId: $threadId}) {
+            thread {
+              id
+              isResolved
+            }
+          }
+        }
+      ' >/dev/null; then
+      echo "Resolved PR #${pr_number} review thread ${thread_path:-$thread_id}."
+    else
+      echo "Warning: failed to resolve PR #${pr_number} review thread ${thread_path:-$thread_id}." >&2
+    fi
+  done < <(pr_feedback_unresolved_review_thread_targets "$feedback_json")
+
+  if (( target_count == 0 )); then
+    echo "No unresolved review threads to resolve for PR #${pr_number}."
+  fi
+}
+
 check_pr_feedback_after_delay() {
   local pr_number="$1"
   local issue_number="${2:-}"
@@ -1177,7 +1313,8 @@ check_pr_feedback_after_delay() {
         "$issue_title" \
         "$issue_labels" \
         "${branch_name:-$current_branch}" \
-        "$feedback_summary"
+        "$feedback_summary" \
+        "$feedback_json"
     fi
 
     sleep "$POST_PR_FEEDBACK_DELAY_SECONDS"
@@ -2553,6 +2690,7 @@ address_pr_feedback() {
   local issue_labels="$4"
   local branch_name="$5"
   local feedback_summary="$6"
+  local feedback_json="${7:-}"
 
   if [[ -z "$issue_number" || -z "$branch_name" ]]; then
     echo "Actionable PR feedback detected, but issue or branch context is unavailable; continuing monitor."
@@ -2590,6 +2728,7 @@ address_pr_feedback() {
   git commit -m "fix: address PR feedback for #${issue_number}"
   push_branch_for_pr "$branch_name"
   echo "Pushed PR feedback update for PR #${pr_number}."
+  acknowledge_pr_feedback_review_threads "$pr_number" "$feedback_json"
 }
 
 run_fix_attempt_loop() {
