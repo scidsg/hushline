@@ -45,6 +45,7 @@ BOT_GIT_SIGNING_KEY="${HUSHLINE_BOT_GIT_SIGNING_KEY:-}"
 DEFAULT_BOT_GIT_SSH_SIGNING_KEY_PATH="${HUSHLINE_BOT_GIT_DEFAULT_SSH_SIGNING_KEY_PATH:-}"
 BRANCH_PREFIX="${HUSHLINE_DAILY_BRANCH_PREFIX:-codex/daily-issue-}"
 EPIC_BRANCH_PREFIX="${HUSHLINE_DAILY_EPIC_BRANCH_PREFIX:-codex/epic-}"
+COVERAGE_BRANCH_NAME="${HUSHLINE_COVERAGE_BRANCH_NAME:-codex/daily-coverage}"
 CODEX_MODEL="${HUSHLINE_CODEX_MODEL:-gpt-5.5}"
 CODEX_REASONING_EFFORT="${HUSHLINE_CODEX_REASONING_EFFORT:-high}"
 PROJECT_OWNER="${HUSHLINE_DAILY_PROJECT_OWNER:-${REPO_SLUG%%/*}}"
@@ -151,6 +152,33 @@ require_cmd() {
     echo "Missing required command: $1" >&2
     exit 1
   fi
+}
+
+is_json_response() {
+  node -e '
+    const fs = require("fs");
+    const input = fs.readFileSync(0, "utf8").trim();
+    if (!input) process.exit(1);
+    try {
+      JSON.parse(input);
+      process.exit(0);
+    } catch {
+      process.exit(1);
+    }
+  '
+}
+
+warn_non_json_response() {
+  local label="$1"
+  local response="$2"
+  local first_line=""
+
+  first_line="$(printf '%s\n' "$response" | sed -n '1p' | cut -c 1-160)"
+  if [[ -z "$first_line" ]]; then
+    first_line="<empty response>"
+  fi
+
+  echo "Warning: ${label} returned a non-JSON response; ignoring it. First line: ${first_line}" >&2
 }
 
 require_positive_integer() {
@@ -720,7 +748,20 @@ count_open_bot_prs() {
 
 count_open_bot_prs_excluding_heads() {
   local allowed_heads=("$@")
-  local head allowed skip count=0
+  local pr_heads head allowed skip count=0
+
+  if ! pr_heads="$(
+    gh pr list \
+      --repo "$REPO_SLUG" \
+      --state open \
+      --author "$BOT_LOGIN" \
+      --limit 100 \
+      --json headRefName \
+      --jq '.[].headRefName // empty'
+  )"; then
+    echo "Failed to list open PRs by ${BOT_LOGIN}; stopping to preserve the one-bot-PR guard." >&2
+    return 1
+  fi
 
   while IFS= read -r head; do
     [[ -z "$head" ]] && continue
@@ -734,15 +775,7 @@ count_open_bot_prs_excluding_heads() {
     if (( skip == 0 )); then
       count=$((count + 1))
     fi
-  done < <(
-    gh pr list \
-      --repo "$REPO_SLUG" \
-      --state open \
-      --author "$BOT_LOGIN" \
-      --limit 100 \
-      --json headRefName \
-      --jq '.[].headRefName // empty'
-  )
+  done <<< "$pr_heads"
 
   printf '%s\n' "$count"
 }
@@ -1325,23 +1358,32 @@ resolve_issue_parent_epic() {
   local issue_number="$1"
   local owner="${REPO_SLUG%%/*}"
   local repo="${REPO_SLUG##*/}"
+  local response=""
 
-  gh api graphql \
-    -F issueNumber="$issue_number" \
-    -f query='
-      query($issueNumber: Int!) {
-        repository(owner: "'"$owner"'", name: "'"$repo"'") {
-          issue(number: $issueNumber) {
-            parent {
-              number
-              title
-              url
+  response="$({
+    gh api graphql \
+      -F issueNumber="$issue_number" \
+      -f query='
+        query($issueNumber: Int!) {
+          repository(owner: "'"$owner"'", name: "'"$repo"'") {
+            issue(number: $issueNumber) {
+              parent {
+                number
+                title
+                url
+              }
             }
           }
         }
-      }
-    ' 2>/dev/null \
-    | node -e '
+      ' 2>/dev/null
+  } || true)"
+
+  if ! printf '%s' "$response" | is_json_response; then
+    warn_non_json_response "parent epic lookup for issue #${issue_number}" "$response"
+    return 0
+  fi
+
+  printf '%s' "$response" | node -e '
       const fs = require("fs");
       const payload = JSON.parse(fs.readFileSync(0, "utf8"));
       const parent =
@@ -1362,8 +1404,10 @@ resolve_issue_parent_epic() {
 }
 
 resolve_project_number() {
-  local number
-  number="$({
+  local number=""
+  local response=""
+
+  response="$({
     gh api graphql \
       -f owner="$PROJECT_OWNER" \
       -f query='
@@ -1385,8 +1429,16 @@ resolve_project_number() {
             }
           }
         }
-      ' 2>/dev/null \
-      | PROJECT_TITLE="$PROJECT_TITLE" node -e '
+      ' 2>/dev/null
+  } || true)"
+
+  if ! printf '%s' "$response" | is_json_response; then
+    warn_non_json_response "project number lookup for '${PROJECT_TITLE}'" "$response"
+    printf '%s\n' "$number"
+    return 0
+  fi
+
+  number="$(printf '%s' "$response" | PROJECT_TITLE="$PROJECT_TITLE" node -e '
         const fs = require("fs");
         const payload = JSON.parse(fs.readFileSync(0, "utf8"));
         const data = payload && payload.data ? payload.data : {};
@@ -1404,8 +1456,7 @@ resolve_project_number() {
         if (match && Number.isInteger(match.number) && match.number > 0) {
           process.stdout.write(String(match.number));
         }
-      '
-  } || true)"
+      ' || true)"
 
   printf '%s\n' "$number"
 }
@@ -1414,48 +1465,58 @@ resolve_project_status_edit_args() {
   local project_number="$1"
   local target_status_name="$2"
   local number="${project_number}"
+  local response=""
 
-  gh api graphql \
-    -f owner="$PROJECT_OWNER" \
-    -F projectNumber="$number" \
-    -f query='
-      query($owner: String!, $projectNumber: Int!) {
-        user(login: $owner) {
-          projectV2(number: $projectNumber) {
-            id
-            fields(first: 100) {
-              nodes {
-                ... on ProjectV2SingleSelectField {
-                  id
-                  name
-                  options {
+  response="$({
+    gh api graphql \
+      -f owner="$PROJECT_OWNER" \
+      -F projectNumber="$number" \
+      -f query='
+        query($owner: String!, $projectNumber: Int!) {
+          user(login: $owner) {
+            projectV2(number: $projectNumber) {
+              id
+              fields(first: 100) {
+                nodes {
+                  ... on ProjectV2SingleSelectField {
                     id
                     name
+                    options {
+                      id
+                      name
+                    }
+                  }
+                }
+              }
+            }
+          }
+          organization(login: $owner) {
+            projectV2(number: $projectNumber) {
+              id
+              fields(first: 100) {
+                nodes {
+                  ... on ProjectV2SingleSelectField {
+                    id
+                    name
+                    options {
+                      id
+                      name
+                    }
                   }
                 }
               }
             }
           }
         }
-        organization(login: $owner) {
-          projectV2(number: $projectNumber) {
-            id
-            fields(first: 100) {
-              nodes {
-                ... on ProjectV2SingleSelectField {
-                  id
-                  name
-                  options {
-                    id
-                    name
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    ' 2>/dev/null \
+      ' 2>/dev/null
+  } || true)"
+
+  if ! printf '%s' "$response" | is_json_response; then
+    warn_non_json_response "project status metadata lookup for '${target_status_name}'" "$response"
+    return 0
+  fi
+
+  printf '%s' "$response" \
     | PROJECT_STATUS_FIELD_NAME="$PROJECT_STATUS_FIELD_NAME" \
       TARGET_STATUS_NAME="$target_status_name" \
       node -e '
@@ -1505,26 +1566,35 @@ resolve_issue_project_item_id() {
   local repo="${REPO_SLUG##*/}"
   local number="${issue_number}"
   local project_num="${project_number}"
+  local response=""
 
-  gh api graphql \
-    -F issueNumber="$number" \
-    -f query='
-      query($issueNumber: Int!) {
-        repository(owner: "'"$owner"'", name: "'"$repo"'") {
-          issue(number: $issueNumber) {
-            projectItems(first: 100) {
-              nodes {
-                id
-                project {
-                  number
+  response="$({
+    gh api graphql \
+      -F issueNumber="$number" \
+      -f query='
+        query($issueNumber: Int!) {
+          repository(owner: "'"$owner"'", name: "'"$repo"'") {
+            issue(number: $issueNumber) {
+              projectItems(first: 100) {
+                nodes {
+                  id
+                  project {
+                    number
+                  }
                 }
               }
             }
           }
         }
-      }
-    ' 2>/dev/null \
-    | TARGET_PROJECT_NUMBER="$project_num" node -e '
+      ' 2>/dev/null
+  } || true)"
+
+  if ! printf '%s' "$response" | is_json_response; then
+    warn_non_json_response "project item lookup for issue #${issue_number}" "$response"
+    return 0
+  fi
+
+  printf '%s' "$response" | TARGET_PROJECT_NUMBER="$project_num" node -e '
       const fs = require("fs");
       const payload = JSON.parse(fs.readFileSync(0, "utf8"));
       const items =
@@ -1760,6 +1830,13 @@ collect_issue_candidates_from_project() {
     fi
 
     if [[ -z "$response" ]]; then
+      break
+    fi
+
+    if ! printf '%s' "$response" | is_json_response; then
+      warn_non_json_response \
+        "project item lookup for status '${target_status_name}'" \
+        "$response"
       break
     fi
 
@@ -2903,8 +2980,9 @@ main() {
   if [[ -n "$EPIC_ISSUE_NUMBER" ]]; then
     EXISTING_EPIC_PR_JSON="$(find_open_pr_for_head_branch "$EPIC_BRANCH_NAME")"
     EXISTING_CHILD_PR_JSON="$(find_open_pr_for_head_branch "$BRANCH_NAME")"
-    OPEN_BOT_PRS="$(count_open_bot_prs_excluding_heads "$EPIC_BRANCH_NAME" "$BRANCH_NAME")"
+    OPEN_BOT_PRS="$(count_open_bot_prs_excluding_heads "$COVERAGE_BRANCH_NAME" "$EPIC_BRANCH_NAME" "$BRANCH_NAME")"
     echo "Open unrelated bot PR count: ${OPEN_BOT_PRS}"
+    echo "Allowed bot PR heads: ${COVERAGE_BRANCH_NAME}, ${EPIC_BRANCH_NAME}, ${BRANCH_NAME}"
     if [[ "$OPEN_BOT_PRS" != "0" ]]; then
       runner_status "Skipped: found ${OPEN_BOT_PRS} unrelated open PR(s) by ${BOT_LOGIN}."
       exit 0
@@ -2917,8 +2995,9 @@ main() {
       echo "Child branch ${BRANCH_NAME} already has an open PR; runner will update it."
     fi
   else
-    OPEN_BOT_PRS="$(count_open_bot_prs)"
-    echo "Open bot PR count: ${OPEN_BOT_PRS}"
+    OPEN_BOT_PRS="$(count_open_bot_prs_excluding_heads "$COVERAGE_BRANCH_NAME")"
+    echo "Open unrelated bot PR count: ${OPEN_BOT_PRS}"
+    echo "Allowed bot PR heads: ${COVERAGE_BRANCH_NAME}"
     if [[ "$OPEN_BOT_PRS" != "0" ]]; then
       runner_status "Skipped: found ${OPEN_BOT_PRS} open PR(s) by ${BOT_LOGIN}."
       exit 0
