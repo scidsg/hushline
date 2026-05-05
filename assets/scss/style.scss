@@ -5067,3 +5067,13 @@ button .badge {
   background-position-x: center;
   background-position-y: center;
 }
+
+#payment-method-form,
+#disable-autorenew-form {
+    margin: 0;
+
+}
+
+#payment-method-form {
+    margin-top: 1rem;
+}
