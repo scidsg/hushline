@@ -748,7 +748,20 @@ count_open_bot_prs() {
 
 count_open_bot_prs_excluding_heads() {
   local allowed_heads=("$@")
-  local head allowed skip count=0
+  local pr_heads head allowed skip count=0
+
+  if ! pr_heads="$(
+    gh pr list \
+      --repo "$REPO_SLUG" \
+      --state open \
+      --author "$BOT_LOGIN" \
+      --limit 100 \
+      --json headRefName \
+      --jq '.[].headRefName // empty'
+  )"; then
+    echo "Failed to list open PRs by ${BOT_LOGIN}; stopping to preserve the one-bot-PR guard." >&2
+    return 1
+  fi
 
   while IFS= read -r head; do
     [[ -z "$head" ]] && continue
@@ -762,15 +775,7 @@ count_open_bot_prs_excluding_heads() {
     if (( skip == 0 )); then
       count=$((count + 1))
     fi
-  done < <(
-    gh pr list \
-      --repo "$REPO_SLUG" \
-      --state open \
-      --author "$BOT_LOGIN" \
-      --limit 100 \
-      --json headRefName \
-      --jq '.[].headRefName // empty'
-  )
+  done <<< "$pr_heads"
 
   printf '%s\n' "$count"
 }
