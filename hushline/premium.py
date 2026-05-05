@@ -282,6 +282,27 @@ def handle_invoice_created(invoice: stripe.Invoice) -> None:
     db.session.commit()
 
 
+def _receipt_url_from_invoice(invoice: stripe.Invoice) -> str | None:
+    hosted_invoice_url = getattr(invoice, "hosted_invoice_url", None)
+    if isinstance(hosted_invoice_url, str) and hosted_invoice_url:
+        return hosted_invoice_url
+
+    invoice_pdf = getattr(invoice, "invoice_pdf", None)
+    if isinstance(invoice_pdf, str) and invoice_pdf:
+        return invoice_pdf
+
+    return None
+
+
+def _sync_invoice(stripe_invoice: StripeInvoice, invoice: stripe.Invoice) -> None:
+    stripe_invoice.total = invoice.total
+    stripe_invoice.status = StripeInvoiceStatusEnum(invoice.status)
+
+    receipt_url = _receipt_url_from_invoice(invoice)
+    if receipt_url:
+        stripe_invoice.hosted_invoice_url = receipt_url
+
+
 def handle_invoice_updated(invoice: stripe.Invoice) -> None:
     # invoice.updated
 
@@ -289,8 +310,7 @@ def handle_invoice_updated(invoice: stripe.Invoice) -> None:
         db.select(StripeInvoice).filter_by(invoice_id=invoice.id)
     ).one_or_none()
     if stripe_invoice:
-        stripe_invoice.total = invoice.total
-        stripe_invoice.status = StripeInvoiceStatusEnum(invoice.status)
+        _sync_invoice(stripe_invoice, invoice)
         db.session.commit()
     else:
         raise ValueError(f"Could not find invoice with ID {invoice.id}")
@@ -366,7 +386,7 @@ async def worker(app: Flask) -> None:
                     )
                     if event.type == "invoice.created":
                         handle_invoice_created(invoice)
-                    elif event.type == "invoice.updated":
+                    elif event.type in ["invoice.updated", "invoice.payment_succeeded"]:
                         handle_invoice_updated(invoice)
 
             except (
@@ -421,6 +441,41 @@ def create_blueprint(app: Flask) -> Blueprint:
         return render_template(
             "premium.html", user=user, invoices=invoices, business_price=get_business_price_string()
         )
+
+    @bp.route("/invoices/<int:invoice_id>/receipt")
+    @authentication_required
+    def receipt(invoice_id: int) -> Response | str:
+        user = db.session.get(User, session.get("user_id"))
+        if not user:
+            session.clear()
+            return redirect(url_for("login"))
+
+        stripe_invoice = db.session.scalars(
+            db.select(StripeInvoice)
+            .filter_by(id=invoice_id)
+            .filter_by(user_id=user.id)
+            .filter_by(status=StripeInvoiceStatusEnum.PAID)
+        ).one_or_none()
+        if not stripe_invoice:
+            abort(404)
+
+        receipt_url = stripe_invoice.hosted_invoice_url
+        try:
+            latest_invoice = stripe.Invoice.retrieve(stripe_invoice.invoice_id)
+        except stripe._error.StripeError as e:
+            current_app.logger.warning(
+                f"Unable to refresh Stripe invoice {stripe_invoice.invoice_id}: {e}"
+            )
+        else:
+            _sync_invoice(stripe_invoice, latest_invoice)
+            db.session.commit()
+            receipt_url = stripe_invoice.hosted_invoice_url
+
+        if not receipt_url:
+            flash("⚠️ Receipt is not available yet. Please try again later.", "warning")
+            return redirect(url_for("premium.index"))
+
+        return redirect(receipt_url)
 
     @bp.route("/select-tier")
     @authentication_required
@@ -508,6 +563,43 @@ def create_blueprint(app: Flask) -> Blueprint:
 
         if checkout_session.url:
             return redirect(checkout_session.url)
+
+        return abort(500)
+
+    @bp.route("/payment-method", methods=["POST"])
+    @authentication_required
+    def update_payment_method() -> Response | str:
+        user = db.session.get(User, session.get("user_id"))
+        if not user:
+            session.clear()
+            return redirect(url_for("login"))
+
+        if not user.is_business_tier or not user.stripe_customer_id:
+            flash("⚠️ No active subscription found.")
+            return redirect(url_for("premium.index"))
+
+        return_url = canonical_external_url("premium.index")
+        try:
+            portal_session = stripe.billing_portal.Session.create(
+                customer=user.stripe_customer_id,
+                return_url=return_url,
+                flow_data={
+                    "type": "payment_method_update",
+                    "after_completion": {
+                        "type": "redirect",
+                        "redirect": {"return_url": return_url},
+                    },
+                },
+            )
+        except stripe._error.StripeError as e:
+            current_app.logger.error(
+                f"Failed to create Stripe billing portal session: {e}", exc_info=True
+            )
+            flash("⚠️ Something went wrong while opening payment settings.")
+            return redirect(url_for("premium.index"))
+
+        if portal_session.url:
+            return redirect(portal_session.url)
 
         return abort(500)
 

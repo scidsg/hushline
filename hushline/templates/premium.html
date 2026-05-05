@@ -37,6 +37,14 @@
       {% endif %}
 
       {% if user.is_business_tier %}
+        <form
+          id="payment-method-form"
+          action="{{ url_for('premium.update_payment_method') }}"
+          method="post"
+        >
+          <button class="btn" id="update-payment-method">Update Payment Method</button>
+        </form>
+
         {% if user.stripe_subscription_cancel_at_period_end %}
           <p class="meta sub-info">
             ⚠️ Your subscription will expire on {{
@@ -85,10 +93,14 @@
           {% for invoice in invoices %}
             <tr>
               <td>{{ invoice.created_at.strftime('%Y-%m-%d') }}</td>
-              <td>${{ invoice.total / 100 }}</td>
+              <td>{{ "$%d.%02d"|format(invoice.total // 100, invoice.total % 100) }}</td>
               <td>{{ invoice.status.value }}</td>
               <td>
-                <a href="{{ invoice.hosted_invoice_url }}" target="_blank">
+                <a
+                  href="{{ url_for('premium.receipt', invoice_id=invoice.id) }}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   Receipt
                 </a>
               </td>

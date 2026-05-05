@@ -392,6 +392,106 @@ def test_handle_invoice_updated(app: Flask, user: User) -> None:
 
     stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id="inv_123").one()
     assert stripe_invoice.status == StripeInvoiceStatusEnum.PAID
+    assert stripe_invoice.hosted_invoice_url == "https://example.com"
+
+
+def test_handle_invoice_updated_refreshes_receipt_url(app: Flask, user: User) -> None:
+    user.stripe_customer_id = "cus_123"
+    user.stripe_subscription_id = "sub_123"
+    db.session.commit()
+
+    invoice = MagicMock(
+        id="inv_123",
+        customer="cus_123",
+        hosted_invoice_url="https://stripe.com/invoice/stale",
+        total=2000,
+        status=StripeInvoiceStatusEnum.OPEN.value,
+        lines=MagicMock(data=[MagicMock(plan=MagicMock(product="prod_123"))]),
+        subscription="sub_123",
+    )
+    handle_invoice_created(invoice)
+
+    invoice.status = StripeInvoiceStatusEnum.PAID.value
+    invoice.hosted_invoice_url = "https://stripe.com/invoice/fresh"
+    handle_invoice_updated(invoice)
+
+    stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id="inv_123").one()
+    assert stripe_invoice.status == StripeInvoiceStatusEnum.PAID
+    assert stripe_invoice.hosted_invoice_url == "https://stripe.com/invoice/fresh"
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_premium_index_links_receipts_through_authenticated_route(
+    client: FlaskClient, user: User, business_tier: Tier
+) -> None:
+    user.stripe_customer_id = "cus_123"
+    user.set_business_tier()
+    db.session.commit()
+
+    handle_invoice_created(
+        MagicMock(
+            id="inv_123",
+            customer="cus_123",
+            hosted_invoice_url="https://stripe.com/invoice/stale",
+            total=500,
+            status=StripeInvoiceStatusEnum.PAID.value,
+            lines=MagicMock(
+                data=[MagicMock(plan=MagicMock(product=business_tier.stripe_product_id))]
+            ),
+            subscription="sub_123",
+        )
+    )
+    stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id="inv_123").one()
+
+    response = client.get(url_for("premium.index"))
+
+    assert response.status_code == 200
+    assert url_for("premium.receipt", invoice_id=stripe_invoice.id) in response.text
+    assert url_for("premium.update_payment_method") in response.text
+    assert "Update Payment Method" in response.text
+    assert "<td>$5.00</td>" in response.text
+    assert "https://stripe.com/invoice/stale" not in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_receipt_route_refreshes_stale_url_before_redirect(
+    client: FlaskClient, user: User, business_tier: Tier, mocker: MockFixture
+) -> None:
+    user.stripe_customer_id = "cus_123"
+    user.set_business_tier()
+    db.session.commit()
+
+    handle_invoice_created(
+        MagicMock(
+            id="inv_123",
+            customer="cus_123",
+            hosted_invoice_url="https://stripe.com/invoice/stale",
+            total=2000,
+            status=StripeInvoiceStatusEnum.PAID.value,
+            lines=MagicMock(
+                data=[MagicMock(plan=MagicMock(product=business_tier.stripe_product_id))]
+            ),
+            subscription="sub_123",
+        )
+    )
+    stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id="inv_123").one()
+    retrieve_invoice = mocker.patch(
+        "hushline.premium.stripe.Invoice.retrieve",
+        return_value=MagicMock(
+            id="inv_123",
+            hosted_invoice_url="https://stripe.com/invoice/fresh",
+            total=2000,
+            status=StripeInvoiceStatusEnum.PAID.value,
+        ),
+    )
+
+    response = client.get(url_for("premium.receipt", invoice_id=stripe_invoice.id))
+
+    assert response.status_code == 302
+    assert response.location == "https://stripe.com/invoice/fresh"
+    retrieve_invoice.assert_called_once_with("inv_123")
+    db.session.refresh(stripe_invoice)
+    assert stripe_invoice.hosted_invoice_url == "https://stripe.com/invoice/fresh"
 
 
 def test_handle_invoice_updated_raises_for_missing_invoice(app: Flask) -> None:
@@ -501,6 +601,80 @@ def test_upgrade_process_uses_public_base_url_for_success_url(
     assert response.status_code == 302
     assert response.location == "https://checkout.stripe.com/session_123"
     assert checkout_create.call_args.kwargs["success_url"] == "https://safe.example/premium/waiting"
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_update_payment_method_creates_billing_portal_session(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    mocker: MockFixture,
+) -> None:
+    user.set_business_tier()
+    user.stripe_customer_id = "cus_123"
+    db.session.commit()
+    app.config["PUBLIC_BASE_URL"] = "https://safe.example"
+    portal_create = mocker.patch(
+        "hushline.premium.stripe.billing_portal.Session.create",
+        return_value=MagicMock(url="https://billing.stripe.com/session_123"),
+    )
+
+    response = client.post(url_for("premium.update_payment_method"))
+
+    assert response.status_code == 302
+    assert response.location == "https://billing.stripe.com/session_123"
+    portal_create.assert_called_once_with(
+        customer="cus_123",
+        return_url="https://safe.example/premium/",
+        flow_data={
+            "type": "payment_method_update",
+            "after_completion": {
+                "type": "redirect",
+                "redirect": {"return_url": "https://safe.example/premium/"},
+            },
+        },
+    )
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_update_payment_method_requires_active_subscription(
+    client: FlaskClient, user: User, mocker: MockFixture
+) -> None:
+    user.set_free_tier()
+    user.stripe_customer_id = "cus_123"
+    db.session.commit()
+    portal_create = mocker.patch("hushline.premium.stripe.billing_portal.Session.create")
+
+    response = client.post(url_for("premium.update_payment_method"))
+
+    assert response.status_code == 302
+    assert response.location == url_for("premium.index")
+    portal_create.assert_not_called()
+    with client.session_transaction():
+        flashed_messages = get_flashed_messages()
+    assert "⚠️ No active subscription found." in flashed_messages
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_update_payment_method_stripe_error(
+    client: FlaskClient, user: User, mocker: MockFixture
+) -> None:
+    user.set_business_tier()
+    user.stripe_customer_id = "cus_123"
+    db.session.commit()
+    portal_create = mocker.patch(
+        "hushline.premium.stripe.billing_portal.Session.create",
+        side_effect=StripeError("An error occurred"),
+    )
+
+    response = client.post(url_for("premium.update_payment_method"))
+
+    assert response.status_code == 302
+    assert response.location == url_for("premium.index")
+    assert portal_create.called
+    with client.session_transaction():
+        flashed_messages = get_flashed_messages()
+    assert "⚠️ Something went wrong while opening payment settings." in flashed_messages
 
 
 def test_disable_autorenew_no_user_in_session(client: FlaskClient) -> None:
@@ -768,6 +942,7 @@ def test_premium_index_warns_on_incomplete_subscription(
         ("premium.select_tier", "get"),
         ("premium.select_free", "post"),
         ("premium.upgrade", "post"),
+        ("premium.update_payment_method", "post"),
         ("premium.disable_autorenew", "post"),
         ("premium.enable_autorenew", "post"),
         ("premium.cancel", "post"),
@@ -799,6 +974,7 @@ def test_premium_routes_redirect_to_login_when_user_missing_after_auth(
         ("premium.select_tier", "get"),
         ("premium.select_free", "post"),
         ("premium.upgrade", "post"),
+        ("premium.update_payment_method", "post"),
         ("premium.disable_autorenew", "post"),
         ("premium.enable_autorenew", "post"),
         ("premium.cancel", "post"),
@@ -1153,3 +1329,44 @@ async def test_worker_processes_invoice_created_event(app: Flask, mocker: MockFi
     db.session.refresh(pending)
     assert pending.status == StripeEventStatusEnum.FINISHED
     handle_invoice_created_mock.assert_called_once_with(invoice_obj)
+
+
+@pytest.mark.asyncio()
+async def test_worker_processes_invoice_payment_succeeded_event(
+    app: Flask, mocker: MockFixture
+) -> None:
+    pending = StripeEvent(
+        MagicMock(id="evt_worker_invoice_paid", created=1, type="invoice.payment_succeeded")
+    )
+    pending.event_data = json.dumps({"id": "evt_worker_invoice_paid"})
+    pending.status = StripeEventStatusEnum.PENDING
+    db.session.add(pending)
+    db.session.commit()
+
+    mocker.patch("hushline.premium.sa.create_engine", return_value=MagicMock())
+    inspect_obj = MagicMock()
+    inspect_obj.has_table.return_value = True
+    mocker.patch("hushline.premium.sa.inspect", return_value=inspect_obj)
+
+    invoice_obj = MagicMock()
+    mocker.patch("hushline.premium.stripe.Invoice.construct_from", return_value=invoice_obj)
+    handle_invoice_updated_mock = mocker.patch("hushline.premium.handle_invoice_updated")
+    mocker.patch(
+        "hushline.premium.stripe.Event.construct_from",
+        return_value=MagicMock(
+            type="invoice.payment_succeeded",
+            data=MagicMock(object={"id": "inv_abc"}),
+        ),
+    )
+
+    async def _stop_sleep(_seconds: int) -> None:
+        raise RuntimeError("stop worker")
+
+    mocker.patch("hushline.premium.asyncio.sleep", side_effect=_stop_sleep)
+
+    with pytest.raises(RuntimeError, match="stop worker"):
+        await worker(app)
+
+    db.session.refresh(pending)
+    assert pending.status == StripeEventStatusEnum.FINISHED
+    handle_invoice_updated_mock.assert_called_once_with(invoice_obj)
