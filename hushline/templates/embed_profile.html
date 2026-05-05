@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="{{ brand_primary_color }}" />
+    <title>Secure message to {{ display_name_or_username }} - {{ brand_name }}</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+    <script src="{{ url_for('static', filename='no-js.js') }}"></script>
+    <style>
+      :root {
+        --color-brand: oklch(from {{ brand_primary_color }} l c h);
+        --theme-color-dark: {{ brand_primary_color_dark }};
+      }
+
+      body.embed-page {
+        background: #fff;
+        color: #111;
+        margin: 0;
+      }
+
+      .embed-shell {
+        padding: 1rem;
+      }
+
+      .embed-trust-chrome,
+      .embed-recipient,
+      .embed-actions {
+        border-bottom: 1px solid #d8d8d8;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+      }
+
+      .embed-brand {
+        align-items: center;
+        display: flex;
+        gap: 0.75rem;
+      }
+
+      .embed-brand h1,
+      .embed-recipient h2 {
+        margin: 0;
+      }
+
+      .embed-logo {
+        height: 2rem;
+        width: auto;
+      }
+
+      .embed-meta {
+        margin: 0.25rem 0 0;
+      }
+
+      .embed-status-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        list-style: none;
+        margin: 0.75rem 0 0;
+        padding: 0;
+      }
+
+      .embed-status-list li {
+        border: 1px solid #d8d8d8;
+        border-radius: 0.25rem;
+        padding: 0.25rem 0.5rem;
+      }
+
+      .embed-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+    </style>
+    {% if not message_submission_block_reason %}
+      <script defer src="{{ url_for('static', filename='js/diceware-words.js') }}"></script>
+      <script defer src="{{ url_for('static', filename='js/client-side-encryption.js') }}"></script>
+    {% endif %}
+  </head>
+  <body class="embed-page">
+    <main class="embed-shell" id="main-content">
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <div class="flash-messages" role="status" aria-live="polite" aria-atomic="true">
+            {% for message in messages %}
+              <div class="flash-message">
+                <span class="flash-message-text">{{ message }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <section class="embed-trust-chrome" aria-labelledby="embed-trust-heading">
+        <div class="embed-brand">
+          {% if brand_logo_url %}
+            <img class="embed-logo" src="{{ brand_logo_url }}" alt="{{ brand_name }} logo" />
+          {% endif %}
+          <div>
+            <h1 id="embed-trust-heading">Secure Hush Line form</h1>
+            <p class="meta embed-meta">Hosted by {{ brand_name }}</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="embed-recipient" aria-labelledby="embed-recipient-heading">
+        <p class="meta embed-meta">Sending to</p>
+        <h2 id="embed-recipient-heading">{{ display_name_or_username }}</h2>
+        <p class="meta embed-meta">@{{ username.username }}</p>
+        <ul class="embed-status-list" aria-label="Recipient trust and encryption state">
+          {% if user.is_admin %}
+            <li>Admin account</li>
+          {% endif %}
+          {% if username.is_verified %}
+            <li>Verified account</li>
+          {% elif show_caution_badge %}
+            <li>Caution advised</li>
+          {% else %}
+            <li>Unverified account</li>
+          {% endif %}
+          <li>
+            {% if recipient_public_keys %}
+              Client-side encryption enabled
+            {% else %}
+              Encryption unavailable
+            {% endif %}
+          </li>
+        </ul>
+      </section>
+
+      <nav class="embed-actions" aria-label="Embed safety actions">
+        <a href="{{ open_profile_url }}" target="_blank" rel="noopener noreferrer">
+          Open on Hush Line
+        </a>
+        <a href="{{ guidance_exit_button_link }}" target="_top" rel="noopener noreferrer">
+          {{ guidance_exit_button_text }}
+        </a>
+      </nav>
+
+      <div id="userEmailSettings" class="display-none">
+        {{ {
+            "sendEmail": user.enable_email_notifications,
+            "includeContents": user.email_include_message_content,
+           } | tojson }}
+      </div>
+
+      <form
+        method="POST"
+        action="{{ url_for('embed_profile', username=username.username) }}"
+        id="messageForm"
+        data-submit-spinner="true"
+      >
+        {{ form.hidden_tag() }}
+        <input type="hidden" name="csrf_token" value="{{ embed_captcha_token }}" />
+        {{ form.owner_guard_nonce(type="hidden", value=owner_guard_nonce) }}
+        {{ form.owner_guard_signature(type="hidden", value=owner_guard_signature) }}
+        {{ form.embed_captcha_token(type="hidden", value=embed_captcha_token) }}
+
+        {% for data in field_data %}
+          {% if data['field'].enabled %}
+            <div class="field-group">
+              <div class="label">
+                <label for="{{ data['name'] }}">
+                  {{ form[data['name']].label.text }}
+                  <span class="meta">
+                    {% if data['field'].required %}Required{% else %}Optional{% endif %}
+                  </span>
+                </label>
+              </div>
+              <div>
+                {% if message_submission_block_reason %}
+                  {{ form[data['name']](id=data['name'], disabled='disabled') }}
+                {% else %}
+                  {% if data['field'].encrypted %}
+                    {{ form[data['name']](id=data['name'], class='form-field encrypted-field', **{'data-label': form[data['name']].label.text}) }}
+                    <p class="meta">Encrypted before submission</p>
+                  {% else %}
+                    {{ form[data['name']](id=data['name'], class='form-field', **{'data-label': form[data['name']].label.text}) }}
+                    <p class="meta">Not encrypted before submission</p>
+                  {% endif %}
+                {% endif %}
+              </div>
+            </div>
+          {% endif %}
+        {% endfor %}
+
+        <script id="recipientPublicKeys" type="application/json">{{ recipient_public_keys | tojson }}</script>
+
+        {% if not message_submission_block_reason %}
+          <div class="captcha">
+            <p>Solve the math problem to submit your message.</p>
+            <div class="captcha_container">
+              <label for="captcha_answer">{{ math_problem }}</label>
+              {{ form.captcha_answer(
+                id="captcha_answer",
+                value="",
+                required="",
+                autocomplete="off",
+                aria_label="Solve " ~ math_problem ~ " to submit your message",
+              ) }}
+            </div>
+          </div>
+        {% endif %}
+
+        <button
+          type="submit"
+          id="submitBtn"
+          aria-label="Send a message to {{ display_name_or_username }}"
+          {% if message_submission_block_reason %}disabled="disabled"{% endif %}
+        >
+          Send Message
+        </button>
+
+        {% if message_submission_block_reason %}
+          <div class="pgp-disabled-overlay">
+            <p>
+              {% if message_submission_block_reason == "suspended" %}
+                This account is suspended. New messages cannot be sent at this time.
+              {% else %}
+                Sending messages is disabled until {{ display_name_or_username }} adds
+                a usable recipient PGP key.
+              {% endif %}
+            </p>
+          </div>
+        {% endif %}
+      </form>
+    </main>
+  </body>
+</html>

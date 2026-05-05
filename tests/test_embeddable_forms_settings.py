@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
+from werkzeug.test import TestResponse
 
 from hushline.db import db
 from hushline.model import Message, OrganizationSetting, User, Username
@@ -15,6 +16,18 @@ def _make_message_capable(user: User) -> None:
 def _enable_embeds_globally() -> None:
     OrganizationSetting.upsert(OrganizationSetting.EMBEDDABLE_FORMS_ENABLED, True)
     db.session.commit()
+
+
+def _configure_embed(username: Username, origin: str = "https://tips.example") -> None:
+    username.embed_enabled = True
+    username.set_embed_allowed_origins([origin])
+    db.session.commit()
+
+
+def _assert_safe_embed_denial(response: TestResponse) -> None:
+    assert response.status_code == 404
+    assert "frame-ancestors 'none'" in response.headers["Content-Security-Policy"]
+    assert response.headers["X-Frame-Options"] == "DENY"
 
 
 def _embed_settings_data(enabled: bool, origins: str) -> dict[str, str]:
@@ -49,6 +62,7 @@ def _embed_submission_data(response_text: str) -> dict[str, str]:
         value = field.get("value")
         assert value
         data[name] = str(value)
+    data["csrf_token"] = data["embed_captcha_token"]
     return data
 
 
@@ -69,13 +83,76 @@ def test_admin_embeddable_forms_default_disabled(client: FlaskClient, admin_user
 
 def test_embed_profile_route_is_disabled_by_default(client: FlaskClient, user: User) -> None:
     _make_message_capable(user)
-    user.primary_username.embed_enabled = True
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+
+    _assert_safe_embed_denial(response)
+
+
+def test_embed_profile_route_denies_profile_opted_out(client: FlaskClient, user: User) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
     user.primary_username.set_embed_allowed_origins(["https://tips.example"])
     db.session.commit()
 
     response = client.get(url_for("embed_profile", username=user.primary_username.username))
 
-    assert response.status_code == 404
+    _assert_safe_embed_denial(response)
+
+
+def test_embed_profile_route_denies_missing_origin_allowlist(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    user.primary_username.embed_enabled = True
+    db.session.commit()
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+
+    _assert_safe_embed_denial(response)
+
+
+def test_embed_profile_route_denies_missing_recipient_key(client: FlaskClient, user: User) -> None:
+    _enable_embeds_globally()
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+
+    _assert_safe_embed_denial(response)
+
+
+def test_embed_profile_route_denies_suspended_target(client: FlaskClient, user: User) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+    user.is_suspended = True
+    db.session.commit()
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+
+    _assert_safe_embed_denial(response)
+
+
+def test_embed_profile_route_denies_unknown_target(client: FlaskClient) -> None:
+    response = client.get(url_for("embed_profile", username="does-not-exist"))
+
+    _assert_safe_embed_denial(response)
+
+
+def test_embed_profile_route_supports_alias(
+    client: FlaskClient, user: User, user_alias: Username
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user_alias, "https://alias.example")
+
+    response = client.get(url_for("embed_profile", username=user_alias.username))
+
+    assert response.status_code == 200
+    assert f"@{user_alias.username}" in response.text
+    assert "frame-ancestors https://alias.example" in response.headers["Content-Security-Policy"]
 
 
 def test_embed_profile_submission_does_not_require_session_cookie(
@@ -88,14 +165,12 @@ def test_embed_profile_submission_does_not_require_session_cookie(
     try:
         _enable_embeds_globally()
         _make_message_capable(user)
-        user.primary_username.embed_enabled = True
-        user.primary_username.set_embed_allowed_origins(["https://tips.example"])
-        db.session.commit()
+        _configure_embed(user.primary_username)
 
         response = client.get(url_for("embed_profile", username=user.primary_username.username))
 
         assert response.status_code == 200
-        assert 'name="csrf_token"' not in response.text
+        assert 'name="csrf_token"' in response.text
         with client.session_transaction() as session:
             assert "math_answer" not in session
             assert "math_problem" not in session
@@ -122,13 +197,36 @@ def test_embed_profile_submission_does_not_require_session_cookie(
         app.config["WTF_CSRF_ENABLED"] = prior_csrf_setting
 
 
+def test_embed_profile_submission_requires_embed_form_token(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    submission_data.pop("csrf_token")
+
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "Embedded Signal contact",
+            "field_1": "Embedded message",
+            **submission_data,
+        },
+    )
+
+    assert post_response.status_code == 400
+    assert "Invalid embed form token" in post_response.text
+
+
 def test_profile_embed_settings_do_not_show_snippet_when_globally_disabled(
     client: FlaskClient, user: User
 ) -> None:
     _make_message_capable(user)
-    user.primary_username.embed_enabled = True
-    user.primary_username.set_embed_allowed_origins(["https://tips.example"])
-    db.session.commit()
+    _configure_embed(user.primary_username)
     with client.session_transaction() as session:
         session["user_id"] = user.id
         session["session_id"] = user.session_id
@@ -216,12 +314,78 @@ def test_primary_embed_settings_update_origins_and_render_iframe_snippet(
         username=user.primary_username.username,
         _external=True,
     )
+    assert f"/embed/to/{user.primary_username.username}" in iframe["src"]
     assert iframe["sandbox"] == ["allow-forms", "allow-scripts"]
     assert iframe["referrerpolicy"] == "no-referrer"
     assert iframe["title"]
     assert iframe["width"] == "100%"
     assert iframe["height"] == "700"
     assert "max-width:720px" in iframe["style"]
+
+
+def test_embed_profile_template_has_compact_trust_chrome_and_form(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    user.primary_username.display_name = "Example Recipient"
+    user.primary_username.is_verified = True
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+
+    assert response.status_code == 200
+    page = BeautifulSoup(response.text, "html.parser")
+    assert page.select_one("body.embed-page") is not None
+    assert page.find(string="Secure Hush Line form") is not None
+    assert "Hosted by" in response.text
+    assert "Example Recipient" in response.text
+    assert f"@{user.primary_username.username}" in response.text
+    assert "Verified account" in response.text
+    assert "Client-side encryption enabled" in response.text
+    assert page.find("a", string=lambda value: value and "Open on Hush Line" in value) is not None
+    assert page.find("label", attrs={"for": "captcha_answer"}) is not None
+    assert page.find("input", attrs={"name": "csrf_token"}) is not None
+    assert page.find("script", attrs={"id": "recipientPublicKeys"}) is not None
+    assert page.find("label", attrs={"for": "field_0"}) is not None
+    assert page.find("label", attrs={"for": "field_1"}) is not None
+    script_sources = [script.get("src", "") for script in page.find_all("script")]
+    assert not any("submit-message.js" in source for source in script_sources)
+    assert page.find("iframe") is None
+    assert "script-widget" not in response.text
+
+
+def test_embed_profile_template_shows_caution_state(client: FlaskClient, user: User) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    user.primary_username.display_name = "Admin Hush Line"
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+
+    assert response.status_code == 200
+    assert "Caution advised" in response.text
+
+
+def test_embed_profile_template_ignores_sender_query_values(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+
+    response = client.get(
+        url_for(
+            "embed_profile",
+            username=user.primary_username.username,
+            prefill="sender-specific-value",
+            analytics_id="analytics-value",
+        )
+    )
+
+    assert response.status_code == 200
+    assert "sender-specific-value" not in response.text
+    assert "analytics-value" not in response.text
 
 
 def test_primary_embed_settings_reject_invalid_origin(client: FlaskClient, user: User) -> None:

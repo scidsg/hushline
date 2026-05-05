@@ -181,7 +181,7 @@ def register_profile_routes(app: Flask) -> None:
         if not uname:
             abort(404)
 
-        if request.endpoint == "embed_profile":
+        if request.endpoint in {"embed_profile", "embed_profile_legacy"}:
             if not uname.embed_is_eligible:
                 abort(404)
             g.embed_frame_ancestors = " ".join(
@@ -191,7 +191,7 @@ def register_profile_routes(app: Flask) -> None:
         uname.create_default_field_defs()
 
         dynamic_form = DynamicMessageForm([x for x in uname.message_fields if x.enabled])
-        is_embedded = request.endpoint == "embed_profile"
+        is_embedded = request.endpoint in {"embed_profile", "embed_profile_legacy"}
         form = dynamic_form.form(csrf_enabled=False if is_embedded else None)
 
         embed_captcha_token = None
@@ -218,7 +218,7 @@ def register_profile_routes(app: Flask) -> None:
                 owner_guard_nonce,
             )
             rendered = render_template(
-                "profile.html",
+                "embed_profile.html" if is_embedded else "profile.html",
                 profile_header=profile_header,
                 form=form,
                 user=uname.user,
@@ -239,6 +239,7 @@ def register_profile_routes(app: Flask) -> None:
                 owner_guard_signature=owner_guard_signature,
                 is_embedded=is_embedded,
                 embed_captcha_token=embed_captcha_token,
+                open_profile_url=url_for("profile", username=uname.username),
             )
             if status_code is None:
                 return rendered
@@ -259,6 +260,13 @@ def register_profile_routes(app: Flask) -> None:
                 or not hmac.compare_digest(owner_guard_signature, expected_signature)
             ):
                 flash("⛔️ This tip line changed while you were composing. Please reload.")
+                return _render_profile(400)
+
+            if is_embedded and not hmac.compare_digest(
+                request.form.get("csrf_token", ""),
+                form.embed_captcha_token.data or "",
+            ):
+                flash("⛔️ Invalid embed form token. Please reload.")
                 return _render_profile(400)
 
             block_reason = _message_submission_block_reason(uname)
@@ -396,8 +404,15 @@ def register_profile_routes(app: Flask) -> None:
         return _render_profile()
 
     app.add_url_rule(
-        "/embed/<username>",
+        "/embed/to/<username>",
         endpoint="embed_profile",
+        view_func=profile,
+        methods=["GET", "POST"],
+    )
+
+    app.add_url_rule(
+        "/embed/<username>",
+        endpoint="embed_profile_legacy",
         view_func=profile,
         methods=["GET", "POST"],
     )
