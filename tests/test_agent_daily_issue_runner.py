@@ -1508,6 +1508,64 @@ fi
     assert result.stdout == "non-environmental\n"
 
 
+def test_runtime_schema_files_changed_detects_branch_schema_diff_from_runtime_base() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+BASE_BRANCH=main
+git() {{
+  case "$*" in
+    "diff --name-only main...HEAD")
+      printf 'hushline/routes/profile.py\\n'
+      return 0
+      ;;
+    "diff --name-only origin/main..HEAD")
+      printf 'migrations/versions/add_embed_fields.py\\n'
+      return 0
+      ;;
+    "diff --name-only main..HEAD"|\
+"diff --name-only"|\
+"diff --cached --name-only"|\
+"ls-files --others --exclude-standard")
+      return 0
+      ;;
+  esac
+  printf 'unexpected git invocation: %s\\n' "$*" >&2
+  return 99
+}}
+if runtime_schema_files_changed; then
+  printf 'schema-changed\\n'
+else
+  printf 'schema-unchanged\\n'
+fi
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "schema-changed\n"
+
+
+def test_run_check_capture_times_out_stuck_check(tmp_path: Path) -> None:
+    check_log_file = tmp_path / "check.log"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CHECK_LOG_FILE={shlex.quote(str(check_log_file))}
+CHECK_TIMEOUT_SECONDS=1
+set +e
+run_check_capture "Slow check" bash -c 'sleep 5'
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=124" in result.stdout
+    assert "Timed out after 1s: Slow check" in check_log_file.read_text(encoding="utf-8")
+
+
 def test_runtime_bootstrap_retries_retryable_registry_failure(tmp_path: Path) -> None:
     calls_file = tmp_path / "docker-calls.txt"
 

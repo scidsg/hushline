@@ -75,7 +75,9 @@ def test_embed_profile_uses_allowed_origin_frame_ancestors(client: FlaskClient, 
     with open("tests/test_pgp_key.txt") as file:
         user.pgp_key = file.read().strip()
     user.primary_username.embed_enabled = True
-    user.primary_username.set_embed_allowed_origins(["https://tips.example"])
+    user.primary_username.set_embed_allowed_origins(
+        ["https://tips.example", "https://newsroom.example:8443"]
+    )
     OrganizationSetting.upsert(OrganizationSetting.EMBEDDABLE_FORMS_ENABLED, True)
     db.session.commit()
 
@@ -83,7 +85,8 @@ def test_embed_profile_uses_allowed_origin_frame_ancestors(client: FlaskClient, 
     assert response.status_code == 200
 
     csp = (response.headers.get("Content-Security-Policy") or "").strip()
-    assert "frame-ancestors https://tips.example" in csp
+    frame_ancestors = next(part for part in csp.split(";") if part.startswith("frame-ancestors "))
+    assert frame_ancestors == "frame-ancestors https://tips.example https://newsroom.example:8443"
     assert "X-Frame-Options" not in response.headers
 
 
