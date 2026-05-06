@@ -200,8 +200,16 @@ class Username(Model):
         self.embed_allowed_origins = self.normalize_embed_allowed_origins(origins)
 
     @property
-    def embed_owner_is_eligible(self) -> bool:
+    def embed_owner_has_required_plan(self) -> bool:
+        return self.user.is_current_paid_super_user
+
+    @property
+    def embed_owner_has_required_key(self) -> bool:
         return not self.user.is_suspended and bool(self.user.message_encryption_target)
+
+    @property
+    def embed_owner_is_eligible(self) -> bool:
+        return self.embed_owner_has_required_plan and self.embed_owner_has_required_key
 
     @property
     def embed_is_eligible(self) -> bool:

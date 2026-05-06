@@ -252,6 +252,13 @@ class User(Model):
     def is_business_tier(self) -> bool:
         return self.tier_id == Tier.business_tier_id()
 
+    @property
+    def is_current_paid_super_user(self) -> bool:
+        return (
+            self.is_business_tier
+            and self.stripe_subscription_status == StripeSubscriptionStatusEnum.ACTIVE
+        )
+
     def set_free_tier(self) -> None:
         self.tier_id = Tier.free_tier_id()
 

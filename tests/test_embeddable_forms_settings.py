@@ -1,4 +1,5 @@
 from pathlib import Path
+from unittest.mock import patch
 
 from bs4 import BeautifulSoup
 from flask import Flask, url_for
@@ -6,13 +7,33 @@ from flask.testing import FlaskClient
 from werkzeug.test import TestResponse
 
 from hushline.db import db
-from hushline.model import FieldDefinition, FieldType, Message, OrganizationSetting, User, Username
+from hushline.embeds import check_embed_rate_limit
+from hushline.model import (
+    FieldDefinition,
+    FieldType,
+    Message,
+    OrganizationSetting,
+    StripeSubscriptionStatusEnum,
+    User,
+    Username,
+)
 
 
-def _make_message_capable(user: User) -> None:
+def _add_pgp_key(user: User) -> None:
     with open("tests/test_pgp_key.txt") as file:
         user.pgp_key = file.read().strip()
     db.session.commit()
+
+
+def _make_current_paid_super_user(user: User) -> None:
+    user.set_business_tier()
+    user.stripe_subscription_status = StripeSubscriptionStatusEnum.ACTIVE
+    db.session.commit()
+
+
+def _make_message_capable(user: User) -> None:
+    _make_current_paid_super_user(user)
+    _add_pgp_key(user)
 
 
 def _enable_embeds_globally() -> None:
@@ -34,6 +55,10 @@ def _assert_safe_embed_denial(response: TestResponse) -> None:
 
 def _first_message_for(username: Username) -> Message | None:
     return db.session.scalars(db.select(Message).filter_by(username_id=username.id)).first()
+
+
+def _message_count_for(username: Username) -> int:
+    return len(db.session.scalars(db.select(Message).filter_by(username_id=username.id)).all())
 
 
 def _embed_settings_data(enabled: bool, origins: str) -> dict[str, str]:
@@ -81,6 +106,24 @@ def _focusable_labels(page: BeautifulSoup) -> list[str]:
             continue
         labels.append(element.get_text(" ", strip=True) or element.get("name", ""))
     return labels
+
+
+def _assert_no_sensitive_embed_operational_data(logged_text: str) -> None:
+    forbidden_values = [
+        "secret disclosure body",
+        "secret custom field value",
+        "secret-reply-slug",
+        "https://publisher.example/investigation?source=confidential",
+        "Sensitive Parent Page Title",
+        "analytics-secret-123",
+        "sender-contact@example.com",
+        "203.0.113.42",
+        "203.0.113.10",
+        "198.51.100.10",
+        "203.0.113.99",
+    ]
+    for forbidden_value in forbidden_values:
+        assert forbidden_value not in logged_text
 
 
 def test_admin_embeddable_forms_default_disabled(client: FlaskClient, admin_user: User) -> None:
@@ -133,6 +176,7 @@ def test_embed_profile_route_denies_missing_origin_allowlist(
 
 def test_embed_profile_route_denies_missing_recipient_key(client: FlaskClient, user: User) -> None:
     _enable_embeds_globally()
+    _make_current_paid_super_user(user)
     _configure_embed(user.primary_username)
 
     response = client.get(url_for("embed_profile", username=user.primary_username.username))
@@ -262,6 +306,215 @@ def test_embed_profile_submission_accepts_client_encrypted_fields(
         armored_contact,
         armored_message,
     ]
+
+
+def test_embed_submission_operational_counters_exclude_sensitive_request_data(
+    app: Flask, client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    db.session.add(
+        FieldDefinition(
+            username=user.primary_username,
+            label="Custom Evidence",
+            field_type=FieldType.TEXT,
+            required=False,
+            enabled=True,
+            encrypted=True,
+            choices=[],
+        )
+    )
+    db.session.commit()
+    _configure_embed(user.primary_username)
+
+    response = client.get(
+        url_for(
+            "embed_profile",
+            username=user.primary_username.username,
+            analytics_id="analytics-secret-123",
+            reply_slug="secret-reply-slug",
+            parent_title="Sensitive Parent Page Title",
+        )
+    )
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+
+    with patch.object(app.logger, "info") as info_mock:
+        post_response = client.post(
+            url_for(
+                "embed_profile",
+                username=user.primary_username.username,
+                analytics_id="analytics-secret-123",
+            ),
+            data={
+                "field_0": "sender-contact@example.com",
+                "field_1": "secret disclosure body",
+                "field_2": "secret custom field value",
+                "reply_slug": "secret-reply-slug",
+                "parent_title": "Sensitive Parent Page Title",
+                "analytics_id": "analytics-secret-123",
+                **submission_data,
+            },
+            headers={
+                "Referer": "https://publisher.example/investigation?source=confidential",
+            },
+            environ_base={"REMOTE_ADDR": "203.0.113.42"},
+        )
+
+    assert post_response.status_code == 200, post_response.text
+    logged_text = repr(info_mock.call_args_list)
+    _assert_no_sensitive_embed_operational_data(logged_text)
+    counter_calls = [
+        log_call
+        for log_call in info_mock.call_args_list
+        if log_call.kwargs.get("extra", {}).get("event") == "embed_form_abuse_counter"
+    ]
+    assert [log_call.kwargs["extra"]["counter_name"] for log_call in counter_calls] == [
+        "embed_form_submission_attempt_total",
+        "embed_form_submission_accepted_total",
+    ]
+    for log_call in counter_calls:
+        extra = log_call.kwargs["extra"]
+        assert extra["event"] == "embed_form_abuse_counter"
+        assert extra["count"] == 1
+        assert "profile_hash" in extra
+        assert "source_bucket_hash" in extra
+        assert user.primary_username.username not in extra.values()
+        assert "referrer" not in extra
+        assert "analytics_id" not in extra
+        assert "reply_slug" not in extra
+
+
+def test_embed_profile_rate_limit_throttles_per_profile_without_payload_storage(
+    app: Flask, client: FlaskClient, user: User
+) -> None:
+    app.config["EMBED_RATE_LIMIT_PROFILE_MAX"] = 1
+    app.config["EMBED_RATE_LIMIT_SOURCE_MAX"] = 20
+    app.config["EMBED_RATE_LIMIT_DEPLOYMENT_MAX"] = 20
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+
+    first_response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    first_submission_data = _embed_submission_data(first_response.text)
+    first_post = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "sender-contact@example.com",
+            "field_1": "secret disclosure body",
+            **first_submission_data,
+        },
+        environ_base={"REMOTE_ADDR": "203.0.113.10"},
+    )
+    assert first_post.status_code == 200, first_post.text
+
+    second_response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    second_submission_data = _embed_submission_data(second_response.text)
+    second_post = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "sender-contact@example.com",
+            "field_1": "secret disclosure body",
+            **second_submission_data,
+        },
+        environ_base={"REMOTE_ADDR": "198.51.100.10"},
+    )
+
+    assert second_post.status_code == 429
+    assert "Too many embedded submission attempts" in second_post.text
+    assert _message_count_for(user.primary_username) == 1
+    extension_text = repr(app.extensions)
+    _assert_no_sensitive_embed_operational_data(extension_text)
+
+
+def test_embed_profile_rate_limit_throttles_per_source_bucket_across_profiles(
+    app: Flask, client: FlaskClient, user: User, user_alias: Username
+) -> None:
+    app.config["EMBED_RATE_LIMIT_PROFILE_MAX"] = 20
+    app.config["EMBED_RATE_LIMIT_SOURCE_MAX"] = 1
+    app.config["EMBED_RATE_LIMIT_DEPLOYMENT_MAX"] = 20
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+    _configure_embed(user_alias, "https://alias.example")
+
+    first_response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    first_submission_data = _embed_submission_data(first_response.text)
+    first_post = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "sender-contact@example.com",
+            "field_1": "secret disclosure body",
+            **first_submission_data,
+        },
+        environ_base={"REMOTE_ADDR": "203.0.113.42"},
+    )
+    assert first_post.status_code == 200, first_post.text
+
+    second_response = client.get(url_for("embed_profile", username=user_alias.username))
+    second_submission_data = _embed_submission_data(second_response.text)
+    second_post = client.post(
+        url_for("embed_profile", username=user_alias.username),
+        data={
+            "field_0": "sender-contact@example.com",
+            "field_1": "secret disclosure body",
+            **second_submission_data,
+        },
+        environ_base={"REMOTE_ADDR": "203.0.113.99"},
+    )
+
+    assert second_post.status_code == 429
+    assert _message_count_for(user.primary_username) == 1
+    assert _message_count_for(user_alias) == 0
+    extension_text = repr(app.extensions)
+    _assert_no_sensitive_embed_operational_data(extension_text)
+
+
+def test_embed_profile_rate_limit_does_not_record_limited_attempts(app: Flask, user: User) -> None:
+    app.config["EMBED_RATE_LIMIT_PROFILE_MAX"] = 1
+    app.config["EMBED_RATE_LIMIT_SOURCE_MAX"] = 20
+    app.config["EMBED_RATE_LIMIT_DEPLOYMENT_MAX"] = 20
+
+    with (
+        app.test_request_context(environ_base={"REMOTE_ADDR": "203.0.113.10"}),
+        patch("hushline.embeds.time.time", return_value=1000.0),
+    ):
+        first_result = check_embed_rate_limit(user.primary_username)
+
+    with (
+        app.test_request_context(environ_base={"REMOTE_ADDR": "198.51.100.10"}),
+        patch("hushline.embeds.time.time", return_value=1001.0),
+    ):
+        limited_result = check_embed_rate_limit(user.primary_username)
+
+    assert first_result.limited is False
+    assert limited_result.limited is True
+    state = app.extensions["hushline_embed_rate_limits"]
+    assert state[f"profile:{first_result.profile_hash}"] == [1000.0]
+    assert state[f"source:{first_result.source_bucket_hash}"] == [1000.0]
+    assert f"source:{limited_result.source_bucket_hash}" not in state
+    assert state["deployment"] == [1000.0]
+
+
+def test_embed_profile_rate_limit_evicts_stale_global_state(app: Flask, user: User) -> None:
+    app.config["EMBED_RATE_LIMIT_WINDOW_SECONDS"] = 10
+    app.config["EMBED_RATE_LIMIT_PROFILE_MAX"] = 20
+    app.config["EMBED_RATE_LIMIT_SOURCE_MAX"] = 20
+    app.config["EMBED_RATE_LIMIT_DEPLOYMENT_MAX"] = 20
+    app.extensions["hushline_embed_rate_limits"] = {
+        "profile:stale": [980.0],
+        "source:active": [995.0],
+    }
+
+    with (
+        app.test_request_context(environ_base={"REMOTE_ADDR": "203.0.113.10"}),
+        patch("hushline.embeds.time.time", return_value=1000.0),
+    ):
+        check_embed_rate_limit(user.primary_username)
+
+    state = app.extensions["hushline_embed_rate_limits"]
+    assert "profile:stale" not in state
+    assert state["source:active"] == [995.0]
 
 
 def test_embed_profile_submission_requires_embed_form_token(
@@ -536,6 +789,37 @@ def test_profile_embed_settings_do_not_show_snippet_when_globally_disabled(
     assert 'id="embed_iframe_snippet"' not in response.text
 
 
+def test_embed_settings_require_current_paid_super_user(client: FlaskClient, user: User) -> None:
+    _enable_embeds_globally()
+    _add_pgp_key(user)
+    with client.session_transaction() as session:
+        session["user_id"] = user.id
+        session["session_id"] = user.session_id
+        session["username"] = user.primary_username.username
+        session["is_authenticated"] = True
+
+    page_response = client.get(url_for("settings.profile"))
+
+    assert page_response.status_code == 200
+    assert "Upgrade to Super User before enabling embeds." in page_response.text
+    assert 'name="embed_enabled"' in page_response.text
+    assert "disabled" in str(
+        BeautifulSoup(page_response.text, "html.parser").find(
+            "input", attrs={"name": "embed_enabled"}
+        )
+    )
+
+    post_response = client.post(
+        url_for("settings.profile"),
+        data=_embed_settings_data(True, "https://tips.example"),
+    )
+
+    assert post_response.status_code == 400
+    db.session.refresh(user.primary_username)
+    assert user.primary_username.embed_enabled is False
+    assert user.primary_username.embed_allowed_origins == []
+
+
 def test_admin_can_toggle_embeddable_forms(client: FlaskClient, admin_user: User) -> None:
     with client.session_transaction() as session:
         session["user_id"] = admin_user.id
@@ -781,6 +1065,7 @@ def test_primary_embed_settings_reject_invalid_origin(client: FlaskClient, user:
 
 
 def test_embed_settings_require_message_capable_owner(client: FlaskClient, user: User) -> None:
+    _make_current_paid_super_user(user)
     with client.session_transaction() as session:
         session["user_id"] = user.id
         session["session_id"] = user.session_id
