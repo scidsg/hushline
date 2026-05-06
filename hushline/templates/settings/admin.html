@@ -27,17 +27,27 @@
   <form
     action="{{ url_for('admin.toggle_embeddable_forms') }}"
     method="POST"
-    class="formBody"
+    class="formBody auto-submit"
   >
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-    <input
-      type="hidden"
-      name="embeddable_forms_enabled"
-      value="{{ 'false' if embeddable_forms_enabled else 'true' }}"
-    />
-    <button type="submit">
-      {{ "Disable Embeds" if embeddable_forms_enabled else "Enable Embeds" }}
-    </button>
+    <div class="checkbox-group toggle-ui">
+      <input
+        type="checkbox"
+        id="embeddable_forms_enabled"
+        name="embeddable_forms_enabled"
+        value="true"
+        role="switch"
+        {% if embeddable_forms_enabled %}checked{% endif %}
+      />
+      <input type="hidden" name="embeddable_forms_enabled" value="false" />
+      <label for="embeddable_forms_enabled" class="toggle-label">
+        Enable embeddable forms globally
+        <div class="toggle">
+          <div class="toggle__ball"></div>
+        </div>
+      </label>
+    </div>
+    <button type="submit" class="display-none">Save embeddable forms setting</button>
   </form>
 
   <h4>All Usernames</h4>
