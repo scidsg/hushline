@@ -1,10 +1,12 @@
+from pathlib import Path
+
 from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 from werkzeug.test import TestResponse
 
 from hushline.db import db
-from hushline.model import Message, OrganizationSetting, User, Username
+from hushline.model import FieldDefinition, FieldType, Message, OrganizationSetting, User, Username
 
 
 def _make_message_capable(user: User) -> None:
@@ -28,6 +30,10 @@ def _assert_safe_embed_denial(response: TestResponse) -> None:
     assert response.status_code == 404
     assert "frame-ancestors 'none'" in response.headers["Content-Security-Policy"]
     assert response.headers["X-Frame-Options"] == "DENY"
+
+
+def _first_message_for(username: Username) -> Message | None:
+    return db.session.scalars(db.select(Message).filter_by(username_id=username.id)).first()
 
 
 def _embed_settings_data(enabled: bool, origins: str) -> dict[str, str]:
@@ -188,13 +194,63 @@ def test_embed_profile_submission_does_not_require_session_cookie(
 
         assert post_response.status_code == 200, post_response.text
         assert "Message Submitted!" in post_response.text
+        success_page = BeautifulSoup(post_response.text, "html.parser")
+        reply_tab_link = success_page.find(
+            "a",
+            string=lambda value: value and value.strip() == "Open Reply Page in New Tab",
+        )
+        assert reply_tab_link is not None
+        assert reply_tab_link.get("target") == "_blank"
+        assert "noopener" in reply_tab_link.get("rel", [])
+        assert "noreferrer" in reply_tab_link.get("rel", [])
+        assert "default-src 'self'" in post_response.headers["Content-Security-Policy"]
+        assert (
+            "frame-ancestors https://tips.example"
+            in post_response.headers["Content-Security-Policy"]
+        )
 
-        message = db.session.scalars(
-            db.select(Message).filter_by(username_id=user.primary_username.id)
-        ).one()
+        message = _first_message_for(user.primary_username)
+        assert message is not None
         assert len(message.field_values) == 2
+        for field_value in message.field_values:
+            assert "-----BEGIN PGP MESSAGE-----" in (field_value.value or "")
+            assert "Embedded sessionless message" not in (field_value.value or "")
     finally:
         app.config["WTF_CSRF_ENABLED"] = prior_csrf_setting
+
+
+def test_embed_profile_submission_accepts_client_encrypted_fields(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    armored_contact = "-----BEGIN PGP MESSAGE-----\n\ncontact ciphertext\n-----END PGP MESSAGE-----"
+    armored_message = "-----BEGIN PGP MESSAGE-----\n\nmessage ciphertext\n-----END PGP MESSAGE-----"
+
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": armored_contact,
+            "field_1": armored_message,
+            "encrypted_email_body": (
+                "-----BEGIN PGP MESSAGE-----\n\nemail ciphertext\n-----END PGP MESSAGE-----"
+            ),
+            **submission_data,
+        },
+    )
+
+    assert post_response.status_code == 200, post_response.text
+    message = _first_message_for(user.primary_username)
+    assert message is not None
+    assert [field_value.value for field_value in message.field_values] == [
+        armored_contact,
+        armored_message,
+    ]
 
 
 def test_embed_profile_submission_requires_embed_form_token(
@@ -220,6 +276,227 @@ def test_embed_profile_submission_requires_embed_form_token(
 
     assert post_response.status_code == 400
     assert "Invalid embed form token" in post_response.text
+
+
+def test_embed_profile_submission_rejects_invalid_csrf_token(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    submission_data["csrf_token"] = "tampered-token"
+
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "Embedded Signal contact",
+            "field_1": "Embedded message",
+            **submission_data,
+        },
+    )
+
+    assert post_response.status_code == 400
+    assert "Invalid embed form token" in post_response.text
+    assert _first_message_for(user.primary_username) is None
+
+
+def test_embed_profile_submission_rejects_owner_guard_mismatch(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    submission_data["owner_guard_signature"] = "tampered-signature"
+
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "Embedded Signal contact",
+            "field_1": "Embedded message",
+            **submission_data,
+        },
+    )
+
+    assert post_response.status_code == 400
+    assert "tip line changed" in post_response.text
+    assert _first_message_for(user.primary_username) is None
+
+
+def test_embed_profile_submission_rejects_captcha_failure(client: FlaskClient, user: User) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    submission_data["captcha_answer"] = "0"
+
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "Embedded Signal contact",
+            "field_1": "Embedded message",
+            **submission_data,
+        },
+    )
+
+    assert post_response.status_code == 400
+    assert "Invalid CAPTCHA answer" in post_response.text
+    assert "postMessage" not in post_response.text
+    assert _first_message_for(user.primary_username) is None
+
+
+def test_embed_profile_submission_rejects_stale_form_after_suspension(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    user.is_suspended = True
+    db.session.commit()
+
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "Embedded Signal contact",
+            "field_1": "Embedded message",
+            **submission_data,
+        },
+    )
+
+    _assert_safe_embed_denial(post_response)
+    assert _first_message_for(user.primary_username) is None
+
+
+def test_embed_profile_submission_rejects_stale_form_after_recipient_key_removed(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    user.pgp_key = None
+    db.session.commit()
+
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "Embedded Signal contact",
+            "field_1": "Embedded message",
+            **submission_data,
+        },
+    )
+
+    _assert_safe_embed_denial(post_response)
+    assert _first_message_for(user.primary_username) is None
+
+
+def test_embed_profile_submission_uses_same_enabled_custom_fields(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    username = user.primary_username
+    username.message_fields[0].label = "Public contact"
+    username.message_fields[0].encrypted = False
+    username.message_fields[1].enabled = False
+    db.session.add(
+        FieldDefinition(
+            username=username,
+            label="Encrypted details",
+            field_type=FieldType.MULTILINE_TEXT,
+            required=True,
+            enabled=True,
+            encrypted=True,
+            choices=[],
+        )
+    )
+    db.session.commit()
+    _configure_embed(username)
+
+    profile_response = client.get(url_for("profile", username=username.username))
+    assert profile_response.status_code == 200
+    profile_page = BeautifulSoup(profile_response.text, "html.parser")
+    profile_labels = [
+        label.get_text(" ", strip=True) for label in profile_page.select(".field-group label")
+    ]
+
+    response = client.get(url_for("embed_profile", username=username.username))
+    assert response.status_code == 200
+    page = BeautifulSoup(response.text, "html.parser")
+    rendered_labels = [
+        label.get_text(" ", strip=True) for label in page.select(".field-group label")
+    ]
+    assert rendered_labels == [
+        "Public contact Optional",
+        "Encrypted details Required",
+    ]
+    assert rendered_labels == profile_labels
+    assert "Not encrypted before submission" in response.text
+    assert "Encrypted before submission" in response.text
+    submission_data = _embed_submission_data(response.text)
+    armored_details = "-----BEGIN PGP MESSAGE-----\n\ndetails ciphertext\n-----END PGP MESSAGE-----"
+
+    post_response = client.post(
+        url_for("embed_profile", username=username.username),
+        data={
+            "field_0": "public@example.com",
+            "field_1": armored_details,
+            **submission_data,
+        },
+    )
+
+    assert post_response.status_code == 200, post_response.text
+    message = _first_message_for(username)
+    assert message is not None
+    submitted_values = {
+        field_value.field_definition.label: field_value.value
+        for field_value in message.field_values
+    }
+    assert submitted_values == {
+        "Public contact": "public@example.com",
+        "Encrypted details": armored_details,
+    }
+
+
+def test_embed_profile_has_no_postmessage_submission_path(client: FlaskClient, user: User) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "Embedded Signal contact",
+            "field_1": "Embedded message",
+            **submission_data,
+        },
+    )
+
+    assert post_response.status_code == 200, post_response.text
+    assert "postMessage" not in response.text
+    assert "postMessage" not in post_response.text
+    assert "postMessage" not in Path("assets/js/client-side-encryption.js").read_text()
+    assert "postMessage" not in Path("assets/js/message_success.js").read_text()
 
 
 def test_profile_embed_settings_do_not_show_snippet_when_globally_disabled(
@@ -315,7 +592,7 @@ def test_primary_embed_settings_update_origins_and_render_iframe_snippet(
         _external=True,
     )
     assert f"/embed/to/{user.primary_username.username}" in iframe["src"]
-    assert iframe["sandbox"] == ["allow-forms", "allow-scripts"]
+    assert iframe["sandbox"] == ["allow-forms", "allow-popups", "allow-scripts"]
     assert iframe["referrerpolicy"] == "no-referrer"
     assert iframe["title"]
     assert iframe["width"] == "100%"

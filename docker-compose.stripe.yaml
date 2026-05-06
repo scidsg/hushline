@@ -55,7 +55,7 @@ services:
   dev_data:
     <<: *app_env
     ports: []
-    restart: on-failure
+    restart: "no"
     command: make dev-data
     depends_on:
       postgres:

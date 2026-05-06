@@ -1,5 +1,6 @@
 import logging
 import math
+from http import HTTPStatus
 from typing import Any, Mapping, Optional, Tuple, Union
 
 from flask import Flask, g, render_template, request, session, url_for
@@ -54,6 +55,11 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
     @app.after_request
     def add_security_header(response: Response) -> Response:
         frame_ancestors = getattr(g, "embed_frame_ancestors", "'none'")
+        if (
+            request.endpoint in {"embed_profile", "embed_profile_legacy"}
+            and response.status_code == HTTPStatus.NOT_FOUND
+        ):
+            frame_ancestors = "'none'"
         response.headers["Content-Security-Policy"] = ";".join(
             f"{k} {v}"
             for (k, v) in {

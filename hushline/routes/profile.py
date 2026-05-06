@@ -181,8 +181,9 @@ def register_profile_routes(app: Flask) -> None:
         if not uname:
             abort(404)
 
-        if request.endpoint in {"embed_profile", "embed_profile_legacy"}:
-            if not uname.embed_is_eligible:
+        is_embedded = request.endpoint in {"embed_profile", "embed_profile_legacy"}
+        if is_embedded:
+            if not uname.embed_is_eligible or _message_submission_block_reason(uname):
                 abort(404)
             g.embed_frame_ancestors = " ".join(
                 Username.normalize_embed_allowed_origins(uname.embed_allowed_origins or [])
@@ -191,7 +192,6 @@ def register_profile_routes(app: Flask) -> None:
         uname.create_default_field_defs()
 
         dynamic_form = DynamicMessageForm([x for x in uname.message_fields if x.enabled])
-        is_embedded = request.endpoint in {"embed_profile", "embed_profile_legacy"}
         form = dynamic_form.form(csrf_enabled=False if is_embedded else None)
 
         embed_captcha_token = None
@@ -247,6 +247,10 @@ def register_profile_routes(app: Flask) -> None:
 
         if request.method == "POST":
             current_app.logger.debug("Profile form submitted.")
+            if is_embedded and _message_submission_block_reason(uname):
+                g.embed_frame_ancestors = "'none'"
+                abort(404)
+
             owner_guard_nonce = (form.owner_guard_nonce.data or "").strip()
             owner_guard_signature = (form.owner_guard_signature.data or "").strip()
             expected_signature = _owner_guard_signature(
