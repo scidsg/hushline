@@ -50,7 +50,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    restart: on-failure
+    restart: "no"
 
   postgres:
     image: postgres:16.4-alpine3.20
