@@ -60,6 +60,7 @@ MAX_ISSUE_ATTEMPTS="${HUSHLINE_DAILY_MAX_ISSUE_ATTEMPTS:-10}"
 MAX_FIX_ATTEMPTS="${HUSHLINE_DAILY_MAX_FIX_ATTEMPTS:-8}"
 RUNTIME_BOOTSTRAP_ATTEMPTS="${HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_ATTEMPTS:-3}"
 RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS="${HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS:-10}"
+CHECK_TIMEOUT_SECONDS="${HUSHLINE_DAILY_CHECK_TIMEOUT_SECONDS:-1800}"
 POST_PR_FEEDBACK_DELAY_SECONDS="${HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS:-60}"
 
 CHECK_LOG_FILE=""
@@ -300,15 +301,70 @@ run_step() {
   "$@"
 }
 
+terminate_process_tree() {
+  local pid="$1"
+  local signal="${2:-TERM}"
+  local child
+
+  while IFS= read -r child; do
+    [[ -n "$child" ]] || continue
+    terminate_process_tree "$child" "$signal"
+  done < <(pgrep -P "$pid" 2>/dev/null || true)
+
+  kill "-$signal" "$pid" >/dev/null 2>&1 || true
+}
+
 run_check_capture() {
   local description="$1"
   shift
   echo "==> ${description}" | tee -a "$CHECK_LOG_FILE"
   local rc=0
+  local output_file=""
+  local command_pid=""
+  local elapsed=0
+  local caller_flags="$-"
+
+  output_file="$(mktemp)"
+  : > "$output_file"
+
   set +e
-  "$@" 2>&1 | tee -a "$CHECK_LOG_FILE"
-  rc=${PIPESTATUS[0]}
-  set -e
+  "$@" > "$output_file" 2>&1 &
+  command_pid=$!
+  while kill -0 "$command_pid" >/dev/null 2>&1; do
+    if (( elapsed >= CHECK_TIMEOUT_SECONDS )); then
+      printf '%s\n' "Timed out after ${CHECK_TIMEOUT_SECONDS}s: ${description}" | tee -a "$CHECK_LOG_FILE"
+      terminate_process_tree "$command_pid" TERM
+      sleep 2
+      terminate_process_tree "$command_pid" KILL
+      wait "$command_pid" >/dev/null 2>&1
+      if [[ -s "$output_file" ]]; then
+        cat "$output_file" | tee -a "$CHECK_LOG_FILE"
+      fi
+      rm -f "$output_file"
+      if [[ "$caller_flags" == *e* ]]; then
+        set -e
+      else
+        set +e
+      fi
+      return 124
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+    if (( elapsed > 0 && elapsed % 60 == 0 )); then
+      printf '%s\n' "Still running after ${elapsed}s: ${description}" | tee -a "$CHECK_LOG_FILE"
+    fi
+  done
+  wait "$command_pid"
+  rc=$?
+  if [[ -s "$output_file" ]]; then
+    cat "$output_file" | tee -a "$CHECK_LOG_FILE"
+  fi
+  rm -f "$output_file"
+  if [[ "$caller_flags" == *e* ]]; then
+    set -e
+  else
+    set +e
+  fi
   return "$rc"
 }
 
@@ -357,6 +413,8 @@ refresh_runtime_after_schema_changes() {
 list_changed_files() {
   {
     git diff --name-only "${BASE_BRANCH}...HEAD"
+    git diff --name-only "origin/${BASE_BRANCH}..HEAD" 2>/dev/null || true
+    git diff --name-only "${BASE_BRANCH}..HEAD" 2>/dev/null || true
     git diff --name-only
     git diff --cached --name-only
     git ls-files --others --exclude-standard
@@ -2910,6 +2968,7 @@ main() {
   require_positive_integer \
     "HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS" \
     "$RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS"
+  require_positive_integer "HUSHLINE_DAILY_CHECK_TIMEOUT_SECONDS" "$CHECK_TIMEOUT_SECONDS"
   require_non_negative_integer \
     "HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS" \
     "$POST_PR_FEEDBACK_DELAY_SECONDS"

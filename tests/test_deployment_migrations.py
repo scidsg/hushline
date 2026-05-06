@@ -53,6 +53,15 @@ def test_staging_compose_disables_app_startup_migrations() -> None:
     assert "condition: service_completed_successfully" in app
 
 
+def test_local_dev_data_sidecars_fail_fast_instead_of_restarting() -> None:
+    for compose_name in ("docker-compose.yaml", "docker-compose.stripe.yaml"):
+        blocks = _service_blocks(ROOT / compose_name)
+
+        dev_data = blocks["dev_data"]
+        assert 'restart: "no"' in dev_data
+        assert "restart: on-failure" not in dev_data
+
+
 def test_prod_start_script_supports_disabling_startup_migrations() -> None:
     script = (ROOT / "scripts/prod_start.sh").read_text(encoding="utf-8")
 
