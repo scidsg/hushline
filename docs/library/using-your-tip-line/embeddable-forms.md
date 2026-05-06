@@ -2,7 +2,7 @@
 
 Source basis: in-repository embeddable profile form controls and the [embeddable forms administrator guide](../../EMBEDDABLE-FORMS-ADMIN.md).
 
-Embeddable forms let a recipient place a hosted Hush Line submission form on a website they control. Hush Line still serves the form, controls the encryption flow, and returns the reply page after submission.
+Embeddable forms let a paid Super User place a hosted Hush Line submission form on a website they control. Hush Line still serves the form, controls the encryption flow, and returns the reply page after submission.
 
 Use embeds only on pages you control and keep the iframe snippet exactly as Hush Line generates it. The snippet uses a sandbox, disables referrers, and points directly to the hosted Hush Line form. Do not wrap the form with scripts that collect form values, parent-page titles, analytics identifiers, full referrers, or sender contact details.
 

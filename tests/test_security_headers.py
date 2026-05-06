@@ -3,7 +3,7 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import OrganizationSetting, User
+from hushline.model import OrganizationSetting, StripeSubscriptionStatusEnum, User
 
 
 def test_csp(client: FlaskClient) -> None:
@@ -74,6 +74,8 @@ def test_settings_profile_keeps_frame_restrictions(client: FlaskClient) -> None:
 def test_embed_profile_uses_allowed_origin_frame_ancestors(client: FlaskClient, user: User) -> None:
     with open("tests/test_pgp_key.txt") as file:
         user.pgp_key = file.read().strip()
+    user.set_business_tier()
+    user.stripe_subscription_status = StripeSubscriptionStatusEnum.ACTIVE
     user.primary_username.embed_enabled = True
     user.primary_username.set_embed_allowed_origins(
         ["https://tips.example", "https://newsroom.example:8443"]

@@ -1,7 +1,7 @@
 import pytest
 
 from hushline.db import db
-from hushline.model import OrganizationSetting, User, Username
+from hushline.model import OrganizationSetting, StripeSubscriptionStatusEnum, User, Username
 from hushline.model.username import normalize_embed_origin
 
 
@@ -9,9 +9,19 @@ def _enable_embeds_globally() -> None:
     OrganizationSetting.upsert(OrganizationSetting.EMBEDDABLE_FORMS_ENABLED, True)
 
 
-def _make_message_capable(user: User) -> None:
+def _add_pgp_key(user: User) -> None:
     with open("tests/test_pgp_key.txt") as file:
         user.pgp_key = file.read().strip()
+
+
+def _make_current_paid_super_user(user: User) -> None:
+    user.set_business_tier()
+    user.stripe_subscription_status = StripeSubscriptionStatusEnum.ACTIVE
+
+
+def _make_message_capable(user: User) -> None:
+    _make_current_paid_super_user(user)
+    _add_pgp_key(user)
 
 
 def _configure_embed(username: Username, origin: str = "https://tips.example") -> None:
@@ -42,6 +52,26 @@ def test_primary_profile_requires_opt_in_and_exact_allowed_origin(user: User) ->
     assert user.primary_username.embed_allows_origin("https://tips.example") is True
     assert user.primary_username.embed_allows_origin("https://other.example") is False
     assert user.primary_username.embed_allows_origin("https://tips.example/path") is False
+
+
+def test_embed_requires_current_paid_super_user(user: User) -> None:
+    _enable_embeds_globally()
+    _add_pgp_key(user)
+    _configure_embed(user.primary_username)
+    db.session.commit()
+
+    assert user.primary_username.embed_allows_origin("https://tips.example") is False
+
+    user.set_business_tier()
+    user.stripe_subscription_status = StripeSubscriptionStatusEnum.INCOMPLETE
+    db.session.commit()
+
+    assert user.primary_username.embed_allows_origin("https://tips.example") is False
+
+    user.stripe_subscription_status = StripeSubscriptionStatusEnum.ACTIVE
+    db.session.commit()
+
+    assert user.primary_username.embed_allows_origin("https://tips.example") is True
 
 
 def test_alias_embed_opt_in_is_independent_from_primary_profile(
@@ -132,6 +162,7 @@ def test_embed_admin_disablement_blocks_profile(user: User) -> None:
 
 def test_embed_preserves_missing_key_and_suspension_rejection(user: User) -> None:
     _enable_embeds_globally()
+    _make_current_paid_super_user(user)
     _configure_embed(user.primary_username)
     db.session.commit()
 

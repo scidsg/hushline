@@ -8,13 +8,32 @@ from werkzeug.test import TestResponse
 
 from hushline.db import db
 from hushline.embeds import check_embed_rate_limit
-from hushline.model import FieldDefinition, FieldType, Message, OrganizationSetting, User, Username
+from hushline.model import (
+    FieldDefinition,
+    FieldType,
+    Message,
+    OrganizationSetting,
+    StripeSubscriptionStatusEnum,
+    User,
+    Username,
+)
 
 
-def _make_message_capable(user: User) -> None:
+def _add_pgp_key(user: User) -> None:
     with open("tests/test_pgp_key.txt") as file:
         user.pgp_key = file.read().strip()
     db.session.commit()
+
+
+def _make_current_paid_super_user(user: User) -> None:
+    user.set_business_tier()
+    user.stripe_subscription_status = StripeSubscriptionStatusEnum.ACTIVE
+    db.session.commit()
+
+
+def _make_message_capable(user: User) -> None:
+    _make_current_paid_super_user(user)
+    _add_pgp_key(user)
 
 
 def _enable_embeds_globally() -> None:
@@ -157,6 +176,7 @@ def test_embed_profile_route_denies_missing_origin_allowlist(
 
 def test_embed_profile_route_denies_missing_recipient_key(client: FlaskClient, user: User) -> None:
     _enable_embeds_globally()
+    _make_current_paid_super_user(user)
     _configure_embed(user.primary_username)
 
     response = client.get(url_for("embed_profile", username=user.primary_username.username))
@@ -769,6 +789,37 @@ def test_profile_embed_settings_do_not_show_snippet_when_globally_disabled(
     assert 'id="embed_iframe_snippet"' not in response.text
 
 
+def test_embed_settings_require_current_paid_super_user(client: FlaskClient, user: User) -> None:
+    _enable_embeds_globally()
+    _add_pgp_key(user)
+    with client.session_transaction() as session:
+        session["user_id"] = user.id
+        session["session_id"] = user.session_id
+        session["username"] = user.primary_username.username
+        session["is_authenticated"] = True
+
+    page_response = client.get(url_for("settings.profile"))
+
+    assert page_response.status_code == 200
+    assert "Upgrade to Super User before enabling embeds." in page_response.text
+    assert 'name="embed_enabled"' in page_response.text
+    assert "disabled" in str(
+        BeautifulSoup(page_response.text, "html.parser").find(
+            "input", attrs={"name": "embed_enabled"}
+        )
+    )
+
+    post_response = client.post(
+        url_for("settings.profile"),
+        data=_embed_settings_data(True, "https://tips.example"),
+    )
+
+    assert post_response.status_code == 400
+    db.session.refresh(user.primary_username)
+    assert user.primary_username.embed_enabled is False
+    assert user.primary_username.embed_allowed_origins == []
+
+
 def test_admin_can_toggle_embeddable_forms(client: FlaskClient, admin_user: User) -> None:
     with client.session_transaction() as session:
         session["user_id"] = admin_user.id
@@ -1014,6 +1065,7 @@ def test_primary_embed_settings_reject_invalid_origin(client: FlaskClient, user:
 
 
 def test_embed_settings_require_message_capable_owner(client: FlaskClient, user: User) -> None:
+    _make_current_paid_super_user(user)
     with client.session_transaction() as session:
         session["user_id"] = user.id
         session["session_id"] = user.session_id

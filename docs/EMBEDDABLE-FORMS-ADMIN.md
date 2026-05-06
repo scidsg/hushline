@@ -5,6 +5,7 @@ Embeddable forms allow Hush Line profile and alias forms to be framed on recipie
 ## Required Controls
 
 - Keep embeddable forms globally disabled unless the deployment has an operator who can review origins and recipient use.
+- Require a currently paid Super User account before allowing a profile or alias embed to become available.
 - Require each profile or alias to opt in separately. Alias opt-in should not imply primary-profile opt-in, and primary-profile opt-in should not imply alias opt-in.
 - Use exact origin allowlists only, such as `https://tips.example`. Do not allow paths, query strings, fragments, credentials, or wildcards.
 - Prefer verified profiles and aliases for embedded intake, especially when the parent site is a newsroom, law office, employer, school, or organizer site.

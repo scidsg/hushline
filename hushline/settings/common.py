@@ -340,7 +340,11 @@ def handle_update_directory_visibility(user: Username, form: DirectoryVisibility
 
 
 def handle_embed_settings_form(username: Username, form: EmbedSettingsForm) -> Response | None:
-    if not username.embed_owner_is_eligible:
+    if not username.embed_owner_has_required_plan:
+        flash("⛔️ Upgrade to Super User before enabling embeds.")
+        return None
+
+    if not username.embed_owner_has_required_key:
         flash("⛔️ Add a usable recipient PGP key before enabling embeds.")
         return None
 

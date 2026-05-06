@@ -92,7 +92,7 @@ Primary assets include:
 10. **Embeddable profile forms** (`routes/profile.py`, `embeds.py`):
 
 - Risks: malicious or compromised parent pages can misrepresent recipient identity, observe parent-page behavior, collect referrers or analytics identifiers, or pressure senders to use an embedded context when the full Hush Line profile would be safer.
-- Mitigations: embeds require global admin enablement, per-profile or per-alias opt-in, exact origin allowlists, recipient PGP keys, no-referrer iframe snippets, sandboxed iframes, compact trust chrome, and CSP `frame-ancestors` limited to configured origins.
+- Mitigations: embeds require global admin enablement, a currently paid Super User account, per-profile or per-alias opt-in, exact origin allowlists, recipient PGP keys, no-referrer iframe snippets, sandboxed iframes, compact trust chrome, and CSP `frame-ancestors` limited to configured origins.
 - Abuse controls throttle submissions by profile, source network bucket, and deployment. Operational counters use hashed profile/source labels and must not log disclosure content, custom-field values, reply slugs, full referrers, parent-page titles, analytics identifiers, or sender contact details.
 - Hosted redirect links remain safer for personal servers and operators who do not understand origin allowlists, CSP, iframe sandboxing, and analytics restrictions.
 
