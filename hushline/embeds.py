@@ -3,7 +3,7 @@ import html
 from hushline.external_urls import canonical_external_url
 from hushline.model import Username
 
-EMBED_IFRAME_SANDBOX = "allow-forms allow-scripts"
+EMBED_IFRAME_SANDBOX = "allow-forms allow-popups allow-scripts"
 EMBED_IFRAME_HEIGHT = 700
 EMBED_IFRAME_MAX_WIDTH = 720
 
