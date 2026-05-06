@@ -7,6 +7,7 @@ from flask.testing import FlaskClient
 from werkzeug.test import TestResponse
 
 from hushline.db import db
+from hushline.embeds import check_embed_rate_limit
 from hushline.model import FieldDefinition, FieldType, Message, OrganizationSetting, User, Username
 
 
@@ -447,6 +448,53 @@ def test_embed_profile_rate_limit_throttles_per_source_bucket_across_profiles(
     assert _message_count_for(user_alias) == 0
     extension_text = repr(app.extensions)
     _assert_no_sensitive_embed_operational_data(extension_text)
+
+
+def test_embed_profile_rate_limit_does_not_record_limited_attempts(app: Flask, user: User) -> None:
+    app.config["EMBED_RATE_LIMIT_PROFILE_MAX"] = 1
+    app.config["EMBED_RATE_LIMIT_SOURCE_MAX"] = 20
+    app.config["EMBED_RATE_LIMIT_DEPLOYMENT_MAX"] = 20
+
+    with (
+        app.test_request_context(environ_base={"REMOTE_ADDR": "203.0.113.10"}),
+        patch("hushline.embeds.time.time", return_value=1000.0),
+    ):
+        first_result = check_embed_rate_limit(user.primary_username)
+
+    with (
+        app.test_request_context(environ_base={"REMOTE_ADDR": "198.51.100.10"}),
+        patch("hushline.embeds.time.time", return_value=1001.0),
+    ):
+        limited_result = check_embed_rate_limit(user.primary_username)
+
+    assert first_result.limited is False
+    assert limited_result.limited is True
+    state = app.extensions["hushline_embed_rate_limits"]
+    assert state[f"profile:{first_result.profile_hash}"] == [1000.0]
+    assert state[f"source:{first_result.source_bucket_hash}"] == [1000.0]
+    assert f"source:{limited_result.source_bucket_hash}" not in state
+    assert state["deployment"] == [1000.0]
+
+
+def test_embed_profile_rate_limit_evicts_stale_global_state(app: Flask, user: User) -> None:
+    app.config["EMBED_RATE_LIMIT_WINDOW_SECONDS"] = 10
+    app.config["EMBED_RATE_LIMIT_PROFILE_MAX"] = 20
+    app.config["EMBED_RATE_LIMIT_SOURCE_MAX"] = 20
+    app.config["EMBED_RATE_LIMIT_DEPLOYMENT_MAX"] = 20
+    app.extensions["hushline_embed_rate_limits"] = {
+        "profile:stale": [980.0],
+        "source:active": [995.0],
+    }
+
+    with (
+        app.test_request_context(environ_base={"REMOTE_ADDR": "203.0.113.10"}),
+        patch("hushline.embeds.time.time", return_value=1000.0),
+    ):
+        check_embed_rate_limit(user.primary_username)
+
+    state = app.extensions["hushline_embed_rate_limits"]
+    assert "profile:stale" not in state
+    assert state["source:active"] == [995.0]
 
 
 def test_embed_profile_submission_requires_embed_form_token(

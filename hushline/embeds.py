@@ -99,15 +99,22 @@ def check_embed_rate_limit(username: Username) -> EmbedRateLimitResult:
         "deployment": "deployment",
     }
 
+    for key, timestamps in list(state.items()):
+        retained_timestamps = [timestamp for timestamp in timestamps if timestamp >= cutoff]
+        if retained_timestamps:
+            state[key] = retained_timestamps
+        else:
+            del state[key]
+
     limited_scopes: list[str] = []
     for scope, key in buckets.items():
-        timestamps = [timestamp for timestamp in state.get(key, []) if timestamp >= cutoff]
-        state[key] = timestamps
+        timestamps = state.get(key, [])
         if limits[scope] > 0 and len(timestamps) >= limits[scope]:
             limited_scopes.append(scope)
 
-    for key in buckets.values():
-        state[key].append(now)
+    if not limited_scopes:
+        for key in buckets.values():
+            state.setdefault(key, []).append(now)
 
     return EmbedRateLimitResult(
         limited=bool(limited_scopes),
