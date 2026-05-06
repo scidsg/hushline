@@ -11,5 +11,6 @@ Source category: <https://hushline.app/library/docs/using-your-tip-line/your-inb
 - [Vision Assistant](./vision-assistant.md)
 - [Message Statuses](./message-statuses.md)
 - [Account Verification](./account-verification.md)
+- [Embeddable Forms](./embeddable-forms.md)
 - [Download Your Data](./download-your-data.md)
 - [Dark Mode](./dark-mode.md)

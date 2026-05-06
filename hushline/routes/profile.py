@@ -23,6 +23,14 @@ from werkzeug.wrappers.response import Response
 
 from hushline.crypto import encrypt_message
 from hushline.db import db
+from hushline.embeds import (
+    EMBED_SUBMISSION_ACCEPTED_COUNTER,
+    EMBED_SUBMISSION_ATTEMPT_COUNTER,
+    EMBED_SUBMISSION_RATE_LIMITED_COUNTER,
+    EMBED_SUBMISSION_REJECTED_COUNTER,
+    check_embed_rate_limit,
+    emit_embed_abuse_counter,
+)
 from hushline.external_urls import canonical_external_url
 from hushline.model import (
     FieldDefinition,
@@ -251,6 +259,24 @@ def register_profile_routes(app: Flask) -> None:
                 g.embed_frame_ancestors = "'none'"
                 abort(404)
 
+            embed_rate_limit_result = None
+            if is_embedded:
+                embed_rate_limit_result = check_embed_rate_limit(uname)
+                emit_embed_abuse_counter(
+                    EMBED_SUBMISSION_ATTEMPT_COUNTER,
+                    profile_hash=embed_rate_limit_result.profile_hash,
+                    source_bucket_hash=embed_rate_limit_result.source_bucket_hash,
+                )
+                if embed_rate_limit_result.limited:
+                    emit_embed_abuse_counter(
+                        EMBED_SUBMISSION_RATE_LIMITED_COUNTER,
+                        profile_hash=embed_rate_limit_result.profile_hash,
+                        source_bucket_hash=embed_rate_limit_result.source_bucket_hash,
+                        limited_scopes=embed_rate_limit_result.limited_scopes,
+                    )
+                    flash("⛔️ Too many embedded submission attempts. Please try again later.")
+                    return _render_profile(429)
+
             owner_guard_nonce = (form.owner_guard_nonce.data or "").strip()
             owner_guard_signature = (form.owner_guard_signature.data or "").strip()
             expected_signature = _owner_guard_signature(
@@ -263,6 +289,13 @@ def register_profile_routes(app: Flask) -> None:
                 or not owner_guard_signature
                 or not hmac.compare_digest(owner_guard_signature, expected_signature)
             ):
+                if embed_rate_limit_result is not None:
+                    emit_embed_abuse_counter(
+                        EMBED_SUBMISSION_REJECTED_COUNTER,
+                        profile_hash=embed_rate_limit_result.profile_hash,
+                        source_bucket_hash=embed_rate_limit_result.source_bucket_hash,
+                        reason="owner_guard",
+                    )
                 flash("⛔️ This tip line changed while you were composing. Please reload.")
                 return _render_profile(400)
 
@@ -270,16 +303,37 @@ def register_profile_routes(app: Flask) -> None:
                 request.form.get("csrf_token", ""),
                 form.embed_captcha_token.data or "",
             ):
+                if embed_rate_limit_result is not None:
+                    emit_embed_abuse_counter(
+                        EMBED_SUBMISSION_REJECTED_COUNTER,
+                        profile_hash=embed_rate_limit_result.profile_hash,
+                        source_bucket_hash=embed_rate_limit_result.source_bucket_hash,
+                        reason="form_token",
+                    )
                 flash("⛔️ Invalid embed form token. Please reload.")
                 return _render_profile(400)
 
             block_reason = _message_submission_block_reason(uname)
             if block_reason == "suspended":
+                if embed_rate_limit_result is not None:
+                    emit_embed_abuse_counter(
+                        EMBED_SUBMISSION_REJECTED_COUNTER,
+                        profile_hash=embed_rate_limit_result.profile_hash,
+                        source_bucket_hash=embed_rate_limit_result.source_bucket_hash,
+                        reason="suspended",
+                    )
                 flash("⛔️ This account is suspended. New messages cannot be sent at this time.")
                 return _render_profile(400)
 
             if form.validate_on_submit():
                 if block_reason == "missing_recipient_keys":
+                    if embed_rate_limit_result is not None:
+                        emit_embed_abuse_counter(
+                            EMBED_SUBMISSION_REJECTED_COUNTER,
+                            profile_hash=embed_rate_limit_result.profile_hash,
+                            source_bucket_hash=embed_rate_limit_result.source_bucket_hash,
+                            reason="missing_recipient_keys",
+                        )
                     flash(
                         (
                             "⛔️ You cannot submit messages to users who do not have any "
@@ -300,6 +354,13 @@ def register_profile_routes(app: Flask) -> None:
                     else validate_captcha(captcha_answer)
                 )
                 if not captcha_valid:
+                    if embed_rate_limit_result is not None:
+                        emit_embed_abuse_counter(
+                            EMBED_SUBMISSION_REJECTED_COUNTER,
+                            profile_hash=embed_rate_limit_result.profile_hash,
+                            source_bucket_hash=embed_rate_limit_result.source_bucket_hash,
+                            reason="captcha",
+                        )
                     flash("⛔️ Invalid CAPTCHA answer.", "error")
                     return _render_profile(400)
 
@@ -379,6 +440,12 @@ def register_profile_routes(app: Flask) -> None:
                     do_send_email(uname.user, email_body.strip())
 
                 if is_embedded:
+                    if embed_rate_limit_result is not None:
+                        emit_embed_abuse_counter(
+                            EMBED_SUBMISSION_ACCEPTED_COUNTER,
+                            profile_hash=embed_rate_limit_result.profile_hash,
+                            source_bucket_hash=embed_rate_limit_result.source_bucket_hash,
+                        )
                     reply_url = canonical_external_url("message_reply", slug=message.reply_slug)
                     return render_template(
                         "submission_success.html",
@@ -402,6 +469,13 @@ def register_profile_routes(app: Flask) -> None:
             error_message = (
                 "⛔️ There was an error submitting your message: " + "; ".join(errors) + "."
             )
+            if embed_rate_limit_result is not None:
+                emit_embed_abuse_counter(
+                    EMBED_SUBMISSION_REJECTED_COUNTER,
+                    profile_hash=embed_rate_limit_result.profile_hash,
+                    source_bucket_hash=embed_rate_limit_result.source_bucket_hash,
+                    reason="validation",
+                )
             flash(error_message, "error")
             return _render_profile(400)
 
