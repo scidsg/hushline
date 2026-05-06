@@ -72,6 +72,17 @@ def _embed_submission_data(response_text: str) -> dict[str, str]:
     return data
 
 
+def _focusable_labels(page: BeautifulSoup) -> list[str]:
+    labels = []
+    for element in page.find_all(["a", "button", "input", "textarea", "select"]):
+        if element.get("disabled") or element.get("type") == "hidden":
+            continue
+        if element.name == "a" and not element.get("href"):
+            continue
+        labels.append(element.get_text(" ", strip=True) or element.get("name", ""))
+    return labels
+
+
 def test_admin_embeddable_forms_default_disabled(client: FlaskClient, admin_user: User) -> None:
     with client.session_transaction() as session:
         session["user_id"] = admin_user.id
@@ -351,6 +362,14 @@ def test_embed_profile_submission_rejects_captcha_failure(client: FlaskClient, u
 
     assert post_response.status_code == 400
     assert "Invalid CAPTCHA answer" in post_response.text
+    page = BeautifulSoup(post_response.text, "html.parser")
+    error_summary = page.find("section", id="embed-error-summary")
+    assert error_summary is not None
+    assert error_summary.get("role") == "alert"
+    assert error_summary.get("aria-live") == "assertive"
+    assert error_summary.get("aria-atomic") == "true"
+    assert error_summary.find(string=lambda value: value and "Invalid CAPTCHA answer" in value)
+    assert page.select_one(".flash-messages") is None
     assert "postMessage" not in post_response.text
     assert _first_message_for(user.primary_username) is None
 
@@ -592,9 +611,16 @@ def test_primary_embed_settings_update_origins_and_render_iframe_snippet(
         _external=True,
     )
     assert f"/embed/to/{user.primary_username.username}" in iframe["src"]
-    assert iframe["sandbox"] == ["allow-forms", "allow-popups", "allow-scripts"]
+    assert iframe["sandbox"] == [
+        "allow-forms",
+        "allow-popups",
+        "allow-scripts",
+        "allow-top-navigation-by-user-activation",
+    ]
     assert iframe["referrerpolicy"] == "no-referrer"
-    assert iframe["title"]
+    assert "Send a secure Hush Line message to" in iframe["title"]
+    expected_title_recipient = user.primary_username.display_name or user.primary_username.username
+    assert expected_title_recipient in iframe["title"]
     assert iframe["width"] == "100%"
     assert iframe["height"] == "700"
     assert "max-width:720px" in iframe["style"]
@@ -621,6 +647,19 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     assert "Verified account" in response.text
     assert "Client-side encryption enabled" in response.text
     assert page.find("a", string=lambda value: value and "Open on Hush Line" in value) is not None
+    exit_link = page.find("a", attrs={"aria-label": "Emergency exit: Leave"})
+    assert exit_link is not None
+    assert exit_link.get("target") == "_top"
+    assert "noopener" in exit_link.get("rel", [])
+    assert "noreferrer" in exit_link.get("rel", [])
+    powered_by_link = page.find("a", string=lambda value: value and value.strip() == "Hush Line")
+    assert powered_by_link is not None
+    assert powered_by_link.get("href") == "https://hushline.app"
+    noscript = page.find("noscript")
+    assert noscript is not None
+    noscript_text = noscript.get_text(" ", strip=True)
+    assert "server-side encrypted fallback" in noscript_text
+    assert "open the full Hush Line profile" in noscript_text
     assert page.find("label", attrs={"for": "captcha_answer"}) is not None
     assert page.find("input", attrs={"name": "csrf_token"}) is not None
     assert page.find("script", attrs={"id": "recipientPublicKeys"}) is not None
@@ -630,6 +669,63 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     assert not any("submit-message.js" in source for source in script_sources)
     assert page.find("iframe") is None
     assert "script-widget" not in response.text
+
+
+def test_embed_profile_keyboard_flow_and_mobile_accessibility_chrome(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+
+    assert response.status_code == 200
+    page = BeautifulSoup(response.text, "html.parser")
+    focusable_labels = _focusable_labels(page)
+    assert focusable_labels[0] == "Skip to message form"
+    assert "Open on Hush Line" in focusable_labels
+    assert "Leave" in focusable_labels
+    assert "captcha_answer" in focusable_labels
+    assert "Send Message" in focusable_labels
+    assert focusable_labels.index("Open on Hush Line") < focusable_labels.index("field_0")
+    assert focusable_labels.index("Leave") < focusable_labels.index("field_0")
+    assert focusable_labels.index("captcha_answer") < focusable_labels.index("Send Message")
+    style = page.find("style")
+    assert style is not None
+    style_text = style.get_text()
+    assert "@media (max-width: 28rem)" in style_text
+    assert "@media (prefers-reduced-motion: reduce)" in style_text
+    assert ":focus-visible" in style_text
+    assert "flex-wrap: wrap" in style_text
+
+
+def test_embed_profile_required_chrome_survives_recipient_branding_settings(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    user.primary_username.display_name = "Recipient Newsroom"
+    user.primary_username.is_verified = True
+    OrganizationSetting.upsert(OrganizationSetting.BRAND_NAME, "Recipient Brand")
+    OrganizationSetting.upsert(OrganizationSetting.BRAND_PRIMARY_COLOR, "#005f73")
+    OrganizationSetting.upsert(OrganizationSetting.BRAND_PROFILE_HEADER_TEMPLATE, "")
+    db.session.commit()
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+
+    assert response.status_code == 200
+    page = BeautifulSoup(response.text, "html.parser")
+    assert page.find(string="Secure Hush Line form") is not None
+    assert page.find(string=lambda value: value and "Hosted by Recipient Brand" in value)
+    assert page.find("a", string=lambda value: value and value.strip() == "Hush Line") is not None
+    assert "Recipient Newsroom" in response.text
+    assert f"@{user.primary_username.username}" in response.text
+    assert "Verified account" in response.text
+    assert "Client-side encryption enabled" in response.text
+    assert page.find("a", string=lambda value: value and "Open on Hush Line" in value) is not None
+    assert page.find("a", attrs={"aria-label": "Emergency exit: Leave"}) is not None
 
 
 def test_embed_profile_template_shows_caution_state(client: FlaskClient, user: User) -> None:

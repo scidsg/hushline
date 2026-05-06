@@ -22,7 +22,19 @@
         margin: 0;
       }
 
+      body.embed-page *,
+      body.embed-page *::before,
+      body.embed-page *::after {
+        box-sizing: border-box;
+      }
+
       .embed-shell {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        margin: 0 auto;
+        max-width: 44rem;
+        min-width: 0;
         padding: 1rem;
       }
 
@@ -30,7 +42,6 @@
       .embed-recipient,
       .embed-actions {
         border-bottom: 1px solid #d8d8d8;
-        margin-bottom: 1rem;
         padding-bottom: 1rem;
       }
 
@@ -47,6 +58,8 @@
 
       .embed-logo {
         height: 2rem;
+        max-width: 10rem;
+        object-fit: contain;
         width: auto;
       }
 
@@ -74,6 +87,95 @@
         flex-wrap: wrap;
         gap: 0.75rem;
       }
+
+      .embed-actions a {
+        align-items: center;
+        border: 2px solid currentColor;
+        border-radius: 0.25rem;
+        display: inline-flex;
+        min-height: 2.75rem;
+        padding: 0.55rem 0.75rem;
+      }
+
+      .embed-error-summary,
+      .embed-noscript {
+        border: 2px solid #842029;
+        border-radius: 0.25rem;
+        color: #842029;
+        padding: 0.75rem;
+      }
+
+      .embed-error-summary {
+        margin: 0;
+      }
+
+      .embed-error-summary ul {
+        margin: 0.5rem 0 0;
+        padding-left: 1.25rem;
+      }
+
+      .embed-noscript {
+        background: #fff4f4;
+      }
+
+      .embed-page input,
+      .embed-page textarea,
+      .embed-page select,
+      .embed-page button {
+        max-width: 100%;
+      }
+
+      .embed-page textarea,
+      .embed-page input:not([type="hidden"]),
+      .embed-page select {
+        width: 100%;
+      }
+
+      .embed-page .captcha_container {
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+
+      .embed-page input#captcha_answer {
+        max-width: 8rem;
+        width: 8rem;
+      }
+
+      .embed-page a:focus-visible,
+      .embed-page button:focus-visible,
+      .embed-page input:focus-visible,
+      .embed-page textarea:focus-visible,
+      .embed-page select:focus-visible {
+        outline: 3px solid var(--theme-color-dark);
+        outline-offset: 3px;
+      }
+
+      @media (max-width: 28rem) {
+        .embed-shell {
+          padding: 0.75rem;
+        }
+
+        .embed-actions {
+          flex-direction: column;
+        }
+
+        .embed-actions a,
+        .embed-page button[type="submit"] {
+          justify-content: center;
+          width: 100%;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
     </style>
     {% if not message_submission_block_reason %}
       <script defer src="{{ url_for('static', filename='js/diceware-words.js') }}"></script>
@@ -81,16 +183,28 @@
     {% endif %}
   </head>
   <body class="embed-page">
+    <a class="skip-link" href="#messageForm">Skip to message form</a>
     <main class="embed-shell" id="main-content">
-      {% with messages = get_flashed_messages() %}
+      {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-          <div class="flash-messages" role="status" aria-live="polite" aria-atomic="true">
-            {% for message in messages %}
-              <div class="flash-message">
-                <span class="flash-message-text">{{ message }}</span>
-              </div>
-            {% endfor %}
-          </div>
+          <section
+            class="embed-error-summary"
+            id="embed-error-summary"
+            role="alert"
+            aria-live="assertive"
+            aria-atomic="true"
+            tabindex="-1"
+            aria-labelledby="embed-error-summary-heading"
+          >
+            <h2 id="embed-error-summary-heading">Check your message before submitting</h2>
+            <ul>
+              {% for category, message in messages %}
+                <li class="flash-message{% if category %} flash-{{ category }}{% endif %}">
+                  <span class="flash-message-text">{{ message }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          </section>
         {% endif %}
       {% endwith %}
 
@@ -102,6 +216,12 @@
           <div>
             <h1 id="embed-trust-heading">Secure Hush Line form</h1>
             <p class="meta embed-meta">Hosted by {{ brand_name }}</p>
+            <p class="meta embed-meta">
+              Powered by
+              <a href="https://hushline.app" target="_blank" rel="noopener noreferrer">
+                Hush Line
+              </a>
+            </p>
           </div>
         </div>
       </section>
@@ -125,7 +245,7 @@
             {% if recipient_public_keys %}
               Client-side encryption enabled
             {% else %}
-              Encryption unavailable
+              Encryption unavailable; submission disabled
             {% endif %}
           </li>
         </ul>
@@ -135,10 +255,25 @@
         <a href="{{ open_profile_url }}" target="_blank" rel="noopener noreferrer">
           Open on Hush Line
         </a>
-        <a href="{{ guidance_exit_button_link }}" target="_top" rel="noopener noreferrer">
+        <a
+          href="{{ guidance_exit_button_link }}"
+          target="_top"
+          rel="noopener noreferrer"
+          aria-label="Emergency exit: {{ guidance_exit_button_text }}"
+        >
           {{ guidance_exit_button_text }}
         </a>
       </nav>
+
+      <noscript>
+        <div class="embed-noscript" role="status">
+          JavaScript is disabled. Hush Line will use its server-side encrypted fallback
+          for encrypted fields, or you can
+          <a href="{{ open_profile_url }}" target="_blank" rel="noopener noreferrer">
+            open the full Hush Line profile
+          </a>.
+        </div>
+      </noscript>
 
       <div id="userEmailSettings" class="display-none">
         {{ {
