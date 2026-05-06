@@ -19,7 +19,9 @@
       body.embed-page {
         background: #fff;
         color: #111;
+        display: block;
         margin: 0;
+        padding: 0;
       }
 
       body.embed-page *,
@@ -38,48 +40,18 @@
         padding: 1rem;
       }
 
-      .embed-trust-chrome,
-      .embed-recipient,
+      .embed-profile-summary,
       .embed-actions {
         border-bottom: 1px solid #d8d8d8;
         padding-bottom: 1rem;
-      }
-
-      .embed-brand {
-        align-items: center;
-        display: flex;
-        gap: 0.75rem;
-      }
-
-      .embed-brand h1,
-      .embed-recipient h2 {
-        margin: 0;
-      }
-
-      .embed-logo {
-        height: 2rem;
-        max-width: 10rem;
-        object-fit: contain;
-        width: auto;
       }
 
       .embed-meta {
         margin: 0.25rem 0 0;
       }
 
-      .embed-status-list {
-        display: flex;
+      .embed-page .badgeContainer {
         flex-wrap: wrap;
-        gap: 0.5rem;
-        list-style: none;
-        margin: 0.75rem 0 0;
-        padding: 0;
-      }
-
-      .embed-status-list li {
-        border: 1px solid #d8d8d8;
-        border-radius: 0.25rem;
-        padding: 0.25rem 0.5rem;
       }
 
       .embed-actions {
@@ -90,11 +62,8 @@
 
       .embed-actions a {
         align-items: center;
-        border: 2px solid currentColor;
-        border-radius: 0.25rem;
         display: inline-flex;
-        min-height: 2.75rem;
-        padding: 0.55rem 0.75rem;
+        min-height: 2rem;
       }
 
       .embed-error-summary,
@@ -159,9 +128,7 @@
           flex-direction: column;
         }
 
-        .embed-actions a,
         .embed-page button[type="submit"] {
-          justify-content: center;
           width: 100%;
         }
       }
@@ -208,47 +175,97 @@
         {% endif %}
       {% endwith %}
 
-      <section class="embed-trust-chrome" aria-labelledby="embed-trust-heading">
-        <div class="embed-brand">
-          {% if brand_logo_url %}
-            <img class="embed-logo" src="{{ brand_logo_url }}" alt="{{ brand_name }} logo" />
-          {% endif %}
-          <div>
-            <h1 id="embed-trust-heading">Secure Hush Line form</h1>
-            <p class="meta embed-meta">Hosted by {{ brand_name }}</p>
-            <p class="meta embed-meta">
-              Powered by
-              <a href="https://hushline.app" target="_blank" rel="noopener noreferrer">
-                Hush Line
-              </a>
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section class="embed-recipient" aria-labelledby="embed-recipient-heading">
-        <p class="meta embed-meta">Sending to</p>
-        <h2 id="embed-recipient-heading">{{ display_name_or_username }}</h2>
+      <section class="embed-profile-summary" aria-labelledby="embed-recipient-heading">
+        <h2 id="embed-recipient-heading" class="submit">{{ display_name_or_username }}</h2>
         <p class="meta embed-meta">@{{ username.username }}</p>
-        <ul class="embed-status-list" aria-label="Recipient trust and encryption state">
+
+        <div
+          class="badgeContainer"
+          role="group"
+          aria-label="Recipient trust and encryption state"
+        >
           {% if user.is_admin %}
-            <li>Admin account</li>
+            <span class="badge" role="img" aria-label="Admin">
+              ⚙️&nbsp;Admin
+            </span>
           {% endif %}
           {% if username.is_verified %}
-            <li>Verified account</li>
+            <span class="badge" role="img" aria-label="Verified">
+              ⭐️&nbsp;Verified
+            </span>
+            <a
+              class="meta"
+              href="https://hushline.app/library/docs/using-your-tip-line/account-verification"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Learn more about verified accounts."
+              >Learn more</a
+            >
           {% elif show_caution_badge %}
-            <li>Caution advised</li>
-          {% else %}
-            <li>Unverified account</li>
+            <span
+              class="badge badgeCaution"
+              role="img"
+              aria-label="Caution: display name may be mistaken for admin"
+            >
+              ⚠️&nbsp;Caution
+            </span>
+            <span class="badgeHelpTooltipGroup">
+              <button
+                type="button"
+                class="meta badgeHelpTrigger"
+                aria-describedby="embed-caution-badge-info"
+              >
+                What's this?
+              </button>
+              <span
+                id="embed-caution-badge-info"
+                class="badgeHelpTooltip"
+                role="tooltip"
+              >
+                Visitors should be cautious of interacting with this account.
+              </span>
+            </span>
           {% endif %}
-          <li>
-            {% if recipient_public_keys %}
-              Client-side encryption enabled
-            {% else %}
-              Encryption unavailable; submission disabled
-            {% endif %}
-          </li>
-        </ul>
+
+          {% if recipient_public_keys %}
+            <span class="badge" role="img" aria-label="End-to-end encrypted">
+              🔒&nbsp;End-to-End Encrypted
+            </span>
+          {% else %}
+            <span class="badge" role="img" aria-label="Encryption unavailable">
+              🔒&nbsp;Encryption unavailable
+            </span>
+          {% endif %}
+        </div>
+
+        {% if username.bio %}
+          <p class="bio">{{ username.bio }}</p>
+        {% endif %}
+
+        {% if username.valid_fields | length > 0 %}
+          <div class="extra-fields">
+            {% for field in username.valid_fields %}
+              <p class="extra-field">
+                <span class="extra-field-label">{{ field.label }}</span>
+                <span class="extra-field-value">
+                  {% if field.is_verified %}
+                    <span class="icon verifiedURL" title="Verified Address"></span>
+                  {% endif %}
+                  {% if field.value.startswith('https://') %}
+                    <a
+                      href="{{ field.value }}"
+                      target="_blank"
+                      rel="noopener noreferrer me"
+                      >{{ field.value }}</a
+                    >
+                  {% else %}
+                    {{ field.value }}
+                  {% endif %}
+                </span>
+              </p>
+            {% endfor %}
+          </div>
+        {% endif %}
       </section>
 
       <nav class="embed-actions" aria-label="Embed safety actions">
@@ -311,10 +328,18 @@
                 {% else %}
                   {% if data['field'].encrypted %}
                     {{ form[data['name']](id=data['name'], class='form-field encrypted-field', **{'data-label': form[data['name']].label.text}) }}
-                    <p class="meta">Encrypted before submission</p>
+                    <p class="meta">🔒 Encrypted</p>
                   {% else %}
                     {{ form[data['name']](id=data['name'], class='form-field', **{'data-label': form[data['name']].label.text}) }}
-                    <p class="meta">Not encrypted before submission</p>
+                    <p class="meta">
+                      ⚠️ Not Encrypted.
+                      <a
+                        href="https://hushline.app/library/docs/getting-started/account-setup/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        >Learn why.</a
+                      >
+                    </p>
                   {% endif %}
                 {% endif %}
               </div>

@@ -108,6 +108,10 @@ def _focusable_labels(page: BeautifulSoup) -> list[str]:
     return labels
 
 
+def _badge_texts(page: BeautifulSoup) -> list[str]:
+    return [badge.get_text(" ", strip=True).replace("\xa0", " ") for badge in page.select(".badge")]
+
+
 def _assert_no_sensitive_embed_operational_data(logged_text: str) -> None:
     forbidden_values = [
         "secret disclosure body",
@@ -137,7 +141,21 @@ def test_admin_embeddable_forms_default_disabled(client: FlaskClient, admin_user
 
     assert response.status_code == 200
     assert OrganizationSetting.fetch_one(OrganizationSetting.EMBEDDABLE_FORMS_ENABLED) is False
-    assert "Enable Embeds" in response.text
+    page = BeautifulSoup(response.text, "html.parser")
+    toggle = page.find("input", attrs={"id": "embeddable_forms_enabled"})
+    assert toggle is not None
+    assert toggle.get("type") == "checkbox"
+    assert toggle.get("name") == "embeddable_forms_enabled"
+    assert toggle.get("value") == "true"
+    assert toggle.get("role") == "switch"
+    assert not toggle.has_attr("checked")
+    assert toggle.find_parent("form").get("action") == url_for("admin.toggle_embeddable_forms")
+    fallback = page.find("input", attrs={"type": "hidden", "name": "embeddable_forms_enabled"})
+    assert fallback is not None
+    assert fallback.get("value") == "false"
+    assert page.select_one(".toggle-ui .toggle .toggle__ball") is not None
+    assert "Enable embeddable forms globally" in response.text
+    assert "Enable Embeds" not in response.text
     assert "Disable Embeds" not in response.text
 
 
@@ -720,8 +738,9 @@ def test_embed_profile_submission_uses_same_enabled_custom_fields(
         "Encrypted details Required",
     ]
     assert rendered_labels == profile_labels
-    assert "Not encrypted before submission" in response.text
-    assert "Encrypted before submission" in response.text
+    assert "⚠️ Not Encrypted." in response.text
+    assert "Learn why." in response.text
+    assert "🔒 Encrypted" in response.text
     submission_data = _embed_submission_data(response.text)
     armored_details = "-----BEGIN PGP MESSAGE-----\n\ndetails ciphertext\n-----END PGP MESSAGE-----"
 
@@ -833,6 +852,11 @@ def test_admin_can_toggle_embeddable_forms(client: FlaskClient, admin_user: User
     )
     assert response.status_code == 302
     assert OrganizationSetting.fetch_one(OrganizationSetting.EMBEDDABLE_FORMS_ENABLED) is True
+    page_response = client.get(url_for("settings.admin"))
+    page = BeautifulSoup(page_response.text, "html.parser")
+    toggle = page.find("input", attrs={"id": "embeddable_forms_enabled"})
+    assert toggle is not None
+    assert toggle.has_attr("checked")
 
     response = client.post(
         url_for("admin.toggle_embeddable_forms"),
@@ -924,21 +948,28 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     assert response.status_code == 200
     page = BeautifulSoup(response.text, "html.parser")
     assert page.select_one("body.embed-page") is not None
-    assert page.find(string="Secure Hush Line form") is not None
-    assert "Hosted by" in response.text
+    assert page.find(string="Secure Hush Line form") is None
+    assert "Hosted by" not in response.text
+    assert "Powered by Hush Line" not in response.text
+    assert "Sending to" not in response.text
     assert "Example Recipient" in response.text
     assert f"@{user.primary_username.username}" in response.text
-    assert "Verified account" in response.text
-    assert "Client-side encryption enabled" in response.text
+    badge_texts = _badge_texts(page)
+    assert "⭐️ Verified" in badge_texts
+    assert "🔒 End-to-End Encrypted" in badge_texts
+    visible_text = page.get_text(" ", strip=True)
+    assert "Verified account" not in visible_text
+    assert "Client-side encryption enabled" not in visible_text
+    csp = response.headers["Content-Security-Policy"]
+    assert "default-src 'self'" in csp
+    assert "frame-ancestors https://tips.example" in csp
+    assert "frame-ancestors *" not in csp
     assert page.find("a", string=lambda value: value and "Open on Hush Line" in value) is not None
     exit_link = page.find("a", attrs={"aria-label": "Emergency exit: Leave"})
     assert exit_link is not None
     assert exit_link.get("target") == "_top"
     assert "noopener" in exit_link.get("rel", [])
     assert "noreferrer" in exit_link.get("rel", [])
-    powered_by_link = page.find("a", string=lambda value: value and value.strip() == "Hush Line")
-    assert powered_by_link is not None
-    assert powered_by_link.get("href") == "https://hushline.app"
     noscript = page.find("noscript")
     assert noscript is not None
     noscript_text = noscript.get_text(" ", strip=True)
@@ -953,6 +984,55 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     assert not any("submit-message.js" in source for source in script_sources)
     assert page.find("iframe") is None
     assert "script-widget" not in response.text
+
+
+def test_embed_profile_renders_additional_profile_fields_like_full_profile(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    username = user.primary_username
+    username.extra_field_label1 = "Signal username"
+    username.extra_field_value1 = "singleusername.666"
+    username.extra_field_label2 = "Verified URL"
+    username.extra_field_value2 = "https://scidsg.org/"
+    username.extra_field_verified2 = True
+    db.session.commit()
+    _configure_embed(username)
+
+    profile_response = client.get(url_for("profile", username=username.username))
+    embed_response = client.get(url_for("embed_profile", username=username.username))
+
+    assert profile_response.status_code == 200
+    assert embed_response.status_code == 200
+    profile_page = BeautifulSoup(profile_response.text, "html.parser")
+    embed_page = BeautifulSoup(embed_response.text, "html.parser")
+
+    def profile_field_summary(
+        page: BeautifulSoup,
+    ) -> list[tuple[str, str, str | None, bool]]:
+        fields = []
+        for field in page.select(".extra-fields .extra-field"):
+            label = field.select_one(".extra-field-label")
+            value = field.select_one(".extra-field-value")
+            assert label is not None
+            assert value is not None
+            link = value.select_one("a")
+            fields.append(
+                (
+                    label.get_text(" ", strip=True),
+                    value.get_text(" ", strip=True),
+                    link.get("href") if link else None,
+                    value.select_one(".icon.verifiedURL") is not None,
+                )
+            )
+        return fields
+
+    assert profile_field_summary(embed_page) == profile_field_summary(profile_page)
+    embed_link = embed_page.find("a", href="https://scidsg.org/")
+    assert embed_link is not None
+    assert embed_link.get("target") == "_blank"
+    assert embed_link.get("rel") == ["noopener", "noreferrer", "me"]
 
 
 def test_embed_profile_keyboard_flow_and_mobile_accessibility_chrome(
@@ -1001,13 +1081,14 @@ def test_embed_profile_required_chrome_survives_recipient_branding_settings(
 
     assert response.status_code == 200
     page = BeautifulSoup(response.text, "html.parser")
-    assert page.find(string="Secure Hush Line form") is not None
-    assert page.find(string=lambda value: value and "Hosted by Recipient Brand" in value)
-    assert page.find("a", string=lambda value: value and value.strip() == "Hush Line") is not None
+    assert page.find(string="Secure Hush Line form") is None
+    assert not page.find(string=lambda value: value and "Hosted by Recipient Brand" in value)
+    assert "Powered by Hush Line" not in response.text
     assert "Recipient Newsroom" in response.text
     assert f"@{user.primary_username.username}" in response.text
-    assert "Verified account" in response.text
-    assert "Client-side encryption enabled" in response.text
+    badge_texts = _badge_texts(page)
+    assert "⭐️ Verified" in badge_texts
+    assert "🔒 End-to-End Encrypted" in badge_texts
     assert page.find("a", string=lambda value: value and "Open on Hush Line" in value) is not None
     assert page.find("a", attrs={"aria-label": "Emergency exit: Leave"}) is not None
 
@@ -1021,7 +1102,9 @@ def test_embed_profile_template_shows_caution_state(client: FlaskClient, user: U
     response = client.get(url_for("embed_profile", username=user.primary_username.username))
 
     assert response.status_code == 200
-    assert "Caution advised" in response.text
+    page = BeautifulSoup(response.text, "html.parser")
+    assert "⚠️ Caution" in _badge_texts(page)
+    assert "Visitors should be cautious of interacting with this account." in response.text
 
 
 def test_embed_profile_template_ignores_sender_query_values(
