@@ -6,6 +6,7 @@ from wtforms.validators import ValidationError
 
 from hushline.db import db
 from hushline.model import (
+    AccountCategory,
     Tier,
     User,
     Username,
@@ -33,6 +34,9 @@ def test_admin_settings_includes_user_search(app: Flask, client: FlaskClient) ->
     assert 'data-search="' in response.text
     assert "Set Cautious" in response.text
     assert "Set Suspended" in response.text
+    assert "Account Category:" in response.text
+    assert 'name="account_category"' in response.text
+    assert "Update Category" in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
@@ -213,6 +217,12 @@ def test_admin_actions_require_csrf_token(
     )
     assert response.status_code == 400
 
+    response = client.post(
+        url_for("admin.update_account_category", user_id=target_user_id),
+        data={"account_category": AccountCategory.LAWYER.value},
+    )
+    assert response.status_code == 400
+
     app.config["WTF_CSRF_ENABLED"] = prior_setting
 
 
@@ -314,6 +324,46 @@ def test_toggle_suspended_clears_user_state(client: FlaskClient, user: User) -> 
     refreshed_user = db.session.get(User, user.id)
     assert refreshed_user is not None
     assert refreshed_user.is_suspended is False
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_update_account_category_validates_and_updates_user(
+    client: FlaskClient, user: User
+) -> None:
+    assert user.account_category is None
+
+    response = client.post(
+        url_for("admin.update_account_category", user_id=user.id),
+        data={"account_category": AccountCategory.LAWYER.value},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "User account category updated." in response.text
+
+    refreshed_user = db.session.get(User, user.id)
+    assert refreshed_user is not None
+    assert refreshed_user.account_category == AccountCategory.LAWYER.value
+
+    response = client.post(
+        url_for("admin.update_account_category", user_id=user.id),
+        data={"account_category": "not-a-real-category"},
+    )
+    assert response.status_code == 400
+
+    refreshed_user = db.session.get(User, user.id)
+    assert refreshed_user is not None
+    assert refreshed_user.account_category == AccountCategory.LAWYER.value
+
+    response = client.post(
+        url_for("admin.update_account_category", user_id=user.id),
+        data={"account_category": ""},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    refreshed_user = db.session.get(User, user.id)
+    assert refreshed_user is not None
+    assert refreshed_user.account_category is None
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
