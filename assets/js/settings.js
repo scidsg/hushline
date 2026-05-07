@@ -196,13 +196,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
 document.addEventListener("DOMContentLoaded", function () {
   document.querySelectorAll("form.auto-submit").forEach((elem) => {
-    const input = elem.querySelector(':scope input[type="checkbox"');
-    elem
-      .querySelector(":scope .toggle")
-      .addEventListener("click", function (event) {
-        event.preventDefault();
-        input.checked ^= 1;
-        elem.querySelector(':scope button[type="submit"]').click();
-      });
+    const input = elem.querySelector(':scope input[type="checkbox"]');
+    const toggle = elem.querySelector(":scope .toggle");
+    const submitButton = elem.querySelector(
+      ':scope button[type="submit"], :scope input[type="submit"]',
+    );
+    if (!input || !toggle || !submitButton) return;
+
+    input.addEventListener("change", function () {
+      submitButton.click();
+    });
+
+    toggle.addEventListener("click", function (event) {
+      event.preventDefault();
+      input.checked = !input.checked;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    });
   });
 });

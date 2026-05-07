@@ -27,6 +27,8 @@ SKIPPABLE_REVISIONS = [
     "06b343c38386",  # only renames indices and tables, no data changed
     "6071f1eea074",  # simple add/drop on columns, no data migrated
     "f32aa741ddc4",  # simple add/drop on columns, no data migrated
+    "7b9c2d1e4f60",  # simple add/drop on columns, no data migrated
+    "a4c8f2d9e713",  # simple table create/drop, no data migrated
 ]
 DISALLOWED_DOWNGRADES = [
     "4a53667aff6e",  # downgrading is disabled to prevent accidental data loss

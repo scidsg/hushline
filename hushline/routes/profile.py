@@ -2,24 +2,35 @@ import hmac
 import re
 import secrets
 from hashlib import sha256
+from typing import Any
 
 from flask import (
     Flask,
     abort,
     current_app,
     flash,
+    g,
     redirect,
     render_template,
     request,
     session,
     url_for,
 )
+from itsdangerous import BadData, SignatureExpired, URLSafeTimedSerializer
 from sqlalchemy import func
 from sqlalchemy.exc import MultipleResultsFound
 from werkzeug.wrappers.response import Response
 
 from hushline.crypto import encrypt_message
 from hushline.db import db
+from hushline.embeds import (
+    EMBED_SUBMISSION_ACCEPTED_COUNTER,
+    EMBED_SUBMISSION_ATTEMPT_COUNTER,
+    EMBED_SUBMISSION_RATE_LIMITED_COUNTER,
+    EMBED_SUBMISSION_REJECTED_COUNTER,
+    check_embed_rate_limit,
+    emit_embed_abuse_counter,
+)
 from hushline.external_urls import canonical_external_url
 from hushline.model import (
     FieldDefinition,
@@ -39,12 +50,32 @@ from hushline.routes.common import (
 from hushline.routes.forms import DynamicMessageForm
 from hushline.safe_template import safe_render_template
 
+EMBED_CAPTCHA_MAX_AGE_SECONDS = 60 * 60
+
 
 def register_profile_routes(app: Flask) -> None:
     def _owner_guard_signature(username: str, user_id: int, nonce: str) -> str:
         return hmac.new(
             key=(app.secret_key or "").encode("utf-8"),
             msg=f"{username}:{user_id}:{nonce}".encode(),
+            digestmod=sha256,
+        ).hexdigest()
+
+    def _embed_captcha_serializer() -> URLSafeTimedSerializer:
+        return URLSafeTimedSerializer(app.secret_key or "", salt="embed-profile-captcha")
+
+    def _embed_captcha_answer_signature(
+        username: str,
+        user_id: int,
+        nonce: str,
+        math_problem: str,
+        captcha_answer: str,
+    ) -> str:
+        return hmac.new(
+            key=(app.secret_key or "").encode("utf-8"),
+            msg=(
+                "embed-captcha:v1:" f"{username}:{user_id}:{nonce}:{math_problem}:{captcha_answer}"
+            ).encode(),
             digestmod=sha256,
         ).hexdigest()
 
@@ -59,15 +90,82 @@ def register_profile_routes(app: Flask) -> None:
             )
         )
 
-    def _get_math_problem(force_new: bool = False) -> str:
-        if not force_new and session.get("math_problem") and session.get("math_answer"):
-            return session["math_problem"]
+    def _new_math_problem() -> tuple[str, str]:
         num1 = secrets.randbelow(10) + 1
         num2 = secrets.randbelow(10) + 1
         math_problem = f"{num1} + {num2} ="
-        session["math_answer"] = str(num1 + num2)
+        return math_problem, str(num1 + num2)
+
+    def _get_session_math_problem(force_new: bool = False) -> str:
+        if not force_new and session.get("math_problem") and session.get("math_answer"):
+            return session["math_problem"]
+        math_problem, math_answer = _new_math_problem()
+        session["math_answer"] = math_answer
         session["math_problem"] = math_problem
         return math_problem
+
+    def _new_embed_math_problem(uname: Username) -> tuple[str, str]:
+        math_problem, math_answer = _new_math_problem()
+        nonce = secrets.token_urlsafe(16)
+        answer_signature = _embed_captcha_answer_signature(
+            uname.username,
+            uname.user_id,
+            nonce,
+            math_problem,
+            math_answer,
+        )
+        token = _embed_captcha_serializer().dumps(
+            {
+                "v": 1,
+                "username": uname.username,
+                "user_id": uname.user_id,
+                "nonce": nonce,
+                "math_problem": math_problem,
+                "answer_signature": answer_signature,
+            }
+        )
+        return math_problem, token
+
+    def _validate_embed_captcha(uname: Username, captcha_answer: str, captcha_token: str) -> bool:
+        if not captcha_answer.isdigit():
+            flash("⛔️ Incorrect CAPTCHA. Please enter a valid number.", "error")
+            return False
+
+        try:
+            payload: dict[str, Any] = _embed_captcha_serializer().loads(
+                captcha_token,
+                max_age=EMBED_CAPTCHA_MAX_AGE_SECONDS,
+            )
+        except SignatureExpired:
+            flash("⛔️ CAPTCHA expired. Please try again.", "error")
+            return False
+        except BadData:
+            flash("⛔️ Incorrect CAPTCHA. Please try again.", "error")
+            return False
+
+        if (
+            payload.get("v") != 1
+            or payload.get("username") != uname.username
+            or payload.get("user_id") != uname.user_id
+        ):
+            flash("⛔️ Incorrect CAPTCHA. Please try again.", "error")
+            return False
+
+        nonce = str(payload.get("nonce", ""))
+        math_problem = str(payload.get("math_problem", ""))
+        answer_signature = str(payload.get("answer_signature", ""))
+        expected_signature = _embed_captcha_answer_signature(
+            uname.username,
+            uname.user_id,
+            nonce,
+            math_problem,
+            captcha_answer,
+        )
+        if not hmac.compare_digest(answer_signature, expected_signature):
+            flash("⛔️ Incorrect CAPTCHA. Please try again.", "error")
+            return False
+
+        return True
 
     def _message_submission_block_reason(uname: Username) -> str | None:
         if bool(getattr(uname.user, "is_suspended", False)):
@@ -91,12 +189,24 @@ def register_profile_routes(app: Flask) -> None:
         if not uname:
             abort(404)
 
+        is_embedded = request.endpoint in {"embed_profile", "embed_profile_legacy"}
+        if is_embedded:
+            if not uname.embed_is_eligible or _message_submission_block_reason(uname):
+                abort(404)
+            g.embed_frame_ancestors = " ".join(
+                Username.normalize_embed_allowed_origins(uname.embed_allowed_origins or [])
+            )
+
         uname.create_default_field_defs()
 
         dynamic_form = DynamicMessageForm([x for x in uname.message_fields if x.enabled])
-        form = dynamic_form.form()
+        form = dynamic_form.form(csrf_enabled=False if is_embedded else None)
 
-        math_problem = _get_math_problem(force_new=request.method == "GET")
+        embed_captcha_token = None
+        if is_embedded:
+            math_problem, embed_captcha_token = _new_embed_math_problem(uname)
+        else:
+            math_problem = _get_session_math_problem(force_new=request.method == "GET")
 
         profile_header = safe_render_template(
             OrganizationSetting.fetch_one(OrganizationSetting.BRAND_PROFILE_HEADER_TEMPLATE),
@@ -116,7 +226,7 @@ def register_profile_routes(app: Flask) -> None:
                 owner_guard_nonce,
             )
             rendered = render_template(
-                "profile.html",
+                "embed_profile.html" if is_embedded else "profile.html",
                 profile_header=profile_header,
                 form=form,
                 user=uname.user,
@@ -135,6 +245,9 @@ def register_profile_routes(app: Flask) -> None:
                 message_submission_block_reason=message_submission_block_reason,
                 owner_guard_nonce=owner_guard_nonce,
                 owner_guard_signature=owner_guard_signature,
+                is_embedded=is_embedded,
+                embed_captcha_token=embed_captcha_token,
+                open_profile_url=url_for("profile", username=uname.username),
             )
             if status_code is None:
                 return rendered
@@ -142,6 +255,28 @@ def register_profile_routes(app: Flask) -> None:
 
         if request.method == "POST":
             current_app.logger.debug("Profile form submitted.")
+            if is_embedded and _message_submission_block_reason(uname):
+                g.embed_frame_ancestors = "'none'"
+                abort(404)
+
+            embed_rate_limit_result = None
+            if is_embedded:
+                embed_rate_limit_result = check_embed_rate_limit(uname)
+                emit_embed_abuse_counter(
+                    EMBED_SUBMISSION_ATTEMPT_COUNTER,
+                    profile_hash=embed_rate_limit_result.profile_hash,
+                    source_bucket_hash=embed_rate_limit_result.source_bucket_hash,
+                )
+                if embed_rate_limit_result.limited:
+                    emit_embed_abuse_counter(
+                        EMBED_SUBMISSION_RATE_LIMITED_COUNTER,
+                        profile_hash=embed_rate_limit_result.profile_hash,
+                        source_bucket_hash=embed_rate_limit_result.source_bucket_hash,
+                        limited_scopes=embed_rate_limit_result.limited_scopes,
+                    )
+                    flash("⛔️ Too many embedded submission attempts. Please try again later.")
+                    return _render_profile(429)
+
             owner_guard_nonce = (form.owner_guard_nonce.data or "").strip()
             owner_guard_signature = (form.owner_guard_signature.data or "").strip()
             expected_signature = _owner_guard_signature(
@@ -154,16 +289,51 @@ def register_profile_routes(app: Flask) -> None:
                 or not owner_guard_signature
                 or not hmac.compare_digest(owner_guard_signature, expected_signature)
             ):
+                if embed_rate_limit_result is not None:
+                    emit_embed_abuse_counter(
+                        EMBED_SUBMISSION_REJECTED_COUNTER,
+                        profile_hash=embed_rate_limit_result.profile_hash,
+                        source_bucket_hash=embed_rate_limit_result.source_bucket_hash,
+                        reason="owner_guard",
+                    )
                 flash("⛔️ This tip line changed while you were composing. Please reload.")
+                return _render_profile(400)
+
+            if is_embedded and not hmac.compare_digest(
+                request.form.get("csrf_token", ""),
+                form.embed_captcha_token.data or "",
+            ):
+                if embed_rate_limit_result is not None:
+                    emit_embed_abuse_counter(
+                        EMBED_SUBMISSION_REJECTED_COUNTER,
+                        profile_hash=embed_rate_limit_result.profile_hash,
+                        source_bucket_hash=embed_rate_limit_result.source_bucket_hash,
+                        reason="form_token",
+                    )
+                flash("⛔️ Invalid embed form token. Please reload.")
                 return _render_profile(400)
 
             block_reason = _message_submission_block_reason(uname)
             if block_reason == "suspended":
+                if embed_rate_limit_result is not None:
+                    emit_embed_abuse_counter(
+                        EMBED_SUBMISSION_REJECTED_COUNTER,
+                        profile_hash=embed_rate_limit_result.profile_hash,
+                        source_bucket_hash=embed_rate_limit_result.source_bucket_hash,
+                        reason="suspended",
+                    )
                 flash("⛔️ This account is suspended. New messages cannot be sent at this time.")
                 return _render_profile(400)
 
             if form.validate_on_submit():
                 if block_reason == "missing_recipient_keys":
+                    if embed_rate_limit_result is not None:
+                        emit_embed_abuse_counter(
+                            EMBED_SUBMISSION_REJECTED_COUNTER,
+                            profile_hash=embed_rate_limit_result.profile_hash,
+                            source_bucket_hash=embed_rate_limit_result.source_bucket_hash,
+                            reason="missing_recipient_keys",
+                        )
                     flash(
                         (
                             "⛔️ You cannot submit messages to users who do not have any "
@@ -174,7 +344,23 @@ def register_profile_routes(app: Flask) -> None:
                     return _render_profile(400)
 
                 captcha_answer = form.captcha_answer.data or ""
-                if not validate_captcha(captcha_answer):
+                captcha_valid = (
+                    _validate_embed_captcha(
+                        uname,
+                        captcha_answer,
+                        form.embed_captcha_token.data or "",
+                    )
+                    if is_embedded
+                    else validate_captcha(captcha_answer)
+                )
+                if not captcha_valid:
+                    if embed_rate_limit_result is not None:
+                        emit_embed_abuse_counter(
+                            EMBED_SUBMISSION_REJECTED_COUNTER,
+                            profile_hash=embed_rate_limit_result.profile_hash,
+                            source_bucket_hash=embed_rate_limit_result.source_bucket_hash,
+                            reason="captcha",
+                        )
                     flash("⛔️ Invalid CAPTCHA answer.", "error")
                     return _render_profile(400)
 
@@ -253,6 +439,20 @@ def register_profile_routes(app: Flask) -> None:
 
                     do_send_email(uname.user, email_body.strip())
 
+                if is_embedded:
+                    if embed_rate_limit_result is not None:
+                        emit_embed_abuse_counter(
+                            EMBED_SUBMISSION_ACCEPTED_COUNTER,
+                            profile_hash=embed_rate_limit_result.profile_hash,
+                            source_bucket_hash=embed_rate_limit_result.source_bucket_hash,
+                        )
+                    reply_url = canonical_external_url("message_reply", slug=message.reply_slug)
+                    return render_template(
+                        "submission_success.html",
+                        message=message,
+                        reply_url=reply_url,
+                    )
+
                 flash("👍 Message submitted successfully.")
                 session["reply_slug"] = message.reply_slug
                 current_app.logger.debug("Message sent and now redirecting")
@@ -269,10 +469,31 @@ def register_profile_routes(app: Flask) -> None:
             error_message = (
                 "⛔️ There was an error submitting your message: " + "; ".join(errors) + "."
             )
+            if embed_rate_limit_result is not None:
+                emit_embed_abuse_counter(
+                    EMBED_SUBMISSION_REJECTED_COUNTER,
+                    profile_hash=embed_rate_limit_result.profile_hash,
+                    source_bucket_hash=embed_rate_limit_result.source_bucket_hash,
+                    reason="validation",
+                )
             flash(error_message, "error")
             return _render_profile(400)
 
         return _render_profile()
+
+    app.add_url_rule(
+        "/embed/to/<username>",
+        endpoint="embed_profile",
+        view_func=profile,
+        methods=["GET", "POST"],
+    )
+
+    app.add_url_rule(
+        "/embed/<username>",
+        endpoint="embed_profile_legacy",
+        view_func=profile,
+        methods=["GET", "POST"],
+    )
 
     @app.route("/submit_message/<username>")
     def redirect_submit_message(username: str) -> Response:

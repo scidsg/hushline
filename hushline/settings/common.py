@@ -43,6 +43,7 @@ from hushline.settings.forms import (
     ChangeUsernameForm,
     DirectoryVisibilityForm,
     DisplayNameForm,
+    EmbedSettingsForm,
     FieldChoiceForm,
     FieldForm,
     NewAliasForm,
@@ -338,6 +339,26 @@ def handle_update_directory_visibility(user: Username, form: DirectoryVisibility
     return redirect_to_self()
 
 
+def handle_embed_settings_form(username: Username, form: EmbedSettingsForm) -> Response | None:
+    if not username.embed_owner_has_required_plan:
+        flash("⛔️ Upgrade to Super User before enabling embeds.")
+        return None
+
+    if not username.embed_owner_has_required_key:
+        flash("⛔️ Add a usable recipient PGP key before enabling embeds.")
+        return None
+
+    if not form.validate_on_submit():
+        form_error()
+        return None
+
+    username.embed_enabled = form.embed_enabled.data
+    username.set_embed_allowed_origins(form.normalized_origins)
+    db.session.commit()
+    flash("👍 Embed settings updated successfully.")
+    return redirect_to_self()
+
+
 def handle_display_name_form(username: Username, form: DisplayNameForm) -> Response:
     username.display_name = (form.display_name.data or "").strip() or None
     db.session.commit()
@@ -512,6 +533,16 @@ def create_profile_forms(
     if not profile_form.subdivision.data and not profile_form.city.data:
         set_input_disabled(profile_form.city)
     return display_name_form, directory_visibility_form, profile_form
+
+
+def create_embed_settings_form(username: Username, submitted: bool = False) -> EmbedSettingsForm:
+    if submitted:
+        return EmbedSettingsForm()
+    return EmbedSettingsForm(
+        formdata=None,
+        embed_enabled=username.embed_enabled,
+        embed_allowed_origins="\n".join(username.embed_allowed_origins or []),
+    )
 
 
 async def handle_profile_post(

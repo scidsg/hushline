@@ -83,9 +83,18 @@ Primary assets include:
 8. **Security headers and CSP** (`hushline/__init__.py`):
 
    - CSP, HSTS (non‑onion), X‑Frame‑Options, Referrer‑Policy, and Permissions‑Policy are set on all responses.
+   - Embeddable profile forms only relax `frame-ancestors` for eligible opted-in profiles or aliases with exact origin allowlists.
 
 9. **Email header tooling** (`routes/email_headers.py`, `email_headers.py`):
+
    - Untrusted header input is size‑limited and DNS queries are time‑boxed.
+
+10. **Embeddable profile forms** (`routes/profile.py`, `embeds.py`):
+
+- Risks: malicious or compromised parent pages can misrepresent recipient identity, observe parent-page behavior, collect referrers or analytics identifiers, or pressure senders to use an embedded context when the full Hush Line profile would be safer.
+- Mitigations: embeds require global admin enablement, a currently paid Super User account, per-profile or per-alias opt-in, exact origin allowlists, recipient PGP keys, no-referrer iframe snippets, sandboxed iframes, compact trust chrome, and CSP `frame-ancestors` limited to configured origins.
+- Abuse controls throttle submissions by profile, source network bucket, and deployment. Operational counters use hashed profile/source labels and must not log disclosure content, custom-field values, reply slugs, full referrers, parent-page titles, analytics identifiers, or sender contact details.
+- Hosted redirect links remain safer for personal servers and operators who do not understand origin allowlists, CSP, iframe sandboxing, and analytics restrictions.
 
 ### Attacker stories (examples)
 

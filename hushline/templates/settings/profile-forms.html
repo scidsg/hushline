@@ -53,6 +53,76 @@
   {{ directory_visibility_form.submit }}
 </form>
 
+<h4>Embeddable Form</h4>
+<p class="info">
+  Add exact parent origins, one per line, such as https://newsroom.example.
+  The parent page must not wrap the intake area in analytics, heatmaps,
+  session replay, or misleading copy.
+</p>
+<p class="info">
+  Embedding places the Hush Line intake form on another page. The parent
+  website is not the cryptographic trust boundary; message encryption still
+  depends on this Hush Line form and your recipient keys.
+</p>
+{% if not embeddable_forms_enabled %}
+  <p class="meta">
+    Embeds are disabled globally by an administrator. Saved settings will not
+    make an iframe available until embeds are enabled globally.
+  </p>
+{% endif %}
+{% if not username.embed_owner_has_required_plan %}
+  <p class="meta">
+    Upgrade to Super User before enabling embeds.
+  </p>
+{% elif not username.embed_owner_has_required_key %}
+  <p class="meta">
+    Add a usable recipient PGP key before enabling embeds.
+  </p>
+{% endif %}
+{% if username.embed_admin_disabled %}
+  <p class="meta">
+    Embeds are disabled for this tip line by an administrator.
+  </p>
+{% endif %}
+<form
+  method="POST"
+  class="formBody"
+  action="{% if is_alias %}{{ url_for('.alias', username_id=alias.id) }}{% else %}{{ url_for('.profile') }}{% endif %}"
+>
+  {{ embed_settings_form.hidden_tag() }}
+  {% for error in embed_settings_form.errors.get('csrf_token', []) %}
+    <span class="error">{{ error }}</span>
+  {% endfor %}
+  {% set embed_settings_disabled = (not username.embed_owner_is_eligible or username.embed_admin_disabled) %}
+  <div class="checkbox-group toggle-ui">
+    {{ embed_settings_form.embed_enabled(disabled=embed_settings_disabled) }}
+    <label for="embed_enabled" class="toggle-label">
+      Allow this tip line to be embedded
+      <div class="toggle">
+        <div class="toggle__ball"></div>
+      </div>
+    </label>
+  </div>
+  <div class="form-group">
+    {{ embed_settings_form.embed_allowed_origins.label }}
+    {{ embed_settings_form.embed_allowed_origins(rows="4", placeholder="https://newsroom.example", disabled=embed_settings_disabled) }}
+    {% for error in embed_settings_form.embed_allowed_origins.errors %}
+      <span class="error">{{ error }}</span>
+    {% endfor %}
+  </div>
+  {{ embed_settings_form.submit(disabled=embed_settings_disabled) }}
+</form>
+{% if embed_iframe_snippet %}
+  <div class="form-group">
+    <label for="embed_iframe_snippet">Iframe snippet</label>
+    <textarea id="embed_iframe_snippet" rows="5" readonly>{{ embed_iframe_snippet }}</textarea>
+    <p class="meta">
+      Use bounded sizing. The snippet uses a fixed 700px height, 100% width,
+      and a 720px maximum width.
+    </p>
+  </div>
+{% endif %}
+
 <h4>Profile Information</h4>
 <form
   method="POST"

@@ -5,7 +5,7 @@ from wtforms.validators import ValidationError
 
 from hushline.auth import admin_authentication_required
 from hushline.db import db
-from hushline.model import AccountCategory, Tier, User, Username
+from hushline.model import AccountCategory, OrganizationSetting, Tier, User, Username
 from hushline.premium import update_price
 from hushline.user_deletion import delete_user_and_related, delete_username_and_related
 from hushline.utils import parse_bool
@@ -131,6 +131,18 @@ def create_blueprint() -> Blueprint:
 
         status_label = "suspended" if desired_suspended else "active"
         flash(f"✅ User suspension status set to {status_label}.", "success")
+        return redirect(url_for("settings.admin"))
+
+    @bp.route("/toggle_embeddable_forms", methods=["POST"])
+    @admin_authentication_required
+    def toggle_embeddable_forms() -> Response:
+        _validate_csrf()
+        desired_enabled = _parse_form_bool("embeddable_forms_enabled")
+        OrganizationSetting.upsert(OrganizationSetting.EMBEDDABLE_FORMS_ENABLED, desired_enabled)
+        db.session.commit()
+
+        status_label = "enabled" if desired_enabled else "disabled"
+        flash(f"✅ Embeddable forms {status_label}.", "success")
         return redirect(url_for("settings.admin"))
 
     @bp.route("/update_account_category/<int:user_id>", methods=["POST"])

@@ -1,8 +1,9 @@
 import logging
 import math
+from http import HTTPStatus
 from typing import Any, Mapping, Optional, Tuple, Union
 
-from flask import Flask, render_template, request, session, url_for
+from flask import Flask, g, render_template, request, session, url_for
 from jinja2 import StrictUndefined
 from werkzeug.exceptions import HTTPException, InternalServerError
 from werkzeug.wrappers.response import Response
@@ -53,6 +54,12 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
     # Add Content-Security-Policy header to all responses
     @app.after_request
     def add_security_header(response: Response) -> Response:
+        frame_ancestors = getattr(g, "embed_frame_ancestors", "'none'")
+        if (
+            request.endpoint in {"embed_profile", "embed_profile_legacy"}
+            and response.status_code == HTTPStatus.NOT_FOUND
+        ):
+            frame_ancestors = "'none'"
         response.headers["Content-Security-Policy"] = ";".join(
             f"{k} {v}"
             for (k, v) in {
@@ -70,13 +77,16 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
                 "img-src": "'self' data: https:",
                 "media-src": "'self' data:",
                 "worker-src": "'self' blob:",
-                "frame-ancestors": "'none'",
+                "frame-ancestors": frame_ancestors,
                 "connect-src": "'self' https://api.stripe.com https://cdn.jsdelivr.net data:",
                 "child-src": "https://js.stripe.com",
                 "frame-src": "https://js.stripe.com",
             }.items()
         )
-        response.headers["X-Frame-Options"] = "DENY"
+        if frame_ancestors == "'none'":
+            response.headers["X-Frame-Options"] = "DENY"
+        else:
+            response.headers.pop("X-Frame-Options", None)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Permissions-Policy"] = (
             "geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=();"  # noqa: E501

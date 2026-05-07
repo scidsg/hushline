@@ -20,6 +20,7 @@ from hushline.settings.forms import (
     DirectoryVisibilityForm,
     DisplayNameForm,
     EmailForwardingForm,
+    EmbedSettingsForm,
     NewAliasForm,
     NotificationRecipientForm,
     PGPKeyForm,

@@ -5,6 +5,8 @@ DOCS_ROOT = REPO_ROOT / "docs"
 LIBRARY_ROOT = DOCS_ROOT / "library"
 REQUIRED_DOCS = [
     DOCS_ROOT / "README.md",
+    DOCS_ROOT / "EMBEDDABLE-FORMS-ADMIN.md",
+    DOCS_ROOT / "THREAT-MODEL.md",
     DOCS_ROOT / "WHISTLEBLOWER-PROTECTION-ACCOUNTABILITY-WALL-FEASIBILITY.md",
     LIBRARY_ROOT / "README.md",
     LIBRARY_ROOT / "welcome" / "README.md",
@@ -23,6 +25,7 @@ REQUIRED_DOCS = [
     LIBRARY_ROOT / "using-your-tip-line" / "vision-assistant.md",
     LIBRARY_ROOT / "using-your-tip-line" / "message-statuses.md",
     LIBRARY_ROOT / "using-your-tip-line" / "account-verification.md",
+    LIBRARY_ROOT / "using-your-tip-line" / "embeddable-forms.md",
     LIBRARY_ROOT / "using-your-tip-line" / "download-your-data.md",
     LIBRARY_ROOT / "using-your-tip-line" / "dark-mode.md",
     LIBRARY_ROOT / "personal-server" / "README.md",
@@ -34,6 +37,8 @@ REQUIRED_DOCS = [
 def _iter_markdown_files() -> list[Path]:
     return [
         DOCS_ROOT / "README.md",
+        DOCS_ROOT / "EMBEDDABLE-FORMS-ADMIN.md",
+        DOCS_ROOT / "THREAT-MODEL.md",
         DOCS_ROOT / "WHISTLEBLOWER-PROTECTION-ACCOUNTABILITY-WALL-FEASIBILITY.md",
         *sorted(LIBRARY_ROOT.rglob("*.md")),
     ]
@@ -82,3 +87,21 @@ def test_library_docs_relative_links_resolve() -> None:
                 missing_targets.append(f"{source} -> {target.relative_to(REPO_ROOT)}")
 
     assert not missing_targets, f"Broken docs links: {missing_targets}"
+
+
+def test_embeddable_form_docs_are_linked_from_indexes_and_security_docs() -> None:
+    docs_index = (DOCS_ROOT / "README.md").read_text(encoding="utf-8")
+    using_tip_line_index = (LIBRARY_ROOT / "using-your-tip-line" / "README.md").read_text(
+        encoding="utf-8"
+    )
+    threat_model = (DOCS_ROOT / "THREAT-MODEL.md").read_text(encoding="utf-8")
+    recipient_doc = (LIBRARY_ROOT / "using-your-tip-line" / "embeddable-forms.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "./EMBEDDABLE-FORMS-ADMIN.md" in docs_index
+    assert "./embeddable-forms.md" in using_tip_line_index
+    assert "## Related Docs" in recipient_doc
+    assert "Administrator Guide: Embeddable Forms" in recipient_doc
+    assert "Embeddable profile forms" in threat_model
+    assert "disclosure content, custom-field values, reply slugs" in threat_model

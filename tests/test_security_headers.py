@@ -1,7 +1,9 @@
+import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 
-from hushline.model import OrganizationSetting, User
+from hushline.db import db
+from hushline.model import OrganizationSetting, StripeSubscriptionStatusEnum, User
 
 
 def test_csp(client: FlaskClient) -> None:
@@ -57,6 +59,37 @@ def test_profile_page_keeps_csp_enforced(client: FlaskClient, user: User) -> Non
     assert csp
     assert "'unsafe-eval'" not in csp
     assert "script-src-elem 'self' 'unsafe-inline'" not in csp
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_settings_profile_keeps_frame_restrictions(client: FlaskClient) -> None:
+    response = client.get(url_for("settings.profile"))
+    assert response.status_code == 200
+
+    csp = (response.headers.get("Content-Security-Policy") or "").strip()
+    assert "frame-ancestors 'none'" in csp
+    assert response.headers["X-Frame-Options"] == "DENY"
+
+
+def test_embed_profile_uses_allowed_origin_frame_ancestors(client: FlaskClient, user: User) -> None:
+    with open("tests/test_pgp_key.txt") as file:
+        user.pgp_key = file.read().strip()
+    user.set_business_tier()
+    user.stripe_subscription_status = StripeSubscriptionStatusEnum.ACTIVE
+    user.primary_username.embed_enabled = True
+    user.primary_username.set_embed_allowed_origins(
+        ["https://tips.example", "https://newsroom.example:8443"]
+    )
+    OrganizationSetting.upsert(OrganizationSetting.EMBEDDABLE_FORMS_ENABLED, True)
+    db.session.commit()
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+
+    csp = (response.headers.get("Content-Security-Policy") or "").strip()
+    frame_ancestors = next(part for part in csp.split(";") if part.startswith("frame-ancestors "))
+    assert frame_ancestors == "frame-ancestors https://tips.example https://newsroom.example:8443"
+    assert "X-Frame-Options" not in response.headers
 
 
 def test_password_reset_pages_keep_csp_enforced(client: FlaskClient) -> None:
