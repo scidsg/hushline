@@ -1073,6 +1073,13 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     assert response.status_code == 200
     page = BeautifulSoup(response.text, "html.parser")
     assert page.select_one("body.embed-page") is not None
+    stylesheet = page.find("link", attrs={"rel": "stylesheet"})
+    assert stylesheet is not None
+    assert stylesheet.get("href") == url_for("static", filename="css/style.css")
+    runtime_style = page.find("style")
+    assert runtime_style is not None
+    assert "--color-brand: oklch(from" in runtime_style.get_text()
+    assert "--theme-color-dark:" in runtime_style.get_text()
     assert page.find(string="Secure Hush Line form") is None
     assert "Hosted by" not in response.text
     assert "Powered by Hush Line" not in response.text
@@ -1109,6 +1116,19 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     assert not any("submit-message.js" in source for source in script_sources)
     assert page.find("iframe") is None
     assert "script-widget" not in response.text
+
+
+def test_embed_profile_layout_and_focus_styles_are_in_compiled_stylesheet_source() -> None:
+    stylesheet_source = Path("assets/scss/style.scss").read_text()
+
+    assert "body.embed-page" in stylesheet_source
+    assert ".embed-shell" in stylesheet_source
+    assert ".embed-profile-summary" in stylesheet_source
+    assert ".embed-actions" in stylesheet_source
+    assert ".embed-error-summary" in stylesheet_source
+    assert ".embed-noscript" in stylesheet_source
+    assert ".embed-page a:focus-visible" in stylesheet_source
+    assert "outline: 3px solid var(--theme-color-dark)" in stylesheet_source
 
 
 def test_embed_profile_renders_additional_profile_fields_like_full_profile(
@@ -1180,13 +1200,11 @@ def test_embed_profile_keyboard_flow_and_mobile_accessibility_chrome(
     assert focusable_labels.index("Open on Hush Line") < focusable_labels.index("field_0")
     assert focusable_labels.index("Leave") < focusable_labels.index("field_0")
     assert focusable_labels.index("captcha_answer") < focusable_labels.index("Send Message")
-    style = page.find("style")
-    assert style is not None
-    style_text = style.get_text()
-    assert "@media (max-width: 28rem)" in style_text
-    assert "@media (prefers-reduced-motion: reduce)" in style_text
-    assert ":focus-visible" in style_text
-    assert "flex-wrap: wrap" in style_text
+    stylesheet_source = Path("assets/scss/style.scss").read_text()
+    assert "@media (max-width: 28rem)" in stylesheet_source
+    assert "@media (prefers-reduced-motion: reduce)" in stylesheet_source
+    assert ":focus-visible" in stylesheet_source
+    assert "flex-wrap: wrap" in stylesheet_source
 
 
 def test_embed_profile_required_chrome_survives_recipient_branding_settings(
@@ -1207,6 +1225,9 @@ def test_embed_profile_required_chrome_survives_recipient_branding_settings(
     assert response.status_code == 200
     page = BeautifulSoup(response.text, "html.parser")
     assert page.find(string="Secure Hush Line form") is None
+    runtime_style = page.find("style")
+    assert runtime_style is not None
+    assert "--color-brand: oklch(from #005f73 l c h);" in runtime_style.get_text()
     assert not page.find(string=lambda value: value and "Hosted by Recipient Brand" in value)
     assert "Powered by Hush Line" not in response.text
     assert "Recipient Newsroom" in response.text

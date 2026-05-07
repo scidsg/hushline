@@ -10,6 +10,12 @@
       href="{{ url_for('static', filename='css/style.css') }}"
     />
     <script src="{{ url_for('static', filename='no-js.js') }}"></script>
+    <style>
+      :root {
+        --color-brand: oklch(from {{ brand_primary_color }} l c h);
+        --theme-color-dark: {{ brand_primary_color_dark }};
+      }
+    </style>
     {% if not message_submission_block_reason %}
       <script defer src="{{ url_for('static', filename='js/diceware-words.js') }}"></script>
       <script defer src="{{ url_for('static', filename='js/client-side-encryption.js') }}"></script>
