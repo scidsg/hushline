@@ -43,6 +43,26 @@ printf '%s %s\\n' "$CODEX_MODEL" "$CODEX_REASONING_EFFORT"
     assert result.stdout.strip() == "gpt-5.5 high"
 
 
+def test_count_open_bot_prs_excluding_heads_fails_closed_when_pr_query_fails() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+gh() {{
+  return 42
+}}
+set +e
+count_open_bot_prs_excluding_heads codex/daily-coverage
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "rc=1"
+    assert "Failed to list open PRs by hushline-dev" in result.stderr
+
+
 def test_prepare_runner_exec_snapshot_copies_script_for_stable_execution(
     tmp_path: Path,
 ) -> None:
@@ -92,8 +112,8 @@ resolve_issue_parent_epic() {{ :; }}
 start_runtime_stack_and_seed_dev_data() {{
   printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
 }}
-count_open_bot_prs() {{
-  printf 'count-open-bot-prs\\n' >> {shlex.quote(str(call_log))}
+count_open_bot_prs_excluding_heads() {{
+  printf 'count-open-bot-prs-excluding-heads:%s\\n' "$*" >> {shlex.quote(str(call_log))}
   printf '1\\n'
 }}
 count_open_human_prs() {{
@@ -115,7 +135,7 @@ main
     calls = call_log.read_text(encoding="utf-8").splitlines()
     assert "collect-issue-candidates" in calls
     assert "count-open-human-prs" in calls
-    assert "count-open-bot-prs" in calls
+    assert "count-open-bot-prs-excluding-heads:codex/daily-coverage" in calls
     assert "configure-bot-git" not in calls
     assert "runtime-bootstrap" not in calls
 
@@ -322,7 +342,7 @@ run_step() {{
 }}
 configure_bot_git_identity() {{ :; }}
 resolve_issue_parent_epic() {{ :; }}
-count_open_bot_prs() {{ printf '0\\n'; }}
+count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
 count_open_human_prs() {{ printf '0\\n'; }}
 collect_issue_candidates() {{ printf '1558\\n'; }}
 start_runtime_stack_and_seed_dev_data() {{
@@ -942,7 +962,7 @@ run_step() {{
 collect_issue_candidates() {{ printf '1558\\n'; }}
 resolve_issue_parent_epic() {{ :; }}
 count_open_human_prs() {{ printf '0\\n'; }}
-count_open_bot_prs() {{ printf '0\\n'; }}
+count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
 set_issue_project_status() {{
   printf 'status:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
 }}
@@ -1194,7 +1214,7 @@ docker() {{ :; }}
 collect_issue_candidates() {{ printf '1558\\n'; }}
 resolve_issue_parent_epic() {{ :; }}
 count_open_human_prs() {{ printf '0\\n'; }}
-count_open_bot_prs() {{ printf '0\\n'; }}
+count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
 set_issue_project_status() {{
   printf 'status:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
 }}
@@ -2973,7 +2993,7 @@ docker() {{ :; }}
 collect_issue_candidates() {{ printf '1558\\n'; }}
 resolve_issue_parent_epic() {{ :; }}
 count_open_human_prs() {{ printf '0\\n'; }}
-count_open_bot_prs() {{ printf '0\\n'; }}
+count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
 set_issue_project_status() {{ :; }}
 configure_bot_git_identity() {{ :; }}
 start_runtime_stack_and_seed_dev_data() {{ :; }}
@@ -3075,7 +3095,7 @@ docker() {{ :; }}
 collect_issue_candidates() {{ printf '1558\\n'; }}
 resolve_issue_parent_epic() {{ :; }}
 count_open_human_prs() {{ printf '0\\n'; }}
-count_open_bot_prs() {{ printf '0\\n'; }}
+count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
 set_issue_project_status() {{
   printf 'status:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
 }}
@@ -3173,7 +3193,7 @@ docker() {{ :; }}
 collect_issue_candidates() {{ printf '1558\\n'; }}
 resolve_issue_parent_epic() {{ :; }}
 count_open_human_prs() {{ printf '0\\n'; }}
-count_open_bot_prs() {{ printf '0\\n'; }}
+count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
 set_issue_project_status() {{ :; }}
 configure_bot_git_identity() {{ :; }}
 start_runtime_stack_and_seed_dev_data() {{ :; }}

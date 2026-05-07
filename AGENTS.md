@@ -94,6 +94,7 @@ This file provides operating guidance for coding agents working in the Hush Line
   - Runner exits early if any issue is already in project status `In Progress`.
 - One-bot-PR guard:
   - Runner exits early if any unrelated open PR exists from bot login (`HUSHLINE_BOT_LOGIN`, default `hushline-dev`).
+  - The dedicated coverage runner PR head (`HUSHLINE_COVERAGE_BRANCH_NAME`, default `codex/daily-coverage`) is treated as an allowed maintenance PR and must not block daily issue selection.
   - Exception: when the selected issue is a child of a GitHub parent epic, the runner may allow the long-lived epic PR plus the matching child issue PR, and should stop only for unrelated bot PRs.
 - Required runner behavior:
   - At runner start, perform a full local environment reset and seed sequence:

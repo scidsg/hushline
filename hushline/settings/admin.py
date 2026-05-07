@@ -8,7 +8,7 @@ from flask_wtf.csrf import generate_csrf
 
 from hushline.auth import admin_authentication_required
 from hushline.db import db
-from hushline.model import OrganizationSetting, User, Username
+from hushline.model import AccountCategory, OrganizationSetting, User, Username
 
 
 def register_admin_routes(bp: Blueprint) -> None:
@@ -41,5 +41,6 @@ def register_admin_routes(bp: Blueprint) -> None:
             embeddable_forms_enabled=bool(
                 OrganizationSetting.fetch_one(OrganizationSetting.EMBEDDABLE_FORMS_ENABLED)
             ),
+            account_category_choices=AccountCategory.choices(),
             csrf_token=generate_csrf(),
         )

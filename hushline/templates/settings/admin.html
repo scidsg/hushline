@@ -104,6 +104,9 @@
         <p class="meta">
           Suspended: {{ "✅ Yes" if username.user.is_suspended else "👎 No" }}
         </p>
+        <p class="meta">
+          Account Category: {{ username.user.account_category_label or "None" }}
+        </p>
         <div class="tableActions">
             {% if user_verification_enabled %}
             <form
@@ -166,6 +169,34 @@
             <button type="submit">
               {{ "Remove Suspended" if username.user.is_suspended else "Set Suspended" }}
             </button>
+          </form>
+          <form
+            action="{{ url_for('admin.update_account_category', user_id=username.user.id) }}"
+            method="POST"
+            class="formBody"
+          >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <label
+              for="account-category-{{ username.id }}"
+              class="visually-hidden"
+            >
+              Account category for {{ username.username }}
+            </label>
+            <select
+              id="account-category-{{ username.id }}"
+              name="account_category"
+            >
+              <option value="">None</option>
+              {% for value, label in account_category_choices %}
+                <option
+                  value="{{ value }}"
+                  {% if username.user.account_category == value %}selected{% endif %}
+                >
+                  {{ label }}
+                </option>
+              {% endfor %}
+            </select>
+            <button type="submit">Update Category</button>
           </form>
           <form
             action="{% if username.is_primary %}{{ url_for('admin.delete_user', user_id=username.user.id) }}{% else %}{{ url_for('admin.delete_username', username_id=username.id) }}{% endif %}"
