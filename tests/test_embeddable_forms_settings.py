@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -9,6 +10,7 @@ from werkzeug.test import TestResponse
 from hushline.db import db
 from hushline.embeds import check_embed_rate_limit
 from hushline.model import (
+    EmbedRateLimitAttempt,
     FieldDefinition,
     FieldType,
     Message,
@@ -507,11 +509,44 @@ def test_embed_profile_rate_limit_does_not_record_limited_attempts(app: Flask, u
 
     assert first_result.limited is False
     assert limited_result.limited is True
-    state = app.extensions["hushline_embed_rate_limits"]
-    assert state[f"profile:{first_result.profile_hash}"] == [1000.0]
-    assert state[f"source:{first_result.source_bucket_hash}"] == [1000.0]
-    assert f"source:{limited_result.source_bucket_hash}" not in state
-    assert state["deployment"] == [1000.0]
+    attempts = db.session.scalars(db.select(EmbedRateLimitAttempt)).all()
+    assert len(attempts) == 3
+    assert ("profile", first_result.profile_hash) in {
+        (attempt.scope, attempt.bucket_hash) for attempt in attempts
+    }
+    assert ("source", first_result.source_bucket_hash) in {
+        (attempt.scope, attempt.bucket_hash) for attempt in attempts
+    }
+    assert ("source", limited_result.source_bucket_hash) not in {
+        (attempt.scope, attempt.bucket_hash) for attempt in attempts
+    }
+
+
+def test_embed_profile_rate_limit_persists_outside_flask_extension_state(
+    app: Flask, user: User
+) -> None:
+    app.config["EMBED_RATE_LIMIT_WINDOW_SECONDS"] = 10
+    app.config["EMBED_RATE_LIMIT_PROFILE_MAX"] = 20
+    app.config["EMBED_RATE_LIMIT_SOURCE_MAX"] = 1
+    app.config["EMBED_RATE_LIMIT_DEPLOYMENT_MAX"] = 20
+
+    with (
+        app.test_request_context(environ_base={"REMOTE_ADDR": "203.0.113.10"}),
+        patch("hushline.embeds.time.time", return_value=1000.0),
+    ):
+        first_result = check_embed_rate_limit(user.primary_username)
+
+    app.extensions.pop("hushline_embed_rate_limits", None)
+
+    with (
+        app.test_request_context(environ_base={"REMOTE_ADDR": "203.0.113.99"}),
+        patch("hushline.embeds.time.time", return_value=1001.0),
+    ):
+        limited_result = check_embed_rate_limit(user.primary_username)
+
+    assert first_result.limited is False
+    assert limited_result.limited is True
+    assert limited_result.limited_scopes == ("source",)
 
 
 def test_embed_profile_rate_limit_evicts_stale_global_state(app: Flask, user: User) -> None:
@@ -519,10 +554,21 @@ def test_embed_profile_rate_limit_evicts_stale_global_state(app: Flask, user: Us
     app.config["EMBED_RATE_LIMIT_PROFILE_MAX"] = 20
     app.config["EMBED_RATE_LIMIT_SOURCE_MAX"] = 20
     app.config["EMBED_RATE_LIMIT_DEPLOYMENT_MAX"] = 20
-    app.extensions["hushline_embed_rate_limits"] = {
-        "profile:stale": [980.0],
-        "source:active": [995.0],
-    }
+    db.session.add(
+        EmbedRateLimitAttempt(
+            scope="profile",
+            bucket_hash="stale",
+            created_at=datetime.fromtimestamp(980.0),
+        )
+    )
+    db.session.add(
+        EmbedRateLimitAttempt(
+            scope="source",
+            bucket_hash="active",
+            created_at=datetime.fromtimestamp(995.0),
+        )
+    )
+    db.session.commit()
 
     with (
         app.test_request_context(environ_base={"REMOTE_ADDR": "203.0.113.10"}),
@@ -530,9 +576,11 @@ def test_embed_profile_rate_limit_evicts_stale_global_state(app: Flask, user: Us
     ):
         check_embed_rate_limit(user.primary_username)
 
-    state = app.extensions["hushline_embed_rate_limits"]
-    assert "profile:stale" not in state
-    assert state["source:active"] == [995.0]
+    attempts = db.session.scalars(db.select(EmbedRateLimitAttempt)).all()
+    assert ("profile", "stale") not in {
+        (attempt.scope, attempt.bucket_hash) for attempt in attempts
+    }
+    assert ("source", "active") in {(attempt.scope, attempt.bucket_hash) for attempt in attempts}
 
 
 def test_embed_profile_submission_requires_embed_form_token(

@@ -2,13 +2,15 @@ import html
 import ipaddress
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from hashlib import sha256
 from hmac import new as hmac_new
 
 from flask import current_app, request
 
+from hushline.db import db
 from hushline.external_urls import canonical_external_url
-from hushline.model import Username
+from hushline.model import EmbedRateLimitAttempt, Username
 
 EMBED_ABUSE_COUNTER_EVENT = "embed_form_abuse_counter"
 EMBED_SUBMISSION_ATTEMPT_COUNTER = "embed_form_submission_attempt_total"
@@ -20,7 +22,6 @@ EMBED_IFRAME_SANDBOX = (
 )
 EMBED_IFRAME_HEIGHT = 700
 EMBED_IFRAME_MAX_WIDTH = 720
-_EMBED_RATE_LIMIT_EXTENSION_KEY = "hushline_embed_rate_limits"
 
 
 @dataclass(frozen=True)
@@ -86,35 +87,44 @@ def check_embed_rate_limit(username: Username) -> EmbedRateLimitResult:
         "deployment": int(current_app.config.get("EMBED_RATE_LIMIT_DEPLOYMENT_MAX", 200)),
     }
     now = time.time()
-    cutoff = now - window_seconds
+    window_start = datetime.fromtimestamp(now - window_seconds)
+    created_at = datetime.fromtimestamp(now)
     profile_hash = embed_profile_hash(username)
     source_bucket_hash = embed_source_bucket_hash()
-    state: dict[str, list[float]] = current_app.extensions.setdefault(
-        _EMBED_RATE_LIMIT_EXTENSION_KEY,
-        {},
-    )
     buckets = {
-        "profile": f"profile:{profile_hash}",
-        "source": f"source:{source_bucket_hash}",
-        "deployment": "deployment",
+        "profile": profile_hash,
+        "source": source_bucket_hash,
+        "deployment": _embed_hmac("deployment"),
     }
 
-    for key, timestamps in list(state.items()):
-        retained_timestamps = [timestamp for timestamp in timestamps if timestamp >= cutoff]
-        if retained_timestamps:
-            state[key] = retained_timestamps
-        else:
-            del state[key]
+    db.session.execute(
+        db.delete(EmbedRateLimitAttempt).where(EmbedRateLimitAttempt.created_at < window_start)
+    )
 
     limited_scopes: list[str] = []
-    for scope, key in buckets.items():
-        timestamps = state.get(key, [])
-        if limits[scope] > 0 and len(timestamps) >= limits[scope]:
+    for scope, bucket_hash in buckets.items():
+        attempts = db.session.scalar(
+            db.select(db.func.count())
+            .select_from(EmbedRateLimitAttempt)
+            .where(
+                EmbedRateLimitAttempt.scope == scope,
+                EmbedRateLimitAttempt.bucket_hash == bucket_hash,
+                EmbedRateLimitAttempt.created_at >= window_start,
+            )
+        )
+        if limits[scope] > 0 and attempts is not None and attempts >= limits[scope]:
             limited_scopes.append(scope)
 
     if not limited_scopes:
-        for key in buckets.values():
-            state.setdefault(key, []).append(now)
+        for scope, bucket_hash in buckets.items():
+            db.session.add(
+                EmbedRateLimitAttempt(
+                    scope=scope,
+                    bucket_hash=bucket_hash,
+                    created_at=created_at,
+                )
+            )
+    db.session.commit()
 
     return EmbedRateLimitResult(
         limited=bool(limited_scopes),
