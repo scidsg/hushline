@@ -1,0 +1,10 @@
+{% extends "settings/base.html" %}
+
+{% block settings_content %}
+  <h3>Developer</h3>
+  {% include "settings/embed-settings-form.html" %}
+{% endblock %}
+
+{% block scripts %}
+  <script defer src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}

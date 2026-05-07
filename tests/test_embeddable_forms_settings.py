@@ -838,9 +838,7 @@ def test_embed_profile_has_no_postmessage_submission_path(client: FlaskClient, u
     assert "postMessage" not in Path("assets/js/message_success.js").read_text()
 
 
-def test_profile_embed_settings_do_not_show_snippet_when_globally_disabled(
-    client: FlaskClient, user: User
-) -> None:
+def test_profile_settings_do_not_render_embed_settings(client: FlaskClient, user: User) -> None:
     _make_message_capable(user)
     _configure_embed(user.primary_username)
     with client.session_transaction() as session:
@@ -852,11 +850,31 @@ def test_profile_embed_settings_do_not_show_snippet_when_globally_disabled(
     response = client.get(url_for("settings.profile"))
 
     assert response.status_code == 200
-    assert "Embeds are disabled globally by an administrator." in response.text
+    assert "Embeddable Form" not in response.text
+    assert 'name="embed_enabled"' not in response.text
     assert 'id="embed_iframe_snippet"' not in response.text
 
 
-def test_embed_settings_require_current_paid_super_user(client: FlaskClient, user: User) -> None:
+def test_developer_embed_settings_do_not_show_snippet_when_globally_disabled(
+    client: FlaskClient, user: User
+) -> None:
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+    with client.session_transaction() as session:
+        session["user_id"] = user.id
+        session["session_id"] = user.session_id
+        session["username"] = user.primary_username.username
+        session["is_authenticated"] = True
+
+    response = client.get(url_for("settings.developer"))
+
+    assert response.status_code == 200
+    assert "Embeds are disabled globally by an administrator." in response.text
+    assert 'name="embed_enabled"' in response.text
+    assert 'id="embed_iframe_snippet"' not in response.text
+
+
+def test_non_super_user_cannot_access_developer_settings(client: FlaskClient, user: User) -> None:
     _enable_embeds_globally()
     _add_pgp_key(user)
     with client.session_transaction() as session:
@@ -865,10 +883,60 @@ def test_embed_settings_require_current_paid_super_user(client: FlaskClient, use
         session["username"] = user.primary_username.username
         session["is_authenticated"] = True
 
-    page_response = client.get(url_for("settings.profile"))
+    get_response = client.get(url_for("settings.developer"))
+    post_response = client.post(
+        url_for("settings.developer"),
+        data=_embed_settings_data(True, "https://tips.example"),
+    )
+
+    assert get_response.status_code == 401
+    assert post_response.status_code == 401
+    db.session.refresh(user.primary_username)
+    assert user.primary_username.embed_enabled is False
+
+
+def test_settings_nav_shows_developer_only_for_current_paid_super_user(
+    client: FlaskClient, user: User
+) -> None:
+    with client.session_transaction() as session:
+        session["user_id"] = user.id
+        session["session_id"] = user.session_id
+        session["username"] = user.primary_username.username
+        session["is_authenticated"] = True
+
+    response = client.get(url_for("settings.profile"))
+    assert response.status_code == 200
+    nav = BeautifulSoup(response.text, "html.parser").select_one("nav.settings-tabs")
+    assert nav is not None
+    nav_text = nav.get_text(" ", strip=True)
+    assert "Developer" not in nav_text
+
+    _make_current_paid_super_user(user)
+    response = client.get(url_for("settings.profile"))
+    assert response.status_code == 200
+    nav = BeautifulSoup(response.text, "html.parser").select_one("nav.settings-tabs")
+    assert nav is not None
+    developer_link = nav.find("a", href=url_for("settings.developer"))
+    assert developer_link is not None
+    assert developer_link.get_text(strip=True) == "Developer"
+    assert developer_link.get("href") == url_for("settings.developer")
+
+
+def test_developer_embed_settings_require_usable_recipient_key(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_current_paid_super_user(user)
+    with client.session_transaction() as session:
+        session["user_id"] = user.id
+        session["session_id"] = user.session_id
+        session["username"] = user.primary_username.username
+        session["is_authenticated"] = True
+
+    page_response = client.get(url_for("settings.developer"))
 
     assert page_response.status_code == 200
-    assert "Upgrade to Super User before enabling embeds." in page_response.text
+    assert "Add a usable recipient PGP key before enabling embeds." in page_response.text
     assert 'name="embed_enabled"' in page_response.text
     assert "disabled" in str(
         BeautifulSoup(page_response.text, "html.parser").find(
@@ -877,7 +945,7 @@ def test_embed_settings_require_current_paid_super_user(client: FlaskClient, use
     )
 
     post_response = client.post(
-        url_for("settings.profile"),
+        url_for("settings.developer"),
         data=_embed_settings_data(True, "https://tips.example"),
     )
 
@@ -942,7 +1010,7 @@ def test_primary_embed_settings_update_origins_and_render_iframe_snippet(
         session["is_authenticated"] = True
 
     response = client.post(
-        url_for("settings.profile"),
+        url_for("settings.developer"),
         data=_embed_settings_data(
             True,
             "https://Tips.Example:443\nhttps://other.example:8443",
@@ -1185,11 +1253,14 @@ def test_primary_embed_settings_reject_invalid_origin(client: FlaskClient, user:
         session["is_authenticated"] = True
 
     response = client.post(
-        url_for("settings.profile"),
+        url_for("settings.developer"),
         data=_embed_settings_data(True, "https://tips.example/path"),
     )
 
     assert response.status_code == 400
+    assert (
+        "Embed origins must be exact http(s) origins without paths or wildcards." in response.text
+    )
     db.session.refresh(user.primary_username)
     assert user.primary_username.embed_enabled is False
     assert user.primary_username.embed_allowed_origins == []
@@ -1204,7 +1275,7 @@ def test_embed_settings_require_message_capable_owner(client: FlaskClient, user:
         session["is_authenticated"] = True
 
     response = client.post(
-        url_for("settings.profile"),
+        url_for("settings.developer"),
         data=_embed_settings_data(True, "https://tips.example"),
     )
 
