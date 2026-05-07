@@ -328,7 +328,8 @@ def test_toggle_suspended_clears_user_state(client: FlaskClient, user: User) -> 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
 def test_update_account_category_validates_and_updates_user(
-    client: FlaskClient, user: User
+    client: FlaskClient,
+    user: User,
 ) -> None:
     assert user.account_category is None
 
