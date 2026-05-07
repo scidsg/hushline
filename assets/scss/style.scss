@@ -5108,3 +5108,11 @@ button .badge {
   margin-top: 1rem;
   margin-bottom: 0.25rem;
 }
+
+.checkbox-group:has(#embed_enabled) {
+  margin: 1rem 0;
+}
+
+.form-group:has(#embed_iframe_snippet) {
+  margin-top: 1rem;
+}

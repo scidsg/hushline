@@ -1,13 +1,10 @@
-<h4>Embeddable Form</h4>
+<h4>Embeddable Profile</h4>
 <p class="info">
-  Add exact parent origins, one per line, such as https://newsroom.example.
-  The parent page must not wrap the intake area in analytics, heatmaps,
-  session replay, or misleading copy.
+  Add your secure Hush Line profile contact form to your other websites!
 </p>
 <p class="info">
-  Embedding places the Hush Line intake form on another page. The parent
-  website is not the cryptographic trust boundary; message encryption still
-  depends on this Hush Line form and your recipient keys.
+  Enter the domains where you want to embed your profile below. You'll also
+  need to add &quot;tips.hushline.app&quot; to the CSP of those sites.
 </p>
 {% if not embeddable_forms_enabled %}
   <p class="meta">
@@ -70,11 +67,7 @@
 </form>
 {% if embed_iframe_snippet %}
   <div class="form-group">
-    <label for="embed_iframe_snippet">Iframe snippet</label>
+    <label for="embed_iframe_snippet">Code Snippet</label>
     <textarea id="embed_iframe_snippet" rows="5" readonly>{{ embed_iframe_snippet }}</textarea>
-    <p class="meta">
-      Use bounded sizing. The snippet uses a fixed 700px height, 100% width,
-      and a 720px maximum width.
-    </p>
   </div>
 {% endif %}

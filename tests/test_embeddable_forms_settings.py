@@ -850,7 +850,7 @@ def test_profile_settings_do_not_render_embed_settings(client: FlaskClient, user
     response = client.get(url_for("settings.profile"))
 
     assert response.status_code == 200
-    assert "Embeddable Form" not in response.text
+    assert "Embeddable Profile" not in response.text
     assert 'name="embed_enabled"' not in response.text
     assert 'id="embed_iframe_snippet"' not in response.text
 
@@ -912,6 +912,8 @@ def test_settings_nav_shows_developer_only_for_current_paid_super_user(
     assert "Developer" not in nav_text
 
     _make_current_paid_super_user(user)
+    user.is_admin = True
+    db.session.commit()
     response = client.get(url_for("settings.profile"))
     assert response.status_code == 200
     nav = BeautifulSoup(response.text, "html.parser").select_one("nav.settings-tabs")
@@ -920,6 +922,9 @@ def test_settings_nav_shows_developer_only_for_current_paid_super_user(
     assert developer_link is not None
     assert developer_link.get_text(strip=True) == "Developer"
     assert developer_link.get("href") == url_for("settings.developer")
+    labels = [link.get_text(strip=True) for link in nav.find_all("a")]
+    assert labels.index("Developer") > labels.index("Branding")
+    assert labels.index("Developer") < labels.index("Encryption")
 
 
 def test_developer_embed_settings_require_usable_recipient_key(
@@ -1019,6 +1024,9 @@ def test_primary_embed_settings_update_origins_and_render_iframe_snippet(
     )
 
     assert response.status_code == 200
+    assert "Embeddable Profile" in response.text
+    assert "Add your secure Hush Line profile contact form to your other websites!" in response.text
+    assert "tips.hushline.app" in response.text
     db.session.refresh(user.primary_username)
     assert user.primary_username.embed_enabled is True
     assert user.primary_username.embed_allowed_origins == [
@@ -1027,6 +1035,7 @@ def test_primary_embed_settings_update_origins_and_render_iframe_snippet(
     ]
 
     snippet = _iframe_from_snippet(response.text)
+    assert "Code Snippet" in response.text
     iframe = snippet.find("iframe")
     assert iframe is not None
     assert iframe["src"] == url_for(
