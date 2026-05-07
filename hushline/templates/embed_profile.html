@@ -10,140 +10,6 @@
       href="{{ url_for('static', filename='css/style.css') }}"
     />
     <script src="{{ url_for('static', filename='no-js.js') }}"></script>
-    <style>
-      :root {
-        --color-brand: oklch(from {{ brand_primary_color }} l c h);
-        --theme-color-dark: {{ brand_primary_color_dark }};
-      }
-
-      body.embed-page {
-        background: #fff;
-        color: #111;
-        display: block;
-        margin: 0;
-        padding: 0;
-      }
-
-      body.embed-page *,
-      body.embed-page *::before,
-      body.embed-page *::after {
-        box-sizing: border-box;
-      }
-
-      .embed-shell {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        margin: 0 auto;
-        max-width: 44rem;
-        min-width: 0;
-        padding: 1rem;
-      }
-
-      .embed-profile-summary,
-      .embed-actions {
-        border-bottom: 1px solid #d8d8d8;
-        padding-bottom: 1rem;
-      }
-
-      .embed-meta {
-        margin: 0.25rem 0 0;
-      }
-
-      .embed-page .badgeContainer {
-        flex-wrap: wrap;
-      }
-
-      .embed-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-      }
-
-      .embed-actions a {
-        align-items: center;
-        display: inline-flex;
-        min-height: 2rem;
-      }
-
-      .embed-error-summary,
-      .embed-noscript {
-        border: 2px solid #842029;
-        border-radius: 0.25rem;
-        color: #842029;
-        padding: 0.75rem;
-      }
-
-      .embed-error-summary {
-        margin: 0;
-      }
-
-      .embed-error-summary ul {
-        margin: 0.5rem 0 0;
-        padding-left: 1.25rem;
-      }
-
-      .embed-noscript {
-        background: #fff4f4;
-      }
-
-      .embed-page input,
-      .embed-page textarea,
-      .embed-page select,
-      .embed-page button {
-        max-width: 100%;
-      }
-
-      .embed-page textarea,
-      .embed-page input:not([type="hidden"]),
-      .embed-page select {
-        width: 100%;
-      }
-
-      .embed-page .captcha_container {
-        align-items: flex-start;
-        flex-wrap: wrap;
-      }
-
-      .embed-page input#captcha_answer {
-        max-width: 8rem;
-        width: 8rem;
-      }
-
-      .embed-page a:focus-visible,
-      .embed-page button:focus-visible,
-      .embed-page input:focus-visible,
-      .embed-page textarea:focus-visible,
-      .embed-page select:focus-visible {
-        outline: 3px solid var(--theme-color-dark);
-        outline-offset: 3px;
-      }
-
-      @media (max-width: 28rem) {
-        .embed-shell {
-          padding: 0.75rem;
-        }
-
-        .embed-actions {
-          flex-direction: column;
-        }
-
-        .embed-page button[type="submit"] {
-          width: 100%;
-        }
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        *,
-        *::before,
-        *::after {
-          animation-duration: 0.01ms !important;
-          animation-iteration-count: 1 !important;
-          scroll-behavior: auto !important;
-          transition-duration: 0.01ms !important;
-        }
-      }
-    </style>
     {% if not message_submission_block_reason %}
       <script defer src="{{ url_for('static', filename='js/diceware-words.js') }}"></script>
       <script defer src="{{ url_for('static', filename='js/client-side-encryption.js') }}"></script>
@@ -184,6 +50,15 @@
           role="group"
           aria-label="Recipient trust and encryption state"
         >
+          {% if recipient_public_keys %}
+            <span class="badge" role="img" aria-label="End-to-end encrypted">
+              🔒&nbsp;End-to-End Encrypted
+            </span>
+          {% else %}
+            <span class="badge" role="img" aria-label="Encryption unavailable">
+              🔒&nbsp;Encryption unavailable
+            </span>
+          {% endif %}
           {% if user.is_admin %}
             <span class="badge" role="img" aria-label="Admin">
               ⚙️&nbsp;Admin
@@ -227,15 +102,6 @@
             </span>
           {% endif %}
 
-          {% if recipient_public_keys %}
-            <span class="badge" role="img" aria-label="End-to-end encrypted">
-              🔒&nbsp;End-to-End Encrypted
-            </span>
-          {% else %}
-            <span class="badge" role="img" aria-label="Encryption unavailable">
-              🔒&nbsp;Encryption unavailable
-            </span>
-          {% endif %}
         </div>
 
         {% if username.bio %}
