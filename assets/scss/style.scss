@@ -2492,6 +2492,23 @@ img.alert {
   margin-bottom: 0;
 }
 
+.admin-account-category-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  margin-top: 0.75rem;
+}
+
+.admin-account-category-form label {
+  margin: 0;
+}
+
+.admin-account-category-form select {
+  margin: 0;
+  min-width: min(100%, 14rem);
+}
+
 /* Dropdown Button */
 .dropbtn {
   cursor: pointer;
@@ -2939,6 +2956,15 @@ input:focus {
   left: 12px;
   top: 27%;
   margin: 0;
+}
+
+button#searchIcon {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
 
 .tab-content #searchIcon {
@@ -5076,4 +5102,9 @@ button .badge {
 
 #payment-method-form {
     margin-top: 1rem;
+}
+
+.settings-search + .meta {
+  margin-top: 1rem;
+  margin-bottom: 0.25rem;
 }
