@@ -7,7 +7,7 @@
       ('settings.aliases', 'Aliases', aliases_enabled),
       ('settings.auth', 'Authentication', True),
       ('settings.branding', 'Branding', user.is_admin),
-      ('settings.developer', 'Developer', user.is_current_paid_super_user),
+      ('settings.developer', 'Developer', user.is_admin or user.is_current_paid_super_user),
       ('settings.encryption', 'Encryption', True),
       ('settings.replies', 'Message Statuses', user.pgp_key is not none),
       ('settings.notifications', 'Notifications', True),
