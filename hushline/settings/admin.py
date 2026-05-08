@@ -11,7 +11,7 @@ from sqlalchemy.orm import joinedload
 
 from hushline.auth import admin_authentication_required
 from hushline.db import db
-from hushline.model import AccountCategory, OrganizationSetting, User, Username
+from hushline.model import AccountCategory, User, Username
 
 ADMIN_USERNAMES_PER_PAGE = 20
 
@@ -84,9 +84,6 @@ def register_admin_routes(bp: Blueprint) -> None:
             two_fa_percentage=(two_fa_count / user_count * 100) if user_count else 0,
             pgp_key_percentage=(pgp_key_count / user_count * 100) if user_count else 0,
             user_verification_enabled=current_app.config.get("USER_VERIFICATION_ENABLED"),
-            embeddable_forms_enabled=bool(
-                OrganizationSetting.fetch_one(OrganizationSetting.EMBEDDABLE_FORMS_ENABLED)
-            ),
             account_category_choices=AccountCategory.choices(),
             admin_search_query=search_query,
             admin_current_page=current_page,

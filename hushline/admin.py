@@ -143,7 +143,7 @@ def create_blueprint() -> Blueprint:
 
         status_label = "enabled" if desired_enabled else "disabled"
         flash(f"✅ Embeddable forms {status_label}.", "success")
-        return redirect(url_for("settings.admin"))
+        return redirect(url_for("settings.developer"))
 
     @bp.route("/update_account_category/<int:user_id>", methods=["POST"])
     @admin_authentication_required

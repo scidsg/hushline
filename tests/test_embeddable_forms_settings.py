@@ -139,10 +139,16 @@ def test_admin_embeddable_forms_default_disabled(client: FlaskClient, admin_user
         session["username"] = admin_user.primary_username.username
         session["is_authenticated"] = True
 
-    response = client.get(url_for("settings.admin"))
+    admin_response = client.get(url_for("settings.admin"))
+
+    assert admin_response.status_code == 200
+    assert OrganizationSetting.fetch_one(OrganizationSetting.EMBEDDABLE_FORMS_ENABLED) is False
+    assert "Enable embeddable forms globally" not in admin_response.text
+    assert 'id="embeddable_forms_enabled"' not in admin_response.text
+
+    response = client.get(url_for("settings.developer"))
 
     assert response.status_code == 200
-    assert OrganizationSetting.fetch_one(OrganizationSetting.EMBEDDABLE_FORMS_ENABLED) is False
     page = BeautifulSoup(response.text, "html.parser")
     toggle = page.find("input", attrs={"id": "embeddable_forms_enabled"})
     assert toggle is not None
@@ -874,7 +880,9 @@ def test_developer_embed_settings_do_not_show_snippet_when_globally_disabled(
     assert 'id="embed_iframe_snippet"' not in response.text
 
 
-def test_non_super_user_cannot_access_developer_settings(client: FlaskClient, user: User) -> None:
+def test_non_super_non_admin_user_cannot_access_developer_settings(
+    client: FlaskClient, user: User
+) -> None:
     _enable_embeds_globally()
     _add_pgp_key(user)
     with client.session_transaction() as session:
@@ -895,7 +903,7 @@ def test_non_super_user_cannot_access_developer_settings(client: FlaskClient, us
     assert user.primary_username.embed_enabled is False
 
 
-def test_settings_nav_shows_developer_only_for_current_paid_super_user(
+def test_settings_nav_shows_developer_for_admin_or_current_paid_super_user(
     client: FlaskClient, user: User
 ) -> None:
     with client.session_transaction() as session:
@@ -911,9 +919,19 @@ def test_settings_nav_shows_developer_only_for_current_paid_super_user(
     nav_text = nav.get_text(" ", strip=True)
     assert "Developer" not in nav_text
 
-    _make_current_paid_super_user(user)
     user.is_admin = True
     db.session.commit()
+    response = client.get(url_for("settings.profile"))
+    assert response.status_code == 200
+    nav = BeautifulSoup(response.text, "html.parser").select_one("nav.settings-tabs")
+    assert nav is not None
+    admin_developer_link = nav.find("a", href=url_for("settings.developer"))
+    assert admin_developer_link is not None
+    assert admin_developer_link.get_text(strip=True) == "Developer"
+
+    user.is_admin = False
+    db.session.commit()
+    _make_current_paid_super_user(user)
     response = client.get(url_for("settings.profile"))
     assert response.status_code == 200
     nav = BeautifulSoup(response.text, "html.parser").select_one("nav.settings-tabs")
@@ -923,8 +941,36 @@ def test_settings_nav_shows_developer_only_for_current_paid_super_user(
     assert developer_link.get_text(strip=True) == "Developer"
     assert developer_link.get("href") == url_for("settings.developer")
     labels = [link.get_text(strip=True) for link in nav.find_all("a")]
+    assert labels.index("Developer") < labels.index("Encryption")
+
+    user.is_admin = True
+    db.session.commit()
+    response = client.get(url_for("settings.profile"))
+    assert response.status_code == 200
+    nav = BeautifulSoup(response.text, "html.parser").select_one("nav.settings-tabs")
+    assert nav is not None
+    labels = [link.get_text(strip=True) for link in nav.find_all("a")]
     assert labels.index("Developer") > labels.index("Branding")
     assert labels.index("Developer") < labels.index("Encryption")
+
+
+def test_admin_non_super_user_can_access_developer_global_embed_settings_only(
+    client: FlaskClient, user: User
+) -> None:
+    user.is_admin = True
+    db.session.commit()
+    with client.session_transaction() as session:
+        session["user_id"] = user.id
+        session["session_id"] = user.session_id
+        session["username"] = user.primary_username.username
+        session["is_authenticated"] = True
+
+    response = client.get(url_for("settings.developer"))
+
+    assert response.status_code == 200
+    assert "Enable embeddable forms globally" in response.text
+    assert "Embeddable Profile" not in response.text
+    assert 'name="embed_enabled"' not in response.text
 
 
 def test_developer_embed_settings_require_usable_recipient_key(
@@ -974,6 +1020,11 @@ def test_admin_can_toggle_embeddable_forms(client: FlaskClient, admin_user: User
     assert response.status_code == 302
     assert OrganizationSetting.fetch_one(OrganizationSetting.EMBEDDABLE_FORMS_ENABLED) is True
     page_response = client.get(url_for("settings.admin"))
+    page = BeautifulSoup(page_response.text, "html.parser")
+    toggle = page.find("input", attrs={"id": "embeddable_forms_enabled"})
+    assert toggle is None
+
+    page_response = client.get(url_for("settings.developer"))
     page = BeautifulSoup(page_response.text, "html.parser")
     toggle = page.find("input", attrs={"id": "embeddable_forms_enabled"})
     assert toggle is not None

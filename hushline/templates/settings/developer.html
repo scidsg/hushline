@@ -2,7 +2,42 @@
 
 {% block settings_content %}
   <h3>Developer</h3>
-  {% include "settings/embed-settings-form.html" %}
+  {% if can_manage_global_embeds %}
+    <h4>Embeddable Forms</h4>
+    <p class="info">
+      Enable hosted iframe embeds globally. Recipients still need to opt in each
+      tip line and list exact allowed parent origins.
+    </p>
+    <form
+      action="{{ url_for('admin.toggle_embeddable_forms') }}"
+      method="POST"
+      class="formBody auto-submit"
+    >
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <div class="checkbox-group toggle-ui">
+        <input
+          type="checkbox"
+          id="embeddable_forms_enabled"
+          name="embeddable_forms_enabled"
+          value="true"
+          role="switch"
+          {% if embeddable_forms_enabled %}checked{% endif %}
+        />
+        <input type="hidden" name="embeddable_forms_enabled" value="false" />
+        <label for="embeddable_forms_enabled" class="toggle-label">
+          Enable embeddable forms globally
+          <div class="toggle">
+            <div class="toggle__ball"></div>
+          </div>
+        </label>
+      </div>
+      <button type="submit" class="display-none">Save embeddable forms setting</button>
+    </form>
+  {% endif %}
+
+  {% if can_manage_profile_embeds %}
+    {% include "settings/embed-settings-form.html" %}
+  {% endif %}
 {% endblock %}
 
 {% block scripts %}

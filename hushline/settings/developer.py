@@ -8,6 +8,7 @@ from flask import (
     session,
     url_for,
 )
+from flask_wtf.csrf import generate_csrf
 from werkzeug.wrappers.response import Response
 
 from hushline.auth import authentication_required
@@ -27,7 +28,8 @@ def _render_developer_page(
     status_code: int = 200,
     embed_settings_form: EmbedSettingsForm | None = None,
 ) -> tuple[str, int]:
-    if embed_settings_form is None:
+    can_manage_profile_embeds = user.is_current_paid_super_user
+    if can_manage_profile_embeds and embed_settings_form is None:
         embed_settings_form = create_embed_settings_form(username)
 
     return (
@@ -36,6 +38,9 @@ def _render_developer_page(
             user=user,
             username=username,
             is_alias=False,
+            can_manage_global_embeds=user.is_admin,
+            can_manage_profile_embeds=can_manage_profile_embeds,
+            csrf_token=generate_csrf(),
             embed_settings_action=url_for(".developer"),
             embed_settings_form=embed_settings_form,
             embeddable_forms_enabled=bool(
@@ -54,7 +59,7 @@ def register_developer_routes(bp: Blueprint) -> None:
     @authentication_required
     def developer() -> Response | Tuple[str, int]:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
-        if not user.is_current_paid_super_user:
+        if not (user.is_admin or user.is_current_paid_super_user):
             return abort(401)
 
         username = user.primary_username
@@ -62,6 +67,8 @@ def register_developer_routes(bp: Blueprint) -> None:
             raise Exception("Username was unexpectedly none")
 
         if request.method == "POST":
+            if not user.is_current_paid_super_user:
+                return abort(401)
             embed_settings_form = create_embed_settings_form(username, submitted=True)
             res = handle_embed_settings_form(username, embed_settings_form)
             if res:
