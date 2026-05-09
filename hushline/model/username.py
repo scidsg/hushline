@@ -1,3 +1,4 @@
+import ipaddress
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Generator, Optional, Sequence
 from urllib.parse import urlsplit
@@ -59,7 +60,11 @@ def normalize_embed_origin(origin: str) -> str:
 
     scheme = parsed.scheme.lower()
     host_lower = parsed.hostname.lower()
-    is_local_http_exception = host_lower in {"localhost", "127.0.0.1", "::1"}
+    try:
+        is_loopback_http_exception = ipaddress.ip_address(host_lower).is_loopback
+    except ValueError:
+        is_loopback_http_exception = False
+    is_local_http_exception = host_lower == "localhost" or is_loopback_http_exception
     is_onion_http_exception = host_lower.endswith(".onion")
     if scheme == "http" and not (is_local_http_exception or is_onion_http_exception):
         raise ValueError(

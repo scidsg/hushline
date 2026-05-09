@@ -119,6 +119,7 @@ def test_embed_origin_normalization_canonicalizes_host_and_ports() -> None:
     assert normalize_embed_origin("https://Tips.Example:8443") == "https://tips.example:8443"
     assert normalize_embed_origin("https://Tips.Example:443") == "https://tips.example"
     assert normalize_embed_origin("http://localhost:80") == "http://localhost"
+    assert normalize_embed_origin("http://127.0.0.2:80") == "http://127.0.0.2"
     assert normalize_embed_origin("http://exampleonion.onion:80") == "http://exampleonion.onion"
 
 
@@ -127,6 +128,7 @@ def test_embed_origin_normalization_canonicalizes_host_and_ports() -> None:
     [
         ("https://Tips.Example:443", "https://tips.example", "https://tips.example"),
         ("http://localhost:80", "http://localhost", "http://localhost"),
+        ("http://127.0.0.2:80", "http://127.0.0.2", "http://127.0.0.2"),
     ],
 )
 def test_embed_default_port_allowlist_matches_browser_serialized_origin(
