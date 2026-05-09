@@ -55,6 +55,8 @@ def normalize_embed_origin(origin: str) -> str:
     host = parsed.hostname.lower()
     if "*" in host:
         raise ValueError("Embed origins cannot contain wildcards.")
+    if any(delimiter in host for delimiter in (";", " ", "\t", "\r", "\n")):
+        raise ValueError("Embed origins cannot contain CSP delimiter characters.")
     if ":" in host and not host.startswith("["):
         host = f"[{host}]"
 
