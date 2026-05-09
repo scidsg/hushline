@@ -471,7 +471,8 @@ def test_notifications_full_body_encryption_uses_all_enabled_recipient_keys(
     user.email_encrypt_entire_body = True
     user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
     user.notification_recipients[-1].email = "secondary@example.com"
-    user.notification_recipients[-1].pgp_key = "secondary-key"
+    secondary_pgp_key = f"{user.pgp_key}\n"
+    user.notification_recipients[-1].pgp_key = secondary_pgp_key
     db.session.commit()
 
     client_encrypted_email_body = (
@@ -498,6 +499,6 @@ def test_notifications_full_body_encryption_uses_all_enabled_recipient_keys(
         [("Contact Method", msg_contact_method), ("Message", msg_content)]
     )
     mock_encrypt_message.assert_called_once_with(
-        expected_fallback_body, [user.pgp_key, "secondary-key"]
+        expected_fallback_body, [user.pgp_key, secondary_pgp_key]
     )
     mock_do_send_email.assert_called_once_with(user, server_encrypted_email_body)
