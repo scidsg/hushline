@@ -10,6 +10,7 @@ import aiohttp
 from aiohttp.abc import AbstractResolver, ResolveResult
 from bs4 import BeautifulSoup
 from flask import (
+    abort,
     current_app,
     flash,
     redirect,
@@ -23,6 +24,7 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.wrappers.response import Response
 from wtforms import Field
 
+from hushline.auth import rotate_user_session_id
 from hushline.crypto import can_encrypt_with_pgp_key, is_valid_pgp_key
 from hushline.db import db
 from hushline.external_urls import canonical_external_url
@@ -476,6 +478,7 @@ def handle_change_password_form(
         return None
 
     user.password_hash = change_password_form.new_password.data
+    rotate_user_session_id(user)
     db.session.commit()
     session.clear()
     flash("👍 Password successfully changed. Please log in again.", "success")
@@ -603,9 +606,7 @@ def handle_field_post(username: Username, field_form: FieldForm | None = None) -
         # Update an existing field
         if field_form.update.name in request.form:
             current_app.logger.info("Updating field")
-            field_definition = db.session.scalars(
-                db.select(FieldDefinition).filter_by(id=int(field_form.id.data))
-            ).one()
+            field_definition = _field_definition_for_posted_id(username, field_form)
             field_definition.label = field_form.label.data
             field_definition.field_type = FieldType(field_form.field_type.data)
             field_definition.required = field_form.required.data
@@ -619,9 +620,7 @@ def handle_field_post(username: Username, field_form: FieldForm | None = None) -
         # Delete a field
         if field_form.delete.name in request.form:
             current_app.logger.info("Deleting field")
-            field_definition = db.session.scalars(
-                db.select(FieldDefinition).filter_by(id=int(field_form.id.data))
-            ).one()
+            field_definition = _field_definition_for_posted_id(username, field_form)
 
             # Delete all field values that rely on this field definition
             db.session.execute(
@@ -636,9 +635,7 @@ def handle_field_post(username: Username, field_form: FieldForm | None = None) -
         # Move a field up
         if field_form.move_up.name in request.form:
             current_app.logger.info("Moving field up")
-            field_definition = db.session.scalars(
-                db.select(FieldDefinition).filter_by(id=int(field_form.id.data))
-            ).one()
+            field_definition = _field_definition_for_posted_id(username, field_form)
             field_definition.move_up()
             flash("👍 Field moved up.")
             return redirect_to_self()
@@ -646,14 +643,27 @@ def handle_field_post(username: Username, field_form: FieldForm | None = None) -
         # Move a field down
         if field_form.move_down.name in request.form:
             current_app.logger.info("Moving field down")
-            field_definition = db.session.scalars(
-                db.select(FieldDefinition).filter_by(id=int(field_form.id.data))
-            ).one()
+            field_definition = _field_definition_for_posted_id(username, field_form)
             field_definition.move_down()
             flash("👍 Field moved down.")
             return redirect_to_self()
 
     return None
+
+
+def _field_definition_for_posted_id(username: Username, field_form: FieldForm) -> FieldDefinition:
+    try:
+        field_id = int(field_form.id.data)
+    except (TypeError, ValueError):
+        abort(404)
+
+    field_definition = db.session.scalars(
+        db.select(FieldDefinition).filter_by(id=field_id, username_id=username.id)
+    ).one_or_none()
+    if field_definition is None:
+        abort(404)
+
+    return field_definition
 
 
 def _field_form_for_definition(field: FieldDefinition) -> FieldForm:

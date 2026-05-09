@@ -1,4 +1,5 @@
 import pytest
+from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 from pytest_mock import MockFixture
@@ -28,15 +29,91 @@ def test_admin_settings_shows_verified_on_managed_service(
 def test_admin_settings_includes_user_search(app: Flask, client: FlaskClient) -> None:
     response = client.get(url_for("settings.admin"), follow_redirects=True)
     assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+
     assert 'id="searchInput"' in response.text
     assert 'id="admin-users-list"' in response.text
     assert "/static/js/settings_admin.js" in response.text
-    assert 'data-search="' in response.text
+    search_form = soup.select_one("form.settings-search[role='search']")
+    assert search_form is not None
+    assert search_form.select_one('input[name="q"]') is not None
     assert "Set Cautious" in response.text
     assert "Set Suspended" in response.text
     assert "Account Category:" in response.text
-    assert 'name="account_category"' in response.text
-    assert "Update Category" in response.text
+
+    account_category_form = soup.select_one(
+        "form.admin-account-category-form[data-auto-submit-select='true']"
+    )
+    assert account_category_form is not None
+    assert account_category_form.select_one('select[name="account_category"]') is not None
+    assert account_category_form.find_parent(class_="tableActions") is None
+    assert "Update Category" not in response.text
+
+
+def _create_admin_list_user(username: str, display_name: str | None = None) -> User:
+    test_password = "Test-testtesttesttest-1"
+    user = User(password=test_password)
+    user.onboarding_complete = True
+    user.tier_id = 1
+    db.session.add(user)
+    db.session.flush()
+    db.session.add(
+        Username(
+            user_id=user.id,
+            _username=username,
+            _display_name=display_name,
+            is_primary=True,
+        )
+    )
+    db.session.commit()
+    return user
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_admin_settings_paginates_usernames(client: FlaskClient) -> None:
+    for index in range(25):
+        _create_admin_list_user(f"page-user-{index:02d}")
+
+    response = client.get(url_for("settings.admin"), follow_redirects=True)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    summary = soup.select_one(".admin-pagination-summary")
+    assert summary is not None
+    summary_text = " ".join(summary.get_text(" ", strip=True).split())
+
+    assert len(soup.select("#admin-users-list .user")) == 20
+    assert summary_text == "Showing 1-20 of 26 usernames."
+    assert "Page 1 of 2" in soup.get_text(" ", strip=True)
+    assert soup.find("a", string="Next") is not None
+
+    response = client.get(url_for("settings.admin", page=2), follow_redirects=True)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    summary = soup.select_one(".admin-pagination-summary")
+    assert summary is not None
+    summary_text = " ".join(summary.get_text(" ", strip=True).split())
+
+    assert len(soup.select("#admin-users-list .user")) == 6
+    assert summary_text == "Showing 21-26 of 26 usernames."
+    assert "Page 2 of 2" in soup.get_text(" ", strip=True)
+    assert soup.find("a", string="Previous") is not None
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_admin_settings_searches_all_usernames_before_paginating(client: FlaskClient) -> None:
+    for index in range(25):
+        _create_admin_list_user(f"page-user-{index:02d}")
+    _create_admin_list_user("zz-global-match", display_name="Needle Recipient")
+
+    response = client.get(url_for("settings.admin", q="Needle"), follow_redirects=True)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    summary = soup.select_one(".admin-pagination-summary")
+    assert summary is not None
+    summary_text = " ".join(summary.get_text(" ", strip=True).split())
+
+    assert "zz-global-match" in response.text
+    assert summary_text == 'Showing 1-1 of 1 usernames matching "Needle".'
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")

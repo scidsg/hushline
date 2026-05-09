@@ -139,10 +139,16 @@ def test_admin_embeddable_forms_default_disabled(client: FlaskClient, admin_user
         session["username"] = admin_user.primary_username.username
         session["is_authenticated"] = True
 
-    response = client.get(url_for("settings.admin"))
+    admin_response = client.get(url_for("settings.admin"))
+
+    assert admin_response.status_code == 200
+    assert OrganizationSetting.fetch_one(OrganizationSetting.EMBEDDABLE_FORMS_ENABLED) is False
+    assert "Enable embeddable forms globally" not in admin_response.text
+    assert 'id="embeddable_forms_enabled"' not in admin_response.text
+
+    response = client.get(url_for("settings.developer"))
 
     assert response.status_code == 200
-    assert OrganizationSetting.fetch_one(OrganizationSetting.EMBEDDABLE_FORMS_ENABLED) is False
     page = BeautifulSoup(response.text, "html.parser")
     toggle = page.find("input", attrs={"id": "embeddable_forms_enabled"})
     assert toggle is not None
@@ -838,9 +844,7 @@ def test_embed_profile_has_no_postmessage_submission_path(client: FlaskClient, u
     assert "postMessage" not in Path("assets/js/message_success.js").read_text()
 
 
-def test_profile_embed_settings_do_not_show_snippet_when_globally_disabled(
-    client: FlaskClient, user: User
-) -> None:
+def test_profile_settings_do_not_render_embed_settings(client: FlaskClient, user: User) -> None:
     _make_message_capable(user)
     _configure_embed(user.primary_username)
     with client.session_transaction() as session:
@@ -852,11 +856,33 @@ def test_profile_embed_settings_do_not_show_snippet_when_globally_disabled(
     response = client.get(url_for("settings.profile"))
 
     assert response.status_code == 200
-    assert "Embeds are disabled globally by an administrator." in response.text
+    assert "Embeddable Profile" not in response.text
+    assert 'name="embed_enabled"' not in response.text
     assert 'id="embed_iframe_snippet"' not in response.text
 
 
-def test_embed_settings_require_current_paid_super_user(client: FlaskClient, user: User) -> None:
+def test_developer_embed_settings_do_not_show_snippet_when_globally_disabled(
+    client: FlaskClient, user: User
+) -> None:
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+    with client.session_transaction() as session:
+        session["user_id"] = user.id
+        session["session_id"] = user.session_id
+        session["username"] = user.primary_username.username
+        session["is_authenticated"] = True
+
+    response = client.get(url_for("settings.developer"))
+
+    assert response.status_code == 200
+    assert "Embeds are disabled globally by an administrator." in response.text
+    assert 'name="embed_enabled"' in response.text
+    assert 'id="embed_iframe_snippet"' not in response.text
+
+
+def test_non_super_non_admin_user_cannot_access_developer_settings(
+    client: FlaskClient, user: User
+) -> None:
     _enable_embeds_globally()
     _add_pgp_key(user)
     with client.session_transaction() as session:
@@ -865,10 +891,103 @@ def test_embed_settings_require_current_paid_super_user(client: FlaskClient, use
         session["username"] = user.primary_username.username
         session["is_authenticated"] = True
 
-    page_response = client.get(url_for("settings.profile"))
+    get_response = client.get(url_for("settings.developer"))
+    post_response = client.post(
+        url_for("settings.developer"),
+        data=_embed_settings_data(True, "https://tips.example"),
+    )
+
+    assert get_response.status_code == 401
+    assert post_response.status_code == 401
+    db.session.refresh(user.primary_username)
+    assert user.primary_username.embed_enabled is False
+
+
+def test_settings_nav_shows_developer_for_admin_or_current_paid_super_user(
+    client: FlaskClient, user: User
+) -> None:
+    with client.session_transaction() as session:
+        session["user_id"] = user.id
+        session["session_id"] = user.session_id
+        session["username"] = user.primary_username.username
+        session["is_authenticated"] = True
+
+    response = client.get(url_for("settings.profile"))
+    assert response.status_code == 200
+    nav = BeautifulSoup(response.text, "html.parser").select_one("nav.settings-tabs")
+    assert nav is not None
+    nav_text = nav.get_text(" ", strip=True)
+    assert "Developer" not in nav_text
+
+    user.is_admin = True
+    db.session.commit()
+    response = client.get(url_for("settings.profile"))
+    assert response.status_code == 200
+    nav = BeautifulSoup(response.text, "html.parser").select_one("nav.settings-tabs")
+    assert nav is not None
+    admin_developer_link = nav.find("a", href=url_for("settings.developer"))
+    assert admin_developer_link is not None
+    assert admin_developer_link.get_text(strip=True) == "Developer"
+
+    user.is_admin = False
+    db.session.commit()
+    _make_current_paid_super_user(user)
+    response = client.get(url_for("settings.profile"))
+    assert response.status_code == 200
+    nav = BeautifulSoup(response.text, "html.parser").select_one("nav.settings-tabs")
+    assert nav is not None
+    developer_link = nav.find("a", href=url_for("settings.developer"))
+    assert developer_link is not None
+    assert developer_link.get_text(strip=True) == "Developer"
+    assert developer_link.get("href") == url_for("settings.developer")
+    labels = [link.get_text(strip=True) for link in nav.find_all("a")]
+    assert labels.index("Developer") < labels.index("Encryption")
+
+    user.is_admin = True
+    db.session.commit()
+    response = client.get(url_for("settings.profile"))
+    assert response.status_code == 200
+    nav = BeautifulSoup(response.text, "html.parser").select_one("nav.settings-tabs")
+    assert nav is not None
+    labels = [link.get_text(strip=True) for link in nav.find_all("a")]
+    assert labels.index("Developer") > labels.index("Branding")
+    assert labels.index("Developer") < labels.index("Encryption")
+
+
+def test_admin_non_super_user_can_access_developer_global_embed_settings_only(
+    client: FlaskClient, user: User
+) -> None:
+    user.is_admin = True
+    db.session.commit()
+    with client.session_transaction() as session:
+        session["user_id"] = user.id
+        session["session_id"] = user.session_id
+        session["username"] = user.primary_username.username
+        session["is_authenticated"] = True
+
+    response = client.get(url_for("settings.developer"))
+
+    assert response.status_code == 200
+    assert "Enable embeddable forms globally" in response.text
+    assert "Embeddable Profile" not in response.text
+    assert 'name="embed_enabled"' not in response.text
+
+
+def test_developer_embed_settings_require_usable_recipient_key(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_current_paid_super_user(user)
+    with client.session_transaction() as session:
+        session["user_id"] = user.id
+        session["session_id"] = user.session_id
+        session["username"] = user.primary_username.username
+        session["is_authenticated"] = True
+
+    page_response = client.get(url_for("settings.developer"))
 
     assert page_response.status_code == 200
-    assert "Upgrade to Super User before enabling embeds." in page_response.text
+    assert "Add a usable recipient PGP key before enabling embeds." in page_response.text
     assert 'name="embed_enabled"' in page_response.text
     assert "disabled" in str(
         BeautifulSoup(page_response.text, "html.parser").find(
@@ -877,7 +996,7 @@ def test_embed_settings_require_current_paid_super_user(client: FlaskClient, use
     )
 
     post_response = client.post(
-        url_for("settings.profile"),
+        url_for("settings.developer"),
         data=_embed_settings_data(True, "https://tips.example"),
     )
 
@@ -901,6 +1020,11 @@ def test_admin_can_toggle_embeddable_forms(client: FlaskClient, admin_user: User
     assert response.status_code == 302
     assert OrganizationSetting.fetch_one(OrganizationSetting.EMBEDDABLE_FORMS_ENABLED) is True
     page_response = client.get(url_for("settings.admin"))
+    page = BeautifulSoup(page_response.text, "html.parser")
+    toggle = page.find("input", attrs={"id": "embeddable_forms_enabled"})
+    assert toggle is None
+
+    page_response = client.get(url_for("settings.developer"))
     page = BeautifulSoup(page_response.text, "html.parser")
     toggle = page.find("input", attrs={"id": "embeddable_forms_enabled"})
     assert toggle is not None
@@ -942,7 +1066,7 @@ def test_primary_embed_settings_update_origins_and_render_iframe_snippet(
         session["is_authenticated"] = True
 
     response = client.post(
-        url_for("settings.profile"),
+        url_for("settings.developer"),
         data=_embed_settings_data(
             True,
             "https://Tips.Example:443\nhttps://other.example:8443",
@@ -951,6 +1075,9 @@ def test_primary_embed_settings_update_origins_and_render_iframe_snippet(
     )
 
     assert response.status_code == 200
+    assert "Embeddable Profile" in response.text
+    assert "Add your secure Hush Line profile contact form to your other websites!" in response.text
+    assert "tips.hushline.app" in response.text
     db.session.refresh(user.primary_username)
     assert user.primary_username.embed_enabled is True
     assert user.primary_username.embed_allowed_origins == [
@@ -959,6 +1086,7 @@ def test_primary_embed_settings_update_origins_and_render_iframe_snippet(
     ]
 
     snippet = _iframe_from_snippet(response.text)
+    assert "Code Snippet" in response.text
     iframe = snippet.find("iframe")
     assert iframe is not None
     assert iframe["src"] == url_for(
@@ -996,6 +1124,13 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     assert response.status_code == 200
     page = BeautifulSoup(response.text, "html.parser")
     assert page.select_one("body.embed-page") is not None
+    stylesheet = page.find("link", attrs={"rel": "stylesheet"})
+    assert stylesheet is not None
+    assert stylesheet.get("href") == url_for("static", filename="css/style.css")
+    runtime_style = page.find("style")
+    assert runtime_style is not None
+    assert "--color-brand: oklch(from" in runtime_style.get_text()
+    assert "--theme-color-dark:" in runtime_style.get_text()
     assert page.find(string="Secure Hush Line form") is None
     assert "Hosted by" not in response.text
     assert "Powered by Hush Line" not in response.text
@@ -1032,6 +1167,19 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     assert not any("submit-message.js" in source for source in script_sources)
     assert page.find("iframe") is None
     assert "script-widget" not in response.text
+
+
+def test_embed_profile_layout_and_focus_styles_are_in_compiled_stylesheet_source() -> None:
+    stylesheet_source = Path("assets/scss/style.scss").read_text()
+
+    assert "body.embed-page" in stylesheet_source
+    assert ".embed-shell" in stylesheet_source
+    assert ".embed-profile-summary" in stylesheet_source
+    assert ".embed-actions" in stylesheet_source
+    assert ".embed-error-summary" in stylesheet_source
+    assert ".embed-noscript" in stylesheet_source
+    assert ".embed-page a:focus-visible" in stylesheet_source
+    assert "outline: 3px solid var(--theme-color-dark)" in stylesheet_source
 
 
 def test_embed_profile_renders_additional_profile_fields_like_full_profile(
@@ -1103,13 +1251,11 @@ def test_embed_profile_keyboard_flow_and_mobile_accessibility_chrome(
     assert focusable_labels.index("Open on Hush Line") < focusable_labels.index("field_0")
     assert focusable_labels.index("Leave") < focusable_labels.index("field_0")
     assert focusable_labels.index("captcha_answer") < focusable_labels.index("Send Message")
-    style = page.find("style")
-    assert style is not None
-    style_text = style.get_text()
-    assert "@media (max-width: 28rem)" in style_text
-    assert "@media (prefers-reduced-motion: reduce)" in style_text
-    assert ":focus-visible" in style_text
-    assert "flex-wrap: wrap" in style_text
+    stylesheet_source = Path("assets/scss/style.scss").read_text()
+    assert "@media (max-width: 28rem)" in stylesheet_source
+    assert "@media (prefers-reduced-motion: reduce)" in stylesheet_source
+    assert ":focus-visible" in stylesheet_source
+    assert "flex-wrap: wrap" in stylesheet_source
 
 
 def test_embed_profile_required_chrome_survives_recipient_branding_settings(
@@ -1130,6 +1276,9 @@ def test_embed_profile_required_chrome_survives_recipient_branding_settings(
     assert response.status_code == 200
     page = BeautifulSoup(response.text, "html.parser")
     assert page.find(string="Secure Hush Line form") is None
+    runtime_style = page.find("style")
+    assert runtime_style is not None
+    assert "--color-brand: oklch(from #005f73 l c h);" in runtime_style.get_text()
     assert not page.find(string=lambda value: value and "Hosted by Recipient Brand" in value)
     assert "Powered by Hush Line" not in response.text
     assert "Recipient Newsroom" in response.text
@@ -1185,11 +1334,14 @@ def test_primary_embed_settings_reject_invalid_origin(client: FlaskClient, user:
         session["is_authenticated"] = True
 
     response = client.post(
-        url_for("settings.profile"),
+        url_for("settings.developer"),
         data=_embed_settings_data(True, "https://tips.example/path"),
     )
 
     assert response.status_code == 400
+    assert (
+        "Embed origins must be exact http(s) origins without paths or wildcards." in response.text
+    )
     db.session.refresh(user.primary_username)
     assert user.primary_username.embed_enabled is False
     assert user.primary_username.embed_allowed_origins == []
@@ -1204,7 +1356,7 @@ def test_embed_settings_require_message_capable_owner(client: FlaskClient, user:
         session["is_authenticated"] = True
 
     response = client.post(
-        url_for("settings.profile"),
+        url_for("settings.developer"),
         data=_embed_settings_data(True, "https://tips.example"),
     )
 

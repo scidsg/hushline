@@ -19,65 +19,52 @@
     </div>
   </div>
 
-  <h4>Embeddable Forms</h4>
-  <p class="info">
-    Enable hosted iframe embeds globally. Recipients still need to opt in each
-    tip line and list exact allowed parent origins.
-  </p>
-  <form
-    action="{{ url_for('admin.toggle_embeddable_forms') }}"
-    method="POST"
-    class="formBody auto-submit"
-  >
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-    <div class="checkbox-group toggle-ui">
-      <input
-        type="checkbox"
-        id="embeddable_forms_enabled"
-        name="embeddable_forms_enabled"
-        value="true"
-        role="switch"
-        {% if embeddable_forms_enabled %}checked{% endif %}
-      />
-      <input type="hidden" name="embeddable_forms_enabled" value="false" />
-      <label for="embeddable_forms_enabled" class="toggle-label">
-        Enable embeddable forms globally
-        <div class="toggle">
-          <div class="toggle__ball"></div>
-        </div>
-      </label>
-    </div>
-    <button type="submit" class="display-none">Save embeddable forms setting</button>
-  </form>
-
   <h4>All Usernames</h4>
-  <div class="settings-search">
+  <form
+    action="{{ url_for('settings.admin') }}"
+    method="GET"
+    class="settings-search"
+    role="search"
+  >
     <div class="search-box">
-      <label id="searchIcon" for="searchInput">
+      <button
+        id="searchIcon"
+        type="submit"
+        aria-label="Search users"
+        style="cursor: pointer; background: none; border: none; padding: 0"
+      >
         <img
           src="{{ url_for('static', filename='img/icon-search.png') }}"
           alt=""
         />
-      </label>
+      </button>
       <input
         type="text"
         id="searchInput"
+        name="q"
+        value="{{ admin_search_query }}"
         placeholder="Search users..."
         aria-label="Search users"
       />
-      <button
-        id="clearIcon"
-        type="button"
-        aria-label="Clear search field"
-        style="cursor: pointer; background: none; border: none; padding: 0"
-      >
-        <img
-          src="{{ url_for('static', filename='img/icon-clear.png') }}"
-          alt=""
-        />
-      </button>
+      {% if admin_search_query %}
+        <a
+          id="clearIcon"
+          href="{{ url_for('settings.admin') }}"
+          aria-label="Clear search field"
+          style="cursor: pointer; background: none; border: none; padding: 0"
+        >
+          <img
+            src="{{ url_for('static', filename='img/icon-clear.png') }}"
+            alt=""
+          />
+        </a>
+      {% endif %}
     </div>
-  </div>
+  </form>
+  <p class="meta admin-pagination-summary">
+    Showing {{ admin_page_start }}-{{ admin_page_end }} of {{ admin_total_usernames }}
+    usernames{% if admin_search_query %} matching "{{ admin_search_query }}"{% endif %}.
+  </p>
   {% if all_usernames %}
     <div id="admin-users-list">
     {% for username in all_usernames %}
@@ -171,34 +158,6 @@
             </button>
           </form>
           <form
-            action="{{ url_for('admin.update_account_category', user_id=username.user.id) }}"
-            method="POST"
-            class="formBody"
-          >
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-            <label
-              for="account-category-{{ username.id }}"
-              class="visually-hidden"
-            >
-              Account category for {{ username.username }}
-            </label>
-            <select
-              id="account-category-{{ username.id }}"
-              name="account_category"
-            >
-              <option value="">None</option>
-              {% for value, label in account_category_choices %}
-                <option
-                  value="{{ value }}"
-                  {% if username.user.account_category == value %}selected{% endif %}
-                >
-                  {{ label }}
-                </option>
-              {% endfor %}
-            </select>
-            <button type="submit">Update Category</button>
-          </form>
-          <form
             action="{% if username.is_primary %}{{ url_for('admin.delete_user', user_id=username.user.id) }}{% else %}{{ url_for('admin.delete_username', username_id=username.id) }}{% endif %}"
             method="POST"
             class="formBody"
@@ -214,6 +173,32 @@
             </button>
           </form>
         </div>
+        <form
+          action="{{ url_for('admin.update_account_category', user_id=username.user.id) }}"
+          method="POST"
+          class="formBody admin-account-category-form"
+          data-auto-submit-select="true"
+        >
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+          <label for="account-category-{{ username.id }}">
+            Account category
+          </label>
+          <select
+            id="account-category-{{ username.id }}"
+            name="account_category"
+          >
+            <option value="">None</option>
+            {% for value, label in account_category_choices %}
+              <option
+                value="{{ value }}"
+                {% if username.user.account_category == value %}selected{% endif %}
+              >
+                {{ label }}
+              </option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="display-none">Save account category</button>
+        </form>
       </div>
     {% endfor %}
     </div>
@@ -222,6 +207,21 @@
     </p>
   {% else %}
     <p>No users found.</p>
+  {% endif %}
+  {% if admin_total_pages > 1 %}
+    <nav class="admin-pagination" aria-label="Usernames pages">
+      {% if admin_current_page > 1 %}
+        <a
+          href="{{ url_for('settings.admin', q=admin_search_query, page=admin_current_page - 1) }}"
+        >Previous</a>
+      {% endif %}
+      <span>Page {{ admin_current_page }} of {{ admin_total_pages }}</span>
+      {% if admin_current_page < admin_total_pages %}
+        <a
+          href="{{ url_for('settings.admin', q=admin_search_query, page=admin_current_page + 1) }}"
+        >Next</a>
+      {% endif %}
+    </nav>
   {% endif %}
 {% endblock %}
 
