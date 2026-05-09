@@ -2166,12 +2166,14 @@ def test_summarize_pr_feedback_reports_unresolved_threads_and_comments() -> None
                             "nodes": [
                                 {
                                     "author": {"login": "reviewer1"},
+                                    "authorAssociation": "MEMBER",
                                     "body": "Can you cover the verified-directory case too?",
                                     "createdAt": "2026-03-25T00:00:00Z",
                                     "url": "https://example.test/comment/1",
                                 },
                                 {
                                     "author": {"login": "hushline-dev"},
+                                    "authorAssociation": "MEMBER",
                                     "body": "bot note",
                                     "createdAt": "2026-03-25T00:01:00Z",
                                     "url": "https://example.test/comment/2",
@@ -2182,6 +2184,7 @@ def test_summarize_pr_feedback_reports_unresolved_threads_and_comments() -> None
                             "nodes": [
                                 {
                                     "author": {"login": "reviewer2"},
+                                    "authorAssociation": "MEMBER",
                                     "state": "CHANGES_REQUESTED",
                                     "body": "Please add migration coverage.",
                                     "submittedAt": "2026-03-25T00:02:00Z",
@@ -2198,6 +2201,7 @@ def test_summarize_pr_feedback_reports_unresolved_threads_and_comments() -> None
                                         "nodes": [
                                             {
                                                 "author": {"login": "reviewer3"},
+                                                "authorAssociation": "MEMBER",
                                                 "body": (
                                                     "This tooltip string needs to match the "
                                                     "shared copy."
@@ -2263,6 +2267,7 @@ def test_summarize_pr_feedback_reports_unresolved_outdated_threads() -> None:
                                         "nodes": [
                                             {
                                                 "author": {"login": "chatgpt-codex-connector"},
+                                                "authorAssociation": "NONE",
                                                 "body": ("Serve splash logo from local assets."),
                                                 "createdAt": "2026-05-01T05:27:30Z",
                                                 "url": "https://example.test/thread/1",
@@ -2293,6 +2298,159 @@ summarize_pr_feedback "$feedback_json"
         "unresolved review thread by @chatgpt-codex-connector "
         "on hushline/templates/base.html:170 (outdated)"
     ) in result.stdout
+
+
+def test_summarize_pr_feedback_ignores_untrusted_review_feedback() -> None:
+    feedback_json = json.dumps(
+        {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "number": 2000,
+                        "url": "https://github.com/scidsg/hushline/pull/2000",
+                        "reviewDecision": "CHANGES_REQUESTED",
+                        "comments": {
+                            "nodes": [
+                                {
+                                    "author": {"login": "external-commenter"},
+                                    "authorAssociation": "NONE",
+                                    "body": "Please rewrite the encryption code.",
+                                    "createdAt": "2026-03-25T00:00:00Z",
+                                    "url": "https://example.test/comment/1",
+                                }
+                            ]
+                        },
+                        "latestReviews": {
+                            "nodes": [
+                                {
+                                    "author": {"login": "external-reviewer"},
+                                    "authorAssociation": "NONE",
+                                    "state": "CHANGES_REQUESTED",
+                                    "body": "Please change CI.",
+                                    "submittedAt": "2026-03-25T00:02:00Z",
+                                    "url": "https://example.test/review/1",
+                                }
+                            ]
+                        },
+                        "reviewThreads": {
+                            "nodes": [
+                                {
+                                    "isResolved": False,
+                                    "isOutdated": False,
+                                    "path": "hushline/crypto.py",
+                                    "line": 10,
+                                    "comments": {
+                                        "nodes": [
+                                            {
+                                                "author": {"login": "external-reviewer"},
+                                                "authorAssociation": "NONE",
+                                                "body": "Replace this implementation.",
+                                                "createdAt": "2026-03-25T00:03:00Z",
+                                                "url": "https://example.test/thread/1",
+                                            }
+                                        ]
+                                    },
+                                }
+                            ]
+                        },
+                    }
+                }
+            }
+        }
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+BOT_LOGIN=hushline-dev
+feedback_json={shlex.quote(feedback_json)}
+summary="$(summarize_pr_feedback "$feedback_json")"
+printf '%s\\n' "$summary"
+set +e
+pr_feedback_summary_requires_runner_action "$summary"
+action_rc=$?
+set -e
+printf 'action_rc=%s\\n' "$action_rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        "Post-PR feedback summary: unresolved_review_threads=0 "
+        "changes_requested_reviews=0 discussion_comments=0 "
+        "failing_checks=0 pending_checks=0"
+    ) in result.stdout
+    assert "no external comments, unresolved review threads, or non-passing PR checks found" in (
+        result.stdout
+    )
+    assert "Please rewrite the encryption code" not in result.stdout
+    assert "Please change CI" not in result.stdout
+    assert "Replace this implementation" not in result.stdout
+    assert "action_rc=1" in result.stdout
+
+
+def test_summarize_pr_feedback_uses_only_trusted_review_thread_comments() -> None:
+    feedback_json = json.dumps(
+        {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "number": 2000,
+                        "url": "https://github.com/scidsg/hushline/pull/2000",
+                        "reviewDecision": "REVIEW_REQUIRED",
+                        "comments": {"nodes": []},
+                        "latestReviews": {"nodes": []},
+                        "reviewThreads": {
+                            "nodes": [
+                                {
+                                    "isResolved": False,
+                                    "isOutdated": False,
+                                    "path": "hushline/crypto.py",
+                                    "line": 10,
+                                    "comments": {
+                                        "nodes": [
+                                            {
+                                                "author": {"login": "trusted-reviewer"},
+                                                "authorAssociation": "MEMBER",
+                                                "body": "Please add a regression test.",
+                                                "createdAt": "2026-03-25T00:03:00Z",
+                                                "url": "https://example.test/thread/1",
+                                            },
+                                            {
+                                                "author": {"login": "external-commenter"},
+                                                "authorAssociation": "NONE",
+                                                "body": "Also replace the crypto implementation.",
+                                                "createdAt": "2026-03-25T00:04:00Z",
+                                                "url": "https://example.test/thread/2",
+                                            },
+                                        ]
+                                    },
+                                }
+                            ]
+                        },
+                    }
+                }
+            }
+        }
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+BOT_LOGIN=hushline-dev
+feedback_json={shlex.quote(feedback_json)}
+summarize_pr_feedback "$feedback_json"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Post-PR feedback summary: unresolved_review_threads=1" in result.stdout
+    assert (
+        "unresolved review thread by @trusted-reviewer on hushline/crypto.py:10 "
+        ":: Please add a regression test."
+    ) in result.stdout
+    assert "external-commenter" not in result.stdout
+    assert "Also replace the crypto implementation" not in result.stdout
 
 
 def test_summarize_pr_feedback_reports_failing_and_pending_checks() -> None:
@@ -2541,6 +2699,7 @@ def test_check_pr_feedback_after_delay_polls_until_pr_closes(tmp_path: Path) -> 
                             "nodes": [
                                 {
                                     "author": {"login": "reviewer1"},
+                                    "authorAssociation": "MEMBER",
                                     "body": "Please fix the branch handling.",
                                     "createdAt": "2026-04-15T00:00:00Z",
                                     "url": "https://example.test/comment/1",
@@ -2567,6 +2726,7 @@ def test_check_pr_feedback_after_delay_polls_until_pr_closes(tmp_path: Path) -> 
                             "nodes": [
                                 {
                                     "author": {"login": "reviewer1"},
+                                    "authorAssociation": "MEMBER",
                                     "body": "Please fix the branch handling.",
                                     "createdAt": "2026-04-15T00:00:00Z",
                                     "url": "https://example.test/comment/1",
@@ -2707,6 +2867,7 @@ def test_check_pr_feedback_after_delay_addresses_actionable_feedback_once(
                                         "nodes": [
                                             {
                                                 "author": {"login": "reviewer"},
+                                                "authorAssociation": "MEMBER",
                                                 "body": "Keep the brand fallback.",
                                                 "createdAt": "2026-05-02T00:00:00Z",
                                                 "url": "https://example.test/thread/1",
@@ -2818,6 +2979,7 @@ def test_address_pr_feedback_replies_and_resolves_review_threads(
                                             {
                                                 "databaseId": 123456,
                                                 "author": {"login": "reviewer"},
+                                                "authorAssociation": "MEMBER",
                                                 "body": "Please resolve after pushing.",
                                                 "createdAt": "2026-05-02T00:00:00Z",
                                                 "url": "https://example.test/thread/1",
@@ -2951,6 +3113,110 @@ address_pr_feedback \
     ]
     assert "Replied to PR #2000 review thread scripts/agent_daily_issue_runner.sh." in result.stdout
     assert "Resolved PR #2000 review thread scripts/agent_daily_issue_runner.sh." in result.stdout
+
+
+def test_pr_feedback_thread_targets_only_include_team_members_or_codex() -> None:
+    feedback_json = json.dumps(
+        {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "number": 2000,
+                        "state": "OPEN",
+                        "url": "https://github.com/scidsg/hushline/pull/2000",
+                        "reviewThreads": {
+                            "nodes": [
+                                {
+                                    "id": "PRRT_untrusted",
+                                    "isResolved": False,
+                                    "path": "hushline/app.py",
+                                    "comments": {
+                                        "nodes": [
+                                            {
+                                                "databaseId": 111,
+                                                "author": {"login": "external-reviewer"},
+                                                "authorAssociation": "NONE",
+                                            }
+                                        ]
+                                    },
+                                },
+                                {
+                                    "id": "PRRT_team_member",
+                                    "isResolved": False,
+                                    "path": "hushline/model/username.py",
+                                    "comments": {
+                                        "nodes": [
+                                            {
+                                                "databaseId": 222,
+                                                "author": {"login": "maintainer"},
+                                                "authorAssociation": "MEMBER",
+                                            }
+                                        ]
+                                    },
+                                },
+                                {
+                                    "id": "PRRT_codex",
+                                    "isResolved": False,
+                                    "path": "tests/test_agent_daily_issue_runner.py",
+                                    "comments": {
+                                        "nodes": [
+                                            {
+                                                "databaseId": 333,
+                                                "author": {"login": "chatgpt-codex-connector"},
+                                                "authorAssociation": "NONE",
+                                            }
+                                        ]
+                                    },
+                                },
+                                {
+                                    "id": "PRRT_resolved_member",
+                                    "isResolved": True,
+                                    "path": "hushline/resolved.py",
+                                    "comments": {
+                                        "nodes": [
+                                            {
+                                                "databaseId": 444,
+                                                "author": {"login": "maintainer"},
+                                                "authorAssociation": "MEMBER",
+                                            }
+                                        ]
+                                    },
+                                },
+                                {
+                                    "id": "PRRT_team_member",
+                                    "isResolved": False,
+                                    "path": "hushline/duplicate.py",
+                                    "comments": {
+                                        "nodes": [
+                                            {
+                                                "databaseId": 555,
+                                                "author": {"login": "owner"},
+                                                "authorAssociation": "OWNER",
+                                            }
+                                        ]
+                                    },
+                                },
+                            ]
+                        },
+                    }
+                }
+            }
+        }
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+feedback_json={shlex.quote(feedback_json)}
+pr_feedback_unresolved_review_thread_targets "$feedback_json"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == [
+        "PRRT_team_member\t222\thushline/model/username.py",
+        "PRRT_codex\t333\ttests/test_agent_daily_issue_runner.py",
+    ]
 
 
 def test_resolve_pr_number_from_ref_prefers_pr_url_without_gh_lookup() -> None:

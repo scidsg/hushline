@@ -895,6 +895,7 @@ fetch_pr_feedback_json() {
                 author {
                   login
                 }
+                authorAssociation
                 body
                 createdAt
                 url
@@ -905,6 +906,7 @@ fetch_pr_feedback_json() {
                 author {
                   login
                 }
+                authorAssociation
                 state
                 body
                 submittedAt
@@ -925,6 +927,7 @@ fetch_pr_feedback_json() {
                     author {
                       login
                     }
+                    authorAssociation
                     body
                     createdAt
                     url
@@ -981,6 +984,42 @@ summarize_pr_feedback() {
 
       const payload = JSON.parse(fs.readFileSync(0, "utf8"));
       const botLogin = String(process.env.BOT_LOGIN || "");
+      const trustedAssociations = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+      const trustedCodexLogins = new Set(["chatgpt-codex-connector"]);
+
+      function loginFor(item) {
+        return item && item.author && item.author.login
+          ? String(item.author.login)
+          : "";
+      }
+
+      function isTrustedFeedbackActor(item) {
+        const login = loginFor(item);
+        const association = String(item && item.authorAssociation ? item.authorAssociation : "");
+        return login !== "" && login !== botLogin && (
+          trustedAssociations.has(association) || trustedCodexLogins.has(login)
+        );
+      }
+
+      function reviewThreadComments(thread) {
+        const comments =
+          thread && thread.comments && Array.isArray(thread.comments.nodes)
+            ? thread.comments.nodes
+            : [];
+        return comments;
+      }
+
+      function trustedReviewThreadComments(thread) {
+        return reviewThreadComments(thread).filter((comment) =>
+          isTrustedFeedbackActor(comment),
+        );
+      }
+
+      function latestTrustedReviewThreadComment(thread) {
+        const comments = trustedReviewThreadComments(thread);
+        return comments.length > 0 ? comments[comments.length - 1] : null;
+      }
+
       let checks = [];
       try {
         const parsedChecks = JSON.parse(String(process.env.PR_CHECKS_JSON || "[]"));
@@ -1005,24 +1044,12 @@ summarize_pr_feedback() {
 
       const issueComments =
         pr.comments && Array.isArray(pr.comments.nodes)
-          ? pr.comments.nodes.filter((comment) => {
-              const login =
-                comment && comment.author && comment.author.login
-                  ? String(comment.author.login)
-                  : "";
-              return login !== "" && login !== botLogin;
-            })
+          ? pr.comments.nodes.filter((comment) => isTrustedFeedbackActor(comment))
           : [];
 
       const latestReviews =
         pr.latestReviews && Array.isArray(pr.latestReviews.nodes)
-          ? pr.latestReviews.nodes.filter((review) => {
-              const login =
-                review && review.author && review.author.login
-                  ? String(review.author.login)
-                  : "";
-              return login !== "" && login !== botLogin;
-            })
+          ? pr.latestReviews.nodes.filter((review) => isTrustedFeedbackActor(review))
           : [];
 
       const changeRequests = latestReviews.filter(
@@ -1034,7 +1061,12 @@ summarize_pr_feedback() {
           ? pr.reviewThreads.nodes
           : [];
 
-      const unresolvedThreads = reviewThreads.filter((thread) => thread && !thread.isResolved);
+      const unresolvedThreads = reviewThreads.filter(
+        (thread) =>
+          thread &&
+          !thread.isResolved &&
+          trustedReviewThreadComments(thread).length > 0,
+      );
       const failingChecks = checks.filter(
         (check) => String(check && check.bucket ? check.bucket : "") === "fail",
       );
@@ -1058,10 +1090,7 @@ summarize_pr_feedback() {
       }
 
       unresolvedThreads.slice(0, 5).forEach((thread, index) => {
-        const comment =
-          thread.comments && Array.isArray(thread.comments.nodes) && thread.comments.nodes.length > 0
-            ? thread.comments.nodes[thread.comments.nodes.length - 1]
-            : null;
+        const comment = latestTrustedReviewThreadComment(thread);
         const login =
           comment && comment.author && comment.author.login
             ? String(comment.author.login)
@@ -1219,11 +1248,22 @@ pr_feedback_unresolved_review_thread_targets() {
           ? pr.reviewThreads.nodes
           : [];
       const seen = new Set();
+      const trustedAssociations = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+      const trustedCodexLogins = new Set(["chatgpt-codex-connector"]);
+
+      function isTrustedThreadOwner(comment) {
+        const login =
+          comment && comment.author && comment.author.login
+            ? String(comment.author.login)
+            : "";
+        const association = String(comment && comment.authorAssociation ? comment.authorAssociation : "");
+        return trustedAssociations.has(association) || trustedCodexLogins.has(login);
+      }
+
       for (const thread of threads) {
         if (!thread || thread.isResolved || !thread.id || seen.has(thread.id)) {
           continue;
         }
-        seen.add(thread.id);
         const comments =
           thread.comments && Array.isArray(thread.comments.nodes)
             ? thread.comments.nodes
@@ -1231,6 +1271,10 @@ pr_feedback_unresolved_review_thread_targets() {
         const firstComment = comments.find(
           (comment) => comment && Number.isInteger(comment.databaseId),
         );
+        if (!isTrustedThreadOwner(firstComment)) {
+          continue;
+        }
+        seen.add(thread.id);
         const commentId = firstComment ? String(firstComment.databaseId) : "";
         const path = String(thread.path || "").replace(/\t/g, " ");
         process.stdout.write(`${thread.id}\t${commentId}\t${path}\n`);
