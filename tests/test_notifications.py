@@ -348,18 +348,21 @@ def test_notifications_full_body_encryption_embedded_markers_use_server_fallback
 @pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
 @patch("hushline.routes.profile.encrypt_message")
+@patch("hushline.routes.profile.do_send_email")
 def test_notifications_full_body_encryption_prefers_server_encryption_for_all_enabled_recipients(
+    mock_do_send_email: MagicMock,
     mock_encrypt_message: MagicMock,
-    _app: Flask,
+    app: Flask,
     client: FlaskClient,
     user: User,
 ) -> None:
-    _configure_default_smtp(_app)
+    _configure_default_smtp(app)
     user.enable_email_notifications = True
     user.email_include_message_content = True
     user.email_encrypt_entire_body = True
     user.email = "primary@example.com"
-    _add_secondary_recipient(user)
+    secondary_pgp_key = f"{user.pgp_key}\n"
+    _add_secondary_recipient(user, secondary_pgp_key)
     db.session.commit()
 
     client_encrypted_email_body = (
@@ -386,7 +389,7 @@ def test_notifications_full_body_encryption_prefers_server_encryption_for_all_en
         [("Contact Method", msg_contact_method), ("Message", msg_content)]
     )
     mock_encrypt_message.assert_called_once_with(
-        expected_fallback_body, [user.pgp_key, "secondary-key"]
+        expected_fallback_body, [user.pgp_key, secondary_pgp_key]
     )
     mock_do_send_email.assert_called_once_with(user, server_encrypted_email_body)
 
