@@ -28,10 +28,12 @@ class ExtraField:
 
 def normalize_embed_origin(origin: str) -> str:
     stripped_origin = origin.strip()
+    csp_delimiters = (";", " ", "\t", "\n", "\f", "\r")
     parsed = urlsplit(stripped_origin)
     if (
         not stripped_origin
         or stripped_origin != origin
+        or any(delimiter in stripped_origin for delimiter in csp_delimiters)
         or "*" in stripped_origin
         or parsed.scheme not in {"http", "https"}
         or not parsed.netloc

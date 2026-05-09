@@ -108,6 +108,12 @@ def test_alias_embed_opt_in_is_independent_from_primary_profile(
         "https://tips.example#fragment",
         "https://user:pass@tips.example",
         "https://tips.example:",
+        "http://tips.example;.onion",
+        "http://tips.example .onion",
+        "http://tips.example\t.onion",
+        "http://tips.example\n.onion",
+        "http://tips.example\f.onion",
+        "http://tips.example\r.onion",
     ],
 )
 def test_embed_allowed_origins_reject_invalid_origin_rules(user: User, origin: str) -> None:
