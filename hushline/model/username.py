@@ -58,6 +58,14 @@ def normalize_embed_origin(origin: str) -> str:
         host = f"[{host}]"
 
     scheme = parsed.scheme.lower()
+    host_lower = parsed.hostname.lower()
+    is_local_http_exception = host_lower in {"localhost", "127.0.0.1", "::1"}
+    is_onion_http_exception = host_lower.endswith(".onion")
+    if scheme == "http" and not (is_local_http_exception or is_onion_http_exception):
+        raise ValueError(
+            "Embed origins must use https unless the host is localhost, loopback, or .onion."
+        )
+
     normalized_origin = f"{scheme}://{host}"
     default_port = 443 if scheme == "https" else 80
     if port is not None and port != default_port:
