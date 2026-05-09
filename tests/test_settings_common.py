@@ -11,6 +11,7 @@ from aiohttp.abc import ResolveResult
 from flask import Flask, session
 from sqlalchemy.exc import IntegrityError
 from werkzeug.datastructures import MultiDict
+from werkzeug.exceptions import NotFound
 from wtforms.validators import ValidationError
 
 from hushline.db import db
@@ -1156,6 +1157,60 @@ def test_handle_field_post_move_up_and_down_branches(app: Flask, user: User) -> 
     ):
         response_down = handle_field_post(username)
     assert response_down is not None
+
+
+@pytest.mark.parametrize(
+    "action",
+    ["update", "delete", "move_up", "move_down"],
+)
+def test_handle_field_post_rejects_fields_owned_by_another_user(
+    app: Flask, user: User, user2: User, action: str
+) -> None:
+    attacker_username = user.primary_username
+    victim_username = user2.primary_username
+    victim_field = victim_username.message_fields[0]
+    victim_field.label = "victim field"
+    victim_field.enabled = True
+    victim_field.encrypted = True
+    db.session.add(victim_field)
+    db.session.commit()
+
+    message = Message(username_id=victim_username.id)
+    db.session.add(message)
+    db.session.commit()
+    value = FieldValue(
+        field_definition=victim_field,
+        message=message,
+        value="victim disclosure",
+        encrypted=False,
+    )
+    db.session.add(value)
+    db.session.commit()
+
+    victim_field_id = victim_field.id
+    field_value_id = value.id
+    original_sort_orders = {field.id: field.sort_order for field in victim_username.message_fields}
+    form = cast(FieldForm, _fake_field_form(action, victim_field_id))
+
+    with (
+        app.test_request_context("/settings/fields", method="POST", data={action: ""}),
+        pytest.raises(NotFound),
+    ):
+        handle_field_post(attacker_username, form)
+
+    db.session.expire_all()
+    persisted_field = db.session.get(FieldDefinition, victim_field_id)
+    assert persisted_field is not None
+    assert persisted_field.label == "victim field"
+    assert persisted_field.enabled is True
+    assert persisted_field.encrypted is True
+    assert db.session.get(FieldValue, field_value_id) is not None
+    assert {
+        field.id: field.sort_order
+        for field in db.session.scalars(
+            db.select(FieldDefinition).where(FieldDefinition.username_id == victim_username.id)
+        )
+    } == original_sort_orders
 
 
 def test_build_field_forms_populates_choice_entries(user: User) -> None:
