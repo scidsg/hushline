@@ -327,6 +327,7 @@ def test_change_password(app: Flask, client: FlaskClient, user: User, user_passw
     assert len(original_password_hash := user.password_hash) > 32
     assert original_password_hash.startswith("$scrypt$")
     assert user_password not in original_password_hash
+    original_session_id = user.session_id
     original_password = user_password
 
     url = url_for("settings.auth")
@@ -355,7 +356,10 @@ def test_change_password(app: Flask, client: FlaskClient, user: User, user_passw
             assert original_password_hash not in new_password_hash
             assert user_password not in new_password_hash
             assert new_password not in new_password_hash
+            db.session.refresh(user)
+            assert user.session_id != original_session_id
             user_password = new_password
+            original_session_id = user.session_id
         elif user_password == new_password:
             assert "Cannot choose a repeat password." in response.text
             assert original_password_hash == user.password_hash
@@ -395,6 +399,41 @@ def test_change_password(app: Flask, client: FlaskClient, user: User, user_passw
     assert "Empty Inbox" in response.text
     assert "Invalid username or password" not in response.text
     assert "/inbox" in response.request.url
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_password_revokes_sibling_session(
+    app: Flask, client: FlaskClient, user: User, user_password: str
+) -> None:
+    stolen_session_id = user.session_id
+    new_password = "ChangedPassword123!!"
+
+    sibling_client = app.test_client()
+    with sibling_client.session_transaction() as sess:
+        sess["user_id"] = user.id
+        sess["session_id"] = stolen_session_id
+        sess["username"] = user.primary_username.username
+        sess["is_authenticated"] = True
+
+    response = sibling_client.get(url_for("inbox"))
+    assert response.status_code == 200
+
+    response = client.post(
+        url_for("settings.auth"),
+        data=form_to_data(
+            ChangePasswordForm(data={"old_password": user_password, "new_password": new_password})
+        ),
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Password successfully changed. Please log in again." in response.text
+
+    db.session.refresh(user)
+    assert user.session_id != stolen_session_id
+
+    response = sibling_client.get(url_for("inbox"), follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("login"))
 
 
 @pytest.mark.usefixtures("_authenticated_user")

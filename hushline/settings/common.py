@@ -24,6 +24,7 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.wrappers.response import Response
 from wtforms import Field
 
+from hushline.auth import rotate_user_session_id
 from hushline.crypto import can_encrypt_with_pgp_key, is_valid_pgp_key
 from hushline.db import db
 from hushline.external_urls import canonical_external_url
@@ -477,6 +478,7 @@ def handle_change_password_form(
         return None
 
     user.password_hash = change_password_form.new_password.data
+    rotate_user_session_id(user)
     db.session.commit()
     session.clear()
     flash("👍 Password successfully changed. Please log in again.", "success")
