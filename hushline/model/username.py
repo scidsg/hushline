@@ -1,3 +1,4 @@
+import ipaddress
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Generator, Optional, Sequence
 from urllib.parse import urlsplit
@@ -58,6 +59,18 @@ def normalize_embed_origin(origin: str) -> str:
         host = f"[{host}]"
 
     scheme = parsed.scheme.lower()
+    host_lower = parsed.hostname.lower()
+    try:
+        is_loopback_http_exception = ipaddress.ip_address(host_lower).is_loopback
+    except ValueError:
+        is_loopback_http_exception = False
+    is_local_http_exception = host_lower == "localhost" or is_loopback_http_exception
+    is_onion_http_exception = host_lower.endswith(".onion")
+    if scheme == "http" and not (is_local_http_exception or is_onion_http_exception):
+        raise ValueError(
+            "Embed origins must use https unless the host is localhost, loopback, or .onion."
+        )
+
     normalized_origin = f"{scheme}://{host}"
     default_port = 443 if scheme == "https" else 80
     if port is not None and port != default_port:

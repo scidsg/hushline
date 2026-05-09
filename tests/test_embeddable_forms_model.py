@@ -118,14 +118,17 @@ def test_embed_allowed_origins_reject_invalid_origin_rules(user: User, origin: s
 def test_embed_origin_normalization_canonicalizes_host_and_ports() -> None:
     assert normalize_embed_origin("https://Tips.Example:8443") == "https://tips.example:8443"
     assert normalize_embed_origin("https://Tips.Example:443") == "https://tips.example"
-    assert normalize_embed_origin("http://Tips.Example:80") == "http://tips.example"
+    assert normalize_embed_origin("http://localhost:80") == "http://localhost"
+    assert normalize_embed_origin("http://127.0.0.2:80") == "http://127.0.0.2"
+    assert normalize_embed_origin("http://exampleonion.onion:80") == "http://exampleonion.onion"
 
 
 @pytest.mark.parametrize(
     ("configured_origin", "browser_origin", "stored_origin"),
     [
         ("https://Tips.Example:443", "https://tips.example", "https://tips.example"),
-        ("http://Tips.Example:80", "http://tips.example", "http://tips.example"),
+        ("http://localhost:80", "http://localhost", "http://localhost"),
+        ("http://127.0.0.2:80", "http://127.0.0.2", "http://127.0.0.2"),
     ],
 )
 def test_embed_default_port_allowlist_matches_browser_serialized_origin(
@@ -138,6 +141,11 @@ def test_embed_default_port_allowlist_matches_browser_serialized_origin(
 
     assert user.primary_username.embed_allowed_origins == [stored_origin]
     assert user.primary_username.embed_allows_origin(browser_origin) is True
+
+
+def test_embed_rejects_non_exception_http_origins() -> None:
+    with pytest.raises(ValueError, match="must use https"):
+        normalize_embed_origin("http://tips.example")
 
 
 def test_embed_requires_at_least_one_exact_allowed_origin(user: User) -> None:
