@@ -74,6 +74,19 @@ def test_profile_template_avoids_inline_submit_handlers() -> None:
     assert ".badgeHelpTooltip" in scss
 
 
+def test_verified_url_icon_uses_image_assets() -> None:
+    image_loader = (ROOT / "assets/js/images.js").read_text(encoding="utf-8")
+    scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
+
+    assert 'import "./../img/icon-verified-lm.png";' in image_loader
+    assert 'import "./../img/icon-verified-dm.png";' in image_loader
+    assert 'background-image: url("../img/icon-verified-lm.png");' in scss
+    assert 'background-image: url("../img/icon-verified-dm.png");' in scss
+    assert ".icon.verifiedURL::after" not in scss
+    assert (ROOT / "assets/img/icon-verified-lm.png").is_file()
+    assert (ROOT / "assets/img/icon-verified-dm.png").is_file()
+
+
 def test_submit_spinner_hooks_exist_for_scoped_forms() -> None:
     js = (ROOT / "assets/js/global.js").read_text(encoding="utf-8")
     scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
@@ -237,6 +250,10 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert 'return "attorneys";' in directory_verified_js
     assert 'return "journalists and newsrooms";' in directory_verified_js
     assert 'return "GlobaLeaks instances";' in directory_verified_js
+    assert 'tab === "public-records" || tab === "newsrooms"' in directory_verified_js
+    assert 'tab === "public-records" || tab === "newsrooms"' in directory_verified_static_js
+    assert 'aria-label="Info-only account">📇 Info Only</span>' in directory_verified_js
+    assert 'aria-label="Info-only account">📇 Info Only</span>' in directory_verified_static_js
     assert "window.location.search" in directory_verified_js
     assert "window.location.search" in directory_verified_static_js
     assert "function escapeHtml(value)" in user_search_js

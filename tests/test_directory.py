@@ -3528,6 +3528,66 @@ def test_directory_all_tab_is_homogeneous_with_admin_first_and_info_only_badge(
     assert verified_panel.select_one('span.badge[aria-label="Info-only account"]') is None
 
 
+def test_directory_attorney_and_journalist_tabs_show_info_only_badge(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mocked_usernames = (
+        _directory_username(
+            username="attorney-info",
+            display_name="Attorney Info",
+            bio="attorney bio",
+            pgp_key="",
+            account_category=AccountCategory.LAWYER.value,
+        ),
+        _directory_username(
+            username="attorney-pgp",
+            display_name="Attorney PGP",
+            bio="attorney with pgp",
+            account_category=AccountCategory.LAWYER.value,
+        ),
+        _directory_username(
+            username="journalist-info",
+            display_name="Journalist Info",
+            bio="journalist bio",
+            pgp_key="",
+            account_category=AccountCategory.JOURNALIST.value,
+        ),
+        _directory_username(
+            username="journalist-pgp",
+            display_name="Journalist PGP",
+            bio="journalist with pgp",
+            account_category=AccountCategory.JOURNALIST.value,
+        ),
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames", lambda: mocked_usernames
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    attorney_panel = soup.find(id="public-records")
+    journalist_panel = soup.find(id="newsrooms")
+    assert attorney_panel is not None
+    assert journalist_panel is not None
+
+    attorney_info_card = _find_directory_card(attorney_panel, "Attorney Info")
+    attorney_pgp_card = _find_directory_card(attorney_panel, "Attorney PGP")
+    journalist_info_card = _find_directory_card(journalist_panel, "Journalist Info")
+    journalist_pgp_card = _find_directory_card(journalist_panel, "Journalist PGP")
+
+    assert attorney_info_card.select_one('span.badge[aria-label="Info-only account"]') is not None
+    assert attorney_pgp_card.select_one('span.badge[aria-label="Info-only account"]') is None
+    assert journalist_info_card.select_one('span.badge[aria-label="Info-only account"]') is not None
+    assert journalist_pgp_card.select_one('span.badge[aria-label="Info-only account"]') is None
+
+
 def test_directory_all_tab_does_not_promote_non_admin_named_admin(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
