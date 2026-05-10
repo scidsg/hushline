@@ -638,7 +638,7 @@
   }
 
   .icon.verifiedURL {
-    color: var(--color-brand);
+    background-image: url("../img/icon-verified-lm.png");
   }
 
   .plan {
@@ -1263,7 +1263,7 @@
   }
 
   .icon.verifiedURL {
-    color: var(--color-brand-dark-min-saturation);
+    background-image: url("../img/icon-verified-dm.png");
   }
 
   .plan {
@@ -3441,25 +3441,10 @@ p.bio+.extra-fields {
   width: 20px;
   height: 20px;
   display: flex;
+  background-size: contain;
   position: absolute;
   left: 0;
   top: 0;
-  background: none;
-  border: 2px solid currentColor;
-  border-radius: 50%;
-  box-sizing: border-box;
-}
-
-.icon.verifiedURL::after {
-  content: "";
-  position: absolute;
-  left: 4px;
-  top: 4px;
-  width: 7px;
-  height: 4px;
-  border-left: 2px solid currentColor;
-  border-bottom: 2px solid currentColor;
-  transform: rotate(-45deg);
 }
 
 .extra-fields .extra-field-value .icon {

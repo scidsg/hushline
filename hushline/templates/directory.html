@@ -616,13 +616,17 @@
               {% if username.username %}
                 <p class="meta">@{{ username.username }}</p>
               {% endif %}
-              {% if username.is_verified or username.user.is_admin %}
+              {% set is_message_capable = user_message_capable(username.user) %}
+              {% if username.is_verified or username.user.is_admin or not is_message_capable %}
                 <div class="badgeContainer">
                   {% if username.user.is_admin %}
                     <span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>
                   {% endif %}
                   {% if username.is_verified %}
                     <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
+                  {% endif %}
+                  {% if not is_message_capable %}
+                    <span class="badge" role="img" aria-label="Info-only account">📇 Info Only</span>
                   {% endif %}
                 </div>
               {% endif %}
@@ -673,13 +677,17 @@
               {% if username.username %}
                 <p class="meta">@{{ username.username }}</p>
               {% endif %}
-              {% if username.is_verified or username.user.is_admin %}
+              {% set is_message_capable = user_message_capable(username.user) %}
+              {% if username.is_verified or username.user.is_admin or not is_message_capable %}
                 <div class="badgeContainer">
                   {% if username.user.is_admin %}
                     <span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>
                   {% endif %}
                   {% if username.is_verified %}
                     <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
+                  {% endif %}
+                  {% if not is_message_capable %}
+                    <span class="badge" role="img" aria-label="Info-only account">📇 Info Only</span>
                   {% endif %}
                 </div>
               {% endif %}

@@ -880,6 +880,7 @@ def register_directory_routes(app: Flask) -> None:
             securedrop_total_count=len(securedrop_listings),
             all_directory_entries=filtered_all_directory_entries,
             truncate_directory_bio=_directory_card_bio,
+            user_message_capable=_user_message_capable,
             logged_in=logged_in,
         )
 

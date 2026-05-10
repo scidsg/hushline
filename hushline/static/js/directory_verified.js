@@ -465,7 +465,10 @@
           '<span class="badge badgeCaution" role="img" aria-label="Caution: display name may be mistaken for admin">⚠️ Caution</span>';
       }
 
-      if (tab === "all" && !user.has_pgp_key) {
+      if (
+        (tab === "all" || tab === "public-records" || tab === "newsrooms") &&
+        !user.has_pgp_key
+      ) {
         badgeContainer +=
           '<span class="badge" role="img" aria-label="Info-only account">📇 Info Only</span>';
       }
