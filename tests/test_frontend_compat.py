@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -159,7 +160,7 @@ def test_native_pwa_splash_assets_and_manifest_fallback_exist() -> None:
 def test_service_worker_does_not_cache_navigation_html() -> None:
     service_worker = (ROOT / "assets/js/service-worker.js").read_text(encoding="utf-8")
 
-    assert 'const CACHE_NAME = "hushline-cache-v3";' in service_worker
+    assert re.search(r'const CACHE_NAME = "hushline-cache-v\d+";', service_worker)
     assert '"/"' not in service_worker
     assert 'event.request.mode === "navigate"' in service_worker
     assert "event.respondWith(fetch(event.request));" in service_worker

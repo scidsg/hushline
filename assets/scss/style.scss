@@ -638,7 +638,7 @@
   }
 
   .icon.verifiedURL {
-    background-image: url("../img/icon-verified-lm.png");
+    color: var(--color-brand);
   }
 
   .plan {
@@ -701,11 +701,11 @@
   }
 
   .scroll-arrow-right {
-    background-image: url("../img/icon-chevron-right.png");
+    color: var(--color-brand);
   }
 
   .scroll-arrow-left {
-    background-image: url("../img/icon-chevron-left.png");
+    color: var(--color-brand);
   }
 
   .alias-entry {
@@ -1263,7 +1263,7 @@
   }
 
   .icon.verifiedURL {
-    background-image: url("../img/icon-verified-dm.png");
+    color: var(--color-brand-dark-min-saturation);
   }
 
   .plan {
@@ -1329,11 +1329,11 @@
   }
 
   .scroll-arrow-right {
-    background-image: url("../img/icon-chevron-right-dm.png");
+    color: var(--color-brand-dark-min-saturation);
   }
 
   .scroll-arrow-left {
-    background-image: url("../img/icon-chevron-left-dm.png");
+    color: var(--color-brand-dark-min-saturation);
   }
 
   .alias-entry {
@@ -3441,10 +3441,25 @@ p.bio+.extra-fields {
   width: 20px;
   height: 20px;
   display: flex;
-  background-size: contain;
   position: absolute;
   left: 0;
   top: 0;
+  background: none;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.icon.verifiedURL::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 7px;
+  height: 4px;
+  border-left: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
 }
 
 .extra-fields .extra-field-value .icon {
@@ -5212,12 +5227,22 @@ button .badge {
 
 .scroll-arrow-right,
 .scroll-arrow-left {
-  width: 1.25rem;
-  height: 1.25rem;
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position-x: center;
-  background-position-y: center;
+  width: 0.675rem;
+  height: 0.675rem;
+  background: none;
+  border: solid currentColor;
+  border-width: 0 0.185rem 0.185rem 0;
+  box-sizing: border-box;
+}
+
+.scroll-arrow-right {
+  transform: rotate(-45deg);
+  margin-left: -0.25rem;
+}
+
+.scroll-arrow-left {
+  transform: rotate(135deg);
+  margin-right: -0.25rem;
 }
 
 #payment-method-form,
