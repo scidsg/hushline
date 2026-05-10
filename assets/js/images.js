@@ -10,8 +10,6 @@ import "./../img/icon-close.png";
 import "./../img/icon-menu-light.png";
 import "./../img/icon-menu.png";
 import "./../img/icon-search.png";
-import "./../img/icon-verified-dm.png";
-import "./../img/icon-verified-lm.png";
 import "./../img/onboarding.png";
 import "./../img/rate-limit.png";
 import "./../img/splash-logo.png";
