@@ -158,3 +158,41 @@ def test_send_email_sets_reply_to_header(app: Flask) -> None:
 
     sent_message = smtp_server.send_message.call_args.args[0]
     assert sent_message["Reply-To"] == "reply@example.com"
+
+
+def test_send_email_uses_single_part_plain_text_body() -> None:
+    smtp_server = MagicMock()
+    smtp_server.send_message.return_value = {}
+    cfg = _DummyConfig(smtp_server=smtp_server)
+    app = Flask(__name__)
+
+    with app.app_context(), patch("hushline.email.is_safe_smtp_host", return_value=True):
+        app.config["SMTP_SEND_ATTEMPTS"] = 1
+        assert email_mod.send_email("to@example.com", "subject", "body", cfg) is True
+
+    sent_message = smtp_server.send_message.call_args.args[0]
+    assert sent_message.get_content_type() == "text/plain"
+    assert sent_message.is_multipart() is False
+    assert sent_message.get_payload() == "body"
+
+
+def test_send_email_keeps_inline_pgp_body_as_top_level_text() -> None:
+    smtp_server = MagicMock()
+    smtp_server.send_message.return_value = {}
+    cfg = _DummyConfig(smtp_server=smtp_server)
+    app = Flask(__name__)
+    armored_body = (
+        "-----BEGIN PGP MESSAGE-----\n\n"
+        "fake encrypted notification body\n\n"
+        "-----END PGP MESSAGE-----"
+    )
+
+    with app.app_context(), patch("hushline.email.is_safe_smtp_host", return_value=True):
+        app.config["SMTP_SEND_ATTEMPTS"] = 1
+        assert email_mod.send_email("to@example.com", "subject", armored_body, cfg) is True
+
+    sent_message = smtp_server.send_message.call_args.args[0]
+    assert sent_message.get_content_type() == "text/plain"
+    assert sent_message.is_multipart() is False
+    assert sent_message["Content-Transfer-Encoding"] == "7bit"
+    assert sent_message.get_payload() == armored_body

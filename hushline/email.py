@@ -5,7 +5,6 @@ import ssl
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
-from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Generator
 
@@ -106,19 +105,20 @@ def send_email(
         f"Port: {smtp_config.port}, Username: {smtp_config.username}"
     )
 
-    message = MIMEMultipart()
+    # Check if body is a bytes object
+    if isinstance(body, bytes):
+        # Decode the bytes object to a string
+        body = body.decode("utf-8")
+
+    # Keep single-part bodies single-part. PGP/Inline clients expect the armored
+    # block to be the text body, not hidden inside a multipart wrapper.
+    message = MIMEText(body, "plain")
     message["From"] = smtp_config.sender
     message["To"] = to_email
     message["Subject"] = subject
     if reply_to:
         message["Reply-To"] = reply_to
 
-    # Check if body is a bytes object
-    if isinstance(body, bytes):
-        # Decode the bytes object to a string
-        body = body.decode("utf-8")
-
-    message.attach(MIMEText(body, "plain"))
     if not smtp_config.validate():
         current_app.logger.error("SMTP server or port is not set.")
         return False
