@@ -385,7 +385,7 @@ def test_notifications_full_body_encryption_embedded_markers_use_server_fallback
 @pytest.mark.usefixtures("_pgp_user")
 @patch("hushline.routes.profile.encrypt_message")
 @patch("hushline.routes.profile.do_send_email")
-def test_notifications_full_body_encryption_prefers_server_encryption_for_all_enabled_recipients(
+def test_notifications_full_body_encryption_uses_client_body_for_all_enabled_recipients(
     mock_do_send_email: MagicMock,
     mock_encrypt_message: MagicMock,
     app: Flask,
@@ -404,10 +404,6 @@ def test_notifications_full_body_encryption_prefers_server_encryption_for_all_en
     client_encrypted_email_body = (
         "-----BEGIN PGP MESSAGE-----\n\nclient encrypted body\n\n-----END PGP MESSAGE-----"
     )
-    server_encrypted_email_body = (
-        "-----BEGIN PGP MESSAGE-----\n\nserver encrypted body\n\n-----END PGP MESSAGE-----"
-    )
-    mock_encrypt_message.return_value = server_encrypted_email_body
 
     response = client.post(
         url_for("profile", username=user.primary_username.username),
@@ -421,13 +417,52 @@ def test_notifications_full_body_encryption_prefers_server_encryption_for_all_en
     )
 
     assert response.status_code == 200, response.text
-    expected_fallback_body = format_full_message_email_body(
-        [("Contact Method", msg_contact_method), ("Message", msg_content)]
+    mock_encrypt_message.assert_not_called()
+    mock_do_send_email.assert_called_once_with(user, client_encrypted_email_body)
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+@patch("hushline.routes.profile.encrypt_message")
+@patch("hushline.routes.profile.do_send_email")
+def test_notifications_full_body_multi_recipient_does_not_wrap_encrypted_fields(
+    mock_do_send_email: MagicMock,
+    mock_encrypt_message: MagicMock,
+    client: FlaskClient,
+    user: User,
+) -> None:
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email_encrypt_entire_body = True
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.notification_recipients[-1].pgp_key = f"{user.pgp_key}\n"
+    db.session.commit()
+
+    client_encrypted_email_body = (
+        "-----BEGIN PGP MESSAGE-----\n\nclient encrypted full body\n\n-----END PGP MESSAGE-----"
     )
-    mock_encrypt_message.assert_called_once_with(
-        expected_fallback_body, [user.pgp_key, secondary_pgp_key]
+    stored_contact_field = (
+        "-----BEGIN PGP MESSAGE-----\n\nstored encrypted contact\n\n-----END PGP MESSAGE-----"
     )
-    mock_do_send_email.assert_called_once_with(user, server_encrypted_email_body)
+    stored_message_field = (
+        "-----BEGIN PGP MESSAGE-----\n\nstored encrypted message\n\n-----END PGP MESSAGE-----"
+    )
+
+    response = client.post(
+        url_for("profile", username=user.primary_username.username),
+        data={
+            "encrypted_email_body": client_encrypted_email_body,
+            "field_0": stored_contact_field,
+            "field_1": stored_message_field,
+            **get_profile_submission_data(client, user.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200, response.text
+    mock_encrypt_message.assert_not_called()
+    mock_do_send_email.assert_called_once_with(user, client_encrypted_email_body)
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -496,7 +531,7 @@ def test_notifications_full_body_encryption_server_fallback(
 @pytest.mark.usefixtures("_pgp_user")
 @patch("hushline.routes.profile.encrypt_message")
 @patch("hushline.routes.profile.do_send_email")
-def test_notifications_full_body_encryption_uses_all_enabled_recipient_keys(
+def test_notifications_full_body_encryption_fallback_uses_all_enabled_recipient_keys(
     mock_do_send_email: MagicMock,
     mock_encrypt_message: MagicMock,
     client: FlaskClient,
@@ -511,9 +546,7 @@ def test_notifications_full_body_encryption_uses_all_enabled_recipient_keys(
     user.notification_recipients[-1].pgp_key = secondary_pgp_key
     db.session.commit()
 
-    client_encrypted_email_body = (
-        "-----BEGIN PGP MESSAGE-----\n\nclient encrypted body\n\n-----END PGP MESSAGE-----"
-    )
+    client_encrypted_email_body = ""
     server_encrypted_email_body = (
         "-----BEGIN PGP MESSAGE-----\n\nserver encrypted body\n\n-----END PGP MESSAGE-----"
     )
