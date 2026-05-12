@@ -1162,6 +1162,7 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     assert page.find("label", attrs={"for": "captcha_answer"}) is not None
     assert page.find("input", attrs={"name": "csrf_token"}) is not None
     assert page.find("script", attrs={"id": "recipientPublicKeys"}) is not None
+    assert page.find("script", attrs={"id": "recipientPublicKeyEntries"}) is not None
     assert page.find("label", attrs={"for": "field_0"}) is not None
     assert page.find("label", attrs={"for": "field_1"}) is not None
     script_sources = [script.get("src", "") for script in page.find_all("script")]
