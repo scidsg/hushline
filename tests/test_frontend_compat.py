@@ -45,7 +45,10 @@ def test_client_side_encryption_has_platform_guards() -> None:
 
     assert "function assertClientCryptoSupport()" in js
     assert "function getRecipientPublicKeys()" in js
-    assert 'JSON.parse(recipientPublicKeysEl.textContent || "[]")' in js
+    assert "recipientPublicKeysEl.textContent" in js
+    assert "function getRecipientPublicKeyEntries()" in js
+    assert "recipientPublicKeyEntriesEl.textContent" in js
+    assert "Number.isInteger(entry.id)" in js
     assert "window.isSecureContext" in js
     assert "window.crypto.subtle" in js
     assert "window.ReadableStream" in js
@@ -56,6 +59,9 @@ def test_client_side_encryption_has_platform_guards() -> None:
     assert "Encryption padding dictionary is unavailable." in js
     assert "Encrypted email body field is missing." in js
     assert "const recipientPublicKeys = getRecipientPublicKeys();" in js
+    assert "const recipientPublicKeyEntries = getRecipientPublicKeyEntries();" in js
+    assert "const encryptedEmailFieldsByRecipient = {};" in js
+    assert "encrypted_email_fields_by_recipient" in js
     assert "assertClientCryptoSupport();" in js
 
 
@@ -69,6 +75,7 @@ def test_profile_template_avoids_inline_submit_handlers() -> None:
     assert 'class="badge badgeCaution"' in template
     assert 'role="tooltip"' in template
     assert 'id="recipientPublicKeys"' in template
+    assert 'id="recipientPublicKeyEntries"' in template
     assert ".badgeHelpTooltipGroup" in scss
     assert ".badgeHelpTrigger" in scss
     assert ".badgeHelpTooltip" in scss

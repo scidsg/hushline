@@ -155,6 +155,7 @@
     {% endfor %}
 
     <script id="recipientPublicKeys" type="application/json">{{ recipient_public_keys | tojson }}</script>
+    <script id="recipientPublicKeyEntries" type="application/json">{{ recipient_public_key_entries | tojson }}</script>
 
     {% if not message_submission_block_reason %}
       <div class="captcha">

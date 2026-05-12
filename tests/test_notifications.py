@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -218,6 +219,31 @@ def test_notifications_enabled_yes_content_no_encrypted_body_delivers_to_all_ena
     user.email = "primary@example.com"
     _add_secondary_recipient(user)
     db.session.commit()
+    primary_recipient = user.primary_notification_recipient
+    secondary_recipient = user.notification_recipients[-1]
+    assert primary_recipient is not None
+    primary_contact_body = (
+        "-----BEGIN PGP MESSAGE-----\n\nprimary contact\n\n-----END PGP MESSAGE-----"
+    )
+    primary_message_body = (
+        "-----BEGIN PGP MESSAGE-----\n\nprimary message\n\n-----END PGP MESSAGE-----"
+    )
+    secondary_contact_body = (
+        "-----BEGIN PGP MESSAGE-----\n\nsecondary contact\n\n-----END PGP MESSAGE-----"
+    )
+    secondary_message_body = (
+        "-----BEGIN PGP MESSAGE-----\n\nsecondary message\n\n-----END PGP MESSAGE-----"
+    )
+    encrypted_fields_by_recipient = {
+        str(primary_recipient.id): {
+            "field_0": primary_contact_body,
+            "field_1": primary_message_body,
+        },
+        str(secondary_recipient.id): {
+            "field_0": secondary_contact_body,
+            "field_1": secondary_message_body,
+        },
+    }
 
     create_smtp_config = MagicMock(return_value=MagicMock())
     send_email = MagicMock()
@@ -227,6 +253,7 @@ def test_notifications_enabled_yes_content_no_encrypted_body_delivers_to_all_ena
     response = client.post(
         url_for("profile", username=user.primary_username.username),
         data={
+            "encrypted_email_fields_by_recipient": json.dumps(encrypted_fields_by_recipient),
             "field_0": msg_contact_method,
             "field_1": msg_content,
             **get_profile_submission_data(client, user.primary_username.username),
@@ -240,10 +267,19 @@ def test_notifications_enabled_yes_content_no_encrypted_body_delivers_to_all_ena
         "secondary@example.com",
     ]
     bodies = [call.args[2] for call in send_email.call_args_list]
-    assert len(set(bodies)) == 1
+    assert len(set(bodies)) == 2
     assert "Contact Method" in bodies[0]
     assert "Message" in bodies[0]
-    assert pgp_message_sig in bodies[0]
+    assert primary_contact_body in bodies[0]
+    assert primary_message_body in bodies[0]
+    assert secondary_contact_body not in bodies[0]
+    assert secondary_message_body not in bodies[0]
+    assert "Contact Method" in bodies[1]
+    assert "Message" in bodies[1]
+    assert secondary_contact_body in bodies[1]
+    assert secondary_message_body in bodies[1]
+    assert primary_contact_body not in bodies[1]
+    assert primary_message_body not in bodies[1]
     create_smtp_config.assert_called_once()
 
 

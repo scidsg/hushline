@@ -1,4 +1,5 @@
 import hmac
+import json
 import re
 import secrets
 from hashlib import sha256
@@ -36,14 +37,19 @@ from hushline.model import (
     FieldDefinition,
     FieldValue,
     Message,
+    NotificationRecipient,
     OrganizationSetting,
     Username,
 )
+from hushline.model.field_value import add_padding
 from hushline.routes.common import (
     do_send_email,
     format_full_message_email_body,
     format_message_email_fields,
     notification_email_encryption_target,
+    notification_recipient_encryption_target,
+    notification_recipient_public_key_entries,
+    send_email_to_user_recipients,
     show_directory_caution_badge,
     validate_captcha,
 )
@@ -89,6 +95,35 @@ def register_profile_routes(app: Flask) -> None:
                 stripped_value,
             )
         )
+
+    def _client_encrypted_email_fields_by_recipient(
+        value: str,
+    ) -> dict[int, dict[str, str]]:
+        if not value:
+            return {}
+
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+
+        if not isinstance(parsed, dict):
+            return {}
+
+        encrypted_fields: dict[int, dict[str, str]] = {}
+        for recipient_id, fields in parsed.items():
+            if not isinstance(recipient_id, str) or not recipient_id.isdigit():
+                continue
+            if not isinstance(fields, dict):
+                continue
+            encrypted_fields[int(recipient_id)] = {
+                field_name: field_value
+                for field_name, field_value in fields.items()
+                if isinstance(field_name, str)
+                and isinstance(field_value, str)
+                and _is_armored_pgp_message(field_value)
+            }
+        return encrypted_fields
 
     def _new_math_problem() -> tuple[str, str]:
         num1 = secrets.randbelow(10) + 1
@@ -241,6 +276,15 @@ def register_profile_routes(app: Flask) -> None:
                 ),
                 current_user_id=session.get("user_id"),
                 recipient_public_keys=uname.user.message_recipient_keys,
+                recipient_public_key_entries=(
+                    notification_recipient_public_key_entries(uname.user)
+                    if (
+                        uname.user.enable_email_notifications
+                        and uname.user.email_include_message_content
+                        and not uname.user.email_encrypt_entire_body
+                    )
+                    else []
+                ),
                 math_problem=math_problem,
                 message_submission_block_reason=message_submission_block_reason,
                 owner_guard_nonce=owner_guard_nonce,
@@ -371,6 +415,7 @@ def register_profile_routes(app: Flask) -> None:
 
                 extracted_fields = []
                 raw_extracted_fields = []
+                raw_email_field_data = []
                 # Add the field values
                 for data in dynamic_form.field_data():
                     field_name: str = data["name"]  # type: ignore
@@ -378,6 +423,14 @@ def register_profile_routes(app: Flask) -> None:
                     value = getattr(form, field_name).data
                     raw_value = "\n".join(value) if isinstance(value, list) else (value or "")
                     raw_extracted_fields.append((field_definition.label, str(raw_value)))
+                    raw_email_field_data.append(
+                        (
+                            field_name,
+                            field_definition.label,
+                            str(raw_value),
+                            field_definition.encrypted,
+                        )
+                    )
                     field_value = FieldValue(
                         field_definition,
                         message,
@@ -397,6 +450,7 @@ def register_profile_routes(app: Flask) -> None:
                     notification_encryption_target = notification_email_encryption_target(
                         uname.user
                     )
+                    email_body_sent = False
                     if uname.user.email_include_message_content:
                         if uname.user.email_encrypt_entire_body:
                             encrypted_email_body = (form.encrypted_email_body.data or "").strip()
@@ -431,16 +485,78 @@ def register_profile_routes(app: Flask) -> None:
                                         exc_info=True,
                                     )
                                     email_body = plaintext_new_message_body
-                        else:
+                        elif len(uname.user.enabled_notification_recipients) > 1:
                             # Keep the existing field-level email behavior
                             # when full-body encryption is disabled.
+                            client_fields_by_recipient = (
+                                _client_encrypted_email_fields_by_recipient(
+                                    form.encrypted_email_fields_by_recipient.data or ""
+                                )
+                            )
+
+                            def email_body_for_recipient(
+                                recipient: NotificationRecipient,
+                            ) -> str:
+                                rendered_fields: list[tuple[str, str]] = []
+                                for (
+                                    field_name,
+                                    label,
+                                    raw_value,
+                                    encrypted,
+                                ) in raw_email_field_data:
+                                    value_for_email = raw_value
+                                    if encrypted:
+                                        recipient_fields = client_fields_by_recipient.get(
+                                            recipient.id or -1, {}
+                                        )
+                                        client_encrypted_value = recipient_fields.get(field_name)
+                                        if client_encrypted_value:
+                                            value_for_email = client_encrypted_value
+                                        elif raw_value and not _is_armored_pgp_message(raw_value):
+                                            recipient_target = (
+                                                notification_recipient_encryption_target(
+                                                    uname.user, recipient
+                                                )
+                                            )
+                                            if not recipient_target:
+                                                return plaintext_new_message_body
+                                            try:
+                                                value_for_email = encrypt_message(
+                                                    add_padding(raw_value), recipient_target
+                                                )
+                                            except (RuntimeError, TypeError, ValueError) as e:
+                                                current_app.logger.error(
+                                                    (
+                                                        "Failed to encrypt field-level "
+                                                        "notification body: %s"
+                                                    ),
+                                                    str(e),
+                                                    exc_info=True,
+                                                )
+                                                return plaintext_new_message_body
+                                        elif raw_value:
+                                            return plaintext_new_message_body
+                                    rendered_fields.append((label, value_for_email))
+                                return format_message_email_fields(rendered_fields)
+
+                            send_email_to_user_recipients(
+                                uname.user,
+                                "New Hush Line Message Received",
+                                email_body_for_recipient,
+                            )
+                            email_body_sent = True
+                            current_app.logger.debug(
+                                "Sending field-level email bodies per notification recipient"
+                            )
+                        else:
                             email_body = format_message_email_fields(extracted_fields)
                             current_app.logger.debug("Sending email with unencrypted body")
                     else:
                         email_body = plaintext_new_message_body
                         current_app.logger.debug("Sending email with generic body")
 
-                    do_send_email(uname.user, email_body.strip())
+                    if not email_body_sent:
+                        do_send_email(uname.user, email_body.strip())
 
                 if is_embedded:
                     if embed_rate_limit_result is not None:

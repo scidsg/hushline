@@ -121,7 +121,9 @@ function getRecipientPublicKeys() {
   }
 
   try {
-    const recipientPublicKeys = JSON.parse(recipientPublicKeysEl.textContent || "[]");
+    const recipientPublicKeys = JSON.parse(
+      recipientPublicKeysEl.textContent || "[]",
+    );
     if (!Array.isArray(recipientPublicKeys)) {
       return [];
     }
@@ -134,12 +136,50 @@ function getRecipientPublicKeys() {
   }
 }
 
+function getRecipientPublicKeyEntries() {
+  const recipientPublicKeyEntriesEl = document.getElementById(
+    "recipientPublicKeyEntries",
+  );
+  if (!recipientPublicKeyEntriesEl) {
+    return [];
+  }
+
+  try {
+    const recipientPublicKeyEntries = JSON.parse(
+      recipientPublicKeyEntriesEl.textContent || "[]",
+    );
+    if (!Array.isArray(recipientPublicKeyEntries)) {
+      return [];
+    }
+    return recipientPublicKeyEntries.filter(
+      (entry) =>
+        entry &&
+        Number.isInteger(entry.id) &&
+        typeof entry.key === "string" &&
+        entry.key.trim(),
+    );
+  } catch (error) {
+    console.error("Error loading recipient public key entries:", error);
+    return [];
+  }
+}
+
+function getMessageFields() {
+  return Array.from(document.querySelectorAll(".form-field")).map((field) => ({
+    name: field.name || field.querySelector("input")?.name,
+    label: getFieldLabel(field),
+    value: getFieldValue(field),
+    encrypted: field.classList.contains("encrypted-field"),
+  }));
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById("messageForm");
   if (!form) {
     return;
   }
   const recipientPublicKeys = getRecipientPublicKeys();
+  const recipientPublicKeyEntries = getRecipientPublicKeyEntries();
 
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
@@ -148,7 +188,9 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     form.dataset.encryptionInProgress = "true";
-    const submitButtons = form.querySelectorAll("button[type='submit'], input[type='submit']");
+    const submitButtons = form.querySelectorAll(
+      "button[type='submit'], input[type='submit']",
+    );
     submitButtons.forEach((button) => {
       button.disabled = true;
     });
@@ -156,28 +198,64 @@ document.addEventListener("DOMContentLoaded", function () {
     try {
       assertClientCryptoSupport();
 
-      // Build an email body with all fields, encrypt it, and add it to the DOM as a hidden field
-      let emailBody = "";
-      document.querySelectorAll(".form-field").forEach((field) => {
-        const value = getFieldValue(field);
-        const label = getFieldLabel(field);
-        if (isArmoredMessage(value)) {
+      const messageFields = getMessageFields();
+      messageFields.forEach((field) => {
+        if (isArmoredMessage(field.value)) {
           throw new Error("Message appears already encrypted.");
         }
-        emailBody += `# ${label}\n\n${value}\n\n====================\n\n`;
+      });
+
+      // Build an email body with all fields, encrypt it, and add it to the DOM as a hidden field
+      let emailBody = "";
+      messageFields.forEach((field) => {
+        emailBody += `# ${field.label}\n\n${field.value}\n\n====================\n\n`;
       });
       const encryptedEmailBody = await encryptMessage(
         recipientPublicKeys,
         emailBody,
       );
       if (encryptedEmailBody) {
-        const encryptedEmailBodyEl = document.getElementById("encrypted_email_body");
+        const encryptedEmailBodyEl = document.getElementById(
+          "encrypted_email_body",
+        );
         if (!encryptedEmailBodyEl) {
           throw new Error("Encrypted email body field is missing.");
         }
         encryptedEmailBodyEl.value = encryptedEmailBody;
       } else {
         throw new Error("Client-side encryption failed for email body");
+      }
+
+      const encryptedEmailFieldsByRecipient = {};
+      await Promise.all(
+        recipientPublicKeyEntries.map(async (recipient) => {
+          const encryptedFields = {};
+          await Promise.all(
+            messageFields
+              .filter((field) => field.encrypted)
+              .map(async (field) => {
+                const encryptedValue = await encryptMessage(
+                  recipient.key,
+                  addPadding(field.value),
+                );
+                if (!encryptedValue) {
+                  throw new Error(
+                    `Client-side recipient encryption failed for field: ${field.name || "unknown"}`,
+                  );
+                }
+                encryptedFields[field.name] = encryptedValue;
+              }),
+          );
+          encryptedEmailFieldsByRecipient[recipient.id] = encryptedFields;
+        }),
+      );
+      const encryptedEmailFieldsEl = document.getElementById(
+        "encrypted_email_fields_by_recipient",
+      );
+      if (encryptedEmailFieldsEl) {
+        encryptedEmailFieldsEl.value = JSON.stringify(
+          encryptedEmailFieldsByRecipient,
+        );
       }
 
       // Loop through all encrypted fields and encrypt them

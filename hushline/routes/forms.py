@@ -179,6 +179,10 @@ class DynamicMessageForm:
             encrypted_email_body = HiddenField(
                 "Encrypted Email Body", validators=[Optional(), Length(max=10240 * len(fields))]
             )
+            encrypted_email_fields_by_recipient = HiddenField(
+                "Encrypted Email Fields By Recipient",
+                validators=[Optional(), Length(max=10240 * len(fields) * 100)],
+            )
             owner_guard_nonce = StringField("Owner Guard Nonce", validators=[Optional()])
             owner_guard_signature = StringField("Owner Guard Signature", validators=[Optional()])
             embed_captcha_token = StringField("Embed CAPTCHA Token", validators=[Optional()])
