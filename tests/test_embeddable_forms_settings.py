@@ -276,14 +276,15 @@ def test_embed_profile_submission_does_not_require_session_cookie(
         assert post_response.status_code == 200, post_response.text
         assert "Message Submitted!" in post_response.text
         success_page = BeautifulSoup(post_response.text, "html.parser")
-        reply_tab_link = success_page.find(
-            "a",
-            string=lambda value: value and value.strip() == "Open Reply Page in New Tab",
+        assert (
+            success_page.find(
+                "a",
+                string=lambda value: value and value.strip() == "Open Reply Page in New Tab",
+            )
+            is None
         )
-        assert reply_tab_link is not None
-        assert reply_tab_link.get("target") == "_blank"
-        assert "noopener" in reply_tab_link.get("rel", [])
-        assert "noreferrer" in reply_tab_link.get("rel", [])
+        assert success_page.find(id="reply-url") is not None
+        assert success_page.find(id="copy-link-button") is not None
         assert "default-src 'self'" in post_response.headers["Content-Security-Policy"]
         assert (
             "frame-ancestors https://tips.example"
