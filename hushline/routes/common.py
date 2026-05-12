@@ -2,7 +2,7 @@ import re
 import smtplib
 import socket
 import unicodedata
-from typing import Sequence
+from collections.abc import Callable, Sequence
 
 from flask import (
     current_app,
@@ -16,7 +16,9 @@ from wtforms.validators import ValidationError
 from hushline.content_safety import contains_disallowed_text
 from hushline.db import db
 from hushline.email import create_smtp_config, send_email
-from hushline.model import SMTPEncryption, User, Username
+from hushline.model import NotificationRecipient, SMTPEncryption, User, Username
+
+RecipientEmailBody = str | Callable[[NotificationRecipient], str | None]
 
 
 def valid_username(form: Form, field: Field) -> None:
@@ -94,7 +96,7 @@ def get_ip_address() -> str:
     return ip_address
 
 
-def send_email_to_user_recipients(user: User, subject: str, body: str) -> None:
+def send_email_to_user_recipients(user: User, subject: str, body: RecipientEmailBody) -> None:
     recipients = user.enabled_notification_recipients
     if not recipients or not user.enable_email_notifications:
         return
@@ -138,11 +140,14 @@ def send_email_to_user_recipients(user: User, subject: str, body: str) -> None:
             recipient_email = recipient.email
             if recipient_email is None:
                 continue
+            recipient_body = body(recipient) if callable(body) else body
+            if not recipient_body:
+                continue
             try:
                 send_email(
                     recipient_email,
                     subject,
-                    body,
+                    recipient_body,
                     smtp_config,
                     reply_to,
                 )
@@ -160,6 +165,32 @@ def do_send_email(user: User, body: str) -> None:
 
 def notification_email_encryption_target(user: User) -> str | list[str] | None:
     return user.message_encryption_target
+
+
+def notification_recipient_encryption_target(
+    user: User, recipient: NotificationRecipient
+) -> str | None:
+    if recipient.pgp_key:
+        return recipient.pgp_key
+
+    if recipient.position == 0 and user.pgp_key:
+        return user.pgp_key
+
+    primary_recipient = user.primary_notification_recipient
+    if primary_recipient is not None and primary_recipient.id == recipient.id and user.pgp_key:
+        return user.pgp_key
+
+    return None
+
+
+def notification_recipient_public_key_entries(user: User) -> list[dict[str, int | str]]:
+    entries: list[dict[str, int | str]] = []
+    for recipient in user.enabled_notification_recipients:
+        if recipient.id is None:
+            continue
+        if key := notification_recipient_encryption_target(user, recipient):
+            entries.append({"id": recipient.id, "key": key})
+    return entries
 
 
 def format_message_email_fields(extracted_fields: Sequence[tuple[str, str]]) -> str:
