@@ -41,13 +41,11 @@ from hushline.model import (
     OrganizationSetting,
     Username,
 )
-from hushline.model.field_value import add_padding
 from hushline.routes.common import (
     do_send_email,
     format_full_message_email_body,
     format_message_email_fields,
     notification_email_encryption_target,
-    notification_recipient_encryption_target,
     notification_recipient_public_key_entries,
     send_email_to_user_recipients,
     show_directory_caution_badge,
