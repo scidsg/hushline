@@ -151,14 +151,14 @@ def send_email_to_user_recipients(user: User, subject: str, body: RecipientEmail
             if not recipient_body:
                 continue
             try:
-                send_email(
+                if send_email(
                     recipient_email,
                     subject,
                     recipient_body,
                     smtp_config,
                     reply_to,
-                )
-                delivered_email_addresses.add(normalized_recipient_email)
+                ):
+                    delivered_email_addresses.add(normalized_recipient_email)
             except (OSError, TypeError, ValueError, smtplib.SMTPException) as e:
                 current_app.logger.error(
                     "Error sending email to %s: %s", recipient_email, str(e), exc_info=True
