@@ -372,30 +372,22 @@ refresh_runtime_after_schema_changes() {
   reset_runtime_stack_and_seed_dev_data
 }
 
-lint_failure_looks_auto_fixable() {
-  local failure_text="$1"
-
-  if printf '%s\n' "$failure_text" | grep -Fq "Would reformat:"; then
-    return 0
-  fi
-
-  if printf '%s\n' "$failure_text" | grep -Fq "Code style issues found in the above file."; then
-    return 0
-  fi
-
-  if printf '%s\n' "$failure_text" | grep -Eq 'Found [0-9]+ error'; then
-    if printf '%s\n' "$failure_text" | grep -Fq "(checked "; then
-      return 1
-    fi
-    return 0
-  fi
-
-  return 1
-}
-
 auto_fix_lint_with_containerized_tooling() {
   echo "Self-heal: applying deterministic lint fix via make fix." | tee -a "$CHECK_LOG_FILE"
-  run_check_capture "Auto-fix lint issues (make fix)" make fix
+  if ! run_check_capture "Auto-fix lint issues (make fix)" make fix; then
+    echo "Self-heal: make fix exited non-zero; continuing to explicit validation." | tee -a "$CHECK_LOG_FILE"
+  fi
+  return 0
+}
+
+run_tests_with_deterministic_self_heal() {
+  if run_runtime_check_with_self_heal "Run test (full suite)" make test; then
+    return 0
+  fi
+
+  echo "Self-heal: tests still failed; applying deterministic fixes before Codex." | tee -a "$CHECK_LOG_FILE"
+  auto_fix_lint_with_containerized_tooling
+  run_runtime_check_with_self_heal "Re-run test after deterministic auto-fix" make test
 }
 
 coverage_report_exists() {
@@ -510,21 +502,14 @@ run_coverage_scan() {
 
 run_local_validation_and_coverage() {
   : > "$CHECK_LOG_FILE"
-  local lint_failure_tail=""
 
   refresh_runtime_after_schema_changes || return 1
   if ! run_check_capture "Run lint" make lint; then
-    lint_failure_tail="$(tail -n 240 "$CHECK_LOG_FILE")"
-    if ! lint_failure_looks_auto_fixable "$lint_failure_tail"; then
-      return 1
-    fi
-    if ! auto_fix_lint_with_containerized_tooling; then
-      return 1
-    fi
+    auto_fix_lint_with_containerized_tooling
     run_check_capture "Re-run lint after deterministic auto-fix" make lint || return 1
   fi
 
-  run_runtime_check_with_self_heal "Run test (full suite)" make test || return 1
+  run_tests_with_deterministic_self_heal || return 1
   run_coverage_scan || return 1
   coverage_target_met
 }
@@ -982,7 +967,11 @@ run_coverage_attempt_loop() {
 
   while (( attempt <= MAX_COVERAGE_ATTEMPTS )); do
     echo "==> Codex coverage attempt $attempt"
-    run_codex_from_prompt
+    if ! run_codex_from_prompt; then
+      echo "Warning: Codex coverage attempt $attempt failed; continuing with the next attempt." >&2
+      attempt=$((attempt + 1))
+      continue
+    fi
 
     if ! has_non_log_changes; then
       emit_codex_no_change_diagnostic "$attempt"
@@ -1015,7 +1004,9 @@ run_coverage_attempt_loop() {
         PREVIOUS_FAILURE_SIGNATURE="$FAILURE_SIGNATURE"
       fi
       build_fix_prompt "$BRANCH_NAME" "$failure_context" "$FAILURE_SIGNATURE" "$REPEATED_FAILURE_COUNT"
-      run_codex_from_prompt
+      if ! run_codex_from_prompt; then
+        echo "Warning: Codex validation self-heal attempt $fix_attempt failed; continuing." >&2
+      fi
       fix_attempt=$((fix_attempt + 1))
     done
 
