@@ -341,3 +341,194 @@ main
 
     calls = call_log.read_text(encoding="utf-8").splitlines()
     assert "Create branch codex/daily-coverage from origin/codex/daily-coverage" in calls
+
+
+def test_local_validation_applies_deterministic_lint_fix_for_any_lint_failure(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+    check_log = tmp_path / "check.log"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CHECK_LOG_FILE={shlex.quote(str(check_log))}
+refresh_runtime_after_schema_changes() {{ :; }}
+run_check_capture() {{
+  printf '%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  case "$1" in
+    "Run lint")
+      lint_msg='tests/test_notifications.py:297:5: PLR0913 Too many arguments'
+      printf '%s\\n' "$lint_msg" >> "$CHECK_LOG_FILE"
+      set +e
+      return 1
+      ;;
+    "Auto-fix lint issues (make fix)")
+      printf '%s\\n' 'make fix exited non-zero after fixes' >> "$CHECK_LOG_FILE"
+      set +e
+      return 2
+      ;;
+    "Re-run lint after deterministic auto-fix")
+      printf '%s\\n' 'lint still failing after deterministic fix' >> "$CHECK_LOG_FILE"
+      set +e
+      return 1
+      ;;
+  esac
+  return 0
+}}
+run_runtime_check_with_self_heal() {{
+  printf 'unexpected-test-run\\n' >> {shlex.quote(str(call_log))}
+  return 1
+}}
+run_coverage_scan() {{
+  printf 'unexpected-coverage-run\\n' >> {shlex.quote(str(call_log))}
+  return 1
+}}
+run_local_validation_and_coverage
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 1
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert calls == [
+        "Run lint",
+        "Auto-fix lint issues (make fix)",
+        "Re-run lint after deterministic auto-fix",
+    ]
+    assert "make fix exited non-zero" in result.stdout
+
+
+def test_coverage_attempt_loop_continues_after_initial_codex_failure(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    check_log = tmp_path / "check.log"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CHECK_LOG_FILE={shlex.quote(str(check_log))}
+MAX_COVERAGE_ATTEMPTS=2
+MAX_FIX_ATTEMPTS=1
+CODEX_CALLS=0
+run_codex_from_prompt() {{
+  CODEX_CALLS=$((CODEX_CALLS + 1))
+  printf 'codex-%s\\n' "$CODEX_CALLS" >> {shlex.quote(str(call_log))}
+  if (( CODEX_CALLS == 1 )); then
+    set +e
+    return 1
+  fi
+  return 0
+}}
+has_non_log_changes() {{
+  (( CODEX_CALLS >= 2 ))
+}}
+emit_codex_no_change_diagnostic() {{
+  printf 'no-change-%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+run_local_validation_and_coverage() {{
+  printf 'validate\\n' >> {shlex.quote(str(call_log))}
+  CURRENT_COVERAGE_PERCENT=100.00
+  return 0
+}}
+run_coverage_attempt_loop
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Warning: Codex coverage attempt 1 failed" in result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert calls == ["codex-1", "codex-2", "validate"]
+
+
+def test_local_validation_applies_deterministic_fix_before_retrying_tests(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    check_log = tmp_path / "check.log"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CHECK_LOG_FILE={shlex.quote(str(check_log))}
+refresh_runtime_after_schema_changes() {{ :; }}
+run_check_capture() {{
+  printf 'check:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  if [[ "$1" == "Auto-fix lint issues (make fix)" ]]; then
+    printf 'make fix exited non-zero after deterministic changes\\n' >> "$CHECK_LOG_FILE"
+    set +e
+    return 2
+  fi
+  return 0
+}}
+run_runtime_check_with_self_heal() {{
+  printf 'runtime:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  if [[ "$1" == "Run test (full suite)" ]] || \
+    [[ "$1" == "Re-run test after deterministic auto-fix" ]]; then
+    printf 'test failure for %s\\n' "$1" >> "$CHECK_LOG_FILE"
+    set +e
+    return 1
+  fi
+  return 0
+}}
+run_coverage_scan() {{
+  printf 'unexpected-coverage-run\\n' >> {shlex.quote(str(call_log))}
+  return 1
+}}
+run_local_validation_and_coverage
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 1
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert calls == [
+        "check:Run lint",
+        "runtime:Run test (full suite)",
+        "check:Auto-fix lint issues (make fix)",
+        "runtime:Re-run test after deterministic auto-fix",
+    ]
+    assert "tests still failed; applying deterministic fixes before Codex" in result.stdout
+
+
+def test_coverage_attempt_loop_continues_after_fix_codex_failure(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    check_log = tmp_path / "check.log"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CHECK_LOG_FILE={shlex.quote(str(check_log))}
+MAX_COVERAGE_ATTEMPTS=1
+MAX_FIX_ATTEMPTS=2
+CODEX_CALLS=0
+VALIDATION_CALLS=0
+run_codex_from_prompt() {{
+  CODEX_CALLS=$((CODEX_CALLS + 1))
+  printf 'codex-%s\\n' "$CODEX_CALLS" >> {shlex.quote(str(call_log))}
+  if (( CODEX_CALLS == 2 )); then
+    set +e
+    return 1
+  fi
+  return 0
+}}
+has_non_log_changes() {{ return 0; }}
+run_local_validation_and_coverage() {{
+  VALIDATION_CALLS=$((VALIDATION_CALLS + 1))
+  printf 'validate-%s\\n' "$VALIDATION_CALLS" >> {shlex.quote(str(call_log))}
+  if (( VALIDATION_CALLS == 1 )); then
+    printf 'lint failed\\n' > "$CHECK_LOG_FILE"
+    set +e
+    return 1
+  fi
+  CURRENT_COVERAGE_PERCENT=100.00
+  return 0
+}}
+recent_failure_block_from_text() {{ printf 'lint failed\\n'; }}
+failure_signature_from_text() {{ printf 'lint failed\\n'; }}
+build_fix_prompt() {{
+  printf 'build-fix-prompt\\n' >> {shlex.quote(str(call_log))}
+}}
+run_coverage_attempt_loop
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Warning: Codex validation self-heal attempt 1 failed" in result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert calls == ["codex-1", "validate-1", "build-fix-prompt", "codex-2", "validate-2"]
