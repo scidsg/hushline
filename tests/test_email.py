@@ -112,10 +112,24 @@ class _DummyConfig(email_mod.SMTPConfig):
         yield cast(smtplib.SMTP, self._smtp_server)
 
 
+class _FlakyLoginConfig(_DummyConfig):
+    def __init__(self, *, smtp_server: MagicMock) -> None:
+        super().__init__(smtp_server=smtp_server)
+        self._login_attempts = 0
+
+    @contextmanager
+    def smtp_login(self, timeout: int = 10) -> Generator[smtplib.SMTP, None, None]:
+        _ = timeout
+        self._login_attempts += 1
+        if self._login_attempts == 1:
+            raise smtplib.SMTPServerDisconnected("connect dropped")
+        yield cast(smtplib.SMTP, self._smtp_server)
+
+
 def test_send_email_success_and_retry(app: Flask) -> None:
     smtp_server = MagicMock()
-    smtp_server.send_message.side_effect = [smtplib.SMTPException("transient"), {}]
-    cfg = _DummyConfig(smtp_server=smtp_server)
+    smtp_server.send_message.return_value = {}
+    cfg = _FlakyLoginConfig(smtp_server=smtp_server)
 
     with (
         app.app_context(),
@@ -126,6 +140,24 @@ def test_send_email_success_and_retry(app: Flask) -> None:
         app.config["SMTP_SEND_RETRY_DELAY_SEC"] = 0
         assert email_mod.send_email("to@example.com", "subject", "body", cfg) is True
         sleep_mock.assert_called_once()
+
+
+def test_send_email_does_not_retry_after_message_submission_attempt(app: Flask) -> None:
+    smtp_server = MagicMock()
+    smtp_server.send_message.side_effect = smtplib.SMTPServerDisconnected("after DATA")
+    cfg = _DummyConfig(smtp_server=smtp_server)
+
+    with (
+        app.app_context(),
+        patch("hushline.email.is_safe_smtp_host", return_value=True),
+        patch("hushline.email.time.sleep") as sleep_mock,
+    ):
+        app.config["SMTP_SEND_ATTEMPTS"] = 3
+        app.config["SMTP_SEND_RETRY_DELAY_SEC"] = 0
+        assert email_mod.send_email("to@example.com", "subject", "body", cfg) is False
+
+    smtp_server.send_message.assert_called_once()
+    sleep_mock.assert_not_called()
 
 
 def test_send_email_recipient_refusal_returns_false(app: Flask) -> None:

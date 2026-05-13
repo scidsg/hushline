@@ -158,6 +158,74 @@ def test_do_send_email_sends_to_each_enabled_recipient(
     ]
 
 
+def test_do_send_email_deduplicates_recipient_email_addresses(
+    app: Flask,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user.enable_email_notifications = True
+    user.email = "primary@example.com"
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = " Primary@Example.com "
+    user.notification_recipients[-1].pgp_key = "duplicate-key"
+    user.smtp_server = None
+
+    app.config["SMTP_USERNAME"] = "default-user"
+    app.config["SMTP_SERVER"] = "smtp.default.example"
+    app.config["SMTP_PORT"] = 587
+    app.config["SMTP_PASSWORD"] = "default-pass"
+    app.config["NOTIFICATIONS_ADDRESS"] = "notify@example.com"
+    app.config["NOTIFICATIONS_REPLY_TO"] = "reply@example.com"
+    app.config["SMTP_ENCRYPTION"] = "StartTLS"
+
+    create_smtp_config = MagicMock(return_value=MagicMock())
+    send_email = MagicMock()
+    monkeypatch.setattr("hushline.routes.common.create_smtp_config", create_smtp_config)
+    monkeypatch.setattr("hushline.routes.common.send_email", send_email)
+
+    with app.app_context(), patch.object(app.logger, "warning") as warning_log:
+        routes_common.do_send_email(user, "body")
+
+    send_email.assert_called_once()
+    assert send_email.call_args.args[0] == "primary@example.com"
+    warning_log.assert_called_once()
+
+
+def test_do_send_email_retries_duplicate_address_after_false_result(
+    app: Flask,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user.enable_email_notifications = True
+    user.email = "primary@example.com"
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = " Primary@Example.com "
+    user.notification_recipients[-1].pgp_key = "duplicate-key"
+    user.smtp_server = None
+
+    app.config["SMTP_USERNAME"] = "default-user"
+    app.config["SMTP_SERVER"] = "smtp.default.example"
+    app.config["SMTP_PORT"] = 587
+    app.config["SMTP_PASSWORD"] = "default-pass"
+    app.config["NOTIFICATIONS_ADDRESS"] = "notify@example.com"
+    app.config["NOTIFICATIONS_REPLY_TO"] = "reply@example.com"
+    app.config["SMTP_ENCRYPTION"] = "StartTLS"
+
+    create_smtp_config = MagicMock(return_value=MagicMock())
+    send_email = MagicMock(side_effect=[False, True])
+    monkeypatch.setattr("hushline.routes.common.create_smtp_config", create_smtp_config)
+    monkeypatch.setattr("hushline.routes.common.send_email", send_email)
+
+    with app.app_context(), patch.object(app.logger, "warning") as warning_log:
+        routes_common.do_send_email(user, "body")
+
+    assert [call.args[0] for call in send_email.call_args_list] == [
+        "primary@example.com",
+        " Primary@Example.com ",
+    ]
+    warning_log.assert_not_called()
+
+
 def test_send_email_to_user_recipients_accepts_recipient_body_factory(
     app: Flask,
     user: User,
