@@ -513,29 +513,11 @@ def register_profile_routes(app: Flask) -> None:
                                         client_encrypted_value = recipient_fields.get(field_name)
                                         if client_encrypted_value:
                                             value_for_email = client_encrypted_value
-                                        elif raw_value and not _is_armored_pgp_message(raw_value):
-                                            recipient_target = (
-                                                notification_recipient_encryption_target(
-                                                    uname.user, recipient
-                                                )
-                                            )
-                                            if not recipient_target:
-                                                return plaintext_new_message_body
-                                            try:
-                                                value_for_email = encrypt_message(
-                                                    add_padding(raw_value), recipient_target
-                                                )
-                                            except (RuntimeError, TypeError, ValueError) as e:
-                                                current_app.logger.error(
-                                                    (
-                                                        "Failed to encrypt field-level "
-                                                        "notification body: %s"
-                                                    ),
-                                                    str(e),
-                                                    exc_info=True,
-                                                )
-                                                return plaintext_new_message_body
                                         elif raw_value:
+                                            current_app.logger.warning(
+                                                "Missing recipient field ciphertext; "
+                                                "sending generic notification body."
+                                            )
                                             return plaintext_new_message_body
                                     rendered_fields.append((label, value_for_email))
                                 return format_message_email_fields(rendered_fields)
