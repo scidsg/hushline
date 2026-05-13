@@ -136,9 +136,16 @@ def send_email_to_user_recipients(user: User, subject: str, body: RecipientEmail
         reply_to = current_app.config.get("NOTIFICATIONS_REPLY_TO") or current_app.config.get(
             "NOTIFICATIONS_ADDRESS"
         )
+        delivered_email_addresses: set[str] = set()
         for recipient in recipients:
             recipient_email = recipient.email
             if recipient_email is None:
+                continue
+            normalized_recipient_email = recipient_email.strip().casefold()
+            if normalized_recipient_email in delivered_email_addresses:
+                current_app.logger.warning(
+                    "Skipping duplicate notification recipient email for user %s", user.id
+                )
                 continue
             recipient_body = body(recipient) if callable(body) else body
             if not recipient_body:
@@ -151,6 +158,7 @@ def send_email_to_user_recipients(user: User, subject: str, body: RecipientEmail
                     smtp_config,
                     reply_to,
                 )
+                delivered_email_addresses.add(normalized_recipient_email)
             except (OSError, TypeError, ValueError, smtplib.SMTPException) as e:
                 current_app.logger.error(
                     "Error sending email to %s: %s", recipient_email, str(e), exc_info=True

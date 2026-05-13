@@ -128,8 +128,10 @@ def send_email(
     retry_delay = float(current_app.config.get("SMTP_SEND_RETRY_DELAY_SEC", 2))
 
     for attempt in range(1, attempts + 1):
+        message_submission_attempted = False
         try:
             with smtp_config.smtp_login(timeout=timeout) as server:
+                message_submission_attempted = True
                 refusals = server.send_message(message)
             if refusals:
                 current_app.logger.error(f"SMTP refused recipients: {refusals}")
@@ -139,6 +141,12 @@ def send_email(
             current_app.logger.error(
                 f"Error sending email (attempt {attempt}/{attempts}): {str(e)}"
             )
+            if message_submission_attempted:
+                current_app.logger.error(
+                    "Not retrying SMTP send after message submission attempt to avoid "
+                    "duplicate delivery."
+                )
+                return False
             if attempt < attempts:
                 time.sleep(retry_delay)
                 continue
