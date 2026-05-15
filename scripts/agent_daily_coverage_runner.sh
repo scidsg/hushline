@@ -46,8 +46,10 @@ BRANCH_NAME="${HUSHLINE_COVERAGE_BRANCH_NAME:-codex/daily-coverage}"
 CODEX_MODEL="${HUSHLINE_CODEX_MODEL:-gpt-5.5}"
 CODEX_REASONING_EFFORT="${HUSHLINE_CODEX_REASONING_EFFORT:-high}"
 HOST_PORTS_TO_CLEAR="${HUSHLINE_DAILY_KILL_PORTS:-4566 4571 5432 8080}"
-MAX_COVERAGE_ATTEMPTS="${HUSHLINE_COVERAGE_MAX_ATTEMPTS:-10}"
-MAX_FIX_ATTEMPTS="${HUSHLINE_COVERAGE_MAX_FIX_ATTEMPTS:-8}"
+MAX_COVERAGE_ATTEMPTS="${HUSHLINE_COVERAGE_MAX_ATTEMPTS:-2}"
+MAX_FIX_ATTEMPTS="${HUSHLINE_COVERAGE_MAX_FIX_ATTEMPTS:-3}"
+MAX_CODEX_FAILURES="${HUSHLINE_COVERAGE_MAX_CODEX_FAILURES:-2}"
+MAX_NO_CHANGE_ATTEMPTS="${HUSHLINE_COVERAGE_MAX_NO_CHANGE_ATTEMPTS:-1}"
 RUNTIME_BOOTSTRAP_ATTEMPTS="${HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_ATTEMPTS:-3}"
 RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS="${HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS:-10}"
 POST_PR_FEEDBACK_DELAY_SECONDS="${HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS:-900}"
@@ -964,24 +966,34 @@ run_codex_from_prompt() {
 run_coverage_attempt_loop() {
   local attempt=1
   local failure_context=""
+  local consecutive_codex_failures=0
+  local no_change_attempts=0
 
   while (( attempt <= MAX_COVERAGE_ATTEMPTS )); do
     echo "==> Codex coverage attempt $attempt"
     if ! run_codex_from_prompt; then
+      consecutive_codex_failures=$((consecutive_codex_failures + 1))
+      if (( consecutive_codex_failures >= MAX_CODEX_FAILURES )); then
+        echo "Blocked: Codex failed ${consecutive_codex_failures} consecutive coverage attempt(s); stopping instead of repeating the same coverage prompt." >&2
+        return 1
+      fi
       echo "Warning: Codex coverage attempt $attempt failed; continuing with the next attempt." >&2
       attempt=$((attempt + 1))
       continue
     fi
+    consecutive_codex_failures=0
 
     if ! has_non_log_changes; then
       emit_codex_no_change_diagnostic "$attempt"
-      if (( attempt == MAX_COVERAGE_ATTEMPTS )); then
-        echo "Blocked: Codex produced no usable non-log changes after $MAX_COVERAGE_ATTEMPTS attempt(s)." >&2
+      no_change_attempts=$((no_change_attempts + 1))
+      if (( no_change_attempts >= MAX_NO_CHANGE_ATTEMPTS )); then
+        echo "Blocked: Codex produced no usable non-log changes after ${no_change_attempts} attempt(s); stopping instead of repeating the same coverage prompt." >&2
         return 1
       fi
       attempt=$((attempt + 1))
       continue
     fi
+    no_change_attempts=0
 
     local fix_attempt=1
     while (( fix_attempt <= MAX_FIX_ATTEMPTS )); do
@@ -1005,7 +1017,14 @@ run_coverage_attempt_loop() {
       fi
       build_fix_prompt "$BRANCH_NAME" "$failure_context" "$FAILURE_SIGNATURE" "$REPEATED_FAILURE_COUNT"
       if ! run_codex_from_prompt; then
+        consecutive_codex_failures=$((consecutive_codex_failures + 1))
+        if (( consecutive_codex_failures >= MAX_CODEX_FAILURES )); then
+          echo "Blocked: Codex failed ${consecutive_codex_failures} consecutive validation self-heal attempt(s); stopping instead of repeating failing prompts." >&2
+          return 1
+        fi
         echo "Warning: Codex validation self-heal attempt $fix_attempt failed; continuing." >&2
+      else
+        consecutive_codex_failures=0
       fi
       fix_attempt=$((fix_attempt + 1))
     done
@@ -1228,6 +1247,8 @@ main() {
 
   require_positive_integer "HUSHLINE_COVERAGE_MAX_ATTEMPTS" "$MAX_COVERAGE_ATTEMPTS"
   require_positive_integer "HUSHLINE_COVERAGE_MAX_FIX_ATTEMPTS" "$MAX_FIX_ATTEMPTS"
+  require_positive_integer "HUSHLINE_COVERAGE_MAX_CODEX_FAILURES" "$MAX_CODEX_FAILURES"
+  require_positive_integer "HUSHLINE_COVERAGE_MAX_NO_CHANGE_ATTEMPTS" "$MAX_NO_CHANGE_ATTEMPTS"
   require_positive_integer "HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_ATTEMPTS" "$RUNTIME_BOOTSTRAP_ATTEMPTS"
   require_positive_integer "HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS" "$RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS"
 
