@@ -108,12 +108,18 @@ def test_screenshots_workflow_publishes_current_folder_to_website_directly() -> 
     checkout_section = capture_workflow_text.split(
         "      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5", 1
     )[1].split("      - name: Check screenshot manifest", 1)[0]
+    trusted_checkout_section = capture_workflow_text.split(
+        "      - name: Check out trusted workflow scripts", 1
+    )[1].split("      - name: Set up Docker Buildx", 1)[0]
     website_section = publish_workflow_text.split(
         "      - name: Publish current screenshots to hushline-website", 1
     )[1]
 
     assert "fetch-depth: 1" in checkout_section
     assert "fetch-depth: 0" not in checkout_section
+    assert "repository: ${{ job.workflow_repository }}" in trusted_checkout_section
+    assert "ref: ${{ job.workflow_sha }}" in trusted_checkout_section
+    assert "ref: ${{ github.workflow_sha }}" not in trusted_checkout_section
     assert "Resolve screenshot capture manifest" in capture_workflow_text
     assert '--manifest-out "$CAPTURE_MANIFEST"' in capture_workflow_text
     assert '--output "$CAPTURE_FILES"' in capture_workflow_text

@@ -52,6 +52,16 @@ jobs:
             echo "Skipping docs screenshots: docs/screenshots/scenes.json not found."
           fi
 
+      - name: Check out trusted workflow scripts
+        if: steps.manifest.outputs.enabled == 'true'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .trusted-workflow
+          fetch-depth: 1
+          persist-credentials: false
+
       - name: Set up Docker Buildx
         if: ${{ github.event_name == 'release' && steps.manifest.outputs.enabled == 'true' }}
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
@@ -165,7 +175,7 @@ jobs:
             "$CLONE_URL" \
             "$WEBSITE_DIR"
 
-          python3 scripts/resolve-doc-screenshot-allowlist.py \
+          python3 .trusted-workflow/scripts/resolve-doc-screenshot-allowlist.py \
             --hushline-dir "$GITHUB_WORKSPACE" \
             --website-dir "$WEBSITE_DIR" \
             --screenshot-root src/assets/img/screenshots \

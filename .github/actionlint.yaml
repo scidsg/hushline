@@ -1,0 +1,6 @@
+paths:
+  .github/workflows/docs-screenshots.yml:
+    ignore:
+      # GitHub documents these reusable-workflow identity properties, but
+      # actionlint 1.7.x does not include them in its job context schema yet.
+      - 'property "workflow_(repository|sha)" is not defined in object type .+'
