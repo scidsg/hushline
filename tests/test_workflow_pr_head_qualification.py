@@ -43,7 +43,7 @@ def test_screenshots_archive_workflow_publishes_directly_without_pr_flow() -> No
     ].split("      - name: Publish screenshots to hushline-screenshots", 1)[0]
     archive_section = workflow_text.split(
         "      - name: Publish screenshots to hushline-screenshots", 1
-    )[1]
+    )[1].split("      - name: Publish current screenshots to hushline-website", 1)[0]
 
     assert "rm -f /tmp/docs-screenshots-artifact/artifact.zip" in artifact_section
     assert "SCREENSHOTS_DEFAULT_BRANCH: main" in archive_section
@@ -67,6 +67,35 @@ def test_screenshots_archive_workflow_publishes_directly_without_pr_flow() -> No
     assert 'screenshots_owner="${SCREENSHOTS_REPOSITORY%%/*}"' not in archive_section
     assert "gh pr create \\" not in archive_section
     assert 'gh pr merge "$pr_url" \\' not in archive_section
+
+
+def test_screenshots_workflow_publishes_current_folder_to_website_directly() -> None:
+    capture_workflow_text = _workflow_text(".github/workflows/docs-screenshots.yml")
+    publish_workflow_text = _workflow_text(".github/workflows/publish-docs-screenshots.yml")
+    artifact_section = capture_workflow_text.split("      - name: Prepare publish artifact", 1)[
+        1
+    ].split("      - name: Upload screenshot artifacts", 1)[0]
+    website_section = publish_workflow_text.split(
+        "      - name: Publish current screenshots to hushline-website", 1
+    )[1]
+
+    assert 'cp -R "$LATEST_ROOT" "${ARTIFACT_ROOT}/screenshots/current"' in artifact_section
+    assert "WEBSITE_REPOSITORY: scidsg/hushline-website" in website_section
+    assert "WEBSITE_DEFAULT_BRANCH: main" in website_section
+    assert "WEBSITE_SCREENSHOT_ROOT: src/assets/img/screenshots" in website_section
+    assert 'CURRENT_ROOT="${ARTIFACT_DIR}/screenshots/current"' in website_section
+    assert '--branch "${WEBSITE_DEFAULT_BRANCH}"' in website_section
+    assert 'git sparse-checkout set "${WEBSITE_SCREENSHOT_ROOT}/current"' in website_section
+    assert 'mkdir -p "${WEBSITE_SCREENSHOT_ROOT}/current"' in website_section
+    assert (
+        'rsync -a --delete "${CURRENT_ROOT}/" "${WEBSITE_SCREENSHOT_ROOT}/current/"'
+        in website_section
+    )
+    assert 'git add "${WEBSITE_SCREENSHOT_ROOT}/current"' in website_section
+    assert 'git push origin "HEAD:${WEBSITE_DEFAULT_BRANCH}"' in website_section
+    assert "gh pr create \\" not in website_section
+    assert 'gh pr merge "$pr_url" \\' not in website_section
+    assert "${WEBSITE_SCREENSHOT_ROOT}/releases" not in website_section
 
 
 def test_dev_deploy_workflow_generates_session_fernet_key_for_terraform_runs() -> None:

@@ -176,6 +176,7 @@ jobs:
 
           ARTIFACT_ROOT="$(mktemp -d)"
           mkdir -p "${ARTIFACT_ROOT}/screenshots/releases"
+          cp -R "$LATEST_ROOT" "${ARTIFACT_ROOT}/screenshots/current"
           cp -R "$RELEASE_ROOT" "${ARTIFACT_ROOT}/screenshots/releases/${RELEASE_KEY}"
           cp -R "$LATEST_ROOT" "${ARTIFACT_ROOT}/screenshots/releases/latest"
           cp "$ROOT_README" "${ARTIFACT_ROOT}/screenshots/README.md"

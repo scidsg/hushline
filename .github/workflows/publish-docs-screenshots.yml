@@ -8,6 +8,8 @@ on:
         required: true
         type: string
     secrets:
+      HUSHLINE_WEBSITE_SCREENSHOTS_PAT:
+        required: false
       SCREENSHOTS_PUSH_TOKEN:
         required: false
   workflow_dispatch:
@@ -118,3 +120,54 @@ jobs:
           git commit -m "Update screenshot archive for ${RELEASE_KEY}"
           git push origin "HEAD:${SCREENSHOTS_DEFAULT_BRANCH}"
           echo "Published screenshot archive directly to ${SCREENSHOTS_REPOSITORY}@${SCREENSHOTS_DEFAULT_BRANCH}."
+
+      - name: Publish current screenshots to hushline-website
+        if: steps.artifact.outputs.found == 'true'
+        env:
+          WEBSITE_REPOSITORY: scidsg/hushline-website
+          WEBSITE_DEFAULT_BRANCH: main
+          WEBSITE_PUSH_TOKEN: ${{ secrets.HUSHLINE_WEBSITE_SCREENSHOTS_PAT || secrets.SCREENSHOTS_PUSH_TOKEN }}
+          WEBSITE_SCREENSHOT_ROOT: src/assets/img/screenshots
+          ARTIFACT_DIR: ${{ steps.artifact.outputs.artifact_dir }}
+        run: |
+          set -euo pipefail
+          if [ -z "${WEBSITE_PUSH_TOKEN:-}" ]; then
+            echo "Skipping publish: HUSHLINE_WEBSITE_SCREENSHOTS_PAT or SCREENSHOTS_PUSH_TOKEN secret is missing."
+            exit 0
+          fi
+
+          RELEASE_KEY="$(tr -d '\r\n' < "${ARTIFACT_DIR}/release_key.txt")"
+          RELEASE_KEY="$RELEASE_KEY" python -c 'import os, re, sys; release_key = os.environ["RELEASE_KEY"].strip(); re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", release_key) or sys.exit(f"Unexpected docs screenshot release key: {release_key!r}")'
+
+          CURRENT_ROOT="${ARTIFACT_DIR}/screenshots/current"
+          if [ ! -d "$CURRENT_ROOT" ]; then
+            echo "Expected current screenshot directory not found: $CURRENT_ROOT"
+            exit 1
+          fi
+
+          git clone \
+            --depth 1 \
+            --filter=blob:none \
+            --single-branch \
+            --branch "${WEBSITE_DEFAULT_BRANCH}" \
+            "https://x-access-token:${WEBSITE_PUSH_TOKEN}@github.com/${WEBSITE_REPOSITORY}.git" \
+            /tmp/hushline-website
+          cd /tmp/hushline-website
+          git sparse-checkout init --no-cone
+          git sparse-checkout set "${WEBSITE_SCREENSHOT_ROOT}/current"
+          git checkout -B "${WEBSITE_DEFAULT_BRANCH}" "origin/${WEBSITE_DEFAULT_BRANCH}"
+
+          mkdir -p "${WEBSITE_SCREENSHOT_ROOT}/current"
+          rsync -a --delete "${CURRENT_ROOT}/" "${WEBSITE_SCREENSHOT_ROOT}/current/"
+
+          git add "${WEBSITE_SCREENSHOT_ROOT}/current"
+          if git diff --cached --quiet; then
+            echo "No current website screenshot changes to publish."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update current website screenshots for ${RELEASE_KEY}"
+          git push origin "HEAD:${WEBSITE_DEFAULT_BRANCH}"
+          echo "Published current website screenshots directly to ${WEBSITE_REPOSITORY}@${WEBSITE_DEFAULT_BRANCH}."
