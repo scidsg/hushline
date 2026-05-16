@@ -1,3 +1,4 @@
+import importlib.util
 import json
 from pathlib import Path
 from typing import Any
@@ -5,6 +6,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = REPO_ROOT / "docs" / "screenshots" / "scenes.json"
 CAPTURE_SCRIPT_PATH = REPO_ROOT / "scripts" / "capture-doc-screenshots.mjs"
+ALLOWLIST_SCRIPT_PATH = REPO_ROOT / "scripts" / "resolve-doc-screenshot-allowlist.py"
 INDUSTRY_FIELD_FORM_SELECTOR = (
     ".field-form:not(.field-form-new):has(.field-form-label:has-text('Industry'))"
 )
@@ -21,45 +23,21 @@ def _manifest() -> dict[str, Any]:
     return json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
 
 
-def test_docs_screenshots_manifest_captures_only_published_website_and_docs_images() -> None:
+def _load_allowlist_script() -> Any:
+    spec = importlib.util.spec_from_file_location(
+        "resolve_doc_screenshot_allowlist", ALLOWLIST_SCRIPT_PATH
+    )
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_docs_screenshots_manifest_defaults_to_empty_generated_allowlist() -> None:
     manifest = _manifest()
 
-    expected_capture_files = [
-        "admin/auth-admin-tools-email-validation-desktop-light-fold.png",
-        "admin/auth-admin-tools-email-validation-status-forged-desktop-light-fold.png",
-        "admin/auth-admin-tools-email-validation-status-inauthentic-desktop-light-fold.png",
-        "admin/auth-admin-tools-email-validation-status-valid-desktop-light-fold.png",
-        "admin/auth-admin-tools-vision-assistant-desktop-light-fold.png",
-        "artvandelay/auth-artvandelay-enable-2fa-desktop-light-fold.png",
-        "artvandelay/auth-artvandelay-inbox-desktop-light-fold.png",
-        "artvandelay/auth-artvandelay-settings-advanced-desktop-light-fold.png",
-        "artvandelay/auth-artvandelay-settings-auth-desktop-light-fold.png",
-        "artvandelay/auth-artvandelay-settings-notifications-desktop-light-fold.png",
-        "artvandelay/auth-artvandelay-settings-profile-desktop-light-fold.png",
-        "artvandelay/auth-artvandelay-settings-profile-desktop-light-window-02.png",
-        "artvandelay/auth-artvandelay-settings-replies-desktop-light-fold.png",
-        "artvandelay/auth-artvandelay-tools-email-validation-status-valid-desktop-light-fold.png",
-        "guest/guest-directory-verified-desktop-dark-fold.png",
-        "guest/guest-directory-verified-desktop-light-fold.png",
-        "guest/guest-message-status-desktop-light-fold.png",
-        "guest/guest-message-submitted-mobile-dark-fold.png",
-        "guest/guest-profile-admin-desktop-light-fold.png",
-        "guest/guest-profile-artvandelay-custom-form-desktop-light-fold.png",
-        "guest/guest-profile-artvandelay-desktop-light-fold.png",
-        "guest/guest-register-desktop-light-fold.png",
-        "newman/auth-newman-inbox-desktop-light-fold.png",
-        "newman/auth-newman-onboarding-directory-desktop-light-fold.png",
-        "newman/auth-newman-onboarding-encryption-desktop-light-fold.png",
-        "newman/auth-newman-onboarding-notifications-desktop-light-fold.png",
-        "newman/auth-newman-onboarding-profile-desktop-light-fold.png",
-        "newman/auth-newman-onboarding-profile-mobile-light-fold.png",
-        "newman/auth-newman-settings-encryption-desktop-light-fold.png",
-        "newman/auth-newman-settings-encryption-mobile-light-fold.png",
-        "newman/auth-newman-settings-profile-desktop-light-fold.png",
-    ]
-
-    assert manifest["captureFiles"] == expected_capture_files
-    assert len(manifest["captureFiles"]) == len(set(manifest["captureFiles"]))
+    assert manifest["captureFiles"] == []
 
 
 def test_docs_screenshots_manifest_covers_guest_directory_verified_subtabs() -> None:
@@ -153,9 +131,72 @@ def test_docs_screenshot_capture_filters_to_manifest_capture_files() -> None:
     script = CAPTURE_SCRIPT_PATH.read_text(encoding="utf-8")
 
     assert "const captureFiles = normalizeCaptureFiles(manifest.captureFiles);" in script
+    assert "return null;" in script
+    assert "captureFiles === null" in script
+    assert "captureFiles !== null" in script
     assert "shouldVisitCaptureTarget(" in script
     assert "shouldCaptureFile(captureFiles, relativeFile)" in script
     assert "Required screenshot captures were not produced" in script
+
+
+def test_docs_screenshot_allowlist_resolves_only_referenced_images(tmp_path: Path) -> None:
+    script = _load_allowlist_script()
+    website_dir = tmp_path / "website"
+    hushline_dir = tmp_path / "hushline"
+    (website_dir / "src" / "pages").mkdir(parents=True)
+    (hushline_dir / "docs" / "screenshots").mkdir(parents=True)
+
+    (website_dir / "src" / "pages" / "index.astro").write_text(
+        "\n".join(
+            [
+                '<img src="/assets/img/screenshots/current/guest/used-from-website.png">',
+                'import img from "../assets/img/screenshots/current/admin/imported.png";',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (hushline_dir / "README.md").write_text(
+        "https://raw.githubusercontent.com/scidsg/hushline-screenshots/"
+        "refs/heads/main/releases/latest/newman/used-from-docs.png",
+        encoding="utf-8",
+    )
+    (hushline_dir / "docs" / "screenshots" / "scenes.json").write_text(
+        '{"captureFiles":["guest/not-a-reference.png"]}',
+        encoding="utf-8",
+    )
+
+    patterns = script.compile_reference_patterns("src/assets/img/screenshots")
+    refs = script.collect_references(
+        website_dir,
+        docs_only=False,
+        patterns=patterns,
+        screenshot_root="src/assets/img/screenshots",
+    ) | script.collect_references(
+        hushline_dir,
+        docs_only=True,
+        patterns=patterns,
+        screenshot_root="src/assets/img/screenshots",
+    )
+
+    assert refs == {
+        "admin/imported.png",
+        "guest/used-from-website.png",
+        "newman/used-from-docs.png",
+    }
+
+
+def test_docs_screenshot_allowlist_filters_current_tree(tmp_path: Path) -> None:
+    script = _load_allowlist_script()
+    current_root = tmp_path / "current"
+    filtered_root = tmp_path / "filtered"
+    (current_root / "guest").mkdir(parents=True)
+    (current_root / "guest" / "used.png").write_bytes(b"used")
+    (current_root / "guest" / "unused.png").write_bytes(b"unused")
+
+    script.copy_filtered_current(current_root, filtered_root, ["guest/used.png"])
+
+    assert (filtered_root / "guest" / "used.png").read_bytes() == b"used"
+    assert not (filtered_root / "guest" / "unused.png").exists()
 
 
 def test_docs_screenshots_manifest_artvandelay_notifications_waits_for_third_recipient() -> None:
