@@ -133,6 +133,7 @@ def test_docs_screenshot_capture_filters_to_manifest_capture_files() -> None:
     assert "const captureFiles = normalizeCaptureFiles(manifest.captureFiles);" in script
     assert "return null;" in script
     assert "captureFiles === null" in script
+    assert "scene.alwaysVisit === true" in script
     assert "captureFiles !== null" in script
     assert "shouldVisitCaptureTarget(" in script
     assert "shouldCaptureFile(captureFiles, relativeFile)" in script
@@ -300,6 +301,19 @@ def test_docs_screenshots_manifest_guest_artvandelay_profile_scenes_reset_all_cu
         scenes["auth-artvandelay-profile-custom-form-setup-industry-guest"]["actions"][:6]
         == expected_cleanup
     )
+
+
+def test_docs_screenshots_manifest_marks_state_preparation_scenes_always_visit() -> None:
+    scenes = _scene_map()
+
+    state_preparation_slugs = {
+        "auth-artvandelay-profile-custom-form-setup-industry",
+        "auth-artvandelay-profile-custom-form-reset-default-guest",
+        "auth-artvandelay-profile-custom-form-setup-industry-guest",
+    }
+
+    for slug in state_preparation_slugs:
+        assert scenes[slug]["alwaysVisit"] is True
 
 
 def test_docs_screenshots_manifest_artvandelay_profile_cleanup_accepts_delete_confirmations() -> (
