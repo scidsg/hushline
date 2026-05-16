@@ -27,6 +27,11 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
       - name: Download screenshot artifact
         id: artifact
         env:
@@ -161,12 +166,18 @@ jobs:
             "https://x-access-token:${WEBSITE_PUSH_TOKEN}@github.com/${WEBSITE_REPOSITORY}.git" \
             /tmp/hushline-website
           cd /tmp/hushline-website
-          git sparse-checkout init --no-cone
-          git sparse-checkout set "${WEBSITE_SCREENSHOT_ROOT}/current"
           git checkout -B "${WEBSITE_DEFAULT_BRANCH}" "origin/${WEBSITE_DEFAULT_BRANCH}"
 
+          FILTERED_CURRENT_ROOT="$(mktemp -d)"
+          python3 "${GITHUB_WORKSPACE}/scripts/resolve-doc-screenshot-allowlist.py" \
+            --hushline-dir "$GITHUB_WORKSPACE" \
+            --website-dir "$PWD" \
+            --screenshot-root "$WEBSITE_SCREENSHOT_ROOT" \
+            --current-root "$CURRENT_ROOT" \
+            --filtered-root "$FILTERED_CURRENT_ROOT"
+
           mkdir -p "${WEBSITE_SCREENSHOT_ROOT}/current"
-          rsync -a --delete "${CURRENT_ROOT}/" "${WEBSITE_SCREENSHOT_ROOT}/current/"
+          rsync -a --delete "${FILTERED_CURRENT_ROOT}/" "${WEBSITE_SCREENSHOT_ROOT}/current/"
 
           git add "${WEBSITE_SCREENSHOT_ROOT}/current"
           if git diff --cached --quiet; then

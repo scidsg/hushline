@@ -333,8 +333,8 @@ function makeContextOptions(viewport, jsEnabled, colorScheme) {
 }
 
 function normalizeCaptureFiles(value) {
-  if (!Array.isArray(value) || value.length === 0) {
-    return new Set();
+  if (!Array.isArray(value)) {
+    return null;
   }
 
   const files = new Set();
@@ -354,7 +354,7 @@ function normalizeCaptureFiles(value) {
 }
 
 function shouldCaptureFile(captureFiles, file) {
-  return captureFiles.size === 0 || captureFiles.has(file);
+  return captureFiles === null || captureFiles.has(file);
 }
 
 function hasRequiredScrollWindow(
@@ -364,7 +364,7 @@ function hasRequiredScrollWindow(
   viewportId,
   theme,
 ) {
-  if (captureFiles.size === 0) return true;
+  if (captureFiles === null) return true;
 
   const prefix = `${sessionDir}/${sanitizeSlug(sceneSlug)}-${sanitizeSlug(viewportId)}-${sanitizeSlug(theme)}-window-`;
   for (const file of captureFiles) {
@@ -381,7 +381,7 @@ function shouldVisitCaptureTarget(
   theme,
   captureModes,
 ) {
-  if (captureFiles.size === 0) return true;
+  if (captureFiles === null) return true;
 
   const baseName = `${sanitizeSlug(scene.slug)}-${sanitizeSlug(viewport.id)}-${sanitizeSlug(theme)}`;
   if (
@@ -736,7 +736,7 @@ async function main() {
   }
   await browser.close();
 
-  if (captureFiles.size > 0) {
+  if (captureFiles !== null) {
     const capturedFiles = new Set(
       captured.flatMap((item) => item.files.map((entry) => entry.file)),
     );
@@ -803,7 +803,8 @@ async function main() {
     "",
     "This folder stores generated screenshot sets for docs.",
     "Captures are generated from local app state using scripted scenes.",
-    "Manifests can list `captureFiles` to limit release captures to images currently embedded in docs and website surfaces.",
+    "Release automation generates `captureFiles` from images referenced in docs and website surfaces before capture.",
+    "Manifests can list `captureFiles`; an empty list captures no images, and an omitted field captures every matching scene target.",
     "Without `captureFiles`, each scene captures both light and dark mode by default.",
     "Without `captureFiles`, each scene captures above-the-fold, then viewport-by-viewport scroll windows, and full-page by default.",
     "Full-page capture is skipped when unsupported.",

@@ -114,7 +114,14 @@ def test_screenshots_workflow_publishes_current_folder_to_website_directly() -> 
 
     assert "fetch-depth: 1" in checkout_section
     assert "fetch-depth: 0" not in checkout_section
+    assert "Resolve screenshot capture manifest" in capture_workflow_text
+    assert '--manifest-out "$CAPTURE_MANIFEST"' in capture_workflow_text
+    assert '--output "$CAPTURE_FILES"' in capture_workflow_text
     assert 'cp -R "$RELEASE_ROOT" "${ARTIFACT_ROOT}/screenshots/release"' in artifact_section
+    assert (
+        'cp "${{ steps.capture_manifest.outputs.capture_files }}" '
+        '"${ARTIFACT_ROOT}/capture_files.json"' in artifact_section
+    )
     assert '"${ARTIFACT_ROOT}/screenshots/current"' not in artifact_section
     assert '"${ARTIFACT_ROOT}/screenshots/releases/latest"' not in artifact_section
     assert "WEBSITE_REPOSITORY: scidsg/hushline-website" in website_section
@@ -123,11 +130,13 @@ def test_screenshots_workflow_publishes_current_folder_to_website_directly() -> 
     assert 'CURRENT_ROOT="${ARTIFACT_DIR}/screenshots/release"' in website_section
     assert 'LEGACY_CURRENT_ROOT="${ARTIFACT_DIR}/screenshots/current"' in website_section
     assert '--branch "${WEBSITE_DEFAULT_BRANCH}"' in website_section
-    assert 'git sparse-checkout set "${WEBSITE_SCREENSHOT_ROOT}/current"' in website_section
+    assert 'git sparse-checkout set "${WEBSITE_SCREENSHOT_ROOT}/current"' not in website_section
+    assert '--current-root "$CURRENT_ROOT"' in website_section
+    assert '--filtered-root "$FILTERED_CURRENT_ROOT"' in website_section
     assert 'mkdir -p "${WEBSITE_SCREENSHOT_ROOT}/current"' in website_section
     assert (
-        'rsync -a --delete "${CURRENT_ROOT}/" "${WEBSITE_SCREENSHOT_ROOT}/current/"'
-        in website_section
+        'rsync -a --delete "${FILTERED_CURRENT_ROOT}/" '
+        '"${WEBSITE_SCREENSHOT_ROOT}/current/"' in website_section
     )
     assert 'git add "${WEBSITE_SCREENSHOT_ROOT}/current"' in website_section
     assert 'git push origin "HEAD:${WEBSITE_DEFAULT_BRANCH}"' in website_section

@@ -2,7 +2,8 @@
 
 This folder stores generated screenshot sets for docs.
 Captures are generated from local app state using scripted scenes.
-Manifests can list `captureFiles` to limit release captures to images currently embedded in docs and website surfaces.
+Release automation generates `captureFiles` from images referenced in docs and website surfaces before capture.
+Manifests can list `captureFiles`; an empty list captures no images, and an omitted field captures every matching scene target.
 Without `captureFiles`, each scene captures both light and dark mode by default.
 Without `captureFiles`, each scene captures above-the-fold, then viewport-by-viewport scroll windows, and full-page by default.
 Full-page capture is skipped when unsupported.

@@ -139,6 +139,43 @@ jobs:
           RELEASE_KEY="$RELEASE_KEY" python -c 'import os, re, sys; release_key = os.environ["RELEASE_KEY"].strip(); re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", release_key) or sys.exit(f"Unexpected docs screenshot release key: {release_key!r}")'
           echo "release_key=$RELEASE_KEY" >> "$GITHUB_OUTPUT"
 
+      - name: Resolve screenshot capture manifest
+        id: capture_manifest
+        if: steps.manifest.outputs.enabled == 'true'
+        env:
+          WEBSITE_REPOSITORY: scidsg/hushline-website
+          WEBSITE_DEFAULT_BRANCH: main
+          WEBSITE_READ_TOKEN: ${{ secrets.HUSHLINE_WEBSITE_SCREENSHOTS_PAT || secrets.SCREENSHOTS_PUSH_TOKEN }}
+        run: |
+          set -euo pipefail
+          WEBSITE_DIR="${RUNNER_TEMP}/hushline-website"
+          CAPTURE_MANIFEST="${RUNNER_TEMP}/docs-screenshot-capture-manifest.json"
+          CAPTURE_FILES="${RUNNER_TEMP}/docs-screenshot-capture-files.json"
+
+          CLONE_URL="https://github.com/${WEBSITE_REPOSITORY}.git"
+          if [ -n "${WEBSITE_READ_TOKEN:-}" ]; then
+            CLONE_URL="https://x-access-token:${WEBSITE_READ_TOKEN}@github.com/${WEBSITE_REPOSITORY}.git"
+          fi
+
+          git clone \
+            --depth 1 \
+            --filter=blob:none \
+            --single-branch \
+            --branch "${WEBSITE_DEFAULT_BRANCH}" \
+            "$CLONE_URL" \
+            "$WEBSITE_DIR"
+
+          python3 scripts/resolve-doc-screenshot-allowlist.py \
+            --hushline-dir "$GITHUB_WORKSPACE" \
+            --website-dir "$WEBSITE_DIR" \
+            --screenshot-root src/assets/img/screenshots \
+            --manifest-in docs/screenshots/scenes.json \
+            --manifest-out "$CAPTURE_MANIFEST" \
+            --output "$CAPTURE_FILES"
+
+          echo "path=$CAPTURE_MANIFEST" >> "$GITHUB_OUTPUT"
+          echo "capture_files=$CAPTURE_FILES" >> "$GITHUB_OUTPUT"
+
       - name: Capture screenshots
         if: steps.manifest.outputs.enabled == 'true'
         env:
@@ -149,7 +186,7 @@ jobs:
           node scripts/capture-doc-screenshots.mjs \
             --base-url "http://localhost:8080" \
             --release "${{ steps.vars.outputs.release_key }}" \
-            --manifest docs/screenshots/scenes.json
+            --manifest "${{ steps.capture_manifest.outputs.path }}"
 
       - name: Prepare publish artifact
         id: artifact
@@ -173,6 +210,7 @@ jobs:
           mkdir -p "${ARTIFACT_ROOT}/screenshots"
           cp -R "$RELEASE_ROOT" "${ARTIFACT_ROOT}/screenshots/release"
           cp "$ROOT_README" "${ARTIFACT_ROOT}/screenshots/README.md"
+          cp "${{ steps.capture_manifest.outputs.capture_files }}" "${ARTIFACT_ROOT}/capture_files.json"
           printf '%s\n' "$RELEASE_KEY" > "${ARTIFACT_ROOT}/release_key.txt"
           echo "artifact_root=$ARTIFACT_ROOT" >> "$GITHUB_OUTPUT"
 

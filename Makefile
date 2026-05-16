@@ -333,13 +333,28 @@ docs-screenshots: ## Capture docs screenshots into docs/screenshots/releases/<re
 	docker compose run --rm dev_data && \
 	npm install --no-save playwright@1.55.1 && \
 	npx playwright install chromium && \
+	SCREENSHOT_CAPTURE_MANIFEST="$$(mktemp)" && \
+	if [ -n "$${WEBSITE_DIR:-}" ]; then \
+		python3 scripts/resolve-doc-screenshot-allowlist.py \
+			--hushline-dir "$$(pwd)" \
+			--website-dir "$$WEBSITE_DIR" \
+			--screenshot-root src/assets/img/screenshots \
+			--manifest-in docs/screenshots/scenes.json \
+			--manifest-out "$$SCREENSHOT_CAPTURE_MANIFEST"; \
+	else \
+		python3 scripts/resolve-doc-screenshot-allowlist.py \
+			--hushline-dir "$$(pwd)" \
+			--screenshot-root src/assets/img/screenshots \
+			--manifest-in docs/screenshots/scenes.json \
+			--manifest-out "$$SCREENSHOT_CAPTURE_MANIFEST"; \
+	fi && \
 	SCREENSHOT_ADMIN_PASSWORD="$${SCREENSHOT_ADMIN_PASSWORD:-Test-testtesttesttest-1}" \
 	SCREENSHOT_ARTVANDELAY_PASSWORD="$${SCREENSHOT_ARTVANDELAY_PASSWORD:-Test-testtesttesttest-1}" \
 	SCREENSHOT_NEWMAN_PASSWORD="$${SCREENSHOT_NEWMAN_PASSWORD:-Test-testtesttesttest-1}" \
 	node scripts/capture-doc-screenshots.mjs \
 		--base-url "$(or $(BASE_URL),http://localhost:8080)" \
 		--release "$(or $(RELEASE),local)" \
-		--manifest docs/screenshots/scenes.json
+		--manifest "$$SCREENSHOT_CAPTURE_MANIFEST"
 
 .PHONY: docs-screenshots-first-user
 docs-screenshots-first-user: migrate-dev ## Capture first-user admin-creation screenshot (brand-new instance) into admin session dir
