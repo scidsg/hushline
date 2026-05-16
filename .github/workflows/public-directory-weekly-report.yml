@@ -49,6 +49,7 @@ jobs:
           mkdir -p /tmp/public-directory-report
           REPORT_DATE="$(date -u +%F)"
           REPORT_TIMESTAMP="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
+          echo "REPORT_TIMESTAMP=${REPORT_TIMESTAMP}" >> "$GITHUB_ENV"
 
           ARGS=(
             --current /tmp/public-directory-current.json
@@ -92,9 +93,16 @@ jobs:
       - name: Commit and open stats PR
         run: |
           set -euo pipefail
-          REPORT_TIMESTAMP="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
           export GH_TOKEN="${{ secrets.HUSHLINE_WEEKLY_REPORT }}"
           cd hushline-stats
+
+          git fetch origin "+refs/heads/${STATS_DEFAULT_BRANCH}:refs/remotes/origin/${STATS_DEFAULT_BRANCH}"
+          stats_branch_exists=false
+          if git ls-remote --exit-code --heads origin "${STATS_BRANCH}" >/dev/null; then
+            stats_branch_exists=true
+            git fetch origin "+refs/heads/${STATS_BRANCH}:refs/remotes/origin/${STATS_BRANCH}"
+          fi
+
           git checkout -B "${STATS_BRANCH}" "origin/${STATS_DEFAULT_BRANCH}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -104,7 +112,29 @@ jobs:
             exit 0
           fi
           git commit -m "Update public directory snapshot report for ${REPORT_TIMESTAMP}"
-          git push --force-with-lease origin "HEAD:${STATS_BRANCH}"
+
+          push_stats_branch() {
+            if [ "$stats_branch_exists" = "true" ] && \
+              git show-ref --verify --quiet "refs/remotes/origin/${STATS_BRANCH}"
+            then
+              git push \
+                --force-with-lease=refs/heads/"${STATS_BRANCH}" \
+                origin "HEAD:${STATS_BRANCH}"
+            else
+              git push origin "HEAD:${STATS_BRANCH}"
+            fi
+          }
+
+          if ! push_stats_branch; then
+            echo "Stats branch push failed; refreshing remote lease and retrying once."
+            if git ls-remote --exit-code --heads origin "${STATS_BRANCH}" >/dev/null; then
+              stats_branch_exists=true
+              git fetch origin "+refs/heads/${STATS_BRANCH}:refs/remotes/origin/${STATS_BRANCH}"
+            else
+              stats_branch_exists=false
+            fi
+            push_stats_branch
+          fi
 
           pr_title="Update public directory snapshot report for ${REPORT_TIMESTAMP}"
           stats_owner="${STATS_REPOSITORY%%/*}"
