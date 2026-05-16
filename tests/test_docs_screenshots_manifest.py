@@ -17,6 +17,51 @@ def _scene_map() -> dict[str, dict[str, Any]]:
     return {scene["slug"]: scene for scene in manifest["scenes"]}
 
 
+def _manifest() -> dict[str, Any]:
+    return json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+
+
+def test_docs_screenshots_manifest_captures_only_published_website_and_docs_images() -> None:
+    manifest = _manifest()
+
+    expected_capture_files = [
+        "admin/auth-admin-tools-email-validation-desktop-light-fold.png",
+        "admin/auth-admin-tools-email-validation-status-forged-desktop-light-fold.png",
+        "admin/auth-admin-tools-email-validation-status-inauthentic-desktop-light-fold.png",
+        "admin/auth-admin-tools-email-validation-status-valid-desktop-light-fold.png",
+        "admin/auth-admin-tools-vision-assistant-desktop-light-fold.png",
+        "artvandelay/auth-artvandelay-enable-2fa-desktop-light-fold.png",
+        "artvandelay/auth-artvandelay-inbox-desktop-light-fold.png",
+        "artvandelay/auth-artvandelay-settings-advanced-desktop-light-fold.png",
+        "artvandelay/auth-artvandelay-settings-auth-desktop-light-fold.png",
+        "artvandelay/auth-artvandelay-settings-notifications-desktop-light-fold.png",
+        "artvandelay/auth-artvandelay-settings-profile-desktop-light-fold.png",
+        "artvandelay/auth-artvandelay-settings-profile-desktop-light-window-02.png",
+        "artvandelay/auth-artvandelay-settings-replies-desktop-light-fold.png",
+        "artvandelay/auth-artvandelay-tools-email-validation-status-valid-desktop-light-fold.png",
+        "guest/guest-directory-verified-desktop-dark-fold.png",
+        "guest/guest-directory-verified-desktop-light-fold.png",
+        "guest/guest-message-status-desktop-light-fold.png",
+        "guest/guest-message-submitted-mobile-dark-fold.png",
+        "guest/guest-profile-admin-desktop-light-fold.png",
+        "guest/guest-profile-artvandelay-custom-form-desktop-light-fold.png",
+        "guest/guest-profile-artvandelay-desktop-light-fold.png",
+        "guest/guest-register-desktop-light-fold.png",
+        "newman/auth-newman-inbox-desktop-light-fold.png",
+        "newman/auth-newman-onboarding-directory-desktop-light-fold.png",
+        "newman/auth-newman-onboarding-encryption-desktop-light-fold.png",
+        "newman/auth-newman-onboarding-notifications-desktop-light-fold.png",
+        "newman/auth-newman-onboarding-profile-desktop-light-fold.png",
+        "newman/auth-newman-onboarding-profile-mobile-light-fold.png",
+        "newman/auth-newman-settings-encryption-desktop-light-fold.png",
+        "newman/auth-newman-settings-encryption-mobile-light-fold.png",
+        "newman/auth-newman-settings-profile-desktop-light-fold.png",
+    ]
+
+    assert manifest["captureFiles"] == expected_capture_files
+    assert len(manifest["captureFiles"]) == len(set(manifest["captureFiles"]))
+
+
 def test_docs_screenshots_manifest_covers_guest_directory_verified_subtabs() -> None:
     scenes = _scene_map()
 
@@ -102,6 +147,15 @@ def test_docs_screenshot_capture_suppresses_first_load_splash() -> None:
     assert 'await context.route("**/static/css/style.css*"' in script
     assert "#first-load-splash" in script
     assert ".first-load-splash" in script
+
+
+def test_docs_screenshot_capture_filters_to_manifest_capture_files() -> None:
+    script = CAPTURE_SCRIPT_PATH.read_text(encoding="utf-8")
+
+    assert "const captureFiles = normalizeCaptureFiles(manifest.captureFiles);" in script
+    assert "shouldVisitCaptureTarget(" in script
+    assert "shouldCaptureFile(captureFiles, relativeFile)" in script
+    assert "Required screenshot captures were not produced" in script
 
 
 def test_docs_screenshots_manifest_artvandelay_notifications_waits_for_third_recipient() -> None:

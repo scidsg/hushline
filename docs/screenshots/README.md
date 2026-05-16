@@ -2,8 +2,9 @@
 
 This folder stores generated screenshot sets for docs.
 Captures are generated from local app state using scripted scenes.
-Each scene captures both light and dark mode by default.
-Each scene captures above-the-fold, then viewport-by-viewport scroll windows, and full-page by default.
+Manifests can list `captureFiles` to limit release captures to images currently embedded in docs and website surfaces.
+Without `captureFiles`, each scene captures both light and dark mode by default.
+Without `captureFiles`, each scene captures above-the-fold, then viewport-by-viewport scroll windows, and full-page by default.
 Full-page capture is skipped when unsupported.
 Each release stores images by session under `releases/<version>/<session>/`.
 

@@ -332,6 +332,82 @@ function makeContextOptions(viewport, jsEnabled, colorScheme) {
   return opts;
 }
 
+function normalizeCaptureFiles(value) {
+  if (!Array.isArray(value) || value.length === 0) {
+    return new Set();
+  }
+
+  const files = new Set();
+  for (const file of value) {
+    if (
+      typeof file !== "string" ||
+      !file ||
+      file.startsWith("/") ||
+      file.includes("\\") ||
+      file.split("/").includes("..")
+    ) {
+      throw new Error(`Invalid captureFiles entry: ${JSON.stringify(file)}`);
+    }
+    files.add(file);
+  }
+  return files;
+}
+
+function shouldCaptureFile(captureFiles, file) {
+  return captureFiles.size === 0 || captureFiles.has(file);
+}
+
+function hasRequiredScrollWindow(
+  captureFiles,
+  sessionDir,
+  sceneSlug,
+  viewportId,
+  theme,
+) {
+  if (captureFiles.size === 0) return true;
+
+  const prefix = `${sessionDir}/${sanitizeSlug(sceneSlug)}-${sanitizeSlug(viewportId)}-${sanitizeSlug(theme)}-window-`;
+  for (const file of captureFiles) {
+    if (file.startsWith(prefix)) return true;
+  }
+  return false;
+}
+
+function shouldVisitCaptureTarget(
+  captureFiles,
+  scene,
+  sessionDir,
+  viewport,
+  theme,
+  captureModes,
+) {
+  if (captureFiles.size === 0) return true;
+
+  const baseName = `${sanitizeSlug(scene.slug)}-${sanitizeSlug(viewport.id)}-${sanitizeSlug(theme)}`;
+  if (
+    captureModes.includes("fold") &&
+    captureFiles.has(`${sessionDir}/${baseName}-fold.png`)
+  ) {
+    return true;
+  }
+  if (
+    captureModes.includes("full") &&
+    captureFiles.has(`${sessionDir}/${baseName}-full.png`)
+  ) {
+    return true;
+  }
+  return (
+    captureModes.includes("scroll") &&
+    hasRequiredScrollWindow(
+      captureFiles,
+      sessionDir,
+      scene.slug,
+      viewport.id,
+      theme,
+    )
+  );
+}
+
 async function main() {
   const baseUrl = getArg(
     "--base-url",
@@ -357,6 +433,7 @@ async function main() {
   );
   const sessions = manifest.sessions || {};
   const scenes = Array.isArray(manifest.scenes) ? manifest.scenes : [];
+  const captureFiles = normalizeCaptureFiles(manifest.captureFiles);
 
   if (!viewports.length)
     throw new Error("No viewports configured in screenshot manifest.");
@@ -425,6 +502,7 @@ async function main() {
     }
 
     const sessionId = scene.session || "guest";
+    const sessionDir = sanitizeSlug(sessionId || "guest");
     const targetViewportIds =
       scene.viewports && scene.viewports.length
         ? scene.viewports
@@ -434,6 +512,11 @@ async function main() {
       Array.isArray(scene.themes) && scene.themes.length
         ? scene.themes
         : themes;
+    const captureModes =
+      Array.isArray(scene.captureModes) && scene.captureModes.length
+        ? scene.captureModes
+        : ["fold", "scroll", "full"];
+
     for (const viewportId of targetViewportIds) {
       const viewport = viewports.find((v) => v.id === viewportId);
       if (!viewport) {
@@ -449,6 +532,19 @@ async function main() {
         }
 
         const jsEnabled = scene.javaScriptEnabled !== false;
+        if (
+          !shouldVisitCaptureTarget(
+            captureFiles,
+            scene,
+            sessionDir,
+            viewport,
+            theme,
+            captureModes,
+          )
+        ) {
+          continue;
+        }
+
         const ctx = await getContext(sessionId, viewport, theme, jsEnabled);
         const skipAuthentication = scene.skipAuthentication === true;
         if (!skipAuthentication) {
@@ -523,13 +619,8 @@ async function main() {
         }
 
         const files = [];
-        const sessionDir = sanitizeSlug(sessionId || "guest");
         const targetDir = path.join(outDir, sessionDir);
         await ensureDir(targetDir);
-        const captureModes =
-          Array.isArray(scene.captureModes) && scene.captureModes.length
-            ? scene.captureModes
-            : ["fold", "scroll", "full"];
         const orderedCaptureModes = [
           ...captureModes.filter((mode) => mode === "full"),
           ...captureModes.filter((mode) => mode !== "full"),
@@ -537,15 +628,30 @@ async function main() {
         for (const mode of orderedCaptureModes) {
           if (mode === "fold") {
             const fileName = `${sanitizeSlug(scene.slug)}-${sanitizeSlug(viewport.id)}-${sanitizeSlug(theme)}-fold.png`;
+            const relativeFile = `${sessionDir}/${fileName}`;
+            if (!shouldCaptureFile(captureFiles, relativeFile)) {
+              continue;
+            }
             await screenshotAtOffset(page, 0, path.join(targetDir, fileName));
             files.push({
               mode: "fold",
-              file: `${sessionDir}/${fileName}`,
+              file: relativeFile,
             });
             continue;
           }
 
           if (mode === "scroll") {
+            if (
+              !hasRequiredScrollWindow(
+                captureFiles,
+                sessionDir,
+                scene.slug,
+                viewport.id,
+                theme,
+              )
+            ) {
+              continue;
+            }
             const { scrollHeight, viewportHeight } =
               await getPageDimensions(page);
             const offsets = buildScrollOffsets(
@@ -555,6 +661,10 @@ async function main() {
             for (let i = 0; i < offsets.length; i += 1) {
               const modeName = `window-${String(i + 2).padStart(2, "0")}`;
               const fileName = `${sanitizeSlug(scene.slug)}-${sanitizeSlug(viewport.id)}-${sanitizeSlug(theme)}-${modeName}.png`;
+              const relativeFile = `${sessionDir}/${fileName}`;
+              if (!shouldCaptureFile(captureFiles, relativeFile)) {
+                continue;
+              }
               await screenshotAtOffset(
                 page,
                 offsets[i],
@@ -562,7 +672,7 @@ async function main() {
               );
               files.push({
                 mode: modeName,
-                file: `${sessionDir}/${fileName}`,
+                file: relativeFile,
               });
             }
             continue;
@@ -570,6 +680,10 @@ async function main() {
 
           if (mode === "full") {
             const fileName = `${sanitizeSlug(scene.slug)}-${sanitizeSlug(viewport.id)}-${sanitizeSlug(theme)}-full.png`;
+            const relativeFile = `${sessionDir}/${fileName}`;
+            if (!shouldCaptureFile(captureFiles, relativeFile)) {
+              continue;
+            }
             try {
               await scrollAllToTop(page);
               await sleep(120);
@@ -580,7 +694,7 @@ async function main() {
               });
               files.push({
                 mode: "full",
-                file: `${sessionDir}/${fileName}`,
+                file: relativeFile,
               });
             } catch (err) {
               const fullPageOptional = scene.fullPageOptional !== false;
@@ -602,15 +716,17 @@ async function main() {
 
         await page.close();
 
-        captured.push({
-          title: scene.title,
-          slug: scene.slug,
-          path: scene.path,
-          session: sessionId,
-          viewport: viewport.id,
-          theme,
-          files,
-        });
+        if (files.length > 0) {
+          captured.push({
+            title: scene.title,
+            slug: scene.slug,
+            path: scene.path,
+            session: sessionId,
+            viewport: viewport.id,
+            theme,
+            files,
+          });
+        }
       }
     }
   }
@@ -619,6 +735,18 @@ async function main() {
     await ctx.close();
   }
   await browser.close();
+
+  if (captureFiles.size > 0) {
+    const capturedFiles = new Set(
+      captured.flatMap((item) => item.files.map((entry) => entry.file)),
+    );
+    const missing = [...captureFiles].filter((file) => !capturedFiles.has(file));
+    if (missing.length > 0) {
+      throw new Error(
+        `Required screenshot captures were not produced: ${missing.join(", ")}`,
+      );
+    }
+  }
 
   const now = new Date().toISOString();
   await fs.writeFile(
@@ -675,8 +803,9 @@ async function main() {
     "",
     "This folder stores generated screenshot sets for docs.",
     "Captures are generated from local app state using scripted scenes.",
-    "Each scene captures both light and dark mode by default.",
-    "Each scene captures above-the-fold, then viewport-by-viewport scroll windows, and full-page by default.",
+    "Manifests can list `captureFiles` to limit release captures to images currently embedded in docs and website surfaces.",
+    "Without `captureFiles`, each scene captures both light and dark mode by default.",
+    "Without `captureFiles`, each scene captures above-the-fold, then viewport-by-viewport scroll windows, and full-page by default.",
     "Full-page capture is skipped when unsupported.",
     "Each release stores images by session under `releases/<version>/<session>/`.",
     "",
