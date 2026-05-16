@@ -36,6 +36,31 @@ def test_cross_repo_auto_merge_workflows_use_owner_qualified_pr_heads() -> None:
         assert workflow_text.count(head_filter) == expected_count
 
 
+def test_public_directory_weekly_report_refreshes_stats_branch_lease_before_push() -> None:
+    workflow_text = _workflow_text(".github/workflows/public-directory-weekly-report.yml")
+    build_section = workflow_text.split("      - name: Build weekly directory report", 1)[1].split(
+        "      - name: Publish workflow summary", 1
+    )[0]
+    publish_section = workflow_text.split("      - name: Commit and open stats PR", 1)[1]
+
+    assert 'echo "REPORT_TIMESTAMP=${REPORT_TIMESTAMP}" >> "$GITHUB_ENV"' in build_section
+    assert 'REPORT_TIMESTAMP="$(date -u +%Y-%m-%dT%H-%M-%SZ)"' not in publish_section
+    assert (
+        'git fetch origin "+refs/heads/${STATS_DEFAULT_BRANCH}:'
+        'refs/remotes/origin/${STATS_DEFAULT_BRANCH}"' in publish_section
+    )
+    assert "stats_branch_exists=false" in publish_section
+    assert 'git ls-remote --exit-code --heads origin "${STATS_BRANCH}"' in publish_section
+    assert (
+        'git fetch origin "+refs/heads/${STATS_BRANCH}:'
+        'refs/remotes/origin/${STATS_BRANCH}"' in publish_section
+    )
+    assert "push_stats_branch() {" in publish_section
+    assert '--force-with-lease=refs/heads/"${STATS_BRANCH}"' in publish_section
+    assert 'git push origin "HEAD:${STATS_BRANCH}"' in publish_section
+    assert "Stats branch push failed; refreshing remote lease and retrying once." in publish_section
+
+
 def test_screenshots_archive_workflow_publishes_directly_without_pr_flow() -> None:
     workflow_text = _workflow_text(".github/workflows/publish-docs-screenshots.yml")
     artifact_section = workflow_text.split("      - name: Download screenshot artifact", 1)[
