@@ -382,6 +382,7 @@ function shouldVisitCaptureTarget(
   captureModes,
 ) {
   if (captureFiles === null) return true;
+  if (scene.alwaysVisit === true) return true;
 
   const baseName = `${sanitizeSlug(scene.slug)}-${sanitizeSlug(viewport.id)}-${sanitizeSlug(theme)}`;
   if (
