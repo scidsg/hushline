@@ -56,7 +56,8 @@ jobs:
         if: steps.manifest.outputs.enabled == 'true'
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: ${{ github.workflow_sha }}
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
           path: .trusted-workflow
           fetch-depth: 1
           persist-credentials: false
