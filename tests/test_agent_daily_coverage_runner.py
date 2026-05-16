@@ -43,6 +43,22 @@ printf '%s %s\\n' "$CODEX_MODEL" "$CODEX_REASONING_EFFORT"
     assert result.stdout.strip() == "gpt-5.5 high"
 
 
+def test_runner_defaults_to_small_coverage_retry_budget() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+printf '%s %s %s %s\\n' \
+  "$MAX_COVERAGE_ATTEMPTS" \
+  "$MAX_FIX_ATTEMPTS" \
+  "$MAX_CODEX_FAILURES" \
+  "$MAX_NO_CHANGE_ATTEMPTS"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "2 3 2 1"
+
+
 def test_coverage_report_summary_text_sorts_and_compresses_ranges(tmp_path: Path) -> None:
     report_path = tmp_path / "coverage.json"
     report_path.write_text(
@@ -437,6 +453,63 @@ run_coverage_attempt_loop
     assert "Warning: Codex coverage attempt 1 failed" in result.stderr
     calls = call_log.read_text(encoding="utf-8").splitlines()
     assert calls == ["codex-1", "codex-2", "validate"]
+
+
+def test_coverage_attempt_loop_stops_after_consecutive_codex_failures(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+    check_log = tmp_path / "check.log"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CHECK_LOG_FILE={shlex.quote(str(check_log))}
+MAX_COVERAGE_ATTEMPTS=5
+MAX_CODEX_FAILURES=2
+MAX_NO_CHANGE_ATTEMPTS=1
+run_codex_from_prompt() {{
+  printf 'codex\\n' >> {shlex.quote(str(call_log))}
+  set +e
+  return 1
+}}
+run_coverage_attempt_loop
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 1
+    assert "stopping instead of repeating the same coverage prompt" in result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert calls == ["codex", "codex"]
+
+
+def test_coverage_attempt_loop_stops_after_no_change_attempt(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    check_log = tmp_path / "check.log"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CHECK_LOG_FILE={shlex.quote(str(check_log))}
+MAX_COVERAGE_ATTEMPTS=5
+MAX_CODEX_FAILURES=2
+MAX_NO_CHANGE_ATTEMPTS=1
+run_codex_from_prompt() {{
+  printf 'codex\\n' >> {shlex.quote(str(call_log))}
+  return 0
+}}
+has_non_log_changes() {{ return 1; }}
+emit_codex_no_change_diagnostic() {{
+  printf 'no-change-%s\\n' "$1" >> {shlex.quote(str(call_log))}
+}}
+run_coverage_attempt_loop
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 1
+    assert "stopping instead of repeating the same coverage prompt" in result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert calls == ["codex", "no-change-1"]
 
 
 def test_local_validation_applies_deterministic_fix_before_retrying_tests(tmp_path: Path) -> None:

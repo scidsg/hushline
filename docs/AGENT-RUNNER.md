@@ -324,7 +324,7 @@ Current operational state:
 8. Run a machine-readable coverage scan:
    - `docker compose run --rm app poetry run pytest --cov hushline --cov-report json:/app/.coverage-runner/coverage.json --cov-report term-missing -q --skip-local-only`
 9. Exit early when coverage already meets target (`100%` by default).
-10. Build a Codex prompt from the uncovered-line summary and run a bounded implementation loop.
+10. Build a Codex prompt from the uncovered-line summary and run a small bounded implementation loop. The runner stops early when Codex repeatedly fails or leaves no usable non-log changes, rather than repeating the same coverage prompt.
 11. After each Codex attempt, run:
 
 - `make lint`
@@ -356,8 +356,10 @@ If the host reuses the same SSH signing setup as the issue runner, no additional
 
 - `HUSHLINE_COVERAGE_BRANCH_NAME` (default `codex/daily-coverage`)
 - `HUSHLINE_COVERAGE_TARGET_PERCENT` (default `100`)
-- `HUSHLINE_COVERAGE_MAX_ATTEMPTS` (default `10`)
-- `HUSHLINE_COVERAGE_MAX_FIX_ATTEMPTS` (default `8`)
+- `HUSHLINE_COVERAGE_MAX_ATTEMPTS` (default `2`)
+- `HUSHLINE_COVERAGE_MAX_FIX_ATTEMPTS` (default `3`)
+- `HUSHLINE_COVERAGE_MAX_CODEX_FAILURES` (default `2`)
+- `HUSHLINE_COVERAGE_MAX_NO_CHANGE_ATTEMPTS` (default `1`)
 - `HUSHLINE_COVERAGE_SUMMARY_LIMIT` (default `15`)
 - `HUSHLINE_REPO_DIR` (default the repository checkout containing `scripts/agent_daily_coverage_runner.sh`)
 - `HUSHLINE_REPO_SLUG` (default `scidsg/hushline`)
