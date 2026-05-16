@@ -47,6 +47,11 @@ def test_screenshots_archive_workflow_publishes_directly_without_pr_flow() -> No
 
     assert "rm -f /tmp/docs-screenshots-artifact/artifact.zip" in artifact_section
     assert "SCREENSHOTS_DEFAULT_BRANCH: main" in archive_section
+    assert 'SCREENSHOT_ROOT="${ARTIFACT_DIR}/screenshots/release"' in archive_section
+    assert (
+        'LEGACY_RELEASE_ROOT="${ARTIFACT_DIR}/screenshots/releases/${RELEASE_KEY}"'
+        in archive_section
+    )
     assert "--depth 1" in archive_section
     assert "--filter=blob:none" in archive_section
     assert "--single-branch" in archive_section
@@ -75,15 +80,23 @@ def test_screenshots_workflow_publishes_current_folder_to_website_directly() -> 
     artifact_section = capture_workflow_text.split("      - name: Prepare publish artifact", 1)[
         1
     ].split("      - name: Upload screenshot artifacts", 1)[0]
+    checkout_section = capture_workflow_text.split(
+        "      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5", 1
+    )[1].split("      - name: Check screenshot manifest", 1)[0]
     website_section = publish_workflow_text.split(
         "      - name: Publish current screenshots to hushline-website", 1
     )[1]
 
-    assert 'cp -R "$LATEST_ROOT" "${ARTIFACT_ROOT}/screenshots/current"' in artifact_section
+    assert "fetch-depth: 1" in checkout_section
+    assert "fetch-depth: 0" not in checkout_section
+    assert 'cp -R "$RELEASE_ROOT" "${ARTIFACT_ROOT}/screenshots/release"' in artifact_section
+    assert '"${ARTIFACT_ROOT}/screenshots/current"' not in artifact_section
+    assert '"${ARTIFACT_ROOT}/screenshots/releases/latest"' not in artifact_section
     assert "WEBSITE_REPOSITORY: scidsg/hushline-website" in website_section
     assert "WEBSITE_DEFAULT_BRANCH: main" in website_section
     assert "WEBSITE_SCREENSHOT_ROOT: src/assets/img/screenshots" in website_section
-    assert 'CURRENT_ROOT="${ARTIFACT_DIR}/screenshots/current"' in website_section
+    assert 'CURRENT_ROOT="${ARTIFACT_DIR}/screenshots/release"' in website_section
+    assert 'LEGACY_CURRENT_ROOT="${ARTIFACT_DIR}/screenshots/current"' in website_section
     assert '--branch "${WEBSITE_DEFAULT_BRANCH}"' in website_section
     assert 'git sparse-checkout set "${WEBSITE_SCREENSHOT_ROOT}/current"' in website_section
     assert 'mkdir -p "${WEBSITE_SCREENSHOT_ROOT}/current"' in website_section
