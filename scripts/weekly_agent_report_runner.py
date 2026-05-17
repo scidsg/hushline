@@ -19,6 +19,9 @@ REPORT_FROM = "weekly-report@hushline.app"
 REPORT_TO = "glenn@hushline.app"
 DEFAULT_LOOKBACK_DAYS = 7
 LOG_FILES_ENV = "HUSHLINE_WEEKLY_AGENT_REPORT_LOG_FILES"
+REPORT_OUTPUT_DIR_ENV = "HUSHLINE_WEEKLY_AGENT_REPORT_OUTPUT_DIR"
+REPORT_RETENTION_ENV = "HUSHLINE_WEEKLY_AGENT_REPORT_RETENTION"
+DEFAULT_REPORT_RETENTION = 12
 LOCAL_TZ = ZoneInfo("America/Los_Angeles")
 UTC = timezone.utc
 LOG_TIMEZONES = {
@@ -105,6 +108,28 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--output",
         type=Path,
         help="Write the generated report body to this path.",
+    )
+    parser.add_argument(
+        "--report-output-dir",
+        type=Path,
+        help=(
+            "Directory for persisted weekly report bodies. Defaults to "
+            f"{REPORT_OUTPUT_DIR_ENV} or logs/weekly-agent-reports."
+        ),
+    )
+    parser.add_argument(
+        "--report-retention",
+        type=int,
+        default=int(os.environ.get(REPORT_RETENTION_ENV, DEFAULT_REPORT_RETENTION)),
+        help=(
+            "Number of persisted weekly report files to keep. Set to 0 to disable pruning. "
+            f"Default: {DEFAULT_REPORT_RETENTION}."
+        ),
+    )
+    parser.add_argument(
+        "--no-persist",
+        action="store_true",
+        help="Do not write the default persisted report artifact.",
     )
     return parser.parse_args(argv)
 
@@ -363,6 +388,29 @@ def write_output(path: Path, body: str) -> None:
     path.write_text(body, encoding="utf-8")
 
 
+def default_report_output_dir() -> Path:
+    env_value = os.environ.get(REPORT_OUTPUT_DIR_ENV)
+    if env_value:
+        return Path(env_value).expanduser()
+    return repo_root() / "logs" / "weekly-agent-reports"
+
+
+def persisted_report_path(output_dir: Path, until: datetime) -> Path:
+    return output_dir / f"weekly-agent-report-{until.strftime('%Y%m%dT%H%M%SZ')}.txt"
+
+
+def prune_persisted_reports(output_dir: Path, retention_count: int) -> None:
+    if retention_count <= 0 or not output_dir.exists():
+        return
+    reports = sorted(
+        output_dir.glob("weekly-agent-report-*.txt"),
+        key=lambda path: path.name,
+        reverse=True,
+    )
+    for report_path in reports[retention_count:]:
+        report_path.unlink(missing_ok=True)
+
+
 def send_with_mail_app(subject: str, body: str) -> None:
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".txt", delete=False) as temp:
         temp.write(body)
@@ -391,6 +439,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     if args.lookback_days < 1:
         raise RunnerError("--lookback-days must be at least 1")
+    if args.report_retention < 0:
+        raise RunnerError("--report-retention must be at least 0")
 
     until = datetime.now(UTC)
     since = until - timedelta(days=args.lookback_days)
@@ -401,11 +451,19 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.output:
         write_output(args.output, body)
+    persisted_path: Path | None = None
+    if not args.no_persist and not args.dry_run:
+        output_dir = (args.report_output_dir or default_report_output_dir()).expanduser().resolve()
+        persisted_path = persisted_report_path(output_dir, until)
+        write_output(persisted_path, body)
+        prune_persisted_reports(output_dir, args.report_retention)
     if args.dry_run:
         print(body, end="")
     else:
         send_with_mail_app(subject, body)
         print(f"Sent {REPORT_TITLE} from {REPORT_FROM} to {REPORT_TO}.")
+        if persisted_path is not None:
+            print(f"Persisted report: {persisted_path}")
     return 0
 
 

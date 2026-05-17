@@ -186,3 +186,95 @@ def test_send_with_mail_app_uses_native_mail_and_fixed_envelope(
     assert isinstance(script, str)
     assert 'tell application "Mail"' in script
     assert "make new to recipient" in script
+
+
+def test_main_persists_report_body_by_default(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runner = load_runner()
+    output_dir = tmp_path / "reports"
+    sent = []
+
+    def fake_send(subject: str, body: str) -> None:
+        sent.append((subject, body))
+
+    monkeypatch.setenv(runner.REPORT_OUTPUT_DIR_ENV, str(output_dir))
+    monkeypatch.setattr(runner, "send_with_mail_app", fake_send)
+
+    result = runner.main(["--log-file", str(tmp_path / "missing.log")])
+
+    reports = list(output_dir.glob("weekly-agent-report-*.txt"))
+    assert result == 0
+    assert len(reports) == 1
+    assert "Weekly Agent Report" in reports[0].read_text(encoding="utf-8")
+    assert len(sent) == 1
+
+
+def test_main_dry_run_does_not_write_default_persisted_report(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    runner = load_runner()
+    output_dir = tmp_path / "reports"
+    monkeypatch.setenv(runner.REPORT_OUTPUT_DIR_ENV, str(output_dir))
+
+    result = runner.main(["--dry-run", "--log-file", str(tmp_path / "missing.log")])
+
+    assert result == 0
+    assert "Weekly Agent Report" in capsys.readouterr().out
+    assert not output_dir.exists()
+
+
+def test_main_prunes_old_persisted_reports(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runner = load_runner()
+    output_dir = tmp_path / "reports"
+    output_dir.mkdir()
+    for index in range(3):
+        (output_dir / f"weekly-agent-report-2026050{index + 1}T000000Z.txt").write_text(
+            "old report\n",
+            encoding="utf-8",
+        )
+
+    monkeypatch.setenv(runner.REPORT_OUTPUT_DIR_ENV, str(output_dir))
+    monkeypatch.setattr(runner, "send_with_mail_app", lambda _subject, _body: None)
+
+    result = runner.main(
+        [
+            "--log-file",
+            str(tmp_path / "missing.log"),
+            "--report-retention",
+            "2",
+        ],
+    )
+
+    assert result == 0
+    reports = sorted(path.name for path in output_dir.glob("weekly-agent-report-*.txt"))
+    assert len(reports) == 2
+    assert "weekly-agent-report-20260501T000000Z.txt" not in reports
+
+
+def test_main_no_persist_skips_default_report_artifact(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runner = load_runner()
+    output_dir = tmp_path / "reports"
+
+    monkeypatch.setenv(runner.REPORT_OUTPUT_DIR_ENV, str(output_dir))
+    monkeypatch.setattr(runner, "send_with_mail_app", lambda _subject, _body: None)
+
+    result = runner.main(
+        [
+            "--log-file",
+            str(tmp_path / "missing.log"),
+            "--no-persist",
+        ],
+    )
+
+    assert result == 0
+    assert not output_dir.exists()

@@ -22,5 +22,6 @@ hushline/static/data/users_directory.json
 /.tmp/
 /playwright-report
 /test-results
+/logs/
 .DS_Store
 hushline/static/js/directory_verified.js
