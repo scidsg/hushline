@@ -149,6 +149,13 @@ def test_render_report_groups_completed_attention_and_noop_events(tmp_path: Path
     assert "Weekly Agent Report" in report
     assert "From: weekly-report@hushline.app" in report
     assert "To: glenn@hushline.app" in report
+    assert report.index("Executive Summary:") < report.index("Overview:")
+    assert "Local agent runners recorded 3 event(s)" in report
+    assert "Most recent completed work: Hush Line issue runner - Opened PR." in report
+    assert (
+        "Review needed: Hush Line social runner - Error: Post messaging overlaps too heavily."
+        in report
+    )
     assert "Completed work events: 1" in report
     assert (
         "[Hush Line issue runner] Opened PR: " "https://github.com/scidsg/hushline/pull/2001"
@@ -185,6 +192,8 @@ def test_send_with_mail_app_uses_native_mail_and_fixed_envelope(
     script = kwargs["input"]
     assert isinstance(script, str)
     assert 'tell application "Mail"' in script
+    assert "repeat with mailAccount in every account" in script
+    assert "whose email addresses contains" not in script
     assert "make new to recipient" in script
 
 
