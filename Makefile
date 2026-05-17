@@ -157,6 +157,10 @@ refresh-globaleaks-listings: ## Refresh GlobaLeaks instance artifact from public
 refresh-newsroom-listings: ## Refresh newsroom directory artifact from public source pages
 	$(CMD) poetry run python ./scripts/refresh_newsroom_directory_listings.py $(REFRESH_NEWSROOM_ARGS)
 
+.PHONY: weekly-agent-report
+weekly-agent-report: ## Send the weekly local agent runner report with Mail.app
+	./scripts/weekly_agent_report_runner.py
+
 .PHONY: audit-python
 audit-python: ## Run Python dependency audit (CI-equivalent)
 	$(CMD) bash -lc 'poetry self add poetry-plugin-export && poetry export -f requirements.txt --without-hashes -o /tmp/requirements.txt && python -m pip install --disable-pip-version-check pip-audit==2.10.0 && pip-audit -r /tmp/requirements.txt'
