@@ -70,6 +70,22 @@ def test_collect_events_from_hushline_runner_log(tmp_path: Path) -> None:
     assert events[0].detail == "https://github.com/scidsg/hushline/pull/2001"
 
 
+def test_parse_log_timestamp_uses_timezone_abbreviation_during_fallback() -> None:
+    runner = load_runner()
+
+    pdt_timestamp, pdt_message = runner.parse_log_timestamp(
+        "[2026-11-01 01:30:00 PDT] before fallback",
+    )
+    pst_timestamp, pst_message = runner.parse_log_timestamp(
+        "[2026-11-01 01:30:00 PST] after fallback",
+    )
+
+    assert pdt_message == "before fallback"
+    assert pst_message == "after fallback"
+    assert pdt_timestamp == datetime(2026, 11, 1, 8, 30, tzinfo=UTC)
+    assert pst_timestamp == datetime(2026, 11, 1, 9, 30, tzinfo=UTC)
+
+
 def test_collect_events_from_social_runner_log(tmp_path: Path) -> None:
     runner = load_runner()
     log_path = tmp_path / "social-daily.log"

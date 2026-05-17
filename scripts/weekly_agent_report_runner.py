@@ -21,6 +21,10 @@ DEFAULT_LOOKBACK_DAYS = 7
 LOG_FILES_ENV = "HUSHLINE_WEEKLY_AGENT_REPORT_LOG_FILES"
 LOCAL_TZ = ZoneInfo("America/Los_Angeles")
 UTC = timezone.utc
+LOG_TIMEZONES = {
+    "PDT": timezone(timedelta(hours=-7), "PDT"),
+    "PST": timezone(timedelta(hours=-8), "PST"),
+}
 MIN_PRINTABLE_CODEPOINT = 32
 MAX_COMPLETED_EVENTS = 40
 MAX_ATTENTION_EVENTS = 30
@@ -161,7 +165,9 @@ def parse_log_timestamp(line: str) -> tuple[datetime | None, str]:
     )
     if not match:
         return None, line
-    timestamp = datetime.strptime(match.group(1), "%Y-%m-%d %H:%M:%S").replace(tzinfo=LOCAL_TZ)
+    timestamp = datetime.strptime(match.group(1), "%Y-%m-%d %H:%M:%S").replace(
+        tzinfo=LOG_TIMEZONES[match.group(2)],
+    )
     return timestamp.astimezone(UTC), match.group(3)
 
 
