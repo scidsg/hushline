@@ -8,6 +8,7 @@ This document tracks the current state of the repo-managed agent automation used
 | ---------------------------------------- | ------------------------------ | ------------------------------------------------------- | -------------------------------- |
 | `scripts/agent_daily_issue_runner.sh`    | GitHub issue implementation    | Active, branch/PR automation in place                   | issue-specific branches and PRs  |
 | `scripts/agent_daily_coverage_runner.sh` | Coverage remediation           | Active, branch/PR automation in place                   | `codex/daily-coverage` style PRs |
+| `scripts/weekly_agent_report_runner.py`  | Weekly local agent reporting   | Active, local Mail.app delivery                         | email to `glenn@hushline.app`    |
 | `scripts/agent_issue_bootstrap.sh`       | Local runtime/bootstrap helper | Active, manual helper used by issue and local workflows | local Docker/bootstrap only      |
 
 The repository does not currently include runner scripts for the social or docs launch agents listed below. Those host jobs exist outside this repository and should be documented here only as installed host context, not as repo-managed automation.
@@ -232,11 +233,43 @@ This runner runs directly in the local repo and performs a narrow local gate bef
 - `make`
 - `node`
 - `lsof` (optional; used for port cleanup)
+- `osascript` and configured macOS Mail.app account `weekly-report@hushline.app` for the weekly agent report runner
 
 ## Manual Run
 
 ```bash
 ./scripts/agent_daily_issue_runner.sh
+```
+
+## Weekly Agent Report Runner
+
+Script: `scripts/weekly_agent_report_runner.py`
+
+This runner scans the local runner logs monitored on this machine and builds a plain-text `Weekly Agent Report`. It sends through the native macOS Mail app.
+
+Default log files:
+
+- `~/.codex/logs/hushline-agent-runner.log`
+- `~/tor-code-agent/logs/tor-agent.err.log`
+- `../hushline-social/logs/social-daily.log`
+
+Delivery is fixed in code:
+
+- From: `weekly-report@hushline.app`
+- To: `glenn@hushline.app`
+
+Additional log files can be supplied with repeated `--log-file` arguments or the colon-separated `HUSHLINE_WEEKLY_AGENT_REPORT_LOG_FILES` environment variable. The runner summarizes completed work, skipped/no-op checks, work/check activity, and attention items without embedding full log transcripts in email.
+
+Manual dry run:
+
+```bash
+./scripts/weekly_agent_report_runner.py --dry-run
+```
+
+Send report:
+
+```bash
+make weekly-agent-report
 ```
 
 Optional forced issue:
