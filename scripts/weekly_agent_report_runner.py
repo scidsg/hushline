@@ -41,8 +41,14 @@ on run argv
   set messageBody to read POSIX file bodyPath
 
   tell application "Mail"
-    set matchingAccounts to every account whose email addresses contains fromAddress
-    if (count of matchingAccounts) is 0 then
+    set matchingAccount to missing value
+    repeat with mailAccount in every account
+      if (email addresses of mailAccount) contains fromAddress then
+        set matchingAccount to mailAccount
+        exit repeat
+      end if
+    end repeat
+    if matchingAccount is missing value then
       error "Mail account not found for " & fromAddress
     end if
 
@@ -305,6 +311,47 @@ def summarize_repeated(events: list[AgentEvent]) -> list[str]:
     return lines
 
 
+def render_executive_summary(
+    completed: list[AgentEvent],
+    work: list[AgentEvent],
+    skipped: list[AgentEvent],
+    attention: list[AgentEvent],
+    warnings: list[str],
+) -> list[str]:
+    total_events = len(completed) + len(work) + len(skipped) + len(attention)
+    if total_events == 0 and not warnings:
+        return [
+            "- No local runner activity or log warnings were detected in this reporting window."
+        ]
+
+    lines = [
+        (
+            "- Local agent runners recorded "
+            f"{total_events} event(s), including {len(completed)} completed work item(s), "
+            f"{len(work)} work/check item(s), {len(skipped)} no-op item(s), and "
+            f"{len(attention)} attention item(s)."
+        ),
+    ]
+    if completed:
+        latest_completed = completed[0]
+        lines.append(
+            "- Most recent completed work: "
+            f"{latest_completed.source} - {latest_completed.summary}."
+        )
+    else:
+        lines.append("- No completed runner work was detected in this window.")
+
+    if attention:
+        latest_attention = attention[0]
+        lines.append("- Review needed: " f"{latest_attention.source} - {latest_attention.summary}.")
+    else:
+        lines.append("- No attention items were detected.")
+
+    if warnings:
+        lines.append(f"- {len(warnings)} log source warning(s) should be checked below.")
+    return lines
+
+
 def render_report(
     events: list[AgentEvent],
     warnings: list[str],
@@ -327,6 +374,9 @@ def render_report(
         f"Window: {since.strftime('%Y-%m-%d %H:%M UTC')} to {until.strftime('%Y-%m-%d %H:%M UTC')}",
         f"From: {REPORT_FROM}",
         f"To: {REPORT_TO}",
+        "",
+        "Executive Summary:",
+        *render_executive_summary(completed, work, skipped, attention, warnings),
         "",
         "Overview:",
         f"- Log files configured: {len(sources)}",
