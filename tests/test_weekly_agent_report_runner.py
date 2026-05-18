@@ -9,12 +9,15 @@ from types import ModuleType
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-RUNNER_PATH = ROOT / "scripts" / "weekly_agent_report_runner.py"
+RUNNER_PATH = ROOT / "scripts" / "weekly_hushline_code_agent_report_runner.py"
 UTC = timezone.utc
 
 
 def load_runner() -> ModuleType:
-    spec = importlib.util.spec_from_file_location("weekly_agent_report_runner", RUNNER_PATH)
+    spec = importlib.util.spec_from_file_location(
+        "weekly_hushline_code_agent_report_runner",
+        RUNNER_PATH,
+    )
     assert spec is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
@@ -36,14 +39,14 @@ def test_default_sources_match_monitored_logs() -> None:
 
     paths = [source.path for source in runner.default_log_sources()]
 
-    assert Path.home() / ".codex/logs/hushline-agent-runner.log" in paths
+    assert Path.home() / ".codex/logs/hushline-code-agent.log" in paths
     assert Path.home() / "tor-code-agent/logs/tor-agent.err.log" in paths
     assert (ROOT / "../hushline-social/logs/social-daily.log") in paths
 
 
 def test_collect_events_from_hushline_runner_log(tmp_path: Path) -> None:
     runner = load_runner()
-    log_path = tmp_path / "hushline-agent-runner.log"
+    log_path = tmp_path / "hushline-code-agent.log"
     log_path.write_text(
         "\n".join(
             [
@@ -130,6 +133,13 @@ def test_render_report_groups_completed_attention_and_noop_events(tmp_path: Path
             detail="https://github.com/scidsg/hushline/pull/2001",
         ),
         runner.AgentEvent(
+            timestamp=datetime(2026, 5, 16, 10, 0, tzinfo=UTC),
+            source="Hush Line social runner",
+            category="completed",
+            summary="Published LinkedIn post",
+            detail="Published LinkedIn post for friday",
+        ),
+        runner.AgentEvent(
             timestamp=datetime(2026, 5, 16, 11, 0, tzinfo=UTC),
             source="Tor code agent",
             category="skipped",
@@ -150,15 +160,23 @@ def test_render_report_groups_completed_attention_and_noop_events(tmp_path: Path
     assert "From: weekly-report@hushline.app" in report
     assert "To: glenn@hushline.app" in report
     assert report.index("Executive Summary:") < report.index("Overview:")
-    assert "Local agent runners recorded 3 event(s)" in report
-    assert "Most recent completed work: Hush Line issue runner - Opened PR." in report
+    executive_summary = report.split("Executive Summary:", 1)[1].split("Overview:", 1)[0]
+    assert "\n-" not in executive_summary
+    assert "The monitored local runners recorded 4 notable events" in executive_summary
+    assert "the social runner published LinkedIn posts for friday" in executive_summary
     assert (
-        "Review needed: Hush Line social runner - Error: Post messaging overlaps too heavily."
-        in report
-    )
-    assert "Completed work events: 1" in report
+        "PR activity included opened PR #2001 " "(https://github.com/scidsg/hushline/pull/2001)"
+    ) in executive_summary
+    assert (
+        "Review is needed for Hush Line social runner - "
+        "Error: Post messaging overlaps too heavily"
+    ) in executive_summary
+    assert "Completed work events: 2" in report
     assert (
         "[Hush Line issue runner] Opened PR: " "https://github.com/scidsg/hushline/pull/2001"
+    ) in report
+    assert (
+        "[Hush Line social runner] Published LinkedIn post: " "Published LinkedIn post for friday"
     ) in report
     assert "Needs Attention:" in report
     assert "No-op Summary:" in report

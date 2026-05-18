@@ -171,7 +171,7 @@ def default_log_sources() -> list[LogSource]:
     return [
         LogSource(
             "Hush Line issue runner",
-            Path.home() / ".codex/logs/hushline-agent-runner.log",
+            Path.home() / ".codex/logs/hushline-code-agent.log",
         ),
         LogSource("Tor code agent", Path.home() / "tor-code-agent/logs/tor-agent.err.log"),
         LogSource("Hush Line social runner", (root / "../hushline-social/logs/social-daily.log")),
@@ -317,6 +317,81 @@ def summarize_repeated(events: list[AgentEvent]) -> list[str]:
     return lines
 
 
+def pluralize(count: int, singular: str, plural: str | None = None) -> str:
+    label = singular if count == 1 else (plural or f"{singular}s")
+    return f"{count} {label}"
+
+
+def unique_in_order(items: list[str]) -> list[str]:
+    unique_items = []
+    seen: set[str] = set()
+    for item in items:
+        if item in seen:
+            continue
+        seen.add(item)
+        unique_items.append(item)
+    return unique_items
+
+
+PAIR_LENGTH = 2
+
+
+def human_join(items: list[str], limit: int = 4, overflow_label: str = "more") -> str:
+    visible_items = items[:limit]
+    remaining = len(items) - len(visible_items)
+    if remaining > 0:
+        visible_items.append(f"{remaining} {overflow_label}")
+    if not visible_items:
+        return ""
+    if len(visible_items) == 1:
+        return visible_items[0]
+    if len(visible_items) == PAIR_LENGTH:
+        return " and ".join(visible_items)
+    return ", ".join(visible_items[:-1]) + f", and {visible_items[-1]}"
+
+
+def sentence(text: str) -> str:
+    text = text.strip()
+    if not text:
+        return ""
+    return text if text.endswith((".", "!", "?")) else f"{text}."
+
+
+def event_description(event: AgentEvent) -> str:
+    summary = event.summary.rstrip(".")
+    detail = f": {event.detail.rstrip('.')}" if event.detail else ""
+    return f"{event.source} - {summary}{detail}"
+
+
+def pr_descriptions(events: list[AgentEvent]) -> list[str]:
+    actions = {
+        "Opened PR": "opened",
+        "Updated PR": "updated",
+        "Referenced pull request": "referenced",
+    }
+    descriptions = []
+    for event in events:
+        action = actions.get(event.summary)
+        if action is None:
+            continue
+        pr_number = ""
+        match = re.search(r"/pull/(\d+)", event.detail)
+        if match:
+            pr_number = f" #{match.group(1)}"
+        descriptions.append(f"{action} PR{pr_number} ({event.detail})")
+    return descriptions
+
+
+def linkedin_post_labels(events: list[AgentEvent]) -> list[str]:
+    labels = []
+    for event in events:
+        if event.summary != "Published LinkedIn post":
+            continue
+        match = re.search(r"Published LinkedIn post for (.+)$", event.detail)
+        labels.append(match.group(1) if match else event.detail)
+    return labels
+
+
 def render_executive_summary(
     completed: list[AgentEvent],
     work: list[AgentEvent],
@@ -326,36 +401,59 @@ def render_executive_summary(
 ) -> list[str]:
     total_events = len(completed) + len(work) + len(skipped) + len(attention)
     if total_events == 0 and not warnings:
-        return [
-            "- No local runner activity or log warnings were detected in this reporting window."
-        ]
+        return ["No local runner activity or log warnings were detected in this reporting window."]
 
-    lines = [
+    paragraphs = [
         (
-            "- Local agent runners recorded "
-            f"{total_events} event(s), including {len(completed)} completed work item(s), "
-            f"{len(work)} work/check item(s), {len(skipped)} no-op item(s), and "
-            f"{len(attention)} attention item(s)."
+            "The monitored local runners recorded "
+            f"{pluralize(total_events, 'notable event')}: "
+            f"{pluralize(len(completed), 'completed work item')}, "
+            f"{pluralize(len(work), 'work/check item')}, "
+            f"{pluralize(len(skipped), 'no-op item')}, and "
+            f"{pluralize(len(attention), 'attention item')}."
         ),
     ]
+
     if completed:
         latest_completed = completed[0]
-        lines.append(
-            "- Most recent completed work: "
-            f"{latest_completed.source} - {latest_completed.summary}."
+        completed_parts = []
+        linkedin_labels = linkedin_post_labels(completed)
+        if linkedin_labels:
+            completed_parts.append(
+                "the social runner published LinkedIn posts for "
+                f"{human_join(unique_in_order(linkedin_labels), overflow_label='more posts')}"
+            )
+        prs = pr_descriptions(completed)
+        if prs:
+            completed_parts.append(f"PR activity included {human_join(prs, limit=3)}")
+        else:
+            completed_parts.append("no pull requests were opened or updated")
+        completed_parts.append(
+            "the most recent completed item was " f"{event_description(latest_completed)}"
         )
+        paragraphs.append(sentence("Completed work: " + "; ".join(completed_parts)))
     else:
-        lines.append("- No completed runner work was detected in this window.")
+        paragraphs.append("No completed runner work was detected in this window.")
 
     if attention:
-        latest_attention = attention[0]
-        lines.append("- Review needed: " f"{latest_attention.source} - {latest_attention.summary}.")
+        attention_items = unique_in_order([event_description(event) for event in attention])
+        paragraphs.append(
+            sentence(
+                "Review is needed for "
+                f"{human_join(attention_items, limit=3, overflow_label='more items')}"
+            )
+        )
     else:
-        lines.append("- No attention items were detected.")
+        paragraphs.append("No attention items were detected.")
 
     if warnings:
-        lines.append(f"- {len(warnings)} log source warning(s) should be checked below.")
-    return lines
+        paragraphs.append(
+            sentence(
+                f"There {'was' if len(warnings) == 1 else 'were'} "
+                f"{pluralize(len(warnings), 'log source warning')} to check below"
+            )
+        )
+    return paragraphs
 
 
 def render_report(

@@ -4,12 +4,12 @@ This document tracks the current state of the repo-managed agent automation used
 
 ## Repo-Managed Agent State
 
-| Script                                   | Role                           | Current State                                                | PR / Output Surface                                               |
-| ---------------------------------------- | ------------------------------ | ------------------------------------------------------------ | ----------------------------------------------------------------- |
-| `scripts/agent_daily_issue_runner.sh`    | GitHub issue implementation    | Active, branch/PR automation in place                        | issue-specific branches and PRs                                   |
-| `scripts/agent_daily_coverage_runner.sh` | Coverage remediation           | Active, branch/PR automation in place                        | `codex/daily-coverage` style PRs                                  |
-| `scripts/weekly_agent_report_runner.py`  | Weekly local agent reporting   | Active, local Mail.app delivery and local report persistence | email to `glenn@hushline.app`; local `logs/weekly-agent-reports/` |
-| `scripts/agent_issue_bootstrap.sh`       | Local runtime/bootstrap helper | Active, manual helper used by issue and local workflows      | local Docker/bootstrap only                                       |
+| Script                                                | Role                           | Current State                                                | PR / Output Surface                                               |
+| ----------------------------------------------------- | ------------------------------ | ------------------------------------------------------------ | ----------------------------------------------------------------- |
+| `scripts/agent_daily_issue_runner.sh`                 | GitHub issue implementation    | Active, branch/PR automation in place                        | issue-specific branches and PRs                                   |
+| `scripts/agent_daily_coverage_runner.sh`              | Coverage remediation           | Active, branch/PR automation in place                        | `codex/daily-coverage` style PRs                                  |
+| `scripts/weekly_hushline_code_agent_report_runner.py` | Weekly local agent reporting   | Active, local Mail.app delivery and local report persistence | email to `glenn@hushline.app`; local `logs/weekly-agent-reports/` |
+| `scripts/agent_issue_bootstrap.sh`                    | Local runtime/bootstrap helper | Active, manual helper used by issue and local workflows      | local Docker/bootstrap only                                       |
 
 The repository does not currently include runner scripts for the social or docs launch agents listed below. Those host jobs exist outside this repository and should be documented here only as installed host context, not as repo-managed automation.
 
@@ -17,7 +17,7 @@ The repository does not currently include runner scripts for the social or docs 
 
 | Label                                             | Scope                                | Schedule                        | Source                                                  |
 | ------------------------------------------------- | ------------------------------------ | ------------------------------- | ------------------------------------------------------- |
-| org.scidsg.hushline-agent-runner                  | Hush Line issue runner               | Every hour (StartInterval=3600) | org.scidsg.hushline-agent-runner.plist                  |
+| org.scidsg.hushline-code-agent                    | Hush Line issue runner               | Every hour (StartInterval=3600) | org.scidsg.hushline-code-agent.plist                    |
 | com.hushline.coverage.daily                       | Hush Line coverage runner            | Daily at 10:00 AM               | com.hushline.coverage.daily.plist                       |
 | com.hushline.social.daily-planner                 | Social planner                       | Mon-Fri at 6:00 AM              | com.hushline.social.daily-planner.plist                 |
 | com.hushline.social.linkedin.daily                | Social LinkedIn daily                | Mon-Fri at 6:10 AM              | com.hushline.social.linkedin.daily.plist                |
@@ -244,13 +244,13 @@ This runner runs directly in the local repo and performs a narrow local gate bef
 
 ## Weekly Agent Report Runner
 
-Script: `scripts/weekly_agent_report_runner.py`
+Script: `scripts/weekly_hushline_code_agent_report_runner.py`
 
 This runner scans the local runner logs monitored on this machine and builds a plain-text `Weekly Agent Report`. It persists a timestamped local copy before sending through the native macOS Mail app. Mail.app delivery uses a bounded AppleScript timeout and sends asynchronously once the message is handed to Mail, so slow Mail.app network delivery does not fail the LaunchAgent run after the local report has already been written.
 
 Default log files:
 
-- `~/.codex/logs/hushline-agent-runner.log`
+- `~/.codex/logs/hushline-code-agent.log`
 - `~/tor-code-agent/logs/tor-agent.err.log`
 - `../hushline-social/logs/social-daily.log`
 
@@ -278,7 +278,7 @@ launchctl print gui/$(id -u)/com.hushline.weekly-agent-report
 Manual dry run:
 
 ```bash
-./scripts/weekly_agent_report_runner.py --dry-run
+./scripts/weekly_hushline_code_agent_report_runner.py --dry-run
 ```
 
 Send report:

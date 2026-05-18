@@ -159,7 +159,7 @@ refresh-newsroom-listings: ## Refresh newsroom directory artifact from public so
 
 .PHONY: weekly-agent-report
 weekly-agent-report: ## Send the weekly local agent runner report with Mail.app
-	./scripts/weekly_agent_report_runner.py
+	./scripts/weekly_hushline_code_agent_report_runner.py
 
 .PHONY: audit-python
 audit-python: ## Run Python dependency audit (CI-equivalent)
