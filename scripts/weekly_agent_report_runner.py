@@ -31,6 +31,8 @@ LOG_TIMEZONES = {
 MIN_PRINTABLE_CODEPOINT = 32
 MAX_COMPLETED_EVENTS = 40
 MAX_ATTENTION_EVENTS = 30
+MAIL_APP_APPLESCRIPT_TIMEOUT_SECONDS = 300
+MAIL_APP_OSASCRIPT_TIMEOUT_SECONDS = MAIL_APP_APPLESCRIPT_TIMEOUT_SECONDS + 30
 
 MAIL_APP_APPLESCRIPT = r"""
 on run argv
@@ -40,28 +42,32 @@ on run argv
   set bodyPath to item 4 of argv
   set messageBody to read POSIX file bodyPath
 
-  tell application "Mail"
-    set matchingAccount to missing value
-    repeat with mailAccount in every account
-      if (email addresses of mailAccount) contains fromAddress then
-        set matchingAccount to mailAccount
-        exit repeat
+  with timeout of 300 seconds
+    tell application "Mail"
+      set matchingAccount to missing value
+      repeat with mailAccount in every account
+        if (email addresses of mailAccount) contains fromAddress then
+          set matchingAccount to mailAccount
+          exit repeat
+        end if
+      end repeat
+      if matchingAccount is missing value then
+        error "Mail account not found for " & fromAddress
       end if
-    end repeat
-    if matchingAccount is missing value then
-      error "Mail account not found for " & fromAddress
-    end if
 
-    set reportMessage to make new outgoing message
-    set subject of reportMessage to messageSubject
-    set content of reportMessage to messageBody
-    set visible of reportMessage to false
-    tell reportMessage
-      set sender to fromAddress
-      make new to recipient at end of to recipients with properties {address:toAddress}
-      send
+      set reportMessage to make new outgoing message
+      set subject of reportMessage to messageSubject
+      set content of reportMessage to messageBody
+      set visible of reportMessage to false
+      tell reportMessage
+        set sender to fromAddress
+        make new to recipient at end of to recipients with properties {address:toAddress}
+        ignoring application responses
+          send
+        end ignoring
+      end tell
     end tell
-  end tell
+  end timeout
 end run
 """
 
@@ -467,13 +473,19 @@ def send_with_mail_app(subject: str, body: str) -> None:
         body_path = temp.name
     try:
         command = ["/usr/bin/osascript", "-", REPORT_FROM, REPORT_TO, subject, body_path]
-        result = subprocess.run(
-            command,  # noqa: S603 - fixed executable; message data is passed by args/file.
-            input=MAIL_APP_APPLESCRIPT,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        try:
+            result = subprocess.run(
+                command,  # noqa: S603 - fixed executable; message data is passed by args/file.
+                input=MAIL_APP_APPLESCRIPT,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=MAIL_APP_OSASCRIPT_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise RunnerError(
+                f"Mail.app send timed out after {MAIL_APP_OSASCRIPT_TIMEOUT_SECONDS} seconds",
+            ) from exc
     finally:
         Path(body_path).unlink(missing_ok=True)
     if result.returncode != 0:

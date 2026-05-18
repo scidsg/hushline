@@ -192,9 +192,34 @@ def test_send_with_mail_app_uses_native_mail_and_fixed_envelope(
     script = kwargs["input"]
     assert isinstance(script, str)
     assert 'tell application "Mail"' in script
+    assert "with timeout of 300 seconds" in script
+    assert "ignoring application responses" in script
     assert "repeat with mailAccount in every account" in script
     assert "whose email addresses contains" not in script
     assert "make new to recipient" in script
+    assert kwargs["timeout"] == runner.MAIL_APP_OSASCRIPT_TIMEOUT_SECONDS
+
+
+def test_send_with_mail_app_reports_osascript_timeout_and_cleans_tempfile(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runner = load_runner()
+    body_paths = []
+
+    def fake_run(command: list[str], **kwargs: object) -> object:
+        body_paths.append(Path(command[5]))
+        raise runner.subprocess.TimeoutExpired(
+            command,
+            timeout=runner.MAIL_APP_OSASCRIPT_TIMEOUT_SECONDS,
+        )
+
+    monkeypatch.setattr(runner.subprocess, "run", fake_run)
+
+    with pytest.raises(runner.RunnerError, match="Mail.app send timed out"):
+        runner.send_with_mail_app("Subject", "Body")
+
+    assert len(body_paths) == 1
+    assert not body_paths[0].exists()
 
 
 def test_main_persists_report_body_by_default(
