@@ -33,6 +33,7 @@ MAX_COMPLETED_EVENTS = 40
 MAX_ATTENTION_EVENTS = 30
 MAIL_APP_APPLESCRIPT_TIMEOUT_SECONDS = 300
 MAIL_APP_OSASCRIPT_TIMEOUT_SECONDS = MAIL_APP_APPLESCRIPT_TIMEOUT_SECONDS + 30
+MAIL_APP_APPLE_EVENT_TIMEOUT_CODE = "-1712"
 
 MAIL_APP_APPLESCRIPT = r"""
 on run argv
@@ -588,7 +589,23 @@ def send_with_mail_app(subject: str, body: str) -> None:
         Path(body_path).unlink(missing_ok=True)
     if result.returncode != 0:
         detail = result.stderr.strip() or result.stdout.strip() or "no Mail.app output"
+        if is_mail_app_apple_event_timeout(detail):
+            print(
+                "Warning: Mail.app reported an AppleEvent timeout after the send handoff; "
+                "the persisted report is available if delivery needs manual confirmation.",
+                file=sys.stderr,
+            )
+            return
         raise RunnerError(f"Mail.app send failed: {detail}")
+
+
+def is_mail_app_apple_event_timeout(detail: str) -> bool:
+    normalized_detail = detail.lower()
+    return (
+        MAIL_APP_APPLE_EVENT_TIMEOUT_CODE in detail
+        and "appleevent timed out" in normalized_detail
+        and "mail got an error" in normalized_detail
+    )
 
 
 def build_subject(since: datetime, until: datetime) -> str:

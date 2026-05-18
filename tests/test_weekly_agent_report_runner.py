@@ -240,6 +240,31 @@ def test_send_with_mail_app_reports_osascript_timeout_and_cleans_tempfile(
     assert not body_paths[0].exists()
 
 
+def test_send_with_mail_app_treats_mail_apple_event_timeout_as_handoff_warning(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    runner = load_runner()
+    body_paths = []
+
+    class Result:
+        returncode = 1
+        stdout = ""
+        stderr = "273:472: execution error: Mail got an error: " "AppleEvent timed out. (-1712)"
+
+    def fake_run(command: list[str], **kwargs: object) -> Result:
+        body_paths.append(Path(command[5]))
+        return Result()
+
+    monkeypatch.setattr(runner.subprocess, "run", fake_run)
+
+    runner.send_with_mail_app("Subject", "Body")
+
+    assert "AppleEvent timeout after the send handoff" in capsys.readouterr().err
+    assert len(body_paths) == 1
+    assert not body_paths[0].exists()
+
+
 def test_main_persists_report_body_by_default(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
