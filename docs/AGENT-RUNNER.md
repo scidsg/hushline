@@ -21,7 +21,7 @@ The repository does not currently include runner scripts for the social or docs 
 | com.hushline.coverage.daily                       | Hush Line coverage runner            | Daily at 10:00 AM               | com.hushline.coverage.daily.plist                       |
 | com.hushline.social.daily-planner                 | Social planner                       | Mon-Fri at 6:00 AM              | com.hushline.social.daily-planner.plist                 |
 | com.hushline.social.linkedin.daily                | Social LinkedIn daily                | Mon-Fri at 6:10 AM              | com.hushline.social.linkedin.daily.plist                |
-| com.hushline.weekly-agent-report                  | Weekly local agent report            | Sunday at 9:00 PM               | com.hushline.weekly-agent-report.plist                  |
+| com.hushline.weekly-agent-report                  | Weekly local agent report            | Sunday at 10:30 PM              | com.hushline.weekly-agent-report.plist                  |
 | com.hushline.social.verified-user.weekly          | Social verified-user weekly          | Monday at 12:00 PM              | com.hushline.social.verified-user.weekly.plist          |
 | com.hushline.social.linkedin.verified-user.weekly | Social verified-user LinkedIn weekly | Monday at 12:10 PM              | com.hushline.social.linkedin.verified-user.weekly.plist |
 | com.hushline.docs.weekly-article                  | Docs weekly article                  | Wednesday at 10:00 AM           | com.hushline.docs.weekly-article.plist                  |
