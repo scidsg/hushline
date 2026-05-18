@@ -1343,7 +1343,7 @@ def test_persisted_runner_log_redacts_developer_metadata(tmp_path: Path) -> None
                 "Runner Codex config: model=gpt-5.5 reasoning_effort=high verbose_codex_output=0",
                 "Configured git identity: hushline-dev <git-dev@scidsg.org>",
                 "Run log file: /Users/scidsg/hushline/docs/agent-logs/run.log",
-                "Global log file: /Users/scidsg/.codex/logs/hushline-agent-runner.log",
+                "Global log file: /Users/scidsg/.codex/logs/hushline-code-agent.log",
                 "workdir: /Users/scidsg/hushline",
                 "model: gpt-5.5",
                 "provider: openai",
