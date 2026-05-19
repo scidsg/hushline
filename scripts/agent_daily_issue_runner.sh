@@ -73,6 +73,10 @@ RUN_LOG_GIT_PATH=""
 RUN_LOG_RETENTION_COUNT="${HUSHLINE_DAILY_RUN_LOG_RETENTION:-10}"
 VERBOSE_CODEX_OUTPUT="${HUSHLINE_DAILY_VERBOSE_CODEX_OUTPUT:-0}"
 AUDIT_STATUS="ok"
+CLEANUP_REPO_ON_EXIT=0
+PRESERVE_WORKTREE_ON_EXIT=0
+RUNNER_LOCK_DIR="${HUSHLINE_DAILY_RUNNER_LOCK_DIR:-${TMPDIR:-/tmp}/hushline-code-agent.lock}"
+RUNNER_LOCK_HELD=0
 AUDIT_NOTE=""
 NODE_FULL_AUDIT_REQUIRED=0
 MIGRATION_SMOKE_REQUIRED=0
@@ -127,9 +131,14 @@ initialize_run_state() {
 cleanup() {
   rm -f "${CHECK_LOG_FILE:-}" "${PROMPT_FILE:-}" "${PR_BODY_FILE:-}" "${CODEX_OUTPUT_FILE:-}" "${CODEX_TRANSCRIPT_FILE:-}" "${RUN_LOG_TMP_FILE:-}"
   rm -f "${HUSHLINE_DAILY_RUNNER_SNAPSHOT_PATH:-}"
-  if [[ -d "$REPO_DIR/.git" ]]; then
+  release_runner_lock
+  if [[ -d "$REPO_DIR/.git" && "$CLEANUP_REPO_ON_EXIT" == "1" ]]; then
     if [[ "${PR_FEEDBACK_MONITOR_ACTIVE:-0}" == "1" && "${PR_FEEDBACK_MONITOR_CLOSED:-0}" != "1" ]]; then
       echo "Leaving branch ${PR_FEEDBACK_MONITOR_BRANCH:-current branch} checked out because PR #${PR_FEEDBACK_MONITOR_PR_NUMBER:-unknown} is still open."
+      return
+    fi
+    if [[ "$PRESERVE_WORKTREE_ON_EXIT" == "1" ]]; then
+      echo "Leaving current branch checked out because runner work did not complete cleanly."
       return
     fi
     if ! git -C "$REPO_DIR" checkout "$BASE_BRANCH" >/dev/null 2>&1; then
@@ -144,6 +153,78 @@ cleanup() {
     if ! git -C "$REPO_DIR" clean -fd >/dev/null 2>&1; then
       echo "Warning: failed to remove untracked files during cleanup." >&2
     fi
+  fi
+}
+
+release_runner_lock() {
+  if [[ "$RUNNER_LOCK_HELD" != "1" ]]; then
+    return 0
+  fi
+  rm -f "$RUNNER_LOCK_DIR/pid"
+  rmdir "$RUNNER_LOCK_DIR" 2>/dev/null || true
+  RUNNER_LOCK_HELD=0
+}
+
+acquire_runner_lock() {
+  local existing_pid=""
+
+  if mkdir "$RUNNER_LOCK_DIR" 2>/dev/null; then
+    RUNNER_LOCK_HELD=1
+    printf '%s\n' "$$" > "$RUNNER_LOCK_DIR/pid"
+    return 0
+  fi
+
+  if [[ -L "$RUNNER_LOCK_DIR" ]]; then
+    runner_status "Skipped: runner lock path is a symlink; refusing to modify it."
+    exit 0
+  fi
+
+  if [[ -f "$RUNNER_LOCK_DIR/pid" ]]; then
+    existing_pid="$(sed -n '1p' "$RUNNER_LOCK_DIR/pid" 2>/dev/null || true)"
+    if [[ "$existing_pid" =~ ^[0-9]+$ ]] && kill -0 "$existing_pid" 2>/dev/null; then
+      runner_status "Skipped: another Hush Line code agent run is already active as PID $existing_pid."
+      exit 0
+    fi
+  fi
+
+  rm -f "$RUNNER_LOCK_DIR/pid" 2>/dev/null || true
+  if rmdir "$RUNNER_LOCK_DIR" 2>/dev/null && mkdir "$RUNNER_LOCK_DIR" 2>/dev/null; then
+    RUNNER_LOCK_HELD=1
+    printf '%s\n' "$$" > "$RUNNER_LOCK_DIR/pid"
+    return 0
+  fi
+
+  runner_status "Skipped: another Hush Line code agent run is already active."
+  exit 0
+}
+
+current_branch_name() {
+  git symbolic-ref --quiet --short HEAD 2>/dev/null || true
+}
+
+worktree_status_porcelain() {
+  git status --porcelain 2>/dev/null || true
+}
+
+assert_runner_can_take_checkout() {
+  local current_branch=""
+  local status_output=""
+
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    return 0
+  fi
+
+  current_branch="$(current_branch_name)"
+  if [[ "$current_branch" != "$BASE_BRANCH" ]]; then
+    runner_status "Skipped: checkout is on '${current_branch:-detached HEAD}', not '$BASE_BRANCH'; leaving local work untouched."
+    exit 0
+  fi
+
+  status_output="$(worktree_status_porcelain)"
+  if [[ -n "$status_output" ]]; then
+    runner_status "Skipped: checkout has local changes; leaving local work untouched."
+    printf '%s\n' "$status_output"
+    exit 0
   fi
 }
 
@@ -2997,6 +3078,7 @@ main() {
   parse_args "$@"
   initialize_run_state
   trap cleanup EXIT
+  acquire_runner_lock
 
   require_cmd git
   require_cmd gh
@@ -3022,6 +3104,9 @@ main() {
   fi
 
   cd "$REPO_DIR"
+
+  assert_runner_can_take_checkout
+  CLEANUP_REPO_ON_EXIT=1
 
   run_step "Fetch latest from origin" git fetch origin
   run_step "Checkout $BASE_BRANCH" git checkout "$BASE_BRANCH"
@@ -3144,6 +3229,7 @@ main() {
   else
     run_step "Create branch $BRANCH_NAME" git checkout -B "$BRANCH_NAME" "$BASE_BRANCH"
   fi
+  PRESERVE_WORKTREE_ON_EXIT=1
 
   build_issue_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY"
   run_issue_attempt_loop "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY" "$ISSUE_LABELS" "$BRANCH_NAME"
@@ -3167,6 +3253,7 @@ main() {
     COMMIT_MESSAGE="${COMMIT_MESSAGE} (epic #${EPIC_ISSUE_NUMBER})"
   fi
   git commit -m "$COMMIT_MESSAGE"
+  PRESERVE_WORKTREE_ON_EXIT=0
 
   ensure_head_commit_on_branch "$BRANCH_NAME" "$BASE_BRANCH"
   require_branch_has_unique_commits "$PR_BASE_REF" "$BRANCH_NAME"
