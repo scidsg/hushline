@@ -187,7 +187,7 @@ git -C "$REPO_DIR" status --short
     assert f"git:-C {tmp_path / 'repo'} clean -fd" in calls
 
 
-def test_cleanup_preserves_failed_runner_worktree_on_issue_branch(tmp_path: Path) -> None:
+def test_cleanup_resets_failed_runner_worktree_on_issue_branch(tmp_path: Path) -> None:
     call_log = tmp_path / "calls.txt"
 
     shell_script = f"""
@@ -218,12 +218,12 @@ set -e
     result = _run_bash(shell_script)
 
     assert result.returncode == 0, result.stderr
-    assert "Leaving failed runner worktree on codex/daily-issue-1978" in result.stdout
+    assert "Resetting failed runner worktree from codex/daily-issue-1978" in result.stdout
     assert " M file.txt" in result.stdout
     calls = call_log.read_text(encoding="utf-8")
-    assert f"git:-C {tmp_path / 'repo'} checkout main" not in calls
-    assert f"git:-C {tmp_path / 'repo'} reset --hard origin/main" not in calls
-    assert f"git:-C {tmp_path / 'repo'} clean -fd" not in calls
+    assert f"git:-C {tmp_path / 'repo'} checkout main" in calls
+    assert f"git:-C {tmp_path / 'repo'} reset --hard origin/main" in calls
+    assert f"git:-C {tmp_path / 'repo'} clean -fd" in calls
 
 
 def test_runner_lock_skips_when_existing_runner_is_active(tmp_path: Path) -> None:
@@ -568,6 +568,19 @@ build_pr_title 1622 $'Normalize geography\\nacross directory listing types'
     assert result.returncode == 0, result.stderr
     assert result.stdout == "#1622 Normalize geography across directory listing types\n"
     assert "Codex Daily:" not in result.stdout
+
+
+def test_build_pr_title_uses_diagnostic_title_for_diagnostic_pr() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+RUNNER_DIAGNOSTIC_PR=1
+build_pr_title 1622 "Normalize geography"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "#1622 Daily runner diagnostic\n"
 
 
 def test_build_branch_name_uses_issue_prefix() -> None:
@@ -1696,6 +1709,27 @@ write_pr_narrative_lead 1622 "Normalize geography across directory listing types
     assert "This run only changes the runner log artifact." in result.stdout
 
 
+def test_write_pr_narrative_lead_explains_diagnostic_pr() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+RUNNER_DIAGNOSTIC_PR=1
+stream_changed_files() {{
+  printf '%s\\n' 'docs/agent-logs/run-20260308T000000Z-issue-1622.txt'
+}}
+write_pr_narrative_lead 1622 "Normalize geography across directory listing types"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "This diagnostic PR records the daily runner outcome" in result.stdout
+    assert (
+        "it opened this sanitized log-only PR instead of leaving the local checkout stranded"
+        in result.stdout
+    )
+    assert "This diagnostic PR only changes the runner log artifact." in result.stdout
+
+
 def test_audit_failure_environmental_classifier_matches_network_errors() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
@@ -1764,6 +1798,72 @@ fi
 
     assert result.returncode == 0, result.stderr
     assert result.stdout == "schema-changed\n"
+
+
+def test_restore_runtime_generated_static_artifacts_cleans_bootstrap_noise(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+git() {{
+  printf 'git:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+  case "$*" in
+    "status --short -- hushline/static/js")
+      printf ' M hushline/static/js/directory_verified.js\\n'
+      return 0
+      ;;
+  esac
+  return 0
+}}
+restore_runtime_generated_static_artifacts
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Restoring generated static JS artifacts dirtied by runtime bootstrap." in result.stdout
+    calls = call_log.read_text(encoding="utf-8")
+    assert "git:restore -- hushline/static/js" in calls
+
+
+def test_restore_non_log_worktree_changes_uses_staged_and_worktree_restore(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+git() {{
+  printf 'git:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+  case "$*" in
+    "diff --name-only")
+      printf 'hushline/static/js/directory_verified.js\\n'
+      return 0
+      ;;
+    "diff --cached --name-only")
+      printf 'tests/test_agent_daily_issue_runner.py\\n'
+      return 0
+      ;;
+    "ls-files --others --exclude-standard")
+      printf 'tmp/new-file.txt\\n'
+      return 0
+      ;;
+  esac
+  return 0
+}}
+restore_non_log_worktree_changes
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Restoring non-log worktree changes before opening diagnostic PR." in result.stdout
+    calls = call_log.read_text(encoding="utf-8")
+    assert (
+        "git:restore --staged --worktree -- hushline/static/js/directory_verified.js "
+        "tests/test_agent_daily_issue_runner.py"
+    ) in calls
+    assert "git:clean -f -- tmp/new-file.txt" in calls
 
 
 def test_run_check_capture_times_out_stuck_check(tmp_path: Path) -> None:
@@ -3437,13 +3537,14 @@ resolve_pr_number_from_ref "https://github.com/scidsg/hushline/pull/2000"
     assert "unexpected gh invocation" not in result.stderr
 
 
-def test_main_blocks_pr_creation_when_only_runner_artifacts_exist(tmp_path: Path) -> None:
+def test_main_opens_diagnostic_pr_when_only_runner_artifacts_exist(tmp_path: Path) -> None:
     call_log = tmp_path / "calls.txt"
     repo_dir = tmp_path / "repo"
 
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
 REPO_DIR={shlex.quote(str(repo_dir))}
+PR_BODY_FILE={shlex.quote(str(tmp_path / "pr-body.md"))}
 mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
@@ -3457,7 +3558,30 @@ run_step() {{
   shift
   "$@"
 }}
-git() {{ return 0; }}
+git() {{
+  case "${{1-}} ${{2-}} ${{3-}} ${{4-}}" in
+    "symbolic-ref --quiet --short HEAD")
+      printf 'codex/daily-issue-1558\\n'
+      return 0
+      ;;
+    "diff --cached --quiet ")
+      return 1
+      ;;
+    "rev-list --count main..codex/daily-issue-1558")
+      printf '1\\n'
+      return 0
+      ;;
+    "commit -m "*)
+      printf 'commit:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+      return 0
+      ;;
+    "push origin codex/daily-issue-1558 ")
+      printf 'push-log-update\\n' >> {shlex.quote(str(call_log))}
+      return 0
+      ;;
+  esac
+  return 0
+}}
 docker() {{ :; }}
 collect_issue_candidates() {{ printf '1558\\n'; }}
 resolve_issue_parent_epic() {{ :; }}
@@ -3471,17 +3595,23 @@ kill_all_docker_containers() {{ :; }}
 kill_processes_on_ports() {{ :; }}
 remote_branch_exists() {{ return 1; }}
 build_issue_prompt() {{ :; }}
-run_issue_attempt_loop() {{ :; }}
+run_issue_attempt_loop() {{ return 1; }}
 has_non_log_changes() {{ return 1; }}
 persist_run_log() {{
+  RUN_LOG_GIT_PATH="docs/agent-logs/run-test-issue-$1.txt"
   printf 'persist:%s\\n' "$1" >> {shlex.quote(str(call_log))}
 }}
 push_branch_for_pr() {{
   printf 'push:%s\\n' "$1" >> {shlex.quote(str(call_log))}
 }}
-write_pr_body() {{ :; }}
-build_pr_title() {{
-  printf '#1558 Title\\n'
+restore_non_log_worktree_changes() {{
+  printf 'restore-non-log\\n' >> {shlex.quote(str(call_log))}
+}}
+write_pr_body() {{
+  printf 'body:diagnostic=%s:%s\\n' \\
+    "$RUNNER_DIAGNOSTIC_PR" \\
+    "$RUNNER_DIAGNOSTIC_REASON" \\
+    >> {shlex.quote(str(call_log))}
 }}
 check_pr_feedback_after_delay() {{ :; }}
 gh() {{
@@ -3496,7 +3626,8 @@ gh() {{
     return 0
   fi
   if [[ "${{1-}} ${{2-}}" == "pr create" ]]; then
-    printf 'pr-create\\n' >> {shlex.quote(str(call_log))}
+    printf 'https://github.com/scidsg/hushline/pull/2000\\n'
+    printf 'pr-create:%s\\n' "$*" >> {shlex.quote(str(call_log))}
     return 0
   fi
   return 0
@@ -3511,11 +3642,16 @@ printf 'rc=%s\\n' "$rc"
     result = _run_bash(shell_script)
 
     assert result.returncode == 0, result.stderr
-    assert "rc=1" in result.stdout
-    assert "Blocked: no usable non-log changes remain for issue #1558 after" in result.stderr
+    assert "rc=0" in result.stdout
+    assert (
+        "opening a sanitized diagnostic PR instead of leaving the checkout stranded"
+        in result.stderr
+    )
     calls = call_log.read_text(encoding="utf-8").splitlines() if call_log.exists() else []
-    assert not any(line == "pr-create" for line in calls)
-    assert not any(line.startswith("persist:") for line in calls)
+    assert any(line == "restore-non-log" for line in calls)
+    assert any(line == "body:diagnostic=1:implementation did not complete" for line in calls)
+    assert any(line.startswith("pr-create:") for line in calls)
+    assert any(line.startswith("persist:1558") for line in calls)
 
 
 def test_main_continues_after_pr_create_when_pr_number_lookup_fails(

@@ -87,6 +87,8 @@ PR_FEEDBACK_MONITOR_ACTIVE=0
 PR_FEEDBACK_MONITOR_CLOSED=0
 PR_FEEDBACK_MONITOR_PR_NUMBER=""
 PR_FEEDBACK_MONITOR_BRANCH=""
+RUNNER_DIAGNOSTIC_PR=0
+RUNNER_DIAGNOSTIC_REASON=""
 
 parse_args() {
   while [[ $# -gt 0 ]]; do
@@ -145,11 +147,10 @@ cleanup() {
       cleanup_branch="$(git -C "$REPO_DIR" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
       cleanup_status="$(git -C "$REPO_DIR" status --short 2>/dev/null || true)"
       if [[ "$cleanup_branch" != "$BASE_BRANCH" || -n "$cleanup_status" ]]; then
-        echo "Leaving failed runner worktree on ${cleanup_branch:-detached HEAD}; exit status was ${exit_code}."
+        echo "Resetting failed runner worktree from ${cleanup_branch:-detached HEAD}; exit status was ${exit_code}."
         if [[ -n "$cleanup_status" ]]; then
           printf '%s\n' "$cleanup_status"
         fi
-        return
       fi
     fi
 
@@ -502,6 +503,61 @@ refresh_runtime_after_schema_changes() {
   reset_runtime_stack_and_seed_dev_data
 }
 
+restore_runtime_generated_static_artifacts() {
+  local generated_status=""
+
+  generated_status="$(git status --short -- hushline/static/js 2>/dev/null || true)"
+  if [[ -z "$generated_status" ]]; then
+    return 0
+  fi
+
+  echo "Restoring generated static JS artifacts dirtied by runtime bootstrap."
+  printf '%s\n' "$generated_status"
+  git restore -- hushline/static/js
+}
+
+restore_non_log_worktree_changes() {
+  local tracked_files=""
+  local untracked_files=""
+  local line
+  local -a tracked_paths=()
+  local -a untracked_paths=()
+
+  tracked_files="$(
+    {
+      git diff --name-only
+      git diff --cached --name-only
+    } | awk 'NF && !/^docs\/agent-logs\/run-.*-issue-[0-9]+\.txt$/ && !seen[$0]++'
+  )"
+  untracked_files="$(
+    git ls-files --others --exclude-standard \
+      | awk 'NF && !/^docs\/agent-logs\/run-.*-issue-[0-9]+\.txt$/'
+  )"
+
+  if [[ -z "$tracked_files" && -z "$untracked_files" ]]; then
+    return 0
+  fi
+
+  echo "Restoring non-log worktree changes before opening diagnostic PR."
+  {
+    printf '%s\n' "$tracked_files"
+    printf '%s\n' "$untracked_files"
+  } | sed '/^$/d'
+
+  if [[ -n "$tracked_files" ]]; then
+    while IFS= read -r line; do
+      [[ -n "$line" ]] && tracked_paths+=("$line")
+    done <<< "$tracked_files"
+    git restore --staged --worktree -- "${tracked_paths[@]}"
+  fi
+  if [[ -n "$untracked_files" ]]; then
+    while IFS= read -r line; do
+      [[ -n "$line" ]] && untracked_paths+=("$line")
+    done <<< "$untracked_files"
+    git clean -f -- "${untracked_paths[@]}"
+  fi
+}
+
 list_changed_files() {
   {
     git diff --name-only "${BASE_BRANCH}...HEAD"
@@ -830,6 +886,11 @@ build_pr_title() {
   local issue_number="$1"
   local issue_title="$2"
   local normalized_title=""
+
+  if [[ "$RUNNER_DIAGNOSTIC_PR" == "1" ]]; then
+    printf '#%s Daily runner diagnostic\n' "$issue_number"
+    return 0
+  fi
 
   normalized_title="$(printf '%s' "$issue_title" | tr '\n' ' ' | tr -s ' ')"
   printf '#%s %s\n' "$issue_number" "$(printf '%s' "$normalized_title" | cut -c1-90)"
@@ -2437,8 +2498,13 @@ write_pr_narrative_lead() {
   review_line=""
 
   if [[ "$non_log_files" == "0" ]]; then
-    scope_line="This run only changes the runner log artifact."
-    plain_line="This run does not change the product itself; it only updates the runner log artifact that records what the daily runner did."
+    if [[ "$RUNNER_DIAGNOSTIC_PR" == "1" ]]; then
+      scope_line="This diagnostic PR only changes the runner log artifact."
+      plain_line="The runner could not produce a product change for \"$issue_title\", so it opened this sanitized log-only PR instead of leaving the local checkout stranded."
+    else
+      scope_line="This run only changes the runner log artifact."
+      plain_line="This run does not change the product itself; it only updates the runner log artifact that records what the daily runner did."
+    fi
   elif [[ -n "$changed_areas" ]]; then
     scope_line="It touches ${non_log_files} non-log file(s) (${total_files} total including runner artifacts), primarily in ${changed_areas}."
   else
@@ -2470,8 +2536,13 @@ $(if [[ -n "$epic_issue_number" ]]; then
   printf 'It is intended to merge into the epic branch first, not directly into `%s`.\n' \
     "$BASE_BRANCH"
 else
-  printf 'This PR implements #%s (`%s`) via the daily runner with a scoped change set focused on the issue requirements.\n' \
-    "$issue_number" "$issue_title"
+  if [[ "$RUNNER_DIAGNOSTIC_PR" == "1" ]]; then
+    printf 'This diagnostic PR records the daily runner outcome for #%s (`%s`).\n' \
+      "$issue_number" "$issue_title"
+  else
+    printf 'This PR implements #%s (`%s`) via the daily runner with a scoped change set focused on the issue requirements.\n' \
+      "$issue_number" "$issue_title"
+  fi
 fi)
 
 ${plain_line}
@@ -2502,6 +2573,10 @@ $(if [[ -n "$epic_issue_number" ]]; then
   printf '%s\n' "- Part of epic #$epic_issue_number: ${epic_issue_title}"
   printf '%s\n' "- This PR targets the epic integration branch \`$base_branch_name\`."
   printf '%s\n' "- The child issue is closed explicitly by workflow after this PR merges into the epic branch."
+elif [[ "$RUNNER_DIAGNOSTIC_PR" == "1" ]]; then
+  printf '%s\n' "- Diagnostic daily runner PR for #$issue_number."
+  printf '%s\n' "- No product code is changed; this PR carries the sanitized runner log so the failure is visible in review."
+  printf '%s\n' "- Runner outcome: ${RUNNER_DIAGNOSTIC_REASON:-implementation did not complete}"
 else
   printf '%s\n' "- Automated daily issue runner implementation for #$issue_number."
   printf '%s\n' "- Implements issue goal: ${issue_title}"
@@ -2528,20 +2603,29 @@ fi)
 EOF2
   write_pr_changed_files_section >> "$PR_BODY_FILE"
 
-  cat >> "$PR_BODY_FILE" <<'EOF2'
+  cat >> "$PR_BODY_FILE" <<EOF2
 
 ## Validation
-- `make lint`
-- `make test` (full suite)
+$(if [[ "$RUNNER_DIAGNOSTIC_PR" == "1" ]]; then
+  printf '%s\n' "- Not run: the runner opened this diagnostic PR because implementation did not complete before validation."
+else
+  printf '%s\n' "- \`make lint\`"
+  printf '%s\n' "- \`make test\` (full suite)"
+fi)
 EOF2
-  cat >> "$PR_BODY_FILE" <<'EOF2'
+  cat >> "$PR_BODY_FILE" <<EOF2
 - Additional CI workflows run on the PR after branch push; the runner does not try to mirror the full workflow matrix locally.
 
 ## Manual Testing
-- Manual testing is for reviewer-executed product checks, not a log of steps the runner or LLM took.
-- In a local or staging environment, open the feature or workflow changed by this issue.
-- Reproduce the issue scenario or perform the changed workflow end to end as a user.
-- Verify the expected behavior from the issue description and check the nearest adjacent core flow for regressions.
+$(if [[ "$RUNNER_DIAGNOSTIC_PR" == "1" ]]; then
+  printf '%s\n' "- Review the sanitized runner log linked above."
+  printf '%s\n' "- Confirm the PR contains only the runner log artifact and no product-code changes."
+else
+  printf '%s\n' "- Manual testing is for reviewer-executed product checks, not a log of steps the runner or LLM took."
+  printf '%s\n' "- In a local or staging environment, open the feature or workflow changed by this issue."
+  printf '%s\n' "- Reproduce the issue scenario or perform the changed workflow end to end as a user."
+  printf '%s\n' "- Verify the expected behavior from the issue description and check the nearest adjacent core flow for regressions."
+fi)
 EOF2
 }
 
@@ -3231,6 +3315,7 @@ main() {
   run_step "Kill all Docker containers" kill_all_docker_containers
   run_step "Kill processes on runner ports" kill_processes_on_ports
   start_runtime_stack_and_seed_dev_data --build
+  restore_runtime_generated_static_artifacts
 
   ISSUE_TITLE="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json title --jq .title)"
   ISSUE_BODY="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json body --jq .body)"
@@ -3260,11 +3345,15 @@ main() {
   fi
 
   build_issue_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY"
-  run_issue_attempt_loop "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY" "$ISSUE_LABELS" "$BRANCH_NAME"
-
-  if ! has_non_log_changes; then
-    echo "Blocked: no usable non-log changes remain for issue #$ISSUE_NUMBER after $MAX_ISSUE_ATTEMPTS attempt(s)." >&2
-    exit 1
+  if ! run_issue_attempt_loop "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY" "$ISSUE_LABELS" "$BRANCH_NAME"; then
+    RUNNER_DIAGNOSTIC_PR=1
+    RUNNER_DIAGNOSTIC_REASON="implementation did not complete"
+    echo "Warning: issue implementation failed; opening a sanitized diagnostic PR instead of leaving the checkout stranded." >&2
+    restore_non_log_worktree_changes
+  elif ! has_non_log_changes; then
+    RUNNER_DIAGNOSTIC_PR=1
+    RUNNER_DIAGNOSTIC_REASON="implementation produced no usable non-log changes"
+    echo "Warning: no usable non-log changes remain; opening a sanitized diagnostic PR instead of leaving the checkout stranded." >&2
   fi
 
   persist_run_log "$ISSUE_NUMBER"
