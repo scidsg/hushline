@@ -100,6 +100,26 @@ def test_admin_settings_paginates_usernames(client: FlaskClient) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
+def test_admin_settings_clamps_invalid_page_requests(client: FlaskClient) -> None:
+    for index in range(25):
+        _create_admin_list_user(f"page-user-{index:02d}")
+
+    response = client.get(url_for("settings.admin", page="not-a-number"), follow_redirects=True)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    assert "Page 1 of 2" in soup.get_text(" ", strip=True)
+    assert len(soup.select("#admin-users-list .user")) == 20
+
+    response = client.get(url_for("settings.admin", page=999), follow_redirects=True)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    assert "Page 2 of 2" in soup.get_text(" ", strip=True)
+    assert len(soup.select("#admin-users-list .user")) == 6
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
 def test_admin_settings_searches_all_usernames_before_paginating(client: FlaskClient) -> None:
     for index in range(25):
         _create_admin_list_user(f"page-user-{index:02d}")
@@ -442,6 +462,20 @@ def test_update_account_category_validates_and_updates_user(
     refreshed_user = db.session.get(User, user.id)
     assert refreshed_user is not None
     assert refreshed_user.account_category is None
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_update_account_category_rejects_missing_field_and_unknown_user(
+    client: FlaskClient, user: User
+) -> None:
+    response = client.post(url_for("admin.update_account_category", user_id=user.id), data={})
+    assert response.status_code == 400
+
+    response = client.post(
+        url_for("admin.update_account_category", user_id=999999),
+        data={"account_category": AccountCategory.LAWYER.value},
+    )
+    assert response.status_code == 404
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
