@@ -87,12 +87,15 @@ printf '%s\\n' "$snapshot_metadata"
     assert snapshot_file.read_text(encoding="utf-8") == RUNNER_SCRIPT.read_text(encoding="utf-8")
 
 
-def test_runner_preflight_skips_when_checkout_is_not_on_base_branch(
+def test_runner_preflight_switches_to_base_branch(
     tmp_path: Path,
 ) -> None:
+    call_log = tmp_path / "calls.txt"
+
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
 git() {{
+  printf 'git:%s\\n' "$*" >> {shlex.quote(str(call_log))}
   case "${{1-}} ${{2-}} ${{3-}}" in
     "rev-parse --is-inside-work-tree ")
       return 0
@@ -108,22 +111,29 @@ git() {{
   return 0
 }}
 assert_runner_can_take_checkout
-printf 'unexpected\\n'
+printf 'continued\\n'
 """
 
     result = _run_bash(shell_script)
 
     assert result.returncode == 0, result.stderr
-    assert "not 'main'; leaving local work untouched" in result.stdout
-    assert "unexpected" not in result.stdout
+    assert "Switching checkout from 'feature' to 'main' before runner work." in result.stdout
+    assert "continued" in result.stdout
+    calls = call_log.read_text(encoding="utf-8")
+    assert "git:checkout main" in calls
+    assert "git:reset --hard" in calls
+    assert "git:clean -fd" in calls
 
 
-def test_runner_preflight_skips_when_checkout_has_local_changes(
+def test_runner_preflight_discards_local_changes(
     tmp_path: Path,
 ) -> None:
+    call_log = tmp_path / "calls.txt"
+
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
 git() {{
+  printf 'git:%s\\n' "$*" >> {shlex.quote(str(call_log))}
   case "${{1-}} ${{2-}} ${{3-}}" in
     "rev-parse --is-inside-work-tree ")
       return 0
@@ -140,15 +150,18 @@ git() {{
   return 0
 }}
 assert_runner_can_take_checkout
-printf 'unexpected\\n'
+printf 'continued\\n'
 """
 
     result = _run_bash(shell_script)
 
     assert result.returncode == 0, result.stderr
-    assert "checkout has local changes; leaving local work untouched" in result.stdout
+    assert "Discarding local checkout changes before runner work." in result.stdout
     assert " M file.txt" in result.stdout
-    assert "unexpected" not in result.stdout
+    assert "continued" in result.stdout
+    calls = call_log.read_text(encoding="utf-8")
+    assert "git:reset --hard" in calls
+    assert "git:clean -fd" in calls
 
 
 def test_cleanup_resets_successful_runner_worktree_to_base_branch(tmp_path: Path) -> None:
