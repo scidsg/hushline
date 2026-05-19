@@ -14,15 +14,15 @@ The repository does not currently include runner scripts for the social or docs 
 
 ## Installed Host Jobs
 
-| Label                                             | Scope                                | Schedule                        | Source                                                  |
-| ------------------------------------------------- | ------------------------------------ | ------------------------------- | ------------------------------------------------------- |
-| org.scidsg.hushline-code-agent                    | Hush Line issue runner               | Every 60 seconds                | org.scidsg.hushline-code-agent.plist                    |
-| com.hushline.social.daily-planner                 | Social planner                       | Mon-Fri at 6:00 AM              | com.hushline.social.daily-planner.plist                 |
-| com.hushline.social.linkedin.daily                | Social LinkedIn daily                | Mon-Fri at 6:10 AM              | com.hushline.social.linkedin.daily.plist                |
-| com.hushline.weekly-agent-report                  | Weekly local agent report            | Sunday at 10:30 PM              | com.hushline.weekly-agent-report.plist                  |
-| com.hushline.social.verified-user.weekly          | Social verified-user weekly          | Monday at 12:00 PM              | com.hushline.social.verified-user.weekly.plist          |
-| com.hushline.social.linkedin.verified-user.weekly | Social verified-user LinkedIn weekly | Monday at 12:10 PM              | com.hushline.social.linkedin.verified-user.weekly.plist |
-| com.hushline.docs.weekly-article                  | Docs weekly article                  | Wednesday at 10:00 AM           | com.hushline.docs.weekly-article.plist                  |
+| Label                                             | Scope                                | Schedule              | Source                                                  |
+| ------------------------------------------------- | ------------------------------------ | --------------------- | ------------------------------------------------------- |
+| org.scidsg.hushline-code-agent                    | Hush Line issue runner               | Every 60 seconds      | org.scidsg.hushline-code-agent.plist                    |
+| com.hushline.social.daily-planner                 | Social planner                       | Mon-Fri at 6:00 AM    | com.hushline.social.daily-planner.plist                 |
+| com.hushline.social.linkedin.daily                | Social LinkedIn daily                | Mon-Fri at 6:10 AM    | com.hushline.social.linkedin.daily.plist                |
+| com.hushline.weekly-agent-report                  | Weekly local agent report            | Sunday at 10:30 PM    | com.hushline.weekly-agent-report.plist                  |
+| com.hushline.social.verified-user.weekly          | Social verified-user weekly          | Monday at 12:00 PM    | com.hushline.social.verified-user.weekly.plist          |
+| com.hushline.social.linkedin.verified-user.weekly | Social verified-user LinkedIn weekly | Monday at 12:10 PM    | com.hushline.social.linkedin.verified-user.weekly.plist |
+| com.hushline.docs.weekly-article                  | Docs weekly article                  | Wednesday at 10:00 AM | com.hushline.docs.weekly-article.plist                  |
 
 ## Daily Issue Runner
 
@@ -53,13 +53,17 @@ This runner runs directly in the local repo and performs a narrow local gate bef
 8. Move the selected issue into project status `In Progress`.
 9. Configure bot git identity and signed commit settings.
 10. Reset local Docker/runtime state:
-   - `docker compose down -v --remove-orphans`
-   - Remove all Docker containers (`docker rm -f $(docker ps -aq)`, when any exist)
-   - Kill processes listening on runner ports (`4566 4571 5432 8080` by default)
+
+- `docker compose down -v --remove-orphans`
+- Remove all Docker containers (`docker rm -f $(docker ps -aq)`, when any exist)
+- Kill processes listening on runner ports (`4566 4571 5432 8080` by default)
+
 11. Start and seed stack:
-   - `docker compose up -d --build`
-   - `docker compose run --rm dev_data`
-   - retry the bootstrap sequence when Docker image pulls fail with transient registry/network errors (defaults: `3` attempts, `10`s delay via `HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_ATTEMPTS` and `HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS`)
+
+- `docker compose up -d --build`
+- `docker compose run --rm dev_data`
+- retry the bootstrap sequence when Docker image pulls fail with transient registry/network errors (defaults: `3` attempts, `10`s delay via `HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_ATTEMPTS` and `HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS`)
+
 12. Create/update work branch:
 
 - regular issues use `codex/daily-issue-<issue_number>` by default
