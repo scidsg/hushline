@@ -98,8 +98,8 @@ This runner runs directly in the local repo and performs a narrow local gate bef
     - `Manual Testing` lists human reviewer steps to exercise the changed feature after the PR opens. It is not a log of actions the LLM or runner performed.
 21. Refresh run log after PR creation (including opened PR URL and post-check steps), commit/push that log update when changed.
 22. Poll the open PR until it closes. When the monitor sees actionable feedback (discussion comments, change-request reviews, unresolved review threads, or failing PR checks), it invokes Codex on the PR branch, reruns `make lint` and `make test`, commits and pushes any fix, then resumes polling.
-23. Return to `main` on exit only after successful handoff or PR closure.
-    - If the runner leaves uncommitted work on an issue branch after a failure, cleanup preserves that checkout so the next scheduled pass skips instead of destroying local work.
+23. Return to a clean `main` on exit after a failed run, successful handoff, or PR closure.
+    - A new scheduled pass still exits before any destructive sync if a human or another process has left the checkout off `main` or with local changes.
 
 ## ASCII Workflow (Current)
 
@@ -233,7 +233,7 @@ This runner runs directly in the local repo and performs a narrow local gate bef
       v
 +----------------------------------------------+
 | Cleanup after successful handoff/PR close     |
-| Preserve failed dirty issue branches          |
+| Reset failed runs back to clean main          |
 +----------------------------------------------+
 ```
 

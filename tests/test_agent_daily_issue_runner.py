@@ -151,7 +151,7 @@ printf 'unexpected\\n'
     assert "unexpected" not in result.stdout
 
 
-def test_cleanup_preserves_failed_runner_worktree(tmp_path: Path) -> None:
+def test_cleanup_resets_failed_runner_worktree_to_base_branch(tmp_path: Path) -> None:
     call_log = tmp_path / "calls.txt"
 
     shell_script = f"""
@@ -173,7 +173,6 @@ git() {{
   return 0
 }}
 CLEANUP_REPO_ON_EXIT=1
-PRESERVE_WORKTREE_ON_EXIT=1
 cleanup
 git -C "$REPO_DIR" branch --show-current
 git -C "$REPO_DIR" status --short
@@ -182,10 +181,10 @@ git -C "$REPO_DIR" status --short
     result = _run_bash(shell_script)
 
     assert result.returncode == 0, result.stderr
-    assert "Leaving current branch checked out" in result.stdout
-    assert "codex/daily-issue-1978" in result.stdout
-    assert " M file.txt" in result.stdout
-    assert "git:-C" in call_log.read_text(encoding="utf-8")
+    calls = call_log.read_text(encoding="utf-8")
+    assert f"git:-C {tmp_path / 'repo'} checkout main" in calls
+    assert f"git:-C {tmp_path / 'repo'} reset --hard origin/main" in calls
+    assert f"git:-C {tmp_path / 'repo'} clean -fd" in calls
 
 
 def test_runner_lock_skips_when_existing_runner_is_active(tmp_path: Path) -> None:

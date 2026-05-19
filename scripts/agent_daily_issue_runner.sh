@@ -74,7 +74,6 @@ RUN_LOG_RETENTION_COUNT="${HUSHLINE_DAILY_RUN_LOG_RETENTION:-10}"
 VERBOSE_CODEX_OUTPUT="${HUSHLINE_DAILY_VERBOSE_CODEX_OUTPUT:-0}"
 AUDIT_STATUS="ok"
 CLEANUP_REPO_ON_EXIT=0
-PRESERVE_WORKTREE_ON_EXIT=0
 RUNNER_LOCK_DIR="${HUSHLINE_DAILY_RUNNER_LOCK_DIR:-${TMPDIR:-/tmp}/hushline-code-agent.lock}"
 RUNNER_LOCK_HELD=0
 AUDIT_NOTE=""
@@ -135,10 +134,6 @@ cleanup() {
   if [[ -d "$REPO_DIR/.git" && "$CLEANUP_REPO_ON_EXIT" == "1" ]]; then
     if [[ "${PR_FEEDBACK_MONITOR_ACTIVE:-0}" == "1" && "${PR_FEEDBACK_MONITOR_CLOSED:-0}" != "1" ]]; then
       echo "Leaving branch ${PR_FEEDBACK_MONITOR_BRANCH:-current branch} checked out because PR #${PR_FEEDBACK_MONITOR_PR_NUMBER:-unknown} is still open."
-      return
-    fi
-    if [[ "$PRESERVE_WORKTREE_ON_EXIT" == "1" ]]; then
-      echo "Leaving current branch checked out because runner work did not complete cleanly."
       return
     fi
     if ! git -C "$REPO_DIR" checkout "$BASE_BRANCH" >/dev/null 2>&1; then
@@ -3229,7 +3224,6 @@ main() {
   else
     run_step "Create branch $BRANCH_NAME" git checkout -B "$BRANCH_NAME" "$BASE_BRANCH"
   fi
-  PRESERVE_WORKTREE_ON_EXIT=1
 
   build_issue_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY"
   run_issue_attempt_loop "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY" "$ISSUE_LABELS" "$BRANCH_NAME"
@@ -3253,7 +3247,6 @@ main() {
     COMMIT_MESSAGE="${COMMIT_MESSAGE} (epic #${EPIC_ISSUE_NUMBER})"
   fi
   git commit -m "$COMMIT_MESSAGE"
-  PRESERVE_WORKTREE_ON_EXIT=0
 
   ensure_head_commit_on_branch "$BRANCH_NAME" "$BASE_BRANCH"
   require_branch_has_unique_commits "$PR_BASE_REF" "$BRANCH_NAME"
