@@ -257,6 +257,8 @@ main
     assert "collect-issue-candidates" in calls
     assert "count-open-human-prs" in calls
     assert "count-open-bot-prs-excluding-heads:" in calls
+    assert "Fetch latest from origin" not in calls
+    assert "Reset to origin/main" not in calls
     assert "configure-bot-git" not in calls
     assert "runtime-bootstrap" not in calls
 
@@ -311,6 +313,8 @@ main
     calls = call_log.read_text(encoding="utf-8").splitlines()
     assert "collect-issue-candidates" in calls
     assert "count-open-human-prs" in calls
+    assert "Fetch latest from origin" not in calls
+    assert "Reset to origin/main" not in calls
     assert "count-open-bot-prs" not in calls
     assert "configure-bot-git" not in calls
     assert "runtime-bootstrap" not in calls
@@ -373,6 +377,8 @@ main
     assert "collect-issue-candidates" in calls
     assert "count-open-human-prs" in calls
     assert "count-open-project-issues-in-status:In Progress" in calls
+    assert "Fetch latest from origin" not in calls
+    assert "Reset to origin/main" not in calls
     assert "count-open-bot-prs" not in calls
     assert "configure-bot-git" not in calls
     assert "runtime-bootstrap" not in calls
@@ -427,6 +433,10 @@ main
 
     calls = call_log.read_text(encoding="utf-8").splitlines()
     assert "collect-issue-candidates" in calls
+    assert "Fetch latest from origin" not in calls
+    assert "Checkout main" not in calls
+    assert "Reset to origin/main" not in calls
+    assert "Remove untracked files" not in calls
     assert "count-open-bot-prs" not in calls
     assert "count-open-human-prs" not in calls
     assert "configure-bot-git" not in calls

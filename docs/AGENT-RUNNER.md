@@ -36,20 +36,20 @@ This runner runs directly in the local repo and performs a narrow local gate bef
 2. Change into the repo (`$HOME/hushline` by default).
 3. Acquire a local runner lock and exit without doing any repository or Docker work if another Hush Line code-agent run is active.
 4. Exit without changing files unless the checkout is clean and already on the base branch.
-5. Hard-refresh local state:
-   - `git fetch origin`
-   - `git checkout main`
-   - `git reset --hard origin/main`
-   - `git clean -fd`
-6. Select issue target before bootstrapping runtime:
+5. Select issue target before any destructive repository or Docker work:
    - Use `--issue <n>` when provided (must still be open), otherwise
    - select the top open issue from project `Hush Line Roadmap`, column `Agent Eligible`.
-7. Check cheap GitHub exit conditions before bootstrapping runtime:
+6. Check cheap GitHub exit conditions before any destructive repository or Docker work:
    - exit if any open human-authored PR exists
    - exit if any open issue is already in project status `In Progress`
    - for non-epic issues, exit if any other open PR exists from `hushline-dev`
    - for child issues with a GitHub parent epic, allow the long-lived epic PR (head branch `codex/epic-<epic>`) and the current child issue PR (head branch `codex/daily-issue-<issue>`)
    - for child issues with a GitHub parent epic, exit only if there are unrelated open bot PRs outside those allowed heads
+7. Hard-refresh local state only after an issue is selected and skip guards pass:
+   - `git fetch origin`
+   - `git checkout main`
+   - `git reset --hard origin/main`
+   - `git clean -fd`
 8. Move the selected issue into project status `In Progress`.
 9. Configure bot git identity and signed commit settings.
 10. Reset local Docker/runtime state:
