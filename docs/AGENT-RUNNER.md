@@ -4,25 +4,25 @@ This document tracks the current state of the repo-managed agent automation used
 
 ## Repo-Managed Agent State
 
-| Script                                                | Role                           | Current State                                                | PR / Output Surface                                               |
-| ----------------------------------------------------- | ------------------------------ | ------------------------------------------------------------ | ----------------------------------------------------------------- |
-| `scripts/agent_daily_issue_runner.sh`                 | GitHub issue implementation    | Active, branch/PR automation in place                        | issue-specific branches and PRs                                   |
-| `scripts/weekly_hushline_code_agent_report_runner.py` | Weekly local agent reporting   | Active, local Mail.app delivery and local report persistence | email to `glenn@hushline.app`; local `logs/weekly-agent-reports/` |
-| `scripts/agent_issue_bootstrap.sh`                    | Local runtime/bootstrap helper | Active, manual helper used by issue and local workflows      | local Docker/bootstrap only                                       |
+| Script                                                | Role                           | Current State                                                      | PR / Output Surface                                               |
+| ----------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| `scripts/agent_daily_issue_runner.sh`                 | GitHub issue implementation    | Disabled on this host while runner reliability fixes are validated | issue-specific branches and PRs                                   |
+| `scripts/weekly_hushline_code_agent_report_runner.py` | Weekly local agent reporting   | Active, local Mail.app delivery and local report persistence       | email to `glenn@hushline.app`; local `logs/weekly-agent-reports/` |
+| `scripts/agent_issue_bootstrap.sh`                    | Local runtime/bootstrap helper | Active, manual helper used by issue and local workflows            | local Docker/bootstrap only                                       |
 
 The repository does not currently include runner scripts for the social or docs launch agents listed below. Those host jobs exist outside this repository and should be documented here only as installed host context, not as repo-managed automation.
 
 ## Installed Host Jobs
 
-| Label                                             | Scope                                | Schedule              | Source                                                  |
-| ------------------------------------------------- | ------------------------------------ | --------------------- | ------------------------------------------------------- |
-| org.scidsg.hushline-code-agent                    | Hush Line issue runner               | Every 60 seconds      | org.scidsg.hushline-code-agent.plist                    |
-| com.hushline.social.daily-planner                 | Social planner                       | Mon-Fri at 6:00 AM    | com.hushline.social.daily-planner.plist                 |
-| com.hushline.social.linkedin.daily                | Social LinkedIn daily                | Mon-Fri at 6:10 AM    | com.hushline.social.linkedin.daily.plist                |
-| com.hushline.weekly-agent-report                  | Weekly local agent report            | Sunday at 10:30 PM    | com.hushline.weekly-agent-report.plist                  |
-| com.hushline.social.verified-user.weekly          | Social verified-user weekly          | Monday at 12:00 PM    | com.hushline.social.verified-user.weekly.plist          |
-| com.hushline.social.linkedin.verified-user.weekly | Social verified-user LinkedIn weekly | Monday at 12:10 PM    | com.hushline.social.linkedin.verified-user.weekly.plist |
-| com.hushline.docs.weekly-article                  | Docs weekly article                  | Wednesday at 10:00 AM | com.hushline.docs.weekly-article.plist                  |
+| Label                                             | Scope                                | Schedule                                       | Source                                                  |
+| ------------------------------------------------- | ------------------------------------ | ---------------------------------------------- | ------------------------------------------------------- |
+| org.scidsg.hushline-code-agent                    | Hush Line issue runner               | Disabled pending runner reliability validation | org.scidsg.hushline-code-agent.plist                    |
+| com.hushline.social.daily-planner                 | Social planner                       | Mon-Fri at 6:00 AM                             | com.hushline.social.daily-planner.plist                 |
+| com.hushline.social.linkedin.daily                | Social LinkedIn daily                | Mon-Fri at 6:10 AM                             | com.hushline.social.linkedin.daily.plist                |
+| com.hushline.weekly-agent-report                  | Weekly local agent report            | Sunday at 10:30 PM                             | com.hushline.weekly-agent-report.plist                  |
+| com.hushline.social.verified-user.weekly          | Social verified-user weekly          | Monday at 12:00 PM                             | com.hushline.social.verified-user.weekly.plist          |
+| com.hushline.social.linkedin.verified-user.weekly | Social verified-user LinkedIn weekly | Monday at 12:10 PM                             | com.hushline.social.linkedin.verified-user.weekly.plist |
+| com.hushline.docs.weekly-article                  | Docs weekly article                  | Wednesday at 10:00 AM                          | com.hushline.docs.weekly-article.plist                  |
 
 ## Daily Issue Runner
 
@@ -36,35 +36,36 @@ This runner runs directly in the local repo and performs a narrow local gate bef
 2. Change into the repo (`$HOME/hushline` by default).
 3. Acquire a local runner lock and exit without doing any repository or Docker work if another Hush Line code-agent run is active.
 4. Exit without changing files unless the checkout is clean and already on the base branch.
-5. Select issue target before any destructive repository or Docker work:
-   - Use `--issue <n>` when provided (must still be open), otherwise
-   - select the top open issue from project `Hush Line Roadmap`, column `Agent Eligible`.
-6. Check cheap GitHub exit conditions before any destructive repository or Docker work:
+5. Check cheap GitHub exit conditions before any new-work queue lookup or destructive repository/Docker work:
    - exit if any open human-authored PR exists
    - exit if any open issue is already in project status `In Progress`
+6. Select issue target before any destructive repository or Docker work:
+   - Use `--issue <n>` when provided (must still be open), otherwise
+   - select the top open issue from project `Hush Line Roadmap`, column `Agent Eligible`.
+7. Check remaining cheap GitHub exit conditions before any destructive repository or Docker work:
    - for non-epic issues, exit if any other open PR exists from `hushline-dev`
    - for child issues with a GitHub parent epic, allow the long-lived epic PR (head branch `codex/epic-<epic>`) and the current child issue PR (head branch `codex/daily-issue-<issue>`)
    - for child issues with a GitHub parent epic, exit only if there are unrelated open bot PRs outside those allowed heads
-7. Hard-refresh local state only after an issue is selected and skip guards pass:
+8. Hard-refresh local state only after an issue is selected and skip guards pass:
    - `git fetch origin`
    - `git checkout main`
    - `git reset --hard origin/main`
    - `git clean -fd`
-8. Move the selected issue into project status `In Progress`.
-9. Configure bot git identity and signed commit settings.
-10. Reset local Docker/runtime state:
+9. Move the selected issue into project status `In Progress`.
+10. Configure bot git identity and signed commit settings.
+11. Reset local Docker/runtime state:
 
 - `docker compose down -v --remove-orphans`
 - Remove all Docker containers (`docker rm -f $(docker ps -aq)`, when any exist)
 - Kill processes listening on runner ports (`4566 4571 5432 8080` by default)
 
-11. Start and seed stack:
+12. Start and seed stack:
 
 - `docker compose up -d --build`
 - `docker compose run --rm dev_data`
 - retry the bootstrap sequence when Docker image pulls fail with transient registry/network errors (defaults: `3` attempts, `10`s delay via `HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_ATTEMPTS` and `HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS`)
 
-12. Create/update work branch:
+13. Create/update work branch:
 
 - regular issues use `codex/daily-issue-<issue_number>` by default
 - child issues with a parent epic still use `codex/daily-issue-<issue_number>` as the work branch
@@ -72,13 +73,13 @@ This runner runs directly in the local repo and performs a narrow local gate bef
 - if the epic base branch does not exist yet, create and push it from `main` before starting the child branch
 - if the child issue branch already has an open PR, update that child PR instead of opening a duplicate
 
-13. Run a bounded Codex issue loop until repository changes exist (max attempts configurable via `HUSHLINE_DAILY_MAX_ISSUE_ATTEMPTS`, default `10`).
+14. Run a bounded Codex issue loop until repository changes exist (max attempts configurable via `HUSHLINE_DAILY_MAX_ISSUE_ATTEMPTS`, default `10`).
     - The issue/fix prompts tell Codex to avoid local container-backed make validation by default, and to defer validation entirely to the runner when schema-affecting files are touched (`hushline/model/`, `migrations/`, `scripts/dev_data.py`, `scripts/dev_migrations.py`).
     - The fix prompt includes the current branch diff summary, the prior Codex summary, and an extracted failure signature so Codex can repair the current implementation instead of repeating a narrow patch against the same failing symptom.
     - Raw failed check output is intentionally withheld from Codex prompts because local check logs may contain sensitive operational data.
     - Codex transcript output is captured in a temporary file for the duration of the run and is excluded from the persisted runner log; only the final Codex summary is written into the run log.
     - Each Codex attempt logs prompt size and pre/post worktree snapshots so clean-tree no-op runs are visible in the runner log.
-14. Run required checks in a bounded self-heal loop (max attempts configurable via `HUSHLINE_DAILY_MAX_FIX_ATTEMPTS`, default `8`):
+15. Run required checks in a bounded self-heal loop (max attempts configurable via `HUSHLINE_DAILY_MAX_FIX_ATTEMPTS`, default `8`):
     - Before lint/test validation, if the working tree includes schema-affecting changes (`hushline/model/`, `migrations/`, `scripts/dev_data.py`, `scripts/dev_migrations.py`), rebuild the local runtime and reseed dev data so the live stack matches the current code.
     - `make lint`
     - `make test` (full suite)
@@ -86,23 +87,24 @@ This runner runs directly in the local repo and performs a narrow local gate bef
     - Lint failures only run deterministic `make fix` self-heal when the failure looks auto-fixable (for example Ruff formatting/check or Prettier); non-auto-fixable lint failures go straight back to Codex.
     - Runtime-dependent tests self-heal by restarting the local stack and reseeding dev data, then retrying once.
     - The broader CI workflow matrix still runs on the PR after branch push; the runner no longer tries to mirror that entire matrix locally.
-15. Persist run log to `docs/agent-logs/run-<timestamp>-issue-<n>.txt`.
+16. Persist run log to `docs/agent-logs/run-<timestamp>-issue-<n>.txt`.
     - After each persist, prune older runner logs and keep only the newest `10` by default.
     - Persisted logs are sanitized before commit to remove developer filesystem paths, emails, and Codex session metadata.
-16. Commit, push branch, and open/update PR:
+17. Commit, push branch, and open/update PR:
     - first push uses a normal push when remote branch is absent
     - existing remote branch uses `--force-with-lease` with one stale-info recovery retry.
     - child issues under a parent epic open/update a child PR whose base branch is the shared epic branch
     - the long-lived epic PR, when present, remains the only PR that targets `main`
-17. Move the selected issue into project status `Ready for Review` once the PR exists.
-18. For child PRs targeting an epic branch, record `Linked issue: #<n>` in the PR body instead of relying on GitHub's default-branch-only close keywords.
-19. A dedicated workflow closes that linked child issue after the child PR is merged into the epic branch.
-20. Include runner log path in PR context and use a plain-language narrative lead for broad audiences, followed by the structured PR body sections (`Summary`, `Context`, `Changed Files`, `Validation`, `Manual Testing`).
+18. Move the selected issue into project status `Ready for Review` once the PR exists.
+19. For child PRs targeting an epic branch, record `Linked issue: #<n>` in the PR body instead of relying on GitHub's default-branch-only close keywords.
+20. A dedicated workflow closes that linked child issue after the child PR is merged into the epic branch.
+21. Include runner log path in PR context and use a plain-language narrative lead for broad audiences, followed by the structured PR body sections (`Summary`, `Context`, `Changed Files`, `Validation`, `Manual Testing`).
     - `Validation` lists automated checks run by the runner or CI.
     - `Manual Testing` lists human reviewer steps to exercise the changed feature after the PR opens. It is not a log of actions the LLM or runner performed.
-21. Refresh run log after PR creation (including opened PR URL and post-check steps), commit/push that log update when changed.
-22. Poll the open PR until it closes. When the monitor sees actionable feedback (discussion comments, change-request reviews, unresolved review threads, or failing PR checks), it invokes Codex on the PR branch, reruns `make lint` and `make test`, commits and pushes any fix, then resumes polling.
-23. Return to a clean `main` on exit after a failed run, successful handoff, or PR closure.
+22. Refresh run log after PR creation (including opened PR URL and post-check steps), commit/push that log update when changed.
+23. Poll the open PR until it closes. When the monitor sees actionable feedback (discussion comments, change-request reviews, unresolved review threads, or failing PR checks), it invokes Codex on the PR branch, reruns `make lint` and `make test`, commits and pushes any fix, then resumes polling.
+24. Return to a clean `main` on normal completion or PR closure.
+    - If the run fails after creating branch work, leave the failed worktree on its current branch with its changes intact for human inspection or manual recovery.
     - A new scheduled pass still exits before any destructive sync if a human or another process has left the checkout off `main` or with local changes.
 
 ## ASCII Workflow (Current)
