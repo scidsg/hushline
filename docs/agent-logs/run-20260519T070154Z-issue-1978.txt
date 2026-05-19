@@ -1,0 +1,1158 @@
+Daily runner log
+Timestamp (UTC): 20260519T070154Z
+Issue: #1978
+Repository: scidsg/hushline
+
+[2026-05-19 00:01:54 PDT] Starting daily issue runner check.
+Runner Codex config: [redacted]
+Open human-authored PR count: 0
+Open project issues in In Progress: 0
+Selected issue #1978 from project queue.
+Open project issues in In Progress: 0
+Open unrelated bot PR count: 0
+==> Fetch latest from origin
+From github.com:scidsg/hushline
+   8474a85d..2b54f657  main       -> origin/main
+==> Checkout main
+Already on 'main'
+Your branch is behind 'origin/main' by 1 commit, and can be fast-forwarded.
+  (use "git pull" to update your local branch)
+==> Reset to origin/main
+HEAD is now at 2b54f657 Update runner checkout normalization (#1986)
+==> Remove untracked files
+==> Mark issue #1978 as In Progress
+==> Configure bot git identity
+==> Stop and remove Docker resources
+ Container hushline-app-1 Stopping 
+ Container hushline-webpack-1 Stopping 
+ Container hushline-webpack-1 Stopped 
+ Container hushline-webpack-1 Removing 
+ Container hushline-webpack-1 Removed 
+ Container hushline-app-1 Stopped 
+ Container hushline-app-1 Removing 
+ Container hushline-app-1 Removed 
+ Container hushline-blob-storage-1 Stopping 
+ Container hushline-dev_data-1 Stopping 
+ Container hushline-dev_data-1 Stopped 
+ Container hushline-dev_data-1 Removing 
+ Container hushline-dev_data-1 Removed 
+ Container hushline-postgres-1 Stopping 
+ Container hushline-postgres-1 Stopped 
+ Container hushline-postgres-1 Removing 
+ Container hushline-postgres-1 Removed 
+ Container hushline-blob-storage-1 Stopped 
+ Container hushline-blob-storage-1 Removing 
+ Container hushline-blob-storage-1 Removed 
+ Network hushline_default Removing 
+ Volume hushline_hushline-node-modules Removing 
+ Volume hushline_hushline-node-modules Removed 
+ Network hushline_default Removed 
+==> Kill all Docker containers
+==> Kill processes on runner ports
+==> Start Docker stack
+ Image hushline-app Building 
+ Image hushline-dev_data Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 913B done
+#1 DONE 0.0s
+
+#2 [app internal] load build definition from Dockerfile.dev
+#2 transferring dockerfile: 1.15kB done
+#2 DONE 0.0s
+
+#3 [app internal] load metadata for docker.io/library/python:3.13-slim-bookworm
+#3 DONE 0.7s
+
+#4 [dev_data internal] load .dockerignore
+#4 transferring context: 144B done
+#4 DONE 0.0s
+
+#5 [dev_data 1/8] FROM docker.io/library/python:3.13-slim-bookworm@sha256:386df64585134ba00b1d5e307acb1e72f33e9e87dbbb00aad9b8f24dbb51db72
+#5 resolve docker.io/library/python:3.13-slim-bookworm@sha256:386df64585134ba00b1d5e307acb1e72f33e9e87dbbb00aad9b8f24dbb51db72 0.0s done
+#5 DONE 0.0s
+
+#6 [app internal] load build context
+#6 transferring context: 68B done
+#6 DONE 0.0s
+
+#7 [dev_data 5/8] RUN npm install --global prettier@3.3.3
+#7 CACHED
+
+#8 [dev_data 2/8] RUN apt-get -o Acquire::Retries=10 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update &&     apt-get -o Acquire::Retries=10 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install -y --fix-missing --no-install-recommends     curl     build-essential     clang     pkg-config     libffi-dev     libpq-dev     libpcsclite-dev     nettle-dev     nodejs     npm &&     rm -rf /var/lib/apt/lists/*
+#8 CACHED
+
+#9 [dev_data 6/8] WORKDIR /app
+#9 CACHED
+
+#10 [dev_data 7/8] COPY pyproject.toml poetry.lock ./
+#10 CACHED
+
+#11 [dev_data 3/8] RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+#11 CACHED
+
+#12 [dev_data 4/8] RUN python -m pip install --no-cache-dir --upgrade "pip>=26,<27" &&     python -m pip install --no-cache-dir poetry
+#12 CACHED
+
+#13 [dev_data 8/8] RUN poetry install --no-root
+#13 CACHED
+
+#14 [dev_data] exporting to image
+#14 exporting layers done
+#14 exporting manifest sha256:35063d03e58cca2c0a7a0003fc9586cfbbce9c16b4321a23a3d624b10877ed07 done
+#14 exporting config sha256:0d7fecea2730ce227845e2d1a5539e2f6338a80b4b9946e422417adf7b1926ac done
+#14 exporting attestation manifest sha256:2031bfc926d00b94c7562db949c96820045d3a5ce4c718369e2989aec6581731 0.0s done
+#14 exporting manifest list sha256:bb846089c4d8edf226465496f106a10fe5e757525584cebec3bbe65779307dab done
+#14 naming to docker.io/library/hushline-dev_data:latest done
+#14 unpacking to docker.io/library/hushline-dev_data:latest
+#14 unpacking to docker.io/library/hushline-dev_data:latest 0.0s done
+#14 DONE 0.1s
+
+#15 [app] exporting to image
+#15 exporting layers done
+#15 exporting manifest sha256:78dd5b67eba70c20cc507aa8234deb1c8b351a54bd94648d41ab2ba863b7e911 done
+#15 exporting config sha256:dfa71916d452b5bbdeac10a94cdf0c7b4abda1c4b7f290c00fb89f76cb2a2b22 done
+#15 exporting attestation manifest sha256:8e9c458e7e0814cec64958f71fcae69b9123a7914acb31bc8a84046b2c33997e 0.0s done
+#15 exporting manifest list sha256:899df2e670ae92539dd5124c05ba314b61fb0b0be6ebaa5bb5418528e52ebffb 0.0s done
+#15 naming to docker.io/library/hushline-app:latest done
+#15 unpacking to docker.io/library/hushline-app:latest 0.0s done
+#15 DONE 0.1s
+
+#16 [dev_data] resolving provenance for metadata file
+#16 DONE 0.0s
+
+#17 [app] resolving provenance for metadata file
+#17 DONE 0.0s
+ Image hushline-dev_data Built 
+ Image hushline-app Built 
+ Network hushline_default Creating 
+ Network hushline_default Created 
+ Volume hushline_hushline-node-modules Creating 
+ Volume hushline_hushline-node-modules Created 
+ Container hushline-webpack-1 Creating 
+ Container hushline-postgres-1 Creating 
+ Container hushline-blob-storage-1 Creating 
+ Container hushline-webpack-1 Created 
+ Container hushline-blob-storage-1 Created 
+ Container hushline-postgres-1 Created 
+ Container hushline-dev_data-1 Creating 
+ Container hushline-dev_data-1 Created 
+ Container hushline-app-1 Creating 
+ Container hushline-app-1 Created 
+ Container hushline-webpack-1 Starting 
+ Container hushline-blob-storage-1 Starting 
+ Container hushline-postgres-1 Starting 
+ Container hushline-postgres-1 Started 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-webpack-1 Started 
+ Container hushline-blob-storage-1 Started 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-1 Starting 
+ Container hushline-app-1 Started 
+==> Seed development data
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-run-f25c5b4eef6f Creating 
+ Container hushline-dev_data-run-f25c5b4eef6f Created 
+poetry run ./scripts/dev_migrations.py
+Creating database tables
+Database tables created
+poetry run ./scripts/dev_data.py
+2026-05-19 07:02:47,341:INFO:Password hash counter
+2026-05-19 07:02:47,523:INFO:Password hash counter
+2026-05-19 07:02:47,704:INFO:Password hash counter
+2026-05-19 07:02:47,881:INFO:Password hash counter
+2026-05-19 07:02:48,079:INFO:Password hash counter
+2026-05-19 07:02:48,264:INFO:Password hash counter
+2026-05-19 07:02:48,441:INFO:Password hash counter
+2026-05-19 07:02:48,617:INFO:Password hash counter
+2026-05-19 07:02:48,794:INFO:Password hash counter
+2026-05-19 07:02:48,972:INFO:Password hash counter
+2026-05-19 07:02:49,159:INFO:Password hash counter
+2026-05-19 07:02:49,348:INFO:Password hash counter
+2026-05-19 07:02:49,524:INFO:Password hash counter
+2026-05-19 07:02:49,699:INFO:Password hash counter
+2026-05-19 07:02:49,876:INFO:Password hash counter
+2026-05-19 07:02:50,054:INFO:Password hash counter
+2026-05-19 07:02:50,231:INFO:Password hash counter
+2026-05-19 07:02:50,430:INFO:Password hash counter
+2026-05-19 07:02:50,606:INFO:Password hash counter
+Adding dev data
+Tier:
+  name = Free
+  monthly_amount = 0
+Tier:
+  name = Super User
+  monthly_amount = 500
+Dev data added
+User updated:
+  username = admin
+User updated:
+  username = artvandelay
+User updated:
+  username = jerryseinfeld
+User updated:
+  username = georgecostanza
+User updated:
+  username = elainebenes
+User updated:
+  username = cosmokramer
+User updated:
+  username = newman
+User updated:
+  username = frankcostanza
+User updated:
+  username = michaelbluth
+User updated:
+  username = gobbluth
+User updated:
+  username = busterbluth
+User updated:
+  username = lucillebluth
+User updated:
+  username = tobiasfunke
+User updated:
+  username = larrydavid
+User updated:
+  username = jeffgreene
+User updated:
+  username = leonblack
+User updated:
+  username = dwightschrute
+User updated:
+  username = martymcfly
+User updated:
+  username = georgecostanzakr
+Public storage bucket: public
+Restoring generated static JS artifacts dirtied by runtime bootstrap.
+ M hushline/static/js/directory_verified.js
+ M hushline/static/js/settings-location.js
+==> Create branch codex/daily-issue-1978 from origin/codex/daily-issue-1978
+Switched to and reset branch 'codex/daily-issue-1978'
+branch 'codex/daily-issue-1978' set up to track 'origin/codex/daily-issue-1978'.
+Your branch is up to date with 'origin/codex/daily-issue-1978'.
+==> Codex issue attempt 1
+Codex execution started; transcript output is excluded from persisted run logs.
+Prompt stats: bytes=2127 lines=26 words=316
+Pre-Codex worktree snapshot:
+git status --short:
+(clean)
+Non-log changed files:
+(none)
+Codex execution completed.
+Post-Codex worktree snapshot:
+git status --short:
+ M tests/test_admin.py
+ M tests/test_embeddable_forms_model.py
+ M tests/test_embeddable_forms_settings.py
+Non-log changed files:
+tests/test_admin.py
+tests/test_embeddable_forms_model.py
+tests/test_embeddable_forms_settings.py
+Codex final message:
+Implemented test-only coverage additions for issue #1978.
+
+Changed:
+- Added admin edge-case tests for invalid pagination and account category bad requests.
+- Added embed origin/rate-limit edge coverage.
+- Added embeddable form tests for CAPTCHA failure modes, malformed recipient ciphertext payloads, invalid embedded submissions, and developer/alias embed settings authorization/form validation.
+
+Validation:
+- `git diff --check` passes.
+- `make lint` and `make test` were not run; left for the runner.
+==> Refresh local runtime after schema changes
+Skipped: no schema-affecting files changed.
+==> Run lint
+docker compose run --rm app poetry run ruff format --check && \
+	docker compose run --rm app poetry run ruff check --output-format full && \
+	docker compose run --rm app poetry run mypy . && \
+	docker compose run --rm app sh -lc 'if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/*.js; elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/*.js; else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-269cb3ab9874 Creating 
+ Container hushline-app-run-269cb3ab9874 Created 
+227 files already formatted
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-05f12e864e75 Creating 
+ Container hushline-app-run-05f12e864e75 Created 
+All checks passed!
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-f4a6aaf645d9 Creating 
+ Container hushline-app-run-f4a6aaf645d9 Created 
+Success: no issues found in 226 source files
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-8feaf940794d Creating 
+ Container hushline-app-run-8feaf940794d Created 
+Checking formatting...
+[warn] hushline/static/js/client-side-encryption.js
+[warn] hushline/static/js/diceware-words.js
+[warn] hushline/static/js/directory.js
+[warn] hushline/static/js/global.js
+[warn] hushline/static/js/images.js
+[warn] hushline/static/js/inbox.js
+[warn] hushline/static/js/mailvelope.js
+[warn] hushline/static/js/message.js
+[warn] hushline/static/js/message_success.js
+[warn] hushline/static/js/onboarding.js
+[warn] hushline/static/js/premium-waiting.js
+[warn] hushline/static/js/premium.js
+[warn] hushline/static/js/service-worker.js
+[warn] hushline/static/js/settings-fields.js
+[warn] hushline/static/js/settings.js
+[warn] hushline/static/js/settings_admin.js
+[warn] hushline/static/js/style.js
+[warn] hushline/static/js/submit-message.js
+[warn] hushline/static/js/time-shadows.js
+[warn] hushline/static/js/user_search.js
+[warn] hushline/static/js/vision.js
+[warn] Code style issues found in 21 files. Run Prettier with --write to fix.
+
+make: *** [lint] Error 1
+Workflow checks failed; Codex self-heal attempt 1.
+Codex execution started; transcript output is excluded from persisted run logs.
+Prompt stats: bytes=5736 lines=98 words=687
+Pre-Codex worktree snapshot:
+git status --short:
+ M tests/test_admin.py
+ M tests/test_embeddable_forms_model.py
+ M tests/test_embeddable_forms_settings.py
+Non-log changed files:
+tests/test_admin.py
+tests/test_embeddable_forms_model.py
+tests/test_embeddable_forms_settings.py
+Codex execution failed (exit 1).
+Post-Codex worktree snapshot:
+git status --short:
+ M tests/test_admin.py
+ M tests/test_embeddable_forms_model.py
+ M tests/test_embeddable_forms_settings.py
+Non-log changed files:
+tests/test_admin.py
+tests/test_embeddable_forms_model.py
+tests/test_embeddable_forms_settings.py
+==> Refresh local runtime after schema changes
+Skipped: no schema-affecting files changed.
+==> Run lint
+docker compose run --rm app poetry run ruff format --check && \
+	docker compose run --rm app poetry run ruff check --output-format full && \
+	docker compose run --rm app poetry run mypy . && \
+	docker compose run --rm app sh -lc 'if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/*.js; elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/*.js; else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-aeb8069ab291 Creating 
+ Container hushline-app-run-aeb8069ab291 Created 
+227 files already formatted
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-c0e44d33b79a Creating 
+ Container hushline-app-run-c0e44d33b79a Created 
+All checks passed!
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-a26d1fffb52a Creating 
+ Container hushline-app-run-a26d1fffb52a Created 
+Success: no issues found in 226 source files
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-22959cc4515f Creating 
+ Container hushline-app-run-22959cc4515f Created 
+Checking formatting...
+[warn] hushline/static/js/client-side-encryption.js
+[warn] hushline/static/js/diceware-words.js
+[warn] hushline/static/js/directory.js
+[warn] hushline/static/js/global.js
+[warn] hushline/static/js/images.js
+[warn] hushline/static/js/inbox.js
+[warn] hushline/static/js/mailvelope.js
+[warn] hushline/static/js/message.js
+[warn] hushline/static/js/message_success.js
+[warn] hushline/static/js/onboarding.js
+[warn] hushline/static/js/premium-waiting.js
+[warn] hushline/static/js/premium.js
+[warn] hushline/static/js/service-worker.js
+[warn] hushline/static/js/settings-fields.js
+[warn] hushline/static/js/settings.js
+[warn] hushline/static/js/settings_admin.js
+[warn] hushline/static/js/style.js
+[warn] hushline/static/js/submit-message.js
+[warn] hushline/static/js/time-shadows.js
+[warn] hushline/static/js/user_search.js
+[warn] hushline/static/js/vision.js
+[warn] Code style issues found in 21 files. Run Prettier with --write to fix.
+
+make: *** [lint] Error 1
+Workflow checks failed; Codex self-heal attempt 2.
+Codex execution started; transcript output is excluded from persisted run logs.
+Prompt stats: bytes=5385 lines=91 words=644
+Pre-Codex worktree snapshot:
+git status --short:
+ M tests/test_admin.py
+ M tests/test_embeddable_forms_model.py
+ M tests/test_embeddable_forms_settings.py
+Non-log changed files:
+tests/test_admin.py
+tests/test_embeddable_forms_model.py
+tests/test_embeddable_forms_settings.py
+Codex execution failed (exit 1).
+Post-Codex worktree snapshot:
+git status --short:
+ M tests/test_admin.py
+ M tests/test_embeddable_forms_model.py
+ M tests/test_embeddable_forms_settings.py
+Non-log changed files:
+tests/test_admin.py
+tests/test_embeddable_forms_model.py
+tests/test_embeddable_forms_settings.py
+==> Refresh local runtime after schema changes
+Skipped: no schema-affecting files changed.
+==> Run lint
+docker compose run --rm app poetry run ruff format --check && \
+	docker compose run --rm app poetry run ruff check --output-format full && \
+	docker compose run --rm app poetry run mypy . && \
+	docker compose run --rm app sh -lc 'if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/*.js; elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/*.js; else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-8628c60a5eb8 Creating 
+ Container hushline-app-run-8628c60a5eb8 Created 
+227 files already formatted
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-61b63622a872 Creating 
+ Container hushline-app-run-61b63622a872 Created 
+All checks passed!
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-fa7583620aa2 Creating 
+ Container hushline-app-run-fa7583620aa2 Created 
+Success: no issues found in 226 source files
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-68496dc5b6b4 Creating 
+ Container hushline-app-run-68496dc5b6b4 Created 
+Checking formatting...
+[warn] hushline/static/js/client-side-encryption.js
+[warn] hushline/static/js/diceware-words.js
+[warn] hushline/static/js/directory.js
+[warn] hushline/static/js/global.js
+[warn] hushline/static/js/images.js
+[warn] hushline/static/js/inbox.js
+[warn] hushline/static/js/mailvelope.js
+[warn] hushline/static/js/message.js
+[warn] hushline/static/js/message_success.js
+[warn] hushline/static/js/onboarding.js
+[warn] hushline/static/js/premium-waiting.js
+[warn] hushline/static/js/premium.js
+[warn] hushline/static/js/service-worker.js
+[warn] hushline/static/js/settings-fields.js
+[warn] hushline/static/js/settings.js
+[warn] hushline/static/js/settings_admin.js
+[warn] hushline/static/js/style.js
+[warn] hushline/static/js/submit-message.js
+[warn] hushline/static/js/time-shadows.js
+[warn] hushline/static/js/user_search.js
+[warn] hushline/static/js/vision.js
+[warn] Code style issues found in 21 files. Run Prettier with --write to fix.
+
+make: *** [lint] Error 1
+Workflow checks failed; Codex self-heal attempt 3.
+Codex execution started; transcript output is excluded from persisted run logs.
+Prompt stats: bytes=5385 lines=91 words=644
+Pre-Codex worktree snapshot:
+git status --short:
+ M tests/test_admin.py
+ M tests/test_embeddable_forms_model.py
+ M tests/test_embeddable_forms_settings.py
+Non-log changed files:
+tests/test_admin.py
+tests/test_embeddable_forms_model.py
+tests/test_embeddable_forms_settings.py
+Codex execution failed (exit 1).
+Post-Codex worktree snapshot:
+git status --short:
+ M tests/test_admin.py
+ M tests/test_embeddable_forms_model.py
+ M tests/test_embeddable_forms_settings.py
+Non-log changed files:
+tests/test_admin.py
+tests/test_embeddable_forms_model.py
+tests/test_embeddable_forms_settings.py
+==> Refresh local runtime after schema changes
+Skipped: no schema-affecting files changed.
+==> Run lint
+docker compose run --rm app poetry run ruff format --check && \
+	docker compose run --rm app poetry run ruff check --output-format full && \
+	docker compose run --rm app poetry run mypy . && \
+	docker compose run --rm app sh -lc 'if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/*.js; elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/*.js; else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-8d92dd13e2a8 Creating 
+ Container hushline-app-run-8d92dd13e2a8 Created 
+227 files already formatted
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-1e3090eb38bc Creating 
+ Container hushline-app-run-1e3090eb38bc Created 
+All checks passed!
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-dcc772b247c0 Creating 
+ Container hushline-app-run-dcc772b247c0 Created 
+Success: no issues found in 226 source files
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-f6b3727936b9 Creating 
+ Container hushline-app-run-f6b3727936b9 Created 
+Checking formatting...
+[warn] hushline/static/js/client-side-encryption.js
+[warn] hushline/static/js/diceware-words.js
+[warn] hushline/static/js/directory.js
+[warn] hushline/static/js/global.js
+[warn] hushline/static/js/images.js
+[warn] hushline/static/js/inbox.js
+[warn] hushline/static/js/mailvelope.js
+[warn] hushline/static/js/message.js
+[warn] hushline/static/js/message_success.js
+[warn] hushline/static/js/onboarding.js
+[warn] hushline/static/js/premium-waiting.js
+[warn] hushline/static/js/premium.js
+[warn] hushline/static/js/service-worker.js
+[warn] hushline/static/js/settings-fields.js
+[warn] hushline/static/js/settings.js
+[warn] hushline/static/js/settings_admin.js
+[warn] hushline/static/js/style.js
+[warn] hushline/static/js/submit-message.js
+[warn] hushline/static/js/time-shadows.js
+[warn] hushline/static/js/user_search.js
+[warn] hushline/static/js/vision.js
+[warn] Code style issues found in 21 files. Run Prettier with --write to fix.
+
+make: *** [lint] Error 1
+Workflow checks failed; Codex self-heal attempt 4.
+Codex execution started; transcript output is excluded from persisted run logs.
+Prompt stats: bytes=5385 lines=91 words=644
+Pre-Codex worktree snapshot:
+git status --short:
+ M tests/test_admin.py
+ M tests/test_embeddable_forms_model.py
+ M tests/test_embeddable_forms_settings.py
+Non-log changed files:
+tests/test_admin.py
+tests/test_embeddable_forms_model.py
+tests/test_embeddable_forms_settings.py
+Codex execution failed (exit 1).
+Post-Codex worktree snapshot:
+git status --short:
+ M tests/test_admin.py
+ M tests/test_embeddable_forms_model.py
+ M tests/test_embeddable_forms_settings.py
+Non-log changed files:
+tests/test_admin.py
+tests/test_embeddable_forms_model.py
+tests/test_embeddable_forms_settings.py
+==> Refresh local runtime after schema changes
+Skipped: no schema-affecting files changed.
+==> Run lint
+docker compose run --rm app poetry run ruff format --check && \
+	docker compose run --rm app poetry run ruff check --output-format full && \
+	docker compose run --rm app poetry run mypy . && \
+	docker compose run --rm app sh -lc 'if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/*.js; elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/*.js; else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-a5686ebca5e0 Creating 
+ Container hushline-app-run-a5686ebca5e0 Created 
+227 files already formatted
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-ce735273b8ae Creating 
+ Container hushline-app-run-ce735273b8ae Created 
+All checks passed!
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-a7ee338bb202 Creating 
+ Container hushline-app-run-a7ee338bb202 Created 
+Success: no issues found in 226 source files
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-53882f29814b Creating 
+ Container hushline-app-run-53882f29814b Created 
+Checking formatting...
+[warn] hushline/static/js/client-side-encryption.js
+[warn] hushline/static/js/diceware-words.js
+[warn] hushline/static/js/directory.js
+[warn] hushline/static/js/global.js
+[warn] hushline/static/js/images.js
+[warn] hushline/static/js/inbox.js
+[warn] hushline/static/js/mailvelope.js
+[warn] hushline/static/js/message.js
+[warn] hushline/static/js/message_success.js
+[warn] hushline/static/js/onboarding.js
+[warn] hushline/static/js/premium-waiting.js
+[warn] hushline/static/js/premium.js
+[warn] hushline/static/js/service-worker.js
+[warn] hushline/static/js/settings-fields.js
+[warn] hushline/static/js/settings.js
+[warn] hushline/static/js/settings_admin.js
+[warn] hushline/static/js/style.js
+[warn] hushline/static/js/submit-message.js
+[warn] hushline/static/js/time-shadows.js
+[warn] hushline/static/js/user_search.js
+[warn] hushline/static/js/vision.js
+[warn] Code style issues found in 21 files. Run Prettier with --write to fix.
+
+make: *** [lint] Error 1
+Workflow checks failed; Codex self-heal attempt 5.
+Codex execution started; transcript output is excluded from persisted run logs.
+Prompt stats: bytes=5385 lines=91 words=644
+Pre-Codex worktree snapshot:
+git status --short:
+ M tests/test_admin.py
+ M tests/test_embeddable_forms_model.py
+ M tests/test_embeddable_forms_settings.py
+Non-log changed files:
+tests/test_admin.py
+tests/test_embeddable_forms_model.py
+tests/test_embeddable_forms_settings.py
+Codex execution failed (exit 1).
+Post-Codex worktree snapshot:
+git status --short:
+ M tests/test_admin.py
+ M tests/test_embeddable_forms_model.py
+ M tests/test_embeddable_forms_settings.py
+Non-log changed files:
+tests/test_admin.py
+tests/test_embeddable_forms_model.py
+tests/test_embeddable_forms_settings.py
+==> Refresh local runtime after schema changes
+Skipped: no schema-affecting files changed.
+==> Run lint
+docker compose run --rm app poetry run ruff format --check && \
+	docker compose run --rm app poetry run ruff check --output-format full && \
+	docker compose run --rm app poetry run mypy . && \
+	docker compose run --rm app sh -lc 'if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/*.js; elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/*.js; else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-87232500e42d Creating 
+ Container hushline-app-run-87232500e42d Created 
+227 files already formatted
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-cd71b5352241 Creating 
+ Container hushline-app-run-cd71b5352241 Created 
+All checks passed!
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-ac10a05d6a20 Creating 
+ Container hushline-app-run-ac10a05d6a20 Created 
+Success: no issues found in 226 source files
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-53a2141c79e6 Creating 
+ Container hushline-app-run-53a2141c79e6 Created 
+Checking formatting...
+[warn] hushline/static/js/client-side-encryption.js
+[warn] hushline/static/js/diceware-words.js
+[warn] hushline/static/js/directory.js
+[warn] hushline/static/js/global.js
+[warn] hushline/static/js/images.js
+[warn] hushline/static/js/inbox.js
+[warn] hushline/static/js/mailvelope.js
+[warn] hushline/static/js/message.js
+[warn] hushline/static/js/message_success.js
+[warn] hushline/static/js/onboarding.js
+[warn] hushline/static/js/premium-waiting.js
+[warn] hushline/static/js/premium.js
+[warn] hushline/static/js/service-worker.js
+[warn] hushline/static/js/settings-fields.js
+[warn] hushline/static/js/settings.js
+[warn] hushline/static/js/settings_admin.js
+[warn] hushline/static/js/style.js
+[warn] hushline/static/js/submit-message.js
+[warn] hushline/static/js/time-shadows.js
+[warn] hushline/static/js/user_search.js
+[warn] hushline/static/js/vision.js
+[warn] Code style issues found in 21 files. Run Prettier with --write to fix.
+
+make: *** [lint] Error 1
+Workflow checks failed; Codex self-heal attempt 6.
+Codex execution started; transcript output is excluded from persisted run logs.
+Prompt stats: bytes=5385 lines=91 words=644
+Pre-Codex worktree snapshot:
+git status --short:
+ M tests/test_admin.py
+ M tests/test_embeddable_forms_model.py
+ M tests/test_embeddable_forms_settings.py
+Non-log changed files:
+tests/test_admin.py
+tests/test_embeddable_forms_model.py
+tests/test_embeddable_forms_settings.py
+Codex execution failed (exit 1).
+Post-Codex worktree snapshot:
+git status --short:
+ M tests/test_admin.py
+ M tests/test_embeddable_forms_model.py
+ M tests/test_embeddable_forms_settings.py
+Non-log changed files:
+tests/test_admin.py
+tests/test_embeddable_forms_model.py
+tests/test_embeddable_forms_settings.py
+==> Refresh local runtime after schema changes
+Skipped: no schema-affecting files changed.
+==> Run lint
+docker compose run --rm app poetry run ruff format --check && \
+	docker compose run --rm app poetry run ruff check --output-format full && \
+	docker compose run --rm app poetry run mypy . && \
+	docker compose run --rm app sh -lc 'if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/*.js; elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/*.js; else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-1c2031b3e37e Creating 
+ Container hushline-app-run-1c2031b3e37e Created 
+227 files already formatted
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-6c877bf8db8b Creating 
+ Container hushline-app-run-6c877bf8db8b Created 
+All checks passed!
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-c826341dba0e Creating 
+ Container hushline-app-run-c826341dba0e Created 
+Success: no issues found in 226 source files
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-81b862361b0c Creating 
+ Container hushline-app-run-81b862361b0c Created 
+Checking formatting...
+[warn] hushline/static/js/client-side-encryption.js
+[warn] hushline/static/js/diceware-words.js
+[warn] hushline/static/js/directory.js
+[warn] hushline/static/js/global.js
+[warn] hushline/static/js/images.js
+[warn] hushline/static/js/inbox.js
+[warn] hushline/static/js/mailvelope.js
+[warn] hushline/static/js/message.js
+[warn] hushline/static/js/message_success.js
+[warn] hushline/static/js/onboarding.js
+[warn] hushline/static/js/premium-waiting.js
+[warn] hushline/static/js/premium.js
+[warn] hushline/static/js/service-worker.js
+[warn] hushline/static/js/settings-fields.js
+[warn] hushline/static/js/settings.js
+[warn] hushline/static/js/settings_admin.js
+[warn] hushline/static/js/style.js
+[warn] hushline/static/js/submit-message.js
+[warn] hushline/static/js/time-shadows.js
+[warn] hushline/static/js/user_search.js
+[warn] hushline/static/js/vision.js
+[warn] Code style issues found in 21 files. Run Prettier with --write to fix.
+
+make: *** [lint] Error 1
+Workflow checks failed; Codex self-heal attempt 7.
+Codex execution started; transcript output is excluded from persisted run logs.
+Prompt stats: bytes=5385 lines=91 words=644
+Pre-Codex worktree snapshot:
+git status --short:
+ M tests/test_admin.py
+ M tests/test_embeddable_forms_model.py
+ M tests/test_embeddable_forms_settings.py
+Non-log changed files:
+tests/test_admin.py
+tests/test_embeddable_forms_model.py
+tests/test_embeddable_forms_settings.py
+Codex execution failed (exit 1).
+Post-Codex worktree snapshot:
+git status --short:
+ M tests/test_admin.py
+ M tests/test_embeddable_forms_model.py
+ M tests/test_embeddable_forms_settings.py
+Non-log changed files:
+tests/test_admin.py
+tests/test_embeddable_forms_model.py
+tests/test_embeddable_forms_settings.py
+==> Refresh local runtime after schema changes
+Skipped: no schema-affecting files changed.
+==> Run lint
+docker compose run --rm app poetry run ruff format --check && \
+	docker compose run --rm app poetry run ruff check --output-format full && \
+	docker compose run --rm app poetry run mypy . && \
+	docker compose run --rm app sh -lc 'if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/*.js; elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/*.js; else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-164c77097b82 Creating 
+ Container hushline-app-run-164c77097b82 Created 
+227 files already formatted
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-ab4ca0fbc7a5 Creating 
+ Container hushline-app-run-ab4ca0fbc7a5 Created 
+All checks passed!
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-80fce175581f Creating 
+ Container hushline-app-run-80fce175581f Created 
+Success: no issues found in 226 source files
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-7c2bc07a1019 Creating 
+ Container hushline-app-run-7c2bc07a1019 Created 
+Checking formatting...
+[warn] hushline/static/js/client-side-encryption.js
+[warn] hushline/static/js/diceware-words.js
+[warn] hushline/static/js/directory.js
+[warn] hushline/static/js/global.js
+[warn] hushline/static/js/images.js
+[warn] hushline/static/js/inbox.js
+[warn] hushline/static/js/mailvelope.js
+[warn] hushline/static/js/message.js
+[warn] hushline/static/js/message_success.js
+[warn] hushline/static/js/onboarding.js
+[warn] hushline/static/js/premium-waiting.js
+[warn] hushline/static/js/premium.js
+[warn] hushline/static/js/service-worker.js
+[warn] hushline/static/js/settings-fields.js
+[warn] hushline/static/js/settings.js
+[warn] hushline/static/js/settings_admin.js
+[warn] hushline/static/js/style.js
+[warn] hushline/static/js/submit-message.js
+[warn] hushline/static/js/time-shadows.js
+[warn] hushline/static/js/user_search.js
+[warn] hushline/static/js/vision.js
+[warn] Code style issues found in 21 files. Run Prettier with --write to fix.
+
+make: *** [lint] Error 1
+Blocked: workflow checks failed after 8 self-heal attempt(s) for issue #1978.
+Warning: issue implementation failed; opening a sanitized diagnostic PR instead of leaving the checkout stranded.
+Restoring non-log worktree changes before opening diagnostic PR.
+tests/test_admin.py
+tests/test_embeddable_forms_model.py
+tests/test_embeddable_forms_settings.py
