@@ -97,7 +97,10 @@ This file provides operating guidance for coding agents working in the Hush Line
   - Exception: when the selected issue is a child of a GitHub parent epic, the runner may allow the long-lived epic PR plus the matching child issue PR, and should stop only for unrelated bot PRs.
 - Required runner behavior:
   - The runner must acquire a local non-blocking lock before touching the repository or Docker; if another Hush Line code-agent run is active, exit without changing local state.
-  - At runner start, perform a full local environment reset and seed sequence:
+  - Before any destructive sync, exit without changing files unless the checkout is clean and already on the base branch.
+  - If no issue is available, or a cheap GitHub guard blocks work, exit before `git fetch`, `git checkout`, `git reset`, `git clean`, Docker reset, or dev-data seeding.
+  - After an issue is selected and all cheap GitHub guards pass, sync the local base branch to `origin/main`.
+  - Before issue work starts, perform a full local environment reset and seed sequence:
     - `docker compose down -v --remove-orphans`
     - Stop/remove all Docker containers (`docker rm -f $(docker ps -aq)`)
     - Kill listener processes on configured runner ports (`HUSHLINE_DAILY_KILL_PORTS`, default `4566 4571 5432 8080`)
@@ -106,8 +109,6 @@ This file provides operating guidance for coding agents working in the Hush Line
   - Run required validation checks locally before opening PRs (`make lint`, `make test`).
   - Persist per-run logs in `docs/agent-logs/` and include the log path in PR context.
   - Use signed commits that verify on GitHub.
-  - Before any destructive sync, exit without changing files unless the checkout is clean and already on the base branch.
-  - After the checkout safety preflight passes, sync the local base branch to `origin/main`.
   - If the selected issue is a child of a GitHub parent epic, create/update the child issue branch as usual, but target its PR at the shared epic branch instead of `main`.
   - The shared epic branch should be the only long-lived PR that targets `main` for that epic.
   - Move the selected issue's project status to `In Progress` while work is underway.

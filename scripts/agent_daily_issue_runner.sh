@@ -3101,12 +3101,6 @@ main() {
   cd "$REPO_DIR"
 
   assert_runner_can_take_checkout
-  CLEANUP_REPO_ON_EXIT=1
-
-  run_step "Fetch latest from origin" git fetch origin
-  run_step "Checkout $BASE_BRANCH" git checkout "$BASE_BRANCH"
-  run_step "Reset to origin/$BASE_BRANCH" git reset --hard "origin/$BASE_BRANCH"
-  run_step "Remove untracked files" git clean -fd
 
   ISSUE_NUMBER=""
   if [[ -n "$FORCE_ISSUE_NUMBER" ]]; then
@@ -3184,6 +3178,13 @@ main() {
       exit 0
     fi
   fi
+
+  CLEANUP_REPO_ON_EXIT=1
+
+  run_step "Fetch latest from origin" git fetch origin
+  run_step "Checkout $BASE_BRANCH" git checkout "$BASE_BRANCH"
+  run_step "Reset to origin/$BASE_BRANCH" git reset --hard "origin/$BASE_BRANCH"
+  run_step "Remove untracked files" git clean -fd
 
   run_step \
     "Mark issue #${ISSUE_NUMBER} as ${PROJECT_STATUS_IN_PROGRESS}" \
