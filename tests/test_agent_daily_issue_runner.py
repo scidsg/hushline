@@ -50,7 +50,7 @@ gh() {{
   return 42
 }}
 set +e
-count_open_bot_prs_excluding_heads codex/daily-coverage
+count_open_bot_prs_excluding_heads
 rc=$?
 set -e
 printf 'rc=%s\\n' "$rc"
@@ -135,7 +135,7 @@ main
     calls = call_log.read_text(encoding="utf-8").splitlines()
     assert "collect-issue-candidates" in calls
     assert "count-open-human-prs" in calls
-    assert "count-open-bot-prs-excluding-heads:codex/daily-coverage" in calls
+    assert "count-open-bot-prs-excluding-heads:" in calls
     assert "configure-bot-git" not in calls
     assert "runtime-bootstrap" not in calls
 
