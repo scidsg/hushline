@@ -13,7 +13,6 @@
     <style>
       :root {
         --color-brand: oklch(from {{ brand_primary_color }} l c h);
-        --theme-color-dark: {{ brand_primary_color_dark }};
       }
     </style>
     {% if not message_submission_block_reason %}
@@ -139,20 +138,6 @@
           </div>
         {% endif %}
       </section>
-
-      <nav class="embed-actions" aria-label="Embed safety actions">
-        <a href="{{ open_profile_url }}" target="_blank" rel="noopener noreferrer">
-          Open on Hush Line
-        </a>
-        <a
-          href="{{ guidance_exit_button_link }}"
-          target="_top"
-          rel="noopener noreferrer"
-          aria-label="Emergency exit: {{ guidance_exit_button_text }}"
-        >
-          {{ guidance_exit_button_text }}
-        </a>
-      </nav>
 
       <noscript>
         <div class="embed-noscript" role="status">
