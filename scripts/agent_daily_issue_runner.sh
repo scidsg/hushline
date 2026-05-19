@@ -45,7 +45,6 @@ BOT_GIT_SIGNING_KEY="${HUSHLINE_BOT_GIT_SIGNING_KEY:-}"
 DEFAULT_BOT_GIT_SSH_SIGNING_KEY_PATH="${HUSHLINE_BOT_GIT_DEFAULT_SSH_SIGNING_KEY_PATH:-}"
 BRANCH_PREFIX="${HUSHLINE_DAILY_BRANCH_PREFIX:-codex/daily-issue-}"
 EPIC_BRANCH_PREFIX="${HUSHLINE_DAILY_EPIC_BRANCH_PREFIX:-codex/epic-}"
-COVERAGE_BRANCH_NAME="${HUSHLINE_COVERAGE_BRANCH_NAME:-codex/daily-coverage}"
 CODEX_MODEL="${HUSHLINE_CODEX_MODEL:-gpt-5.5}"
 CODEX_REASONING_EFFORT="${HUSHLINE_CODEX_REASONING_EFFORT:-high}"
 PROJECT_OWNER="${HUSHLINE_DAILY_PROJECT_OWNER:-${REPO_SLUG%%/*}}"
@@ -3083,9 +3082,9 @@ main() {
   if [[ -n "$EPIC_ISSUE_NUMBER" ]]; then
     EXISTING_EPIC_PR_JSON="$(find_open_pr_for_head_branch "$EPIC_BRANCH_NAME")"
     EXISTING_CHILD_PR_JSON="$(find_open_pr_for_head_branch "$BRANCH_NAME")"
-    OPEN_BOT_PRS="$(count_open_bot_prs_excluding_heads "$COVERAGE_BRANCH_NAME" "$EPIC_BRANCH_NAME" "$BRANCH_NAME")"
+    OPEN_BOT_PRS="$(count_open_bot_prs_excluding_heads "$EPIC_BRANCH_NAME" "$BRANCH_NAME")"
     echo "Open unrelated bot PR count: ${OPEN_BOT_PRS}"
-    echo "Allowed bot PR heads: ${COVERAGE_BRANCH_NAME}, ${EPIC_BRANCH_NAME}, ${BRANCH_NAME}"
+    echo "Allowed bot PR heads: ${EPIC_BRANCH_NAME}, ${BRANCH_NAME}"
     if [[ "$OPEN_BOT_PRS" != "0" ]]; then
       runner_status "Skipped: found ${OPEN_BOT_PRS} unrelated open PR(s) by ${BOT_LOGIN}."
       exit 0
@@ -3098,9 +3097,8 @@ main() {
       echo "Child branch ${BRANCH_NAME} already has an open PR; runner will update it."
     fi
   else
-    OPEN_BOT_PRS="$(count_open_bot_prs_excluding_heads "$COVERAGE_BRANCH_NAME")"
+    OPEN_BOT_PRS="$(count_open_bot_prs_excluding_heads)"
     echo "Open unrelated bot PR count: ${OPEN_BOT_PRS}"
-    echo "Allowed bot PR heads: ${COVERAGE_BRANCH_NAME}"
     if [[ "$OPEN_BOT_PRS" != "0" ]]; then
       runner_status "Skipped: found ${OPEN_BOT_PRS} open PR(s) by ${BOT_LOGIN}."
       exit 0
