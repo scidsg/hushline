@@ -35,14 +35,14 @@ This runner runs directly in the local repo and performs a narrow local gate bef
 1. Parse arguments (`--issue` optional) and resolve runtime configuration.
 2. Change into the repo (`$HOME/hushline` by default).
 3. Acquire a local runner lock and exit without doing any repository or Docker work if another Hush Line code-agent run is active.
-4. Exit without changing files unless the checkout is clean and already on the base branch.
-5. Check cheap GitHub exit conditions before any new-work queue lookup or destructive repository/Docker work:
+4. Normalize the local agent-only checkout by discarding local worktree changes and switching to the base branch.
+5. Check cheap GitHub exit conditions before any new-work queue lookup or network sync/Docker work:
    - exit if any open human-authored PR exists
    - exit if any open issue is already in project status `In Progress`
-6. Select issue target before any destructive repository or Docker work:
+6. Select issue target before any network sync or Docker work:
    - Use `--issue <n>` when provided (must still be open), otherwise
    - select the top open issue from project `Hush Line Roadmap`, column `Agent Eligible`.
-7. Check remaining cheap GitHub exit conditions before any destructive repository or Docker work:
+7. Check remaining cheap GitHub exit conditions before any network sync or Docker work:
    - for non-epic issues, exit if any other open PR exists from `hushline-dev`
    - for child issues with a GitHub parent epic, allow the long-lived epic PR (head branch `codex/epic-<epic>`) and the current child issue PR (head branch `codex/daily-issue-<issue>`)
    - for child issues with a GitHub parent epic, exit only if there are unrelated open bot PRs outside those allowed heads
@@ -104,8 +104,8 @@ This runner runs directly in the local repo and performs a narrow local gate bef
 22. Refresh run log after PR creation (including opened PR URL and post-check steps), commit/push that log update when changed.
 23. Poll the open PR until it closes. When the monitor sees actionable feedback (discussion comments, change-request reviews, unresolved review threads, or failing PR checks), it invokes Codex on the PR branch, reruns `make lint` and `make test`, commits and pushes any fix, then resumes polling.
 24. Return to a clean `main` on normal completion or PR closure.
-    - If the run fails after creating branch work, leave the failed worktree on its current branch with its changes intact for human inspection or manual recovery.
-    - A new scheduled pass still exits before any destructive sync if a human or another process has left the checkout off `main` or with local changes.
+    - If the run fails after creating branch work, cleanup resets the checkout back to a clean base branch.
+    - A new scheduled pass discards local worktree changes and switches back to the base branch before evaluating GitHub queue guards.
 
 ## ASCII Workflow (Current)
 
@@ -138,8 +138,8 @@ This runner runs directly in the local repo and performs a narrow local gate bef
       |
       v
 +--------------------------------------------------+
-| Verify clean base-branch checkout              |
-| Dirty or non-base checkout? skip + exit        |
+| Normalize agent-only checkout                 |
+| Discard dirty work + switch to base branch    |
 +--------------------------------------------------+
       |
       v

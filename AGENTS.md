@@ -97,8 +97,8 @@ This file provides operating guidance for coding agents working in the Hush Line
   - Exception: when the selected issue is a child of a GitHub parent epic, the runner may allow the long-lived epic PR plus the matching child issue PR, and should stop only for unrelated bot PRs.
 - Required runner behavior:
   - The runner must acquire a local non-blocking lock before touching the repository or Docker; if another Hush Line code-agent run is active, exit without changing local state.
-  - Before any destructive sync, exit without changing files unless the checkout is clean and already on the base branch.
-  - If no issue is available, or a cheap GitHub guard blocks work, exit before `git fetch`, `git checkout`, `git reset`, `git clean`, Docker reset, or dev-data seeding.
+  - After acquiring the runner lock, normalize the agent-only checkout by discarding local worktree changes and switching to the base branch.
+  - If no issue is available, or a cheap GitHub guard blocks work, exit before `git fetch`, Docker reset, or dev-data seeding.
   - After an issue is selected and all cheap GitHub guards pass, sync the local base branch to `origin/main`.
   - Before issue work starts, perform a full local environment reset and seed sequence:
     - `docker compose down -v --remove-orphans`
