@@ -129,6 +129,27 @@ def test_embed_origin_normalization_canonicalizes_host_and_ports() -> None:
     assert normalize_embed_origin("http://exampleonion.onion:80") == "http://exampleonion.onion"
 
 
+def test_embed_origin_normalization_rejects_invalid_ports_and_deduplicates(user: User) -> None:
+    with pytest.raises(ValueError, match="valid port"):
+        normalize_embed_origin("https://tips.example:abc")
+
+    with pytest.raises(ValueError, match="valid port"):
+        normalize_embed_origin("https://tips.example:99999")
+
+    user.primary_username.set_embed_allowed_origins(
+        [
+            "https://Tips.Example:443",
+            "https://tips.example",
+            "https://other.example",
+        ]
+    )
+
+    assert user.primary_username.embed_allowed_origins == [
+        "https://tips.example",
+        "https://other.example",
+    ]
+
+
 @pytest.mark.parametrize(
     ("configured_origin", "browser_origin", "stored_origin"),
     [

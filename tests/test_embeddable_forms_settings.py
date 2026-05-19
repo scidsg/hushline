@@ -1,7 +1,8 @@
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import pytest
 from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
@@ -14,6 +15,7 @@ from hushline.model import (
     FieldDefinition,
     FieldType,
     Message,
+    NotificationRecipient,
     OrganizationSetting,
     StripeSubscriptionStatusEnum,
     User,
@@ -47,6 +49,22 @@ def _configure_embed(username: Username, origin: str = "https://tips.example") -
     username.embed_enabled = True
     username.set_embed_allowed_origins([origin])
     db.session.commit()
+
+
+def _configure_default_smtp(app: Flask) -> None:
+    app.config["SMTP_USERNAME"] = "default-user"
+    app.config["SMTP_SERVER"] = "smtp.default.example"
+    app.config["SMTP_PORT"] = 587
+    app.config["SMTP_PASSWORD"] = "default-pass"
+    app.config["NOTIFICATIONS_ADDRESS"] = "notify@example.com"
+    app.config["NOTIFICATIONS_REPLY_TO"] = "reply@example.com"
+    app.config["SMTP_ENCRYPTION"] = "StartTLS"
+
+
+def _add_secondary_notification_recipient(user: User) -> None:
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.notification_recipients[-1].pgp_key = Path("tests/test_pgp_key.txt").read_text()
 
 
 def _assert_safe_embed_denial(response: TestResponse) -> None:
@@ -556,6 +574,32 @@ def test_embed_profile_rate_limit_persists_outside_flask_extension_state(
     assert limited_result.limited_scopes == ("source",)
 
 
+def test_embed_profile_rate_limit_handles_unknown_source_and_deployment_scope(
+    app: Flask, user: User
+) -> None:
+    app.config["EMBED_RATE_LIMIT_WINDOW_SECONDS"] = 10
+    app.config["EMBED_RATE_LIMIT_PROFILE_MAX"] = 20
+    app.config["EMBED_RATE_LIMIT_SOURCE_MAX"] = 20
+    app.config["EMBED_RATE_LIMIT_DEPLOYMENT_MAX"] = 1
+
+    with (
+        app.test_request_context(environ_base={"REMOTE_ADDR": "not-an-ip"}),
+        patch("hushline.embeds.time.time", return_value=1000.0),
+    ):
+        first_result = check_embed_rate_limit(user.primary_username)
+
+    with (
+        app.test_request_context(environ_base={"REMOTE_ADDR": "still-not-an-ip"}),
+        patch("hushline.embeds.time.time", return_value=1001.0),
+    ):
+        limited_result = check_embed_rate_limit(user.primary_username)
+
+    assert first_result.limited is False
+    assert limited_result.limited is True
+    assert limited_result.limited_scopes == ("deployment",)
+    assert limited_result.source_bucket_hash == first_result.source_bucket_hash
+
+
 def test_embed_profile_rate_limit_evicts_stale_global_state(app: Flask, user: User) -> None:
     app.config["EMBED_RATE_LIMIT_WINDOW_SECONDS"] = 10
     app.config["EMBED_RATE_LIMIT_PROFILE_MAX"] = 20
@@ -700,6 +744,31 @@ def test_embed_profile_submission_rejects_captcha_failure(client: FlaskClient, u
     assert _first_message_for(user.primary_username) is None
 
 
+def test_embed_profile_submission_rejects_missing_required_field(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "Embedded Signal contact",
+            **submission_data,
+        },
+    )
+
+    assert post_response.status_code == 400
+    assert "There was an error submitting your message" in post_response.text
+    assert "Message: This field is required." in post_response.text
+    assert _first_message_for(user.primary_username) is None
+
+
 def test_embed_profile_submission_rejects_stale_form_after_suspension(
     client: FlaskClient, user: User
 ) -> None:
@@ -819,6 +888,51 @@ def test_embed_profile_submission_uses_same_enabled_custom_fields(
         "Public contact": "public@example.com",
         "Encrypted details": armored_details,
     }
+
+
+def test_embed_profile_malformed_recipient_ciphertexts_use_generic_notification_body(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _configure_default_smtp(app)
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email_encrypt_entire_body = False
+    user.email = "primary@example.com"
+    _add_secondary_notification_recipient(user)
+    db.session.commit()
+    _configure_embed(user.primary_username)
+
+    send_email = MagicMock(return_value=True)
+    monkeypatch.setattr("hushline.routes.common.create_smtp_config", MagicMock())
+    monkeypatch.setattr("hushline.routes.common.send_email", send_email)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "sender-contact@example.com",
+            "field_1": "secret disclosure body",
+            "encrypted_email_fields_by_recipient": "not-json",
+            **submission_data,
+        },
+    )
+
+    assert post_response.status_code == 200, post_response.text
+    assert [call.args[0] for call in send_email.call_args_list] == [
+        "primary@example.com",
+        "secondary@example.com",
+    ]
+    assert [call.args[2] for call in send_email.call_args_list] == [
+        "You have a new Hush Line message! Please log in to read it.",
+        "You have a new Hush Line message! Please log in to read it.",
+    ]
 
 
 def test_embed_profile_has_no_postmessage_submission_path(client: FlaskClient, user: User) -> None:
