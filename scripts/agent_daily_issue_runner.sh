@@ -228,16 +228,20 @@ assert_runner_can_take_checkout() {
   fi
 
   current_branch="$(current_branch_name)"
-  if [[ "$current_branch" != "$BASE_BRANCH" ]]; then
-    runner_status "Skipped: checkout is on '${current_branch:-detached HEAD}', not '$BASE_BRANCH'; leaving local work untouched."
-    exit 0
+  status_output="$(worktree_status_porcelain)"
+
+  if [[ -n "$status_output" ]]; then
+    runner_status "Discarding local checkout changes before runner work."
+    printf '%s\n' "$status_output"
+    git reset --hard
+    git clean -fd
   fi
 
-  status_output="$(worktree_status_porcelain)"
-  if [[ -n "$status_output" ]]; then
-    runner_status "Skipped: checkout has local changes; leaving local work untouched."
-    printf '%s\n' "$status_output"
-    exit 0
+  if [[ "$current_branch" != "$BASE_BRANCH" ]]; then
+    runner_status "Switching checkout from '${current_branch:-detached HEAD}' to '$BASE_BRANCH' before runner work."
+    git checkout "$BASE_BRANCH"
+    git reset --hard
+    git clean -fd
   fi
 }
 
