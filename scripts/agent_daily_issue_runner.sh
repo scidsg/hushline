@@ -128,6 +128,10 @@ initialize_run_state() {
 }
 
 cleanup() {
+  local exit_code=$?
+  local cleanup_branch=""
+  local cleanup_status=""
+
   rm -f "${CHECK_LOG_FILE:-}" "${PROMPT_FILE:-}" "${PR_BODY_FILE:-}" "${CODEX_OUTPUT_FILE:-}" "${CODEX_TRANSCRIPT_FILE:-}" "${RUN_LOG_TMP_FILE:-}"
   rm -f "${HUSHLINE_DAILY_RUNNER_SNAPSHOT_PATH:-}"
   release_runner_lock
@@ -136,6 +140,19 @@ cleanup() {
       echo "Leaving branch ${PR_FEEDBACK_MONITOR_BRANCH:-current branch} checked out because PR #${PR_FEEDBACK_MONITOR_PR_NUMBER:-unknown} is still open."
       return
     fi
+
+    if (( exit_code != 0 )); then
+      cleanup_branch="$(git -C "$REPO_DIR" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+      cleanup_status="$(git -C "$REPO_DIR" status --short 2>/dev/null || true)"
+      if [[ "$cleanup_branch" != "$BASE_BRANCH" || -n "$cleanup_status" ]]; then
+        echo "Leaving failed runner worktree on ${cleanup_branch:-detached HEAD}; exit status was ${exit_code}."
+        if [[ -n "$cleanup_status" ]]; then
+          printf '%s\n' "$cleanup_status"
+        fi
+        return
+      fi
+    fi
+
     if ! git -C "$REPO_DIR" checkout "$BASE_BRANCH" >/dev/null 2>&1; then
       echo "Warning: failed to switch back to $BASE_BRANCH during cleanup." >&2
       return
@@ -3111,6 +3128,20 @@ main() {
     ISSUE_NUMBER="$FORCE_ISSUE_NUMBER"
     echo "Selected forced issue #${ISSUE_NUMBER}."
   else
+    OPEN_HUMAN_PRS="$(count_open_human_prs)"
+    echo "Open human-authored PR count: ${OPEN_HUMAN_PRS}"
+    if [[ "$OPEN_HUMAN_PRS" != "0" ]]; then
+      runner_status "Skipped: found ${OPEN_HUMAN_PRS} open human-authored PR(s)."
+      exit 0
+    fi
+
+    OPEN_IN_PROGRESS_ISSUES="$(count_open_project_issues_in_status "$PROJECT_STATUS_IN_PROGRESS")"
+    echo "Open project issues in ${PROJECT_STATUS_IN_PROGRESS}: ${OPEN_IN_PROGRESS_ISSUES}"
+    if [[ "$OPEN_IN_PROGRESS_ISSUES" != "0" ]]; then
+      runner_status "Skipped: found ${OPEN_IN_PROGRESS_ISSUES} open issue(s) in project status '${PROJECT_STATUS_IN_PROGRESS}'."
+      exit 0
+    fi
+
     ISSUE_NUMBER="$(collect_issue_candidates | sed -n '1p')"
     if [[ -n "$ISSUE_NUMBER" ]]; then
       echo "Selected issue #${ISSUE_NUMBER} from project queue."
@@ -3139,11 +3170,13 @@ main() {
   EXISTING_EPIC_PR_JSON=""
   EXISTING_CHILD_PR_JSON=""
 
-  OPEN_HUMAN_PRS="$(count_open_human_prs)"
-  echo "Open human-authored PR count: ${OPEN_HUMAN_PRS}"
-  if [[ "$OPEN_HUMAN_PRS" != "0" ]]; then
-    runner_status "Skipped: found ${OPEN_HUMAN_PRS} open human-authored PR(s)."
-    exit 0
+  if [[ -n "$FORCE_ISSUE_NUMBER" ]]; then
+    OPEN_HUMAN_PRS="$(count_open_human_prs)"
+    echo "Open human-authored PR count: ${OPEN_HUMAN_PRS}"
+    if [[ "$OPEN_HUMAN_PRS" != "0" ]]; then
+      runner_status "Skipped: found ${OPEN_HUMAN_PRS} open human-authored PR(s)."
+      exit 0
+    fi
   fi
 
   OPEN_IN_PROGRESS_ISSUES="$(count_open_project_issues_in_status "$PROJECT_STATUS_IN_PROGRESS")"

@@ -151,7 +151,7 @@ printf 'unexpected\\n'
     assert "unexpected" not in result.stdout
 
 
-def test_cleanup_resets_failed_runner_worktree_to_base_branch(tmp_path: Path) -> None:
+def test_cleanup_resets_successful_runner_worktree_to_base_branch(tmp_path: Path) -> None:
     call_log = tmp_path / "calls.txt"
 
     shell_script = f"""
@@ -185,6 +185,45 @@ git -C "$REPO_DIR" status --short
     assert f"git:-C {tmp_path / 'repo'} checkout main" in calls
     assert f"git:-C {tmp_path / 'repo'} reset --hard origin/main" in calls
     assert f"git:-C {tmp_path / 'repo'} clean -fd" in calls
+
+
+def test_cleanup_preserves_failed_runner_worktree_on_issue_branch(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(tmp_path / "repo"))}
+mkdir -p "$REPO_DIR/.git"
+git() {{
+  printf 'git:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+  case "$*" in
+    "-C $REPO_DIR symbolic-ref --quiet --short HEAD")
+      printf 'codex/daily-issue-1978\\n'
+      return 0
+      ;;
+    "-C $REPO_DIR status --short")
+      printf ' M file.txt\\n'
+      return 0
+      ;;
+  esac
+  return 0
+}}
+CLEANUP_REPO_ON_EXIT=1
+set +e
+false
+cleanup
+set -e
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Leaving failed runner worktree on codex/daily-issue-1978" in result.stdout
+    assert " M file.txt" in result.stdout
+    calls = call_log.read_text(encoding="utf-8")
+    assert f"git:-C {tmp_path / 'repo'} checkout main" not in calls
+    assert f"git:-C {tmp_path / 'repo'} reset --hard origin/main" not in calls
+    assert f"git:-C {tmp_path / 'repo'} clean -fd" not in calls
 
 
 def test_runner_lock_skips_when_existing_runner_is_active(tmp_path: Path) -> None:
@@ -241,6 +280,10 @@ count_open_human_prs() {{
   printf 'count-open-human-prs\\n' >> {shlex.quote(str(call_log))}
   printf '0\\n'
 }}
+count_open_project_issues_in_status() {{
+  printf 'count-open-project-issues-in-status:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  printf '0\\n'
+}}
 collect_issue_candidates() {{
   printf 'collect-issue-candidates\\n' >> {shlex.quote(str(call_log))}
   printf '1558\\n'
@@ -256,6 +299,7 @@ main
     calls = call_log.read_text(encoding="utf-8").splitlines()
     assert "collect-issue-candidates" in calls
     assert "count-open-human-prs" in calls
+    assert "count-open-project-issues-in-status:In Progress" in calls
     assert "count-open-bot-prs-excluding-heads:" in calls
     assert "Fetch latest from origin" not in calls
     assert "Reset to origin/main" not in calls
@@ -311,7 +355,7 @@ main
     assert "Skipped: found 2 open human-authored PR(s)." in result.stdout
 
     calls = call_log.read_text(encoding="utf-8").splitlines()
-    assert "collect-issue-candidates" in calls
+    assert "collect-issue-candidates" not in calls
     assert "count-open-human-prs" in calls
     assert "Fetch latest from origin" not in calls
     assert "Reset to origin/main" not in calls
@@ -374,7 +418,7 @@ main
     assert "Skipped: found 1 open issue(s) in project status 'In Progress'." in result.stdout
 
     calls = call_log.read_text(encoding="utf-8").splitlines()
-    assert "collect-issue-candidates" in calls
+    assert "collect-issue-candidates" not in calls
     assert "count-open-human-prs" in calls
     assert "count-open-project-issues-in-status:In Progress" in calls
     assert "Fetch latest from origin" not in calls
@@ -419,6 +463,10 @@ count_open_human_prs() {{
   printf 'count-open-human-prs\\n' >> {shlex.quote(str(call_log))}
   printf '0\\n'
 }}
+count_open_project_issues_in_status() {{
+  printf 'count-open-project-issues-in-status:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  printf '0\\n'
+}}
 collect_issue_candidates() {{
   printf 'collect-issue-candidates\\n' >> {shlex.quote(str(call_log))}
 }}
@@ -438,7 +486,8 @@ main
     assert "Reset to origin/main" not in calls
     assert "Remove untracked files" not in calls
     assert "count-open-bot-prs" not in calls
-    assert "count-open-human-prs" not in calls
+    assert "count-open-human-prs" in calls
+    assert "count-open-project-issues-in-status:In Progress" in calls
     assert "configure-bot-git" not in calls
     assert "runtime-bootstrap" not in calls
 
@@ -483,6 +532,7 @@ configure_bot_git_identity() {{ :; }}
 resolve_issue_parent_epic() {{ :; }}
 count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
 count_open_human_prs() {{ printf '0\\n'; }}
+count_open_project_issues_in_status() {{ printf '0\\n'; }}
 collect_issue_candidates() {{ printf '1558\\n'; }}
 start_runtime_stack_and_seed_dev_data() {{
   printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
@@ -1050,6 +1100,7 @@ resolve_issue_parent_epic() {{
   printf '1735\\tEpic title\\thttps://github.com/scidsg/hushline/issues/1735\\n'
 }}
 count_open_human_prs() {{ printf '0\\n'; }}
+count_open_project_issues_in_status() {{ printf '0\\n'; }}
 count_open_bot_prs_excluding_heads() {{
   printf 'count-open-bot-prs-excluding-heads\\n' >> {shlex.quote(str(call_log))}
   printf '0\\n'
@@ -1105,6 +1156,7 @@ run_step() {{
 collect_issue_candidates() {{ printf '1558\\n'; }}
 resolve_issue_parent_epic() {{ :; }}
 count_open_human_prs() {{ printf '0\\n'; }}
+count_open_project_issues_in_status() {{ printf '0\\n'; }}
 count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
 set_issue_project_status() {{
   printf 'status:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
@@ -1185,6 +1237,7 @@ resolve_issue_parent_epic() {{
   printf '1735\\tEpic title\\thttps://github.com/scidsg/hushline/issues/1735\\n'
 }}
 count_open_human_prs() {{ printf '0\\n'; }}
+count_open_project_issues_in_status() {{ printf '0\\n'; }}
 count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
 find_open_pr_for_head_branch() {{ :; }}
 set_issue_project_status() {{ :; }}
@@ -1361,6 +1414,7 @@ docker() {{ :; }}
 collect_issue_candidates() {{ printf '1558\\n'; }}
 resolve_issue_parent_epic() {{ :; }}
 count_open_human_prs() {{ printf '0\\n'; }}
+count_open_project_issues_in_status() {{ printf '0\\n'; }}
 count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
 set_issue_project_status() {{
   printf 'status:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
@@ -3408,6 +3462,7 @@ docker() {{ :; }}
 collect_issue_candidates() {{ printf '1558\\n'; }}
 resolve_issue_parent_epic() {{ :; }}
 count_open_human_prs() {{ printf '0\\n'; }}
+count_open_project_issues_in_status() {{ printf '0\\n'; }}
 count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
 set_issue_project_status() {{ :; }}
 configure_bot_git_identity() {{ :; }}
@@ -3512,6 +3567,7 @@ docker() {{ :; }}
 collect_issue_candidates() {{ printf '1558\\n'; }}
 resolve_issue_parent_epic() {{ :; }}
 count_open_human_prs() {{ printf '0\\n'; }}
+count_open_project_issues_in_status() {{ printf '0\\n'; }}
 count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
 set_issue_project_status() {{
   printf 'status:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
@@ -3612,6 +3668,7 @@ docker() {{ :; }}
 collect_issue_candidates() {{ printf '1558\\n'; }}
 resolve_issue_parent_epic() {{ :; }}
 count_open_human_prs() {{ printf '0\\n'; }}
+count_open_project_issues_in_status() {{ printf '0\\n'; }}
 count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
 set_issue_project_status() {{ :; }}
 configure_bot_git_identity() {{ :; }}
