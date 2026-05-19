@@ -87,6 +87,126 @@ printf '%s\\n' "$snapshot_metadata"
     assert snapshot_file.read_text(encoding="utf-8") == RUNNER_SCRIPT.read_text(encoding="utf-8")
 
 
+def test_runner_preflight_skips_when_checkout_is_not_on_base_branch(
+    tmp_path: Path,
+) -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+git() {{
+  case "${{1-}} ${{2-}} ${{3-}}" in
+    "rev-parse --is-inside-work-tree ")
+      return 0
+      ;;
+    "symbolic-ref --quiet --short")
+      printf 'feature\\n'
+      return 0
+      ;;
+    "status --porcelain ")
+      return 0
+      ;;
+  esac
+  return 0
+}}
+assert_runner_can_take_checkout
+printf 'unexpected\\n'
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "not 'main'; leaving local work untouched" in result.stdout
+    assert "unexpected" not in result.stdout
+
+
+def test_runner_preflight_skips_when_checkout_has_local_changes(
+    tmp_path: Path,
+) -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+git() {{
+  case "${{1-}} ${{2-}} ${{3-}}" in
+    "rev-parse --is-inside-work-tree ")
+      return 0
+      ;;
+    "symbolic-ref --quiet --short")
+      printf 'main\\n'
+      return 0
+      ;;
+    "status --porcelain ")
+      printf ' M file.txt\\n'
+      return 0
+      ;;
+  esac
+  return 0
+}}
+assert_runner_can_take_checkout
+printf 'unexpected\\n'
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "checkout has local changes; leaving local work untouched" in result.stdout
+    assert " M file.txt" in result.stdout
+    assert "unexpected" not in result.stdout
+
+
+def test_cleanup_preserves_failed_runner_worktree(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(tmp_path / "repo"))}
+mkdir -p "$REPO_DIR/.git"
+git() {{
+  printf 'git:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+  case "${{1-}} ${{2-}} ${{3-}}" in
+    "-C $REPO_DIR branch")
+      printf 'codex/daily-issue-1978\\n'
+      return 0
+      ;;
+    "-C $REPO_DIR status")
+      printf ' M file.txt\\n'
+      return 0
+      ;;
+  esac
+  return 0
+}}
+CLEANUP_REPO_ON_EXIT=1
+PRESERVE_WORKTREE_ON_EXIT=1
+cleanup
+git -C "$REPO_DIR" branch --show-current
+git -C "$REPO_DIR" status --short
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Leaving current branch checked out" in result.stdout
+    assert "codex/daily-issue-1978" in result.stdout
+    assert " M file.txt" in result.stdout
+    assert "git:-C" in call_log.read_text(encoding="utf-8")
+
+
+def test_runner_lock_skips_when_existing_runner_is_active(tmp_path: Path) -> None:
+    lock_dir = tmp_path / "runner.lock"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+RUNNER_LOCK_DIR={shlex.quote(str(lock_dir))}
+mkdir -p "$RUNNER_LOCK_DIR"
+printf '%s\\n' "$$" > "$RUNNER_LOCK_DIR/pid"
+acquire_runner_lock
+printf 'unexpected\\n'
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "another Hush Line code agent run is already active" in result.stdout
+    assert "unexpected" not in result.stdout
+
+
 def test_main_exits_before_runtime_bootstrap_when_bot_pr_exists(tmp_path: Path) -> None:
     call_log = tmp_path / "calls.txt"
     repo_dir = tmp_path / "repo"
@@ -99,6 +219,8 @@ mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -152,6 +274,8 @@ mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -207,6 +331,8 @@ mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -265,6 +391,8 @@ mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -330,6 +458,8 @@ mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -894,6 +1024,8 @@ mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -949,6 +1081,8 @@ mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -1001,6 +1135,8 @@ PR_BODY_FILE={shlex.quote(str(tmp_path / "pr-body.md"))}
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -1183,6 +1319,8 @@ PR_BODY_FILE={shlex.quote(str(tmp_path / "pr-body.md"))}
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -3247,6 +3385,8 @@ mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -3330,6 +3470,8 @@ PR_BODY_FILE={shlex.quote(str(tmp_path / "pr-body.md"))}
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -3431,6 +3573,8 @@ mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
