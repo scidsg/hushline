@@ -1245,7 +1245,7 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     runtime_style = page.find("style")
     assert runtime_style is not None
     assert "--color-brand: oklch(from" in runtime_style.get_text()
-    assert "--theme-color-dark:" in runtime_style.get_text()
+    assert "--theme-color-dark:" not in runtime_style.get_text()
     assert page.find(string="Secure Hush Line form") is None
     assert "Hosted by" not in response.text
     assert "Powered by Hush Line" not in response.text
@@ -1262,6 +1262,7 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     assert "default-src 'self'" in csp
     assert "frame-ancestors https://tips.example" in csp
     assert "frame-ancestors *" not in csp
+    assert page.select_one(".embed-actions") is not None
     assert page.find("a", string=lambda value: value and "Open on Hush Line" in value) is not None
     exit_link = page.find("a", attrs={"aria-label": "Emergency exit: Leave"})
     assert exit_link is not None
@@ -1289,13 +1290,24 @@ def test_embed_profile_layout_and_focus_styles_are_in_compiled_stylesheet_source
     stylesheet_source = Path("assets/scss/style.scss").read_text()
 
     assert "body.embed-page" in stylesheet_source
+    assert "body.embed-page *:not(button)" in stylesheet_source
+    assert "background-color: white;" in stylesheet_source
     assert ".embed-shell" in stylesheet_source
-    assert ".embed-profile-summary" in stylesheet_source
+    assert "padding: 1.5rem 1.25rem;" in stylesheet_source
+    assert ".embed-profile-summary" not in stylesheet_source
     assert ".embed-actions" in stylesheet_source
+    assert "h2.submit+p {\n  margin-top: 1rem;" not in stylesheet_source
+    assert "h2.submit:not(:has(+ p.bio))" not in stylesheet_source
     assert ".embed-error-summary" in stylesheet_source
     assert ".embed-noscript" in stylesheet_source
+    assert ".embed-page .captcha_container {\n  align-items: center;" in stylesheet_source
+    assert (
+        "#messageForm {\n  position: relative;\n  padding-top: 1.5rem;\n  margin-top: 0;"
+        in stylesheet_source
+    )
     assert ".embed-page a:focus-visible" in stylesheet_source
-    assert "outline: 3px solid var(--theme-color-dark)" in stylesheet_source
+    assert "outline: 3px solid var(--color-brand-min-contrast)" in stylesheet_source
+    assert "outline: 3px solid var(--theme-color-dark)" not in stylesheet_source
 
 
 def test_embed_profile_renders_additional_profile_fields_like_full_profile(
@@ -1402,6 +1414,7 @@ def test_embed_profile_required_chrome_survives_recipient_branding_settings(
     badge_texts = _badge_texts(page)
     assert "⭐️ Verified" in badge_texts
     assert "🔒 End-to-End Encrypted" in badge_texts
+    assert page.select_one(".embed-actions") is not None
     assert page.find("a", string=lambda value: value and "Open on Hush Line" in value) is not None
     assert page.find("a", attrs={"aria-label": "Emergency exit: Leave"}) is not None
 
