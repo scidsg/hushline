@@ -36,24 +36,25 @@ This runner runs directly in the local repo and performs a narrow local gate bef
 2. Change into the repo (`$HOME/hushline` by default).
 3. Acquire a local runner lock and exit without doing any repository or Docker work if another Hush Line code-agent run is active.
 4. Normalize the local agent-only checkout by discarding local worktree changes and switching to the base branch.
-5. Check cheap GitHub exit conditions before any new-work queue lookup or network sync/Docker work:
+5. Resume monitoring any open bot-authored issue PR whose head branch matches the daily issue branch pattern before selecting new issue work. This makes PR polling restart-resilient after launchd unloads, crashes, or reboots.
+6. Check cheap GitHub exit conditions before any new-work queue lookup or network sync/Docker work:
    - exit if any open human-authored PR exists
    - exit if any open issue is already in project status `In Progress`
-6. Select issue target before any network sync or Docker work:
+7. Select issue target before any network sync or Docker work:
    - Use `--issue <n>` when provided (must still be open), otherwise
    - select the top open issue from project `Hush Line Roadmap`, column `Agent Eligible`.
-7. Check remaining cheap GitHub exit conditions before any network sync or Docker work:
+8. Check remaining cheap GitHub exit conditions before any network sync or Docker work:
    - for non-epic issues, exit if any other open PR exists from `hushline-dev`
    - for child issues with a GitHub parent epic, allow the long-lived epic PR (head branch `codex/epic-<epic>`) and the current child issue PR (head branch `codex/daily-issue-<issue>`)
    - for child issues with a GitHub parent epic, exit only if there are unrelated open bot PRs outside those allowed heads
-8. Hard-refresh local state only after an issue is selected and skip guards pass:
+9. Hard-refresh local state only after an issue is selected and skip guards pass:
    - `git fetch origin`
    - `git checkout main`
    - `git reset --hard origin/main`
    - `git clean -fd`
-9. Move the selected issue into project status `In Progress`.
-10. Configure bot git identity and signed commit settings.
-11. Reset local Docker/runtime state:
+10. Move the selected issue into project status `In Progress`.
+11. Configure bot git identity and signed commit settings.
+12. Reset local Docker/runtime state:
 
 - `docker compose down -v --remove-orphans`
 - Remove all Docker containers (`docker rm -f $(docker ps -aq)`, when any exist)

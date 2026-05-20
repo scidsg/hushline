@@ -84,6 +84,9 @@ printf '%s\\n' "$snapshot_metadata"
     assert Path(original_dir) == RUNNER_SCRIPT.parent
     assert snapshot_file.exists()
     assert snapshot_file.parent == tmp_path
+    assert snapshot_file.name.startswith("agent_daily_issue_runner.")
+    assert "XXXXXX" not in snapshot_file.name
+    assert not snapshot_file.name.endswith(".sh")
     assert snapshot_file.read_text(encoding="utf-8") == RUNNER_SCRIPT.read_text(encoding="utf-8")
 
 
@@ -256,6 +259,204 @@ printf 'unexpected\\n'
     assert result.returncode == 0, result.stderr
     assert "another Hush Line code agent run is already active" in result.stdout
     assert "unexpected" not in result.stdout
+
+
+def test_find_open_issue_pr_to_resume_selects_issue_branch() -> None:
+    prs_json = json.dumps(
+        [
+            {
+                "number": 1900,
+                "title": "#1900 Epic",
+                "headRefName": "codex/epic-1900",
+                "updatedAt": "2026-05-19T00:00:00Z",
+            },
+            {
+                "number": 1991,
+                "title": "#1990 Embedded Hush Line profile updates",
+                "headRefName": "codex/daily-issue-1990",
+                "updatedAt": "2026-05-19T01:00:00Z",
+            },
+        ]
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+gh() {{
+  if [[ "$1" == "pr" && "$2" == "list" ]]; then
+    printf '%s\\n' {shlex.quote(prs_json)}
+    return 0
+  fi
+  printf 'unexpected gh invocation: %s\\n' "$*" >&2
+  return 99
+}}
+find_open_issue_pr_to_resume
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == (
+        "1991\t1990\tcodex/daily-issue-1990\t" "#1990 Embedded Hush Line profile updates\n"
+    )
+
+
+def test_main_resumes_open_issue_pr_before_selecting_new_work(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{
+  printf 'assert-runner-can-take-checkout\\n' >> {shlex.quote(str(call_log))}
+}}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
+find_open_issue_pr_to_resume() {{
+  printf '1991\\t1990\\tcodex/daily-issue-1990\\t#1990 Embedded Hush Line profile updates\\n'
+}}
+remote_branch_exists() {{ return 0; }}
+run_step() {{
+  printf 'run-step:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  shift
+  "$@"
+}}
+git() {{
+  printf 'git:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+  return 0
+}}
+gh() {{
+  if [[ "$1" == "issue" && "$2" == "view" && "$3" == "1990" && "$*" == *"--jq .title"* ]]; then
+    printf 'Embedded Hush Line profile updates\\n'
+    return 0
+  fi
+  if [[ "$1" == "issue" && "$2" == "view" && "$3" == "1990" && "$*" == *".labels[].name"* ]]; then
+    printf 'frontend\\n'
+    return 0
+  fi
+  printf 'unexpected-gh:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+  return 99
+}}
+check_pr_feedback_after_delay() {{
+  printf 'monitor:%s:%s:%s:%s:%s\\n' "$1" "$2" "$3" "$4" "$5" >> {shlex.quote(str(call_log))}
+}}
+collect_issue_candidates() {{
+  printf 'collect-issue-candidates\\n' >> {shlex.quote(str(call_log))}
+  printf '2001\\n'
+}}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        "Resuming monitor for open PR #1991 on codex/daily-issue-1990; "
+        "skipping new issue selection until that PR closes."
+    ) in result.stdout
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert calls == [
+        "assert-runner-can-take-checkout",
+        "run-step:Fetch PR branch codex/daily-issue-1990",
+        "git:fetch origin codex/daily-issue-1990:refs/remotes/origin/codex/daily-issue-1990",
+        "run-step:Checkout PR branch codex/daily-issue-1990",
+        "git:checkout -B codex/daily-issue-1990 origin/codex/daily-issue-1990",
+        "monitor:1991:1990:Embedded Hush Line profile updates:frontend:codex/daily-issue-1990",
+    ]
+    assert "collect-issue-candidates" not in calls
+    assert "runtime-bootstrap" not in calls
+
+
+def test_main_resumes_open_issue_pr_with_missing_branch_monitors_by_number(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{
+  printf 'assert-runner-can-take-checkout\\n' >> {shlex.quote(str(call_log))}
+}}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
+find_open_issue_pr_to_resume() {{
+  printf '1991\\t1990\\tcodex/daily-issue-1990\\t#1990 Embedded Hush Line profile updates\\n'
+}}
+remote_branch_exists() {{ return 1; }}
+git() {{
+  case "$*" in
+    "symbolic-ref --quiet --short HEAD")
+      printf 'main\\n'
+      return 0
+      ;;
+    "checkout codex/daily-issue-1990")
+      printf 'git:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+      return 1
+      ;;
+  esac
+  return 0
+}}
+gh() {{
+  if [[ "$1" == "issue" && "$2" == "view" && "$3" == "1990" && "$*" == *"--jq .title"* ]]; then
+    printf 'Embedded Hush Line profile updates\\n'
+    return 0
+  fi
+  if [[ "$1" == "issue" && "$2" == "view" && "$3" == "1990" && "$*" == *".labels[].name"* ]]; then
+    printf 'frontend\\n'
+    return 0
+  fi
+  printf 'unexpected-gh:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+  return 99
+}}
+check_pr_feedback_after_delay() {{
+  printf 'monitor:%s:%s:%s:%s:%s\\n' "$1" "$2" "$3" "$4" "${{5-}}" >> {shlex.quote(str(call_log))}
+}}
+collect_issue_candidates() {{
+  printf 'collect-issue-candidates\\n' >> {shlex.quote(str(call_log))}
+  printf '2001\\n'
+}}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        "Resuming monitor for open PR #1991 on codex/daily-issue-1990; "
+        "skipping new issue selection until that PR closes."
+    ) in result.stdout
+    assert (
+        "Warning: PR branch codex/daily-issue-1990 is unavailable on origin and "
+        "local checkout recovery failed; monitoring PR #1991 by number only."
+    ) in result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert calls == [
+        "assert-runner-can-take-checkout",
+        "git:checkout codex/daily-issue-1990",
+        "monitor:1991:1990:Embedded Hush Line profile updates:frontend:",
+    ]
+    assert "collect-issue-candidates" not in calls
+    assert "runtime-bootstrap" not in calls
 
 
 def test_main_exits_before_runtime_bootstrap_when_bot_pr_exists(tmp_path: Path) -> None:
