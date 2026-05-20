@@ -1643,7 +1643,7 @@ check_pr_feedback_after_delay() {
         "$issue_number" \
         "$issue_title" \
         "$issue_labels" \
-        "${branch_name:-$current_branch}" \
+        "$branch_name" \
         "$feedback_summary" \
         "$feedback_json"
     fi
@@ -1687,7 +1687,10 @@ resume_open_issue_pr_monitor_if_any() {
     run_step "Checkout PR branch $branch_name" \
       git checkout -B "$branch_name" "origin/$branch_name"
   else
-    ensure_worktree_on_branch "$branch_name"
+    if ! ensure_worktree_on_branch "$branch_name"; then
+      echo "Warning: PR branch ${branch_name} is unavailable on origin and local checkout recovery failed; monitoring PR #${pr_number} by number only." >&2
+      branch_name=""
+    fi
   fi
 
   if [[ -n "$issue_number" ]]; then
