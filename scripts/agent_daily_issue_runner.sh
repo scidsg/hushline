@@ -16,7 +16,7 @@ prepare_runner_exec_snapshot() {
 
   original_script_dir="$(CDPATH= cd -- "$(dirname -- "$runner_script_path")" && pwd)"
   original_script_path="$original_script_dir/$(basename -- "$runner_script_path")"
-  snapshot_file="$(mktemp "${TMPDIR:-/tmp}/agent_daily_issue_runner.XXXXXX.sh")"
+  snapshot_file="$(mktemp "${TMPDIR:-/tmp}/agent_daily_issue_runner.XXXXXX")"
   cp "$original_script_path" "$snapshot_file"
   chmod 700 "$snapshot_file"
   printf '%s\t%s\n' "$original_script_dir" "$snapshot_file"
@@ -1006,6 +1006,45 @@ find_open_pr_for_head_branch() {
     --jq '.[0] // empty'
 }
 
+find_open_issue_pr_to_resume() {
+  local prs_json=""
+
+  if ! prs_json="$(
+    gh pr list \
+      --repo "$REPO_SLUG" \
+      --state open \
+      --author "$BOT_LOGIN" \
+      --limit 100 \
+      --json number,title,headRefName,updatedAt
+  )"; then
+    echo "Failed to list open PRs by ${BOT_LOGIN}; cannot check for restart-resume PRs." >&2
+    return 1
+  fi
+
+  printf '%s\n' "$prs_json" \
+    | BRANCH_PREFIX="$BRANCH_PREFIX" node -e '
+      const fs = require("fs");
+      const branchPrefix = String(process.env.BRANCH_PREFIX || "");
+      const prs = JSON.parse(fs.readFileSync(0, "utf8"));
+      const match = Array.isArray(prs)
+        ? prs.find((pr) => {
+            const head = String(pr && pr.headRefName ? pr.headRefName : "");
+            const suffix = head.startsWith(branchPrefix)
+              ? head.slice(branchPrefix.length)
+              : "";
+            return /^[0-9]+$/.test(suffix) && Number.isInteger(pr.number);
+          })
+        : null;
+      if (!match) {
+        process.exit(0);
+      }
+      const head = String(match.headRefName);
+      const issueNumber = head.slice(branchPrefix.length);
+      const title = String(match.title || "").replace(/\t/g, " ").replace(/\n/g, " ");
+      process.stdout.write(`${match.number}\t${issueNumber}\t${head}\t${title}\n`);
+    '
+}
+
 count_open_human_prs() {
   gh pr list \
     --repo "$REPO_SLUG" \
@@ -1611,6 +1650,62 @@ check_pr_feedback_after_delay() {
 
     sleep "$POST_PR_FEEDBACK_DELAY_SECONDS"
   done
+}
+
+resume_open_issue_pr_monitor_if_any() {
+  local resume_info=""
+  local pr_number=""
+  local issue_number=""
+  local branch_name=""
+  local pr_title=""
+  local issue_title=""
+  local issue_labels=""
+
+  if [[ -n "$FORCE_ISSUE_NUMBER" ]]; then
+    return 1
+  fi
+
+  if ! resume_info="$(find_open_issue_pr_to_resume)"; then
+    return 1
+  fi
+
+  if [[ -z "$resume_info" ]]; then
+    return 1
+  fi
+
+  IFS=$'\t' read -r pr_number issue_number branch_name pr_title <<< "$resume_info"
+  if [[ -z "$pr_number" || -z "$branch_name" ]]; then
+    return 1
+  fi
+
+  echo "Resuming monitor for open PR #${pr_number} on ${branch_name}; skipping new issue selection until that PR closes."
+  CLEANUP_REPO_ON_EXIT=1
+
+  if remote_branch_exists "$branch_name"; then
+    run_step "Fetch PR branch $branch_name" \
+      git fetch origin "$branch_name:refs/remotes/origin/$branch_name"
+    run_step "Checkout PR branch $branch_name" \
+      git checkout -B "$branch_name" "origin/$branch_name"
+  else
+    ensure_worktree_on_branch "$branch_name"
+  fi
+
+  if [[ -n "$issue_number" ]]; then
+    issue_title="$({
+      gh issue view "$issue_number" --repo "$REPO_SLUG" --json title --jq .title
+    } || true)"
+    issue_labels="$({
+      gh issue view "$issue_number" --repo "$REPO_SLUG" --json labels --jq '.labels[].name // empty'
+    } || true)"
+  fi
+
+  check_pr_feedback_after_delay \
+    "$pr_number" \
+    "$issue_number" \
+    "${issue_title:-$pr_title}" \
+    "$issue_labels" \
+    "$branch_name"
+  return 0
 }
 
 resolve_issue_parent_epic() {
@@ -3206,6 +3301,10 @@ main() {
   cd "$REPO_DIR"
 
   assert_runner_can_take_checkout
+
+  if resume_open_issue_pr_monitor_if_any; then
+    exit 0
+  fi
 
   ISSUE_NUMBER=""
   if [[ -n "$FORCE_ISSUE_NUMBER" ]]; then
