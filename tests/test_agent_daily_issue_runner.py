@@ -1081,6 +1081,223 @@ set_issue_project_status 1732 "Ready for Review"
     assert result.returncode == 0, result.stderr
 
 
+def test_add_issue_to_project_status_adds_missing_item_and_updates_status(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+resolve_project_number() {{ printf '7\\n'; }}
+resolve_project_status_edit_args() {{ printf 'PVT_project\\tPVTSSF_status\\topt_agent\\n'; }}
+resolve_issue_project_item_id() {{ :; }}
+resolve_issue_node_id() {{ printf 'I_issue\\n'; }}
+gh() {{
+  local query_text=""
+  local project_id=""
+  local content_id=""
+  local item_id=""
+  local field_id=""
+  local option_id=""
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -f)
+        case "$2" in
+          query=*) query_text="${{2#query=}}" ;;
+          projectId=*) project_id="${{2#projectId=}}" ;;
+          contentId=*) content_id="${{2#contentId=}}" ;;
+          itemId=*) item_id="${{2#itemId=}}" ;;
+          fieldId=*) field_id="${{2#fieldId=}}" ;;
+          optionId=*) option_id="${{2#optionId=}}" ;;
+        esac
+        shift
+        ;;
+    esac
+    shift || break
+  done
+
+  if [[ "$query_text" == *"addProjectV2ItemById"* ]]; then
+    printf 'add:%s:%s\\n' "$project_id" "$content_id" >> {shlex.quote(str(call_log))}
+    printf '{{"data":{{"addProjectV2ItemById":{{"item":{{"id":"PVTI_added"}}}}}}}}\\n'
+    return 0
+  fi
+
+  if [[ "$query_text" == *"updateProjectV2ItemFieldValue"* ]]; then
+    printf 'update:%s:%s:%s:%s\\n' \\
+      "$project_id" \\
+      "$item_id" \\
+      "$field_id" \\
+      "$option_id" \\
+      >> {shlex.quote(str(call_log))}
+    printf '%s\\n' \\
+      '{{"data":{{"updateProjectV2ItemFieldValue":{{"projectV2Item":{{"id":"PVTI_added"}}}}}}}}'
+    return 0
+  fi
+
+  printf 'unexpected gh invocation: %s\\n' "$*" >&2
+  return 99
+}}
+add_issue_to_project_status 2002 "Agent Eligible"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert call_log.read_text(encoding="utf-8").splitlines() == [
+        "add:PVT_project:I_issue",
+        "update:PVT_project:PVTI_added:PVTSSF_status:opt_agent",
+    ]
+
+
+def test_add_issue_to_project_status_warns_when_status_update_fails(
+    tmp_path: Path,
+) -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+resolve_project_number() {{ printf '7\\n'; }}
+resolve_project_status_edit_args() {{ printf 'PVT_project\\tPVTSSF_status\\topt_agent\\n'; }}
+resolve_issue_project_item_id() {{ printf 'PVTI_existing\\n'; }}
+gh() {{
+  local query_text=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -f)
+        case "$2" in
+          query=*) query_text="${{2#query=}}" ;;
+        esac
+        shift
+        ;;
+    esac
+    shift || break
+  done
+
+  if [[ "$query_text" == *"updateProjectV2ItemFieldValue"* ]]; then
+    return 1
+  fi
+
+  printf 'unexpected gh invocation: %s\\n' "$*" >&2
+  return 99
+}}
+add_issue_to_project_status 2002 "Agent Eligible"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "failed to set coverage gap issue #2002" in result.stderr
+
+
+def test_coverage_gap_snapshot_from_log_reports_latest_missed_rows(
+    tmp_path: Path,
+) -> None:
+    check_log = tmp_path / "check.log"
+    check_log.write_text(
+        """
+old run
+Name                                             Stmts   Miss  Cover
+--------------------------------------------------------------------
+hushline/old.py                                    10      1    90%
+TOTAL                                              10      1    90%
+new run
+Name                                             Stmts   Miss  Cover
+--------------------------------------------------------------------
+hushline/__init__.py                              160      0   100%
+hushline/email.py                                 109      1    99%
+hushline/routes/profile.py                        272     17    94%
+TOTAL                                            8881     36    99%
+""",
+        encoding="utf-8",
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+coverage_gap_snapshot_from_log {shlex.quote(str(check_log))}
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "hushline/old.py" not in result.stdout
+    assert "hushline/__init__.py" not in result.stdout
+    assert "hushline/email.py" in result.stdout
+    assert "hushline/routes/profile.py" in result.stdout
+    assert "TOTAL                                            8881     36    99%" in result.stdout
+
+
+def test_open_coverage_gap_issue_after_pr_creates_agent_eligible_issue(
+    tmp_path: Path,
+) -> None:
+    check_log = tmp_path / "check.log"
+    call_log = tmp_path / "calls.txt"
+    body_copy = tmp_path / "body.md"
+    check_log.write_text(
+        """
+Name                                             Stmts   Miss  Cover
+--------------------------------------------------------------------
+hushline/email.py                                 109      1    99%
+hushline/routes/profile.py                        272     17    94%
+TOTAL                                            8881     36    99%
+""",
+        encoding="utf-8",
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CHECK_LOG_FILE={shlex.quote(str(check_log))}
+add_issue_to_project_status() {{
+  printf 'project:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
+}}
+gh() {{
+  if [[ "${{1-}} ${{2-}}" == "issue create" ]]; then
+    local title=""
+    local body_file=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --title)
+          title="$2"
+          shift
+          ;;
+        --body-file)
+          body_file="$2"
+          shift
+          ;;
+      esac
+      shift || break
+    done
+    printf 'title:%s\\n' "$title" >> {shlex.quote(str(call_log))}
+    cp "$body_file" {shlex.quote(str(body_copy))}
+    printf 'https://github.com/scidsg/hushline/issues/2002\\n'
+    return 0
+  fi
+  printf 'unexpected gh invocation: %s\\n' "$*" >&2
+  return 99
+}}
+open_coverage_gap_issue_after_pr \\
+  2000 \\
+  "https://github.com/scidsg/hushline/pull/2000" \\
+  1558 \\
+  "Fill coverage gaps" \\
+  "codex/daily-issue-1558"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        "Opened coverage gap issue: https://github.com/scidsg/hushline/issues/2002" in result.stdout
+    )
+    assert call_log.read_text(encoding="utf-8").splitlines() == [
+        "title:Close test coverage gaps from PR #2000",
+        "project:2002:Agent Eligible",
+    ]
+    body = body_copy.read_text(encoding="utf-8")
+    assert "PR: https://github.com/scidsg/hushline/pull/2000" in body
+    assert "Source issue: #1558 Fill coverage gaps" in body
+    assert "hushline/email.py" in body
+    assert "hushline/routes/profile.py" in body
+
+
 def test_collect_issue_candidates_from_project_filters_open_issues_in_target_status() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
@@ -3946,6 +4163,9 @@ build_pr_title() {{
 check_pr_feedback_after_delay() {{
   printf 'feedback:%s\\n' "${{1-}}" >> {shlex.quote(str(call_log))}
 }}
+open_coverage_gap_issue_after_pr() {{
+  printf 'coverage-issue:%s:%s\\n' "$1" "$3" >> {shlex.quote(str(call_log))}
+}}
 gh() {{
   if [[ "${{1-}} ${{2-}} ${{3-}}" == "issue view 1558" ]]; then
     local last_arg="${{@: -1}}"
@@ -3971,7 +4191,10 @@ main
     assert result.returncode == 0, result.stderr
     calls = call_log.read_text(encoding="utf-8").splitlines()
     assert "status:1558:Ready for Review" in calls
+    assert "coverage-issue:2000:1558" in calls
     assert "feedback:2000" in calls
+    assert calls.index("status:1558:Ready for Review") < calls.index("coverage-issue:2000:1558")
+    assert calls.index("coverage-issue:2000:1558") < calls.index("feedback:2000")
     assert "Warning: opened PR but failed to resolve its number" not in result.stdout
 
 

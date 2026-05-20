@@ -97,14 +97,15 @@ This runner runs directly in the local repo and performs a narrow local gate bef
     - child issues under a parent epic open/update a child PR whose base branch is the shared epic branch
     - the long-lived epic PR, when present, remains the only PR that targets `main`
 18. Move the selected issue into project status `Ready for Review` once the PR exists.
-19. For child PRs targeting an epic branch, record `Linked issue: #<n>` in the PR body instead of relying on GitHub's default-branch-only close keywords.
-20. A dedicated workflow closes that linked child issue after the child PR is merged into the epic branch.
-21. Include runner log path in PR context and use a plain-language narrative lead for broad audiences, followed by the structured PR body sections (`Summary`, `Context`, `Changed Files`, `Validation`, `Manual Testing`).
+19. After the PR exists and before feedback polling starts, parse the latest `make test` coverage snapshot and open a follow-up issue for any files with missed statements. Add that issue to the `Hush Line Roadmap` project in the `Agent Eligible` status.
+20. For child PRs targeting an epic branch, record `Linked issue: #<n>` in the PR body instead of relying on GitHub's default-branch-only close keywords.
+21. A dedicated workflow closes that linked child issue after the child PR is merged into the epic branch.
+22. Include runner log path in PR context and use a plain-language narrative lead for broad audiences, followed by the structured PR body sections (`Summary`, `Context`, `Changed Files`, `Validation`, `Manual Testing`).
     - `Validation` lists automated checks run by the runner or CI.
     - `Manual Testing` lists human reviewer steps to exercise the changed feature after the PR opens. It is not a log of actions the LLM or runner performed.
-22. Refresh run log after PR creation (including opened PR URL and post-check steps), commit/push that log update when changed.
-23. Poll the open PR until it closes. When the monitor sees actionable feedback (discussion comments, change-request reviews, unresolved review threads, or failing PR checks), it invokes Codex on the PR branch, reruns `make lint` and `make test`, commits and pushes any fix, then resumes polling.
-24. Return to a clean `main` on normal completion or PR closure.
+23. Refresh run log after PR creation (including opened PR URL, coverage gap issue URL when created, and post-check steps), commit/push that log update when changed.
+24. Poll the open PR until it closes. When the monitor sees actionable feedback (discussion comments, change-request reviews, unresolved review threads, or failing PR checks), it invokes Codex on the PR branch, reruns `make lint` and `make test`, commits and pushes any fix, then resumes polling.
+25. Return to a clean `main` on normal completion or PR closure.
     - If the run fails after creating branch work, cleanup resets the checkout back to a clean base branch.
     - A new scheduled pass discards local worktree changes and switches back to the base branch before evaluating GitHub queue guards.
 

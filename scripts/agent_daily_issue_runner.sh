@@ -1377,6 +1377,24 @@ resolve_pr_number_from_ref() {
   return 1
 }
 
+resolve_issue_number_from_ref() {
+  local issue_ref="$1"
+  local resolved=""
+
+  if [[ "$issue_ref" =~ /issues/([0-9]+)$ ]]; then
+    printf '%s\n' "${BASH_REMATCH[1]}"
+    return 0
+  fi
+
+  resolved="$(gh issue view "$issue_ref" --repo "$REPO_SLUG" --json number --jq .number 2>/dev/null || true)"
+  if [[ "$resolved" =~ ^[0-9]+$ ]]; then
+    printf '%s\n' "$resolved"
+    return 0
+  fi
+
+  return 1
+}
+
 pr_feedback_state() {
   local feedback_json="$1"
 
@@ -1975,6 +1993,138 @@ resolve_issue_project_item_id() {
     ' || true
 }
 
+resolve_issue_node_id() {
+  local issue_number="$1"
+  local owner="${REPO_SLUG%%/*}"
+  local repo="${REPO_SLUG##*/}"
+  local number="${issue_number}"
+  local response=""
+
+  response="$({
+    gh api graphql \
+      -F issueNumber="$number" \
+      -f query='
+        query($issueNumber: Int!) {
+          repository(owner: "'"$owner"'", name: "'"$repo"'") {
+            issue(number: $issueNumber) {
+              id
+            }
+          }
+        }
+      ' 2>/dev/null
+  } || true)"
+
+  if ! printf '%s' "$response" | is_json_response; then
+    warn_non_json_response "issue node lookup for issue #${issue_number}" "$response"
+    return 0
+  fi
+
+  printf '%s' "$response" | node -e '
+    const fs = require("fs");
+    const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+    const issue =
+      payload &&
+      payload.data &&
+      payload.data.repository &&
+      payload.data.repository.issue
+        ? payload.data.repository.issue
+        : null;
+    process.stdout.write(issue && issue.id ? String(issue.id) : "");
+  ' || true
+}
+
+add_issue_to_project_status() {
+  local issue_number="$1"
+  local target_status_name="$2"
+  local project_number project_id field_id option_id item_id issue_node_id response
+  local edit_args=""
+
+  project_number="$(resolve_project_number)"
+  if [[ -z "$project_number" ]]; then
+    echo "Warning: could not resolve project number for coverage gap issue #${issue_number}." >&2
+    return 0
+  fi
+
+  edit_args="$(resolve_project_status_edit_args "$project_number" "$target_status_name")"
+  if [[ -z "$edit_args" ]]; then
+    echo "Warning: could not resolve project status field/option for coverage gap issue #${issue_number}." >&2
+    return 0
+  fi
+  IFS=$'\t' read -r project_id field_id option_id <<< "$edit_args"
+
+  item_id="$(resolve_issue_project_item_id "$issue_number" "$project_number")"
+  if [[ -z "$item_id" ]]; then
+    issue_node_id="$(resolve_issue_node_id "$issue_number")"
+    if [[ -z "$issue_node_id" ]]; then
+      echo "Warning: could not resolve node id for coverage gap issue #${issue_number}." >&2
+      return 0
+    fi
+
+    response="$({
+      gh api graphql \
+        -f projectId="$project_id" \
+        -f contentId="$issue_node_id" \
+        -f query='
+          mutation($projectId: ID!, $contentId: ID!) {
+            addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
+              item {
+                id
+              }
+            }
+          }
+        ' 2>/dev/null
+    } || true)"
+
+    if ! printf '%s' "$response" | is_json_response; then
+      warn_non_json_response "project add for coverage gap issue #${issue_number}" "$response"
+      return 0
+    fi
+
+    item_id="$(printf '%s' "$response" | node -e '
+      const fs = require("fs");
+      const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+      const item =
+        payload &&
+        payload.data &&
+        payload.data.addProjectV2ItemById &&
+        payload.data.addProjectV2ItemById.item
+          ? payload.data.addProjectV2ItemById.item
+          : null;
+      process.stdout.write(item && item.id ? String(item.id) : "");
+    ' || true)"
+  fi
+
+  if [[ -z "$item_id" ]]; then
+    echo "Warning: could not attach coverage gap issue #${issue_number} to project '${PROJECT_TITLE}'." >&2
+    return 0
+  fi
+
+  if ! gh api graphql \
+    -f projectId="$project_id" \
+    -f itemId="$item_id" \
+    -f fieldId="$field_id" \
+    -f optionId="$option_id" \
+    -f query='
+      mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+        updateProjectV2ItemFieldValue(
+          input: {
+            projectId: $projectId
+            itemId: $itemId
+            fieldId: $fieldId
+            value: { singleSelectOptionId: $optionId }
+          }
+        ) {
+          projectV2Item {
+            id
+          }
+        }
+      }
+    ' >/dev/null; then
+    echo "Warning: failed to set coverage gap issue #${issue_number} to project status '${target_status_name}'." >&2
+    return 0
+  fi
+}
+
 set_issue_project_status() {
   local issue_number="$1"
   local target_status_name="$2"
@@ -2365,6 +2515,154 @@ run_local_workflow_checks() {
   fi
 
   run_runtime_check_with_self_heal "Run test (full suite)" make test || return 1
+}
+
+coverage_gap_snapshot_from_log() {
+  local log_file="${1:-$CHECK_LOG_FILE}"
+
+  if [[ -z "$log_file" || ! -s "$log_file" ]]; then
+    return 0
+  fi
+
+  awk '
+    /^Name[[:space:]]+Stmts[[:space:]]+Miss[[:space:]]+Cover$/ {
+      in_table = 1
+      current_header = $0
+      current_count = 0
+      current_total = ""
+      delete current_rows
+      next
+    }
+    in_table && /^-+$/ {
+      next
+    }
+    in_table && /^TOTAL[[:space:]]+/ {
+      current_total = $0
+      if (current_count > 0) {
+        final_header = current_header
+        final_total = current_total
+        final_count = current_count
+        delete final_rows
+        for (i = 1; i <= current_count; i += 1) {
+          final_rows[i] = current_rows[i]
+        }
+      }
+      in_table = 0
+      next
+    }
+    in_table && NF >= 4 {
+      miss = $(NF - 1)
+      gsub(/[^0-9]/, "", miss)
+      if ((miss + 0) > 0) {
+        current_rows[++current_count] = $0
+      }
+      next
+    }
+    END {
+      if (final_count > 0) {
+        print final_header
+        for (i = 1; i <= final_count; i += 1) {
+          print final_rows[i]
+        }
+        if (final_total != "") {
+          print final_total
+        }
+      }
+    }
+  ' "$log_file"
+}
+
+write_coverage_gap_issue_body() {
+  local pr_number="$1"
+  local pr_url="$2"
+  local source_issue_number="$3"
+  local source_issue_title="$4"
+  local branch_name="$5"
+  local coverage_snapshot="$6"
+  local pr_label="the runner PR"
+
+  if [[ -n "$pr_number" ]]; then
+    pr_label="PR #${pr_number}"
+  fi
+
+  cat <<EOF
+## Summary
+The daily runner opened ${pr_label} after local validation passed, then captured the test coverage snapshot below. The files with missed statements should get focused test coverage in a follow-up agent run.
+
+## Source
+- PR: ${pr_url:-unknown}
+- Source issue: #${source_issue_number} ${source_issue_title}
+- Branch: ${branch_name}
+
+## Coverage Snapshot
+
+\`\`\`text
+${coverage_snapshot}
+\`\`\`
+
+## Guidance
+- Add tests for the missed statements shown above.
+- Prefer user-visible behavior and security-critical outcomes over implementation-only assertions.
+- Keep privacy, E2EE, CSP, and operational safety guarantees intact.
+EOF
+}
+
+open_coverage_gap_issue_after_pr() {
+  local pr_number="$1"
+  local pr_url="$2"
+  local source_issue_number="$3"
+  local source_issue_title="$4"
+  local branch_name="$5"
+  local coverage_snapshot=""
+  local issue_body_file=""
+  local issue_title=""
+  local issue_url=""
+  local coverage_issue_number=""
+
+  coverage_snapshot="$(coverage_gap_snapshot_from_log "$CHECK_LOG_FILE")"
+  if [[ -z "$coverage_snapshot" ]]; then
+    echo "Coverage gap issue skipped: no missed statements found in the latest test coverage snapshot."
+    return 0
+  fi
+
+  issue_body_file="$(mktemp)"
+  if [[ -n "$pr_number" ]]; then
+    issue_title="Close test coverage gaps from PR #${pr_number}"
+  else
+    issue_title="Close test coverage gaps from daily runner PR"
+  fi
+
+  write_coverage_gap_issue_body \
+    "$pr_number" \
+    "$pr_url" \
+    "$source_issue_number" \
+    "$source_issue_title" \
+    "$branch_name" \
+    "$coverage_snapshot" > "$issue_body_file"
+
+  if ! issue_url="$(
+    gh issue create \
+      --repo "$REPO_SLUG" \
+      --title "$issue_title" \
+      --body-file "$issue_body_file"
+  )"; then
+    rm -f "$issue_body_file"
+    echo "Warning: failed to open coverage gap issue for ${pr_url:-PR #${pr_number}}." >&2
+    return 0
+  fi
+  rm -f "$issue_body_file"
+
+  if ! coverage_issue_number="$(resolve_issue_number_from_ref "$issue_url")"; then
+    echo "Warning: opened coverage gap issue but failed to resolve its number from '$issue_url'." >&2
+    return 0
+  fi
+
+  echo "Opened coverage gap issue: $issue_url"
+  run_step \
+    "Add coverage gap issue #${coverage_issue_number} to ${PROJECT_COLUMN}" \
+    add_issue_to_project_status \
+    "$coverage_issue_number" \
+    "$PROJECT_COLUMN"
 }
 
 write_pr_changed_files_section() {
@@ -3529,6 +3827,13 @@ main() {
     set_issue_project_status \
     "$ISSUE_NUMBER" \
     "$PROJECT_STATUS_READY_FOR_REVIEW"
+
+  open_coverage_gap_issue_after_pr \
+    "$PR_NUMBER" \
+    "$PR_URL" \
+    "$ISSUE_NUMBER" \
+    "$ISSUE_TITLE" \
+    "$BRANCH_NAME"
 
   persist_run_log "$ISSUE_NUMBER"
 
