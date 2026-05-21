@@ -242,6 +242,42 @@ set -e
     assert f"git:-C {tmp_path / 'repo'} clean -fd" in calls
 
 
+def test_cleanup_releases_runner_lock_after_worktree_reset(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(tmp_path / "repo"))}
+mkdir -p "$REPO_DIR/.git"
+git() {{
+  printf 'git:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+  return 0
+}}
+release_runner_lock() {{
+  printf 'release_runner_lock\\n' >> {shlex.quote(str(call_log))}
+  RUNNER_LOCK_HELD=0
+}}
+CLEANUP_REPO_ON_EXIT=1
+RUNNER_LOCK_HELD=1
+cleanup
+printf 'lock=%s\\n' "$RUNNER_LOCK_HELD"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "lock=0"
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert calls[-1] == "release_runner_lock"
+    assert calls.index(f"git:-C {tmp_path / 'repo'} checkout main") < calls.index(
+        "release_runner_lock"
+    )
+    assert calls.index(f"git:-C {tmp_path / 'repo'} reset --hard origin/main") < calls.index(
+        "release_runner_lock"
+    )
+    assert calls.index(f"git:-C {tmp_path / 'repo'} clean -fd") < calls.index("release_runner_lock")
+
+
 def test_runner_lock_skips_when_existing_runner_is_active(tmp_path: Path) -> None:
     lock_dir = tmp_path / "runner.lock"
 

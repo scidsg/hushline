@@ -133,40 +133,42 @@ cleanup() {
   local exit_code=$?
   local cleanup_branch=""
   local cleanup_status=""
+  local checkout_ok=1
 
   rm -f "${CHECK_LOG_FILE:-}" "${PROMPT_FILE:-}" "${PR_BODY_FILE:-}" "${CODEX_OUTPUT_FILE:-}" "${CODEX_TRANSCRIPT_FILE:-}" "${RUN_LOG_TMP_FILE:-}"
   rm -f "${HUSHLINE_DAILY_RUNNER_SNAPSHOT_PATH:-}"
-  release_runner_lock
   if [[ -d "$REPO_DIR/.git" && "$CLEANUP_REPO_ON_EXIT" == "1" ]]; then
     if [[ "${PR_FEEDBACK_MONITOR_ACTIVE:-0}" == "1" && "${PR_FEEDBACK_MONITOR_CLOSED:-0}" != "1" ]]; then
       echo "Leaving branch ${PR_FEEDBACK_MONITOR_BRANCH:-current branch} checked out because PR #${PR_FEEDBACK_MONITOR_PR_NUMBER:-unknown} is still open."
-      return
-    fi
+    else
+      if (( exit_code != 0 )); then
+        cleanup_branch="$(git -C "$REPO_DIR" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+        cleanup_status="$(git -C "$REPO_DIR" status --short 2>/dev/null || true)"
+        if [[ "$cleanup_branch" != "$BASE_BRANCH" || -n "$cleanup_status" ]]; then
+          echo "Resetting failed runner worktree from ${cleanup_branch:-detached HEAD}; exit status was ${exit_code}."
+          if [[ -n "$cleanup_status" ]]; then
+            printf '%s\n' "$cleanup_status"
+          fi
+        fi
+      fi
 
-    if (( exit_code != 0 )); then
-      cleanup_branch="$(git -C "$REPO_DIR" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
-      cleanup_status="$(git -C "$REPO_DIR" status --short 2>/dev/null || true)"
-      if [[ "$cleanup_branch" != "$BASE_BRANCH" || -n "$cleanup_status" ]]; then
-        echo "Resetting failed runner worktree from ${cleanup_branch:-detached HEAD}; exit status was ${exit_code}."
-        if [[ -n "$cleanup_status" ]]; then
-          printf '%s\n' "$cleanup_status"
+      if ! git -C "$REPO_DIR" checkout "$BASE_BRANCH" >/dev/null 2>&1; then
+        echo "Warning: failed to switch back to $BASE_BRANCH during cleanup." >&2
+        checkout_ok=0
+      fi
+      if [[ "$checkout_ok" == "1" ]]; then
+        if ! git -C "$REPO_DIR" reset --hard "origin/$BASE_BRANCH" >/dev/null 2>&1; then
+          if ! git -C "$REPO_DIR" reset --hard "$BASE_BRANCH" >/dev/null 2>&1; then
+            echo "Warning: failed to reset $BASE_BRANCH during cleanup." >&2
+          fi
+        fi
+        if ! git -C "$REPO_DIR" clean -fd >/dev/null 2>&1; then
+          echo "Warning: failed to remove untracked files during cleanup." >&2
         fi
       fi
     fi
-
-    if ! git -C "$REPO_DIR" checkout "$BASE_BRANCH" >/dev/null 2>&1; then
-      echo "Warning: failed to switch back to $BASE_BRANCH during cleanup." >&2
-      return
-    fi
-    if ! git -C "$REPO_DIR" reset --hard "origin/$BASE_BRANCH" >/dev/null 2>&1; then
-      if ! git -C "$REPO_DIR" reset --hard "$BASE_BRANCH" >/dev/null 2>&1; then
-        echo "Warning: failed to reset $BASE_BRANCH during cleanup." >&2
-      fi
-    fi
-    if ! git -C "$REPO_DIR" clean -fd >/dev/null 2>&1; then
-      echo "Warning: failed to remove untracked files during cleanup." >&2
-    fi
   fi
+  release_runner_lock
 }
 
 release_runner_lock() {
