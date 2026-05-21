@@ -1154,3 +1154,19 @@ hushline/static/js/directory_verified.js
 hushline/templates/directory.html
 tests/test_directory.py
 tests/test_frontend_compat.py
+Pruning old runner logs, keeping newest 10.
+[codex/daily-issue-1994 aa2a5f7c] chore: agent daily for #1994
+ 3 files changed, 2371 insertions(+), 19803 deletions(-)
+ delete mode 100644 docs/agent-logs/run-20260505T232832Z-issue-1919.txt
+ create mode 100644 docs/agent-logs/run-20260521T040225Z-issue-1994.txt
+Remote branch 'codex/daily-issue-1994' does not exist; creating it with a standard push.
+remote: 
+remote: Create a pull request for 'codex/daily-issue-1994' on GitHub by visiting:        
+remote:      https://github.com/scidsg/hushline/pull/new/codex/daily-issue-1994        
+remote: 
+To github.com:scidsg/hushline.git
+ * [new branch]        codex/daily-issue-1994 -> codex/daily-issue-1994
+branch 'codex/daily-issue-1994' set up to track 'origin/codex/daily-issue-1994'.
+Opened PR: https://github.com/scidsg/hushline/pull/1995
+==> Mark issue #1994 as Ready for Review
+Coverage gap issue skipped: no missed statements found in the latest test coverage snapshot.
