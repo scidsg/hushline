@@ -1432,6 +1432,12 @@ pr_feedback_summary_requires_runner_action() {
     return 1
   fi
 
+  # Wait for the full PR check set to settle before acting so failures from
+  # slower jobs, especially the test jobs, are included in one repair pass.
+  if (( BASH_REMATCH[5] > 0 )); then
+    return 1
+  fi
+
   (( BASH_REMATCH[1] + BASH_REMATCH[2] + BASH_REMATCH[3] + BASH_REMATCH[4] > 0 ))
 }
 

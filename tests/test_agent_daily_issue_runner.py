@@ -3510,29 +3510,39 @@ rm -f "$counter_file"
     assert "PR #2000 is MERGED; returning to main." in result.stdout
 
 
-def test_pr_feedback_action_ignores_pending_only_changes() -> None:
+def test_pr_feedback_action_waits_for_pending_checks() -> None:
     pending_only_summary = (
         "Post-PR feedback summary: unresolved_review_threads=0 "
         "changes_requested_reviews=0 discussion_comments=0 failing_checks=0 pending_checks=3\n"
         "Feedback pending check 1: pending PR check Run Linter and Tests / test (IN_PROGRESS)"
     )
+    failing_with_pending_summary = (
+        "Post-PR feedback summary: unresolved_review_threads=0 "
+        "changes_requested_reviews=0 discussion_comments=0 failing_checks=1 pending_checks=2\n"
+        "Feedback check 1: failing PR check Run Linter and Tests / lint (FAILURE)\n"
+        "Feedback pending check 1: pending PR check Run Linter and Tests / test (IN_PROGRESS)"
+    )
     unresolved_summary = (
         "Post-PR feedback summary: unresolved_review_threads=1 "
-        "changes_requested_reviews=0 discussion_comments=0 failing_checks=0 pending_checks=3\n"
+        "changes_requested_reviews=0 discussion_comments=0 failing_checks=0 pending_checks=0\n"
         "Feedback 1: unresolved review thread by @reviewer on hushline/templates/base.html:100"
     )
 
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
 pending_only_summary={shlex.quote(pending_only_summary)}
+failing_with_pending_summary={shlex.quote(failing_with_pending_summary)}
 unresolved_summary={shlex.quote(unresolved_summary)}
 set +e
 pr_feedback_summary_requires_runner_action "$pending_only_summary"
 pending_rc=$?
+pr_feedback_summary_requires_runner_action "$failing_with_pending_summary"
+failing_with_pending_rc=$?
 pr_feedback_summary_requires_runner_action "$unresolved_summary"
 unresolved_rc=$?
 set -e
 printf 'pending_rc=%s\\n' "$pending_rc"
+printf 'failing_with_pending_rc=%s\\n' "$failing_with_pending_rc"
 printf 'unresolved_rc=%s\\n' "$unresolved_rc"
 """
 
@@ -3540,6 +3550,7 @@ printf 'unresolved_rc=%s\\n' "$unresolved_rc"
 
     assert result.returncode == 0, result.stderr
     assert "pending_rc=1" in result.stdout
+    assert "failing_with_pending_rc=1" in result.stdout
     assert "unresolved_rc=0" in result.stdout
 
 

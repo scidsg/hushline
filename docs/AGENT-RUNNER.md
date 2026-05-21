@@ -104,7 +104,7 @@ This runner runs directly in the local repo and performs a narrow local gate bef
     - `Validation` lists automated checks run by the runner or CI.
     - `Manual Testing` lists human reviewer steps to exercise the changed feature after the PR opens. It is not a log of actions the LLM or runner performed.
 23. Refresh run log after PR creation (including opened PR URL, coverage gap issue URL when created, and post-check steps), commit/push that log update when changed.
-24. Poll the open PR until it closes. When the monitor sees actionable feedback (discussion comments, change-request reviews, unresolved review threads, or failing PR checks), it invokes Codex on the PR branch, reruns `make lint` and `make test`, commits and pushes any fix, then resumes polling.
+24. Poll the open PR until it closes. When the monitor sees actionable feedback (discussion comments, change-request reviews, unresolved review threads, or failing PR checks), it first waits for all pending PR checks to settle, then invokes Codex on the PR branch, reruns `make lint` and `make test`, commits and pushes any fix, and resumes polling.
 25. Return to a clean `main` on normal completion or PR closure.
     - If the run fails after creating branch work, cleanup resets the checkout back to a clean base branch.
     - A new scheduled pass discards local worktree changes and switches back to the base branch before evaluating GitHub queue guards.
