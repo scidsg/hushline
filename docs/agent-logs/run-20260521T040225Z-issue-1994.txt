@@ -1,0 +1,1172 @@
+Daily runner log
+Timestamp (UTC): 20260521T040225Z
+Issue: #1994
+Repository: scidsg/hushline
+
+[2026-05-20 21:02:25 PDT] Starting daily issue runner check.
+Runner Codex config: [redacted]
+Open human-authored PR count: 0
+Open project issues in In Progress: 0
+Selected issue #1994 from project queue.
+Open project issues in In Progress: 0
+Open unrelated bot PR count: 0
+==> Fetch latest from origin
+==> Checkout main
+Already on 'main'
+Your branch is up to date with 'origin/main'.
+==> Reset to origin/main
+HEAD is now at 2ead7214 Update version.py
+==> Remove untracked files
+==> Mark issue #1994 as In Progress
+==> Configure bot git identity
+==> Stop and remove Docker resources
+ Container hushline-dev_data-1 Stopping 
+ Container hushline-blob-storage-1 Stopping 
+ Container hushline-dev_data-1 Stopped 
+ Container hushline-dev_data-1 Removing 
+ Container hushline-dev_data-1 Removed 
+ Container hushline-postgres-1 Stopping 
+ Container hushline-postgres-1 Stopped 
+ Container hushline-postgres-1 Removing 
+ Container hushline-postgres-1 Removed 
+ Container hushline-blob-storage-1 Stopped 
+ Container hushline-blob-storage-1 Removing 
+ Container hushline-blob-storage-1 Removed 
+ Network hushline_default Removing 
+ Network hushline_default Removed 
+==> Kill all Docker containers
+==> Kill processes on runner ports
+==> Start Docker stack
+ Image node:20.19.5-alpine3.22 Pulling 
+ f3dae84293a5 Pulling fs layer 0B
+ ae67534e7d0a Pulling fs layer 0B
+ 6b59a28fa201 Pulling fs layer 0B
+ 6dbf56a7feaf Pulling fs layer 0B
+ f3dae84293a5 Download complete 0B
+ ae67534e7d0a Downloading 5.243MB
+ 6b59a28fa201 Download complete 0B
+ 6dbf56a7feaf Download complete 0B
+ 6b59a28fa201 Extracting 1B
+ ae67534e7d0a Downloading 16.78MB
+ 6b59a28fa201 Pull complete 0B
+ 4f05000bc52c Download complete 0B
+ ae67534e7d0a Downloading 28.31MB
+ 761c669cb2e5 Download complete 0B
+ ae67534e7d0a Downloading 38.8MB
+ ae67534e7d0a Download complete 0B
+ ae67534e7d0a Extracting 1B
+ ae67534e7d0a Extracting 1B
+ ae67534e7d0a Extracting 1B
+ ae67534e7d0a Extracting 1B
+ ae67534e7d0a Extracting 1B
+ ae67534e7d0a Extracting 1B
+ f3dae84293a5 Pull complete 0B
+ 6dbf56a7feaf Pull complete 0B
+ ae67534e7d0a Pull complete 0B
+ Image node:20.19.5-alpine3.22 Pulled 
+ Image hushline-app Building 
+ Image hushline-dev_data Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 913B done
+#1 DONE 0.0s
+
+#2 [dev_data internal] load build definition from Dockerfile.dev
+#2 transferring dockerfile: 1.15kB done
+#2 DONE 0.0s
+
+#3 [dev_data internal] load metadata for docker.io/library/python:3.13-slim-bookworm
+#3 DONE 0.7s
+
+#4 [app internal] load .dockerignore
+#4 transferring context: 144B done
+#4 DONE 0.0s
+
+#5 [app 1/8] FROM docker.io/library/python:3.13-slim-bookworm@sha256:e4fa1f978c539608a10cdf74700ac32a3f719dfc6e8b6b6001da82deb36302a2
+#5 resolve docker.io/library/python:3.13-slim-bookworm@sha256:e4fa1f978c539608a10cdf74700ac32a3f719dfc6e8b6b6001da82deb36302a2 0.0s done
+#5 DONE 0.0s
+
+#6 [app internal] load build context
+#6 transferring context: 68B done
+#6 DONE 0.0s
+
+#7 [app 5/8] RUN npm install --global prettier@3.3.3
+#7 CACHED
+
+#8 [app 4/8] RUN python -m pip install --no-cache-dir --upgrade "pip>=26,<27" &&     python -m pip install --no-cache-dir poetry
+#8 CACHED
+
+#9 [app 2/8] RUN apt-get -o Acquire::Retries=10 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update &&     apt-get -o Acquire::Retries=10 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install -y --fix-missing --no-install-recommends     curl     build-essential     clang     pkg-config     libffi-dev     libpq-dev     libpcsclite-dev     nettle-dev     nodejs     npm &&     rm -rf /var/lib/apt/lists/*
+#9 CACHED
+
+#10 [app 7/8] COPY pyproject.toml poetry.lock ./
+#10 CACHED
+
+#11 [app 6/8] WORKDIR /app
+#11 CACHED
+
+#12 [app 3/8] RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+#12 CACHED
+
+#13 [app 8/8] RUN poetry install --no-root
+#13 CACHED
+
+#14 [app] exporting to image
+#14 exporting layers done
+#14 exporting manifest sha256:20e1330ead784b3b4a37a3acea3db4aa98e346dca655290d3a5942674c6064c7 done
+#14 exporting config sha256:b50f065c3f5a68cada72c89c9cc6d8669785b7c34a53088afcf5934f85c82199 done
+#14 exporting attestation manifest sha256:af3f70a8692108d5806d4382b57e97d86b24318599a524ceb258ab41ef4fa8bc 0.0s done
+#14 exporting manifest list sha256:e75a5b5d64760a45192819206b4643e23bee78f3888d9234b8b502f40b9cd621 0.0s done
+#14 naming to docker.io/library/hushline-app:latest done
+#14 unpacking to docker.io/library/hushline-app:latest done
+#14 DONE 0.1s
+
+#15 [dev_data] exporting to image
+#15 exporting layers done
+#15 exporting manifest sha256:d4d633a72f43512c563be3aa798001aec4bc9772275dea375596d56fb485e3b3 done
+#15 exporting config sha256:8ee7dc3a1036e4843c6345fca685e34af0c98f80f49352995b79d3dceec9d7e6 done
+#15 exporting attestation manifest sha256:950619b3e901043b855710b72f581b398db132e5b8f5705a125b61d00c0e9205 0.0s done
+#15 exporting manifest list sha256:17449ef843f560d07e1bc08705b14153bb9aa102aa5b0a005a019be82f204425 done
+#15 naming to docker.io/library/hushline-dev_data:latest done
+#15 unpacking to docker.io/library/hushline-dev_data:latest done
+#15 DONE 0.1s
+
+#16 [app] resolving provenance for metadata file
+#16 DONE 0.0s
+
+#17 [dev_data] resolving provenance for metadata file
+#17 DONE 0.0s
+ Image hushline-dev_data Built 
+ Image hushline-app Built 
+ Network hushline_default Creating 
+ Network hushline_default Created 
+ Volume hushline_hushline-node-modules Creating 
+ Volume hushline_hushline-node-modules Created 
+ Container hushline-postgres-1 Creating 
+ Container hushline-webpack-1 Creating 
+ Container hushline-blob-storage-1 Creating 
+ Container hushline-webpack-1 Created 
+ Container hushline-blob-storage-1 Created 
+ Container hushline-postgres-1 Created 
+ Container hushline-dev_data-1 Creating 
+ Container hushline-dev_data-1 Created 
+ Container hushline-app-1 Creating 
+ Container hushline-app-1 Created 
+ Container hushline-blob-storage-1 Starting 
+ Container hushline-postgres-1 Starting 
+ Container hushline-webpack-1 Starting 
+ Container hushline-postgres-1 Started 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Started 
+ Container hushline-webpack-1 Started 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-1 Starting 
+ Container hushline-app-1 Started 
+==> Seed development data
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-run-398e09966815 Creating 
+ Container hushline-dev_data-run-398e09966815 Created 
+poetry run ./scripts/dev_migrations.py
+Creating database tables
+Database tables created
+poetry run ./scripts/dev_data.py
+2026-05-21 04:03:29,558:INFO:Password hash counter
+2026-05-21 04:03:29,756:INFO:Password hash counter
+2026-05-21 04:03:29,952:INFO:Password hash counter
+2026-05-21 04:03:30,145:INFO:Password hash counter
+2026-05-21 04:03:30,357:INFO:Password hash counter
+2026-05-21 04:03:30,549:INFO:Password hash counter
+2026-05-21 04:03:30,741:INFO:Password hash counter
+2026-05-21 04:03:30,932:INFO:Password hash counter
+2026-05-21 04:03:31,125:INFO:Password hash counter
+2026-05-21 04:03:31,333:INFO:Password hash counter
+2026-05-21 04:03:31,529:INFO:Password hash counter
+2026-05-21 04:03:31,710:INFO:Password hash counter
+2026-05-21 04:03:31,886:INFO:Password hash counter
+2026-05-21 04:03:32,061:INFO:Password hash counter
+2026-05-21 04:03:32,238:INFO:Password hash counter
+2026-05-21 04:03:32,435:INFO:Password hash counter
+2026-05-21 04:03:32,615:INFO:Password hash counter
+2026-05-21 04:03:32,796:INFO:Password hash counter
+2026-05-21 04:03:32,973:INFO:Password hash counter
+Adding dev data
+Tier:
+  name = Free
+  monthly_amount = 0
+Tier:
+  name = Super User
+  monthly_amount = 500
+Dev data added
+User updated:
+  username = admin
+User updated:
+  username = artvandelay
+User updated:
+  username = jerryseinfeld
+User updated:
+  username = georgecostanza
+User updated:
+  username = elainebenes
+User updated:
+  username = cosmokramer
+User updated:
+  username = newman
+User updated:
+  username = frankcostanza
+User updated:
+  username = michaelbluth
+User updated:
+  username = gobbluth
+User updated:
+  username = busterbluth
+User updated:
+  username = lucillebluth
+User updated:
+  username = tobiasfunke
+User updated:
+  username = larrydavid
+User updated:
+  username = jeffgreene
+User updated:
+  username = leonblack
+User updated:
+  username = dwightschrute
+User updated:
+  username = martymcfly
+User updated:
+  username = georgecostanzakr
+Public storage bucket: public
+Restoring generated static JS artifacts dirtied by runtime bootstrap.
+ M hushline/static/js/directory_verified.js
+ M hushline/static/js/settings-location.js
+==> Create branch codex/daily-issue-1994
+Switched to a new branch 'codex/daily-issue-1994'
+==> Codex issue attempt 1
+Codex execution started; transcript output is excluded from persisted run logs.
+Prompt stats: bytes=3811 lines=51 words=570
+Pre-Codex worktree snapshot:
+git status --short:
+(clean)
+Non-log changed files:
+(none)
+Codex execution completed.
+Post-Codex worktree snapshot:
+git status --short:
+ M assets/js/directory_verified.js
+ M hushline/routes/directory.py
+ M hushline/static/js/directory_verified.js
+ M hushline/templates/directory.html
+ M tests/test_directory.py
+ M tests/test_frontend_compat.py
+Non-log changed files:
+assets/js/directory_verified.js
+hushline/routes/directory.py
+hushline/static/js/directory_verified.js
+hushline/templates/directory.html
+tests/test_directory.py
+tests/test_frontend_compat.py
+Codex final message:
+Implemented lazy tab loading for the directory homepage.
+
+Changed:
+- `/directory` now renders only the default Verified tab data on initial load when verified tabs are enabled.
+- `/directory/users.json?tab=...` can now return data for a single selected tab.
+- Directory JS now fetches tab data on selection, shows a loading/error state, caches loaded tab data for the page session, and reuses it.
+- Inactive tab count badges start hidden and are filled after data loads.
+- Added tests covering inactive loaders not running during initial render and single-tab JSON loading.
+
+Validation:
+- Ran `git diff --check`.
+- Rebuilt the generated directory bundle.
+- Did not run `make lint` or `make test`; the runner will handle those.
+==> Refresh local runtime after schema changes
+Skipped: no schema-affecting files changed.
+==> Run lint
+docker compose run --rm app poetry run ruff format --check && \
+	docker compose run --rm app poetry run ruff check --output-format full && \
+	docker compose run --rm app poetry run mypy . && \
+	docker compose run --rm app sh -lc 'if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js; elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js; else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-ed16d5f15a38 Creating 
+ Container hushline-app-run-ed16d5f15a38 Created 
+Would reformat: hushline/routes/directory.py
+Would reformat: tests/test_directory.py
+Would reformat: tests/test_frontend_compat.py
+3 files would be reformatted, 224 files already formatted
+
+make: *** [lint] Error 1
+Self-heal: applying deterministic lint fix via make fix.
+==> Auto-fix lint issues (make fix)
+docker compose run --rm app sh -lc 'set -e; \
+		poetry run ruff check --fix || true; \
+		poetry run ruff format; \
+		if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier --ignore-path /dev/null --write ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js; elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier --ignore-path /dev/null --write ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js; else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-491682c876e6 Creating 
+ Container hushline-app-run-491682c876e6 Created 
+All checks passed!
+3 files reformatted, 224 files left unchanged
+AGENTS.md 76ms (unchanged)
+README.md 27ms (unchanged)
+SECURITY.md 9ms (unchanged)
+docs/AGENT-RUNNER.md 34ms (unchanged)
+docs/AGENTIC-CODE-POLICY.md 2ms (unchanged)
+docs/ARCHITECTURE.md 3ms (unchanged)
+docs/DEV.md 3ms (unchanged)
+docs/EMBEDDABLE-E2EE-PROFILE-FORMS-FEASIBILITY.md 38ms (unchanged)
+docs/EMBEDDABLE-FORMS-ADMIN.md 5ms (unchanged)
+docs/FLASK-WTF-WTFORMS-MODERNIZATION-STRATEGY.md 29ms (unchanged)
+docs/GLOBALEAKS-DIRECTORY-SYNC.md 3ms (unchanged)
+docs/ISO-37002.md 136ms (unchanged)
+docs/library/getting-started/new-user-onboarding.md 5ms (unchanged)
+docs/library/getting-started/prep-your-account.md 5ms (unchanged)
+docs/library/getting-started/README.md 2ms (unchanged)
+docs/library/getting-started/secure-your-account.md 4ms (unchanged)
+docs/library/getting-started/share-your-tip-line.md 4ms (unchanged)
+docs/library/getting-started/start-here.md 3ms (unchanged)
+docs/library/personal-server/README.md 1ms (unchanged)
+docs/library/personal-server/specs.md 3ms (unchanged)
+docs/library/personal-server/the-hush-line-personal-server.md 3ms (unchanged)
+docs/library/README.md 1ms (unchanged)
+docs/library/using-your-tip-line/account-verification.md 2ms (unchanged)
+docs/library/using-your-tip-line/dark-mode.md 2ms (unchanged)
+docs/library/using-your-tip-line/download-your-data.md 2ms (unchanged)
+docs/library/using-your-tip-line/email-validation.md 3ms (unchanged)
+docs/library/using-your-tip-line/embeddable-forms.md 4ms (unchanged)
+docs/library/using-your-tip-line/message-statuses.md 3ms (unchanged)
+docs/library/using-your-tip-line/reading-messages.md 3ms (unchanged)
+docs/library/using-your-tip-line/README.md 2ms (unchanged)
+docs/library/using-your-tip-line/tools.md 2ms (unchanged)
+docs/library/using-your-tip-line/vision-assistant.md 2ms (unchanged)
+docs/library/using-your-tip-line/your-inbox.md 2ms (unchanged)
+docs/library/welcome/README.md 1ms (unchanged)
+docs/library/welcome/welcome-to-hush-line.md 3ms (unchanged)
+docs/LOCAL-CONTRIBUTOR-ONBOARDING-PROMPT.md 3ms (unchanged)
+docs/NEWSROOM-DIRECTORY-DATA.md 3ms (unchanged)
+docs/PRIVACY.md 13ms (unchanged)
+docs/PUBLIC-RECORD-PROVENANCE-ROADMAP.md 70ms (unchanged)
+docs/PYTHON-3.13-UPGRADE-READINESS.md 11ms (unchanged)
+docs/README.md 3ms (unchanged)
+docs/screenshots/README.md 3ms (unchanged)
+docs/screenshots/releases/dark-debug/manifest.json 29ms (unchanged)
+docs/screenshots/releases/dark-target-check/manifest.json 3ms (unchanged)
+docs/screenshots/releases/latest/manifest.json 2ms (unchanged)
+docs/screenshots/releases/latest/README.md 2ms (unchanged)
+docs/screenshots/releases/one-off-directory/manifest.json 2ms (unchanged)
+docs/screenshots/releases/one-off-directory/README.md 1ms (unchanged)
+docs/screenshots/releases/recipient-qa/manifest.json 5ms (unchanged)
+docs/screenshots/releases/recipient-qa/README.md 4ms (unchanged)
+docs/screenshots/scenes.first-user.json 2ms (unchanged)
+docs/screenshots/scenes.json 25ms (unchanged)
+docs/SECUREDROP-DIRECTORY-SYNC.md 3ms (unchanged)
+docs/SECURITY-AUDIT-HITLIST.md 56ms (unchanged)
+docs/TERMS.md 4ms (unchanged)
+docs/THREAT-MODEL.md 17ms (unchanged)
+docs/UI-TEXT-AUDIT.md 15ms (unchanged)
+docs/USE-CASES.md 36ms (unchanged)
+docs/WHISTLEBLOWER-PROTECTION-ACCOUNTABILITY-WALL-FEASIBILITY.md 33ms (unchanged)
+.github/workflows/build-latest.yml 23ms (unchanged)
+.github/workflows/build-release.yml 6ms (unchanged)
+.github/workflows/bump-personal-server-after-release.yml 13ms (unchanged)
+.github/workflows/bump-staging-after-release.yml 9ms (unchanged)
+.github/workflows/ccpa-compliance.yml 3ms (unchanged)
+.github/workflows/close-epic-child-issue-on-merge.yml 2ms (unchanged)
+.github/workflows/dependency-security-audit.yml 6ms (unchanged)
+.github/workflows/dev_deploy.yml 10ms (unchanged)
+.github/workflows/docs-screenshots.yml 10ms (unchanged)
+.github/workflows/e2ee-privacy-regressions.yml 2ms (unchanged)
+.github/workflows/gdpr-compliance.yml 2ms (unchanged)
+.github/workflows/globaleaks-directory-refresh.yml 3ms (unchanged)
+.github/workflows/lighthouse-performance.yml 2ms (unchanged)
+.github/workflows/lighthouse.yml 3ms (unchanged)
+.github/workflows/migration-smoke.yml 2ms (unchanged)
+.github/workflows/public-directory-weekly-report.yml 4ms (unchanged)
+.github/workflows/public-record-link-check.yml 1ms (unchanged)
+.github/workflows/public-record-quarterly-refresh.yml 3ms (unchanged)
+.github/workflows/publish-docs-screenshots.yml 4ms (unchanged)
+.github/workflows/securedrop-directory-refresh.yml 3ms (unchanged)
+.github/workflows/tests.yml 3ms (unchanged)
+.github/workflows/w3c-validators.yml 3ms (unchanged)
+.github/workflows/workflow-security.yml 3ms (unchanged)
+hushline/data/globaleaks_instances.json 3ms (unchanged)
+hushline/data/newsroom_directory_listings.json 290ms (unchanged)
+hushline/data/public_record_law_firms.json 34ms (unchanged)
+hushline/data/public_record_law_firms_legacy.json 6ms (unchanged)
+hushline/data/securedrop_directory_instances.json 4ms (unchanged)
+hushline/static/manifest.json 0ms (unchanged)
+hushline/static/no-js.js 9ms (unchanged)
+hushline/static/js/directory_verified.js 118ms (unchanged)
+hushline/static/js/settings-location.js 13ms (unchanged)
+/Library/Developer/CommandLineTools/usr/bin/make lint
+docker compose run --rm app poetry run ruff format --check && \
+	docker compose run --rm app poetry run ruff check --output-format full && \
+	docker compose run --rm app poetry run mypy . && \
+	docker compose run --rm app sh -lc 'if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js; elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js; else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-34ce2c5c061d Creating 
+ Container hushline-app-run-34ce2c5c061d Created 
+227 files already formatted
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-df123bce9bc0 Creating 
+ Container hushline-app-run-df123bce9bc0 Created 
+All checks passed!
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-9ac7f831dae4 Creating 
+ Container hushline-app-run-9ac7f831dae4 Created 
+hushline/routes/directory.py:759: error: Argument 1 to "_attorney_filter_metadata" has incompatible type "Sequence[PublicRecordListing]"; expected "list[PublicRecordListing] | tuple[PublicRecordListing, ...]"  [arg-type]
+hushline/routes/directory.py:768: error: Argument 1 to "_filter_public_record_listings" has incompatible type "Sequence[PublicRecordListing]"; expected "list[PublicRecordListing] | tuple[PublicRecordListing, ...]"  [arg-type]
+hushline/routes/directory.py:786: error: Argument 1 to "_newsroom_filter_metadata" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:795: error: Argument 1 to "_filter_newsroom_listings" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:816: error: Argument 1 to "_newsroom_filter_metadata" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:845: error: Argument 1 to "_filter_newsroom_listings" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+Found 6 errors in 1 file (checked 226 source files)
+
+make[1]: *** [lint] Error 1
+make: *** [fix] Error 2
+Workflow checks failed; Codex self-heal attempt 1.
+Codex execution started; transcript output is excluded from persisted run logs.
+Prompt stats: bytes=8468 lines=117 words=874
+Pre-Codex worktree snapshot:
+git status --short:
+ M assets/js/directory_verified.js
+ M hushline/routes/directory.py
+ M hushline/static/js/directory_verified.js
+ M hushline/templates/directory.html
+ M tests/test_directory.py
+ M tests/test_frontend_compat.py
+Non-log changed files:
+assets/js/directory_verified.js
+hushline/routes/directory.py
+hushline/static/js/directory_verified.js
+hushline/templates/directory.html
+tests/test_directory.py
+tests/test_frontend_compat.py
+Codex execution failed (exit 1).
+Post-Codex worktree snapshot:
+git status --short:
+ M assets/js/directory_verified.js
+ M hushline/routes/directory.py
+ M hushline/static/js/directory_verified.js
+ M hushline/templates/directory.html
+ M tests/test_directory.py
+ M tests/test_frontend_compat.py
+Non-log changed files:
+assets/js/directory_verified.js
+hushline/routes/directory.py
+hushline/static/js/directory_verified.js
+hushline/templates/directory.html
+tests/test_directory.py
+tests/test_frontend_compat.py
+==> Refresh local runtime after schema changes
+Skipped: no schema-affecting files changed.
+==> Run lint
+docker compose run --rm app poetry run ruff format --check && \
+	docker compose run --rm app poetry run ruff check --output-format full && \
+	docker compose run --rm app poetry run mypy . && \
+	docker compose run --rm app sh -lc 'if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js; elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js; else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-efa422977c1b Creating 
+ Container hushline-app-run-efa422977c1b Created 
+227 files already formatted
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-e4a047cb2bfa Creating 
+ Container hushline-app-run-e4a047cb2bfa Created 
+All checks passed!
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-ebfd64487739 Creating 
+ Container hushline-app-run-ebfd64487739 Created 
+hushline/routes/directory.py:759: error: Argument 1 to "_attorney_filter_metadata" has incompatible type "Sequence[PublicRecordListing]"; expected "list[PublicRecordListing] | tuple[PublicRecordListing, ...]"  [arg-type]
+hushline/routes/directory.py:768: error: Argument 1 to "_filter_public_record_listings" has incompatible type "Sequence[PublicRecordListing]"; expected "list[PublicRecordListing] | tuple[PublicRecordListing, ...]"  [arg-type]
+hushline/routes/directory.py:786: error: Argument 1 to "_newsroom_filter_metadata" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:795: error: Argument 1 to "_filter_newsroom_listings" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:816: error: Argument 1 to "_newsroom_filter_metadata" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:845: error: Argument 1 to "_filter_newsroom_listings" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+Found 6 errors in 1 file (checked 226 source files)
+
+make: *** [lint] Error 1
+Workflow checks failed; Codex self-heal attempt 2.
+Codex execution started; transcript output is excluded from persisted run logs.
+Prompt stats: bytes=6328 lines=81 words=710
+Pre-Codex worktree snapshot:
+git status --short:
+ M assets/js/directory_verified.js
+ M hushline/routes/directory.py
+ M hushline/static/js/directory_verified.js
+ M hushline/templates/directory.html
+ M tests/test_directory.py
+ M tests/test_frontend_compat.py
+Non-log changed files:
+assets/js/directory_verified.js
+hushline/routes/directory.py
+hushline/static/js/directory_verified.js
+hushline/templates/directory.html
+tests/test_directory.py
+tests/test_frontend_compat.py
+Codex execution failed (exit 1).
+Post-Codex worktree snapshot:
+git status --short:
+ M assets/js/directory_verified.js
+ M hushline/routes/directory.py
+ M hushline/static/js/directory_verified.js
+ M hushline/templates/directory.html
+ M tests/test_directory.py
+ M tests/test_frontend_compat.py
+Non-log changed files:
+assets/js/directory_verified.js
+hushline/routes/directory.py
+hushline/static/js/directory_verified.js
+hushline/templates/directory.html
+tests/test_directory.py
+tests/test_frontend_compat.py
+==> Refresh local runtime after schema changes
+Skipped: no schema-affecting files changed.
+==> Run lint
+docker compose run --rm app poetry run ruff format --check && \
+	docker compose run --rm app poetry run ruff check --output-format full && \
+	docker compose run --rm app poetry run mypy . && \
+	docker compose run --rm app sh -lc 'if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js; elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js; else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-3083b702d325 Creating 
+ Container hushline-app-run-3083b702d325 Created 
+227 files already formatted
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-91bec18e7427 Creating 
+ Container hushline-app-run-91bec18e7427 Created 
+All checks passed!
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-e69a3c836699 Creating 
+ Container hushline-app-run-e69a3c836699 Created 
+hushline/routes/directory.py:759: error: Argument 1 to "_attorney_filter_metadata" has incompatible type "Sequence[PublicRecordListing]"; expected "list[PublicRecordListing] | tuple[PublicRecordListing, ...]"  [arg-type]
+hushline/routes/directory.py:768: error: Argument 1 to "_filter_public_record_listings" has incompatible type "Sequence[PublicRecordListing]"; expected "list[PublicRecordListing] | tuple[PublicRecordListing, ...]"  [arg-type]
+hushline/routes/directory.py:786: error: Argument 1 to "_newsroom_filter_metadata" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:795: error: Argument 1 to "_filter_newsroom_listings" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:816: error: Argument 1 to "_newsroom_filter_metadata" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:845: error: Argument 1 to "_filter_newsroom_listings" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+Found 6 errors in 1 file (checked 226 source files)
+
+make: *** [lint] Error 1
+Workflow checks failed; Codex self-heal attempt 3.
+Codex execution started; transcript output is excluded from persisted run logs.
+Prompt stats: bytes=6328 lines=81 words=710
+Pre-Codex worktree snapshot:
+git status --short:
+ M assets/js/directory_verified.js
+ M hushline/routes/directory.py
+ M hushline/static/js/directory_verified.js
+ M hushline/templates/directory.html
+ M tests/test_directory.py
+ M tests/test_frontend_compat.py
+Non-log changed files:
+assets/js/directory_verified.js
+hushline/routes/directory.py
+hushline/static/js/directory_verified.js
+hushline/templates/directory.html
+tests/test_directory.py
+tests/test_frontend_compat.py
+Codex execution failed (exit 1).
+Post-Codex worktree snapshot:
+git status --short:
+ M assets/js/directory_verified.js
+ M hushline/routes/directory.py
+ M hushline/static/js/directory_verified.js
+ M hushline/templates/directory.html
+ M tests/test_directory.py
+ M tests/test_frontend_compat.py
+Non-log changed files:
+assets/js/directory_verified.js
+hushline/routes/directory.py
+hushline/static/js/directory_verified.js
+hushline/templates/directory.html
+tests/test_directory.py
+tests/test_frontend_compat.py
+==> Refresh local runtime after schema changes
+Skipped: no schema-affecting files changed.
+==> Run lint
+docker compose run --rm app poetry run ruff format --check && \
+	docker compose run --rm app poetry run ruff check --output-format full && \
+	docker compose run --rm app poetry run mypy . && \
+	docker compose run --rm app sh -lc 'if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js; elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js; else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-5a967924f388 Creating 
+ Container hushline-app-run-5a967924f388 Created 
+227 files already formatted
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-68f885379f1e Creating 
+ Container hushline-app-run-68f885379f1e Created 
+All checks passed!
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-b4356d557a5e Creating 
+ Container hushline-app-run-b4356d557a5e Created 
+hushline/routes/directory.py:759: error: Argument 1 to "_attorney_filter_metadata" has incompatible type "Sequence[PublicRecordListing]"; expected "list[PublicRecordListing] | tuple[PublicRecordListing, ...]"  [arg-type]
+hushline/routes/directory.py:768: error: Argument 1 to "_filter_public_record_listings" has incompatible type "Sequence[PublicRecordListing]"; expected "list[PublicRecordListing] | tuple[PublicRecordListing, ...]"  [arg-type]
+hushline/routes/directory.py:786: error: Argument 1 to "_newsroom_filter_metadata" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:795: error: Argument 1 to "_filter_newsroom_listings" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:816: error: Argument 1 to "_newsroom_filter_metadata" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:845: error: Argument 1 to "_filter_newsroom_listings" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+Found 6 errors in 1 file (checked 226 source files)
+
+make: *** [lint] Error 1
+Workflow checks failed; Codex self-heal attempt 4.
+Codex execution started; transcript output is excluded from persisted run logs.
+Prompt stats: bytes=6328 lines=81 words=710
+Pre-Codex worktree snapshot:
+git status --short:
+ M assets/js/directory_verified.js
+ M hushline/routes/directory.py
+ M hushline/static/js/directory_verified.js
+ M hushline/templates/directory.html
+ M tests/test_directory.py
+ M tests/test_frontend_compat.py
+Non-log changed files:
+assets/js/directory_verified.js
+hushline/routes/directory.py
+hushline/static/js/directory_verified.js
+hushline/templates/directory.html
+tests/test_directory.py
+tests/test_frontend_compat.py
+Codex execution failed (exit 1).
+Post-Codex worktree snapshot:
+git status --short:
+ M assets/js/directory_verified.js
+ M hushline/routes/directory.py
+ M hushline/static/js/directory_verified.js
+ M hushline/templates/directory.html
+ M tests/test_directory.py
+ M tests/test_frontend_compat.py
+Non-log changed files:
+assets/js/directory_verified.js
+hushline/routes/directory.py
+hushline/static/js/directory_verified.js
+hushline/templates/directory.html
+tests/test_directory.py
+tests/test_frontend_compat.py
+==> Refresh local runtime after schema changes
+Skipped: no schema-affecting files changed.
+==> Run lint
+docker compose run --rm app poetry run ruff format --check && \
+	docker compose run --rm app poetry run ruff check --output-format full && \
+	docker compose run --rm app poetry run mypy . && \
+	docker compose run --rm app sh -lc 'if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js; elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js; else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-6457da1f8eb7 Creating 
+ Container hushline-app-run-6457da1f8eb7 Created 
+227 files already formatted
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-d763a0f095f8 Creating 
+ Container hushline-app-run-d763a0f095f8 Created 
+All checks passed!
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-1fc87f4bba88 Creating 
+ Container hushline-app-run-1fc87f4bba88 Created 
+hushline/routes/directory.py:759: error: Argument 1 to "_attorney_filter_metadata" has incompatible type "Sequence[PublicRecordListing]"; expected "list[PublicRecordListing] | tuple[PublicRecordListing, ...]"  [arg-type]
+hushline/routes/directory.py:768: error: Argument 1 to "_filter_public_record_listings" has incompatible type "Sequence[PublicRecordListing]"; expected "list[PublicRecordListing] | tuple[PublicRecordListing, ...]"  [arg-type]
+hushline/routes/directory.py:786: error: Argument 1 to "_newsroom_filter_metadata" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:795: error: Argument 1 to "_filter_newsroom_listings" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:816: error: Argument 1 to "_newsroom_filter_metadata" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:845: error: Argument 1 to "_filter_newsroom_listings" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+Found 6 errors in 1 file (checked 226 source files)
+
+make: *** [lint] Error 1
+Workflow checks failed; Codex self-heal attempt 5.
+Codex execution started; transcript output is excluded from persisted run logs.
+Prompt stats: bytes=6328 lines=81 words=710
+Pre-Codex worktree snapshot:
+git status --short:
+ M assets/js/directory_verified.js
+ M hushline/routes/directory.py
+ M hushline/static/js/directory_verified.js
+ M hushline/templates/directory.html
+ M tests/test_directory.py
+ M tests/test_frontend_compat.py
+Non-log changed files:
+assets/js/directory_verified.js
+hushline/routes/directory.py
+hushline/static/js/directory_verified.js
+hushline/templates/directory.html
+tests/test_directory.py
+tests/test_frontend_compat.py
+Codex execution failed (exit 1).
+Post-Codex worktree snapshot:
+git status --short:
+ M assets/js/directory_verified.js
+ M hushline/routes/directory.py
+ M hushline/static/js/directory_verified.js
+ M hushline/templates/directory.html
+ M tests/test_directory.py
+ M tests/test_frontend_compat.py
+Non-log changed files:
+assets/js/directory_verified.js
+hushline/routes/directory.py
+hushline/static/js/directory_verified.js
+hushline/templates/directory.html
+tests/test_directory.py
+tests/test_frontend_compat.py
+==> Refresh local runtime after schema changes
+Skipped: no schema-affecting files changed.
+==> Run lint
+docker compose run --rm app poetry run ruff format --check && \
+	docker compose run --rm app poetry run ruff check --output-format full && \
+	docker compose run --rm app poetry run mypy . && \
+	docker compose run --rm app sh -lc 'if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js; elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js; else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-f00fe6377c1d Creating 
+ Container hushline-app-run-f00fe6377c1d Created 
+227 files already formatted
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-cfe8e3d9df76 Creating 
+ Container hushline-app-run-cfe8e3d9df76 Created 
+All checks passed!
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-beb303ccc842 Creating 
+ Container hushline-app-run-beb303ccc842 Created 
+hushline/routes/directory.py:759: error: Argument 1 to "_attorney_filter_metadata" has incompatible type "Sequence[PublicRecordListing]"; expected "list[PublicRecordListing] | tuple[PublicRecordListing, ...]"  [arg-type]
+hushline/routes/directory.py:768: error: Argument 1 to "_filter_public_record_listings" has incompatible type "Sequence[PublicRecordListing]"; expected "list[PublicRecordListing] | tuple[PublicRecordListing, ...]"  [arg-type]
+hushline/routes/directory.py:786: error: Argument 1 to "_newsroom_filter_metadata" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:795: error: Argument 1 to "_filter_newsroom_listings" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:816: error: Argument 1 to "_newsroom_filter_metadata" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:845: error: Argument 1 to "_filter_newsroom_listings" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+Found 6 errors in 1 file (checked 226 source files)
+
+make: *** [lint] Error 1
+Workflow checks failed; Codex self-heal attempt 6.
+Codex execution started; transcript output is excluded from persisted run logs.
+Prompt stats: bytes=6328 lines=81 words=710
+Pre-Codex worktree snapshot:
+git status --short:
+ M assets/js/directory_verified.js
+ M hushline/routes/directory.py
+ M hushline/static/js/directory_verified.js
+ M hushline/templates/directory.html
+ M tests/test_directory.py
+ M tests/test_frontend_compat.py
+Non-log changed files:
+assets/js/directory_verified.js
+hushline/routes/directory.py
+hushline/static/js/directory_verified.js
+hushline/templates/directory.html
+tests/test_directory.py
+tests/test_frontend_compat.py
+Codex execution failed (exit 1).
+Post-Codex worktree snapshot:
+git status --short:
+ M assets/js/directory_verified.js
+ M hushline/routes/directory.py
+ M hushline/static/js/directory_verified.js
+ M hushline/templates/directory.html
+ M tests/test_directory.py
+ M tests/test_frontend_compat.py
+Non-log changed files:
+assets/js/directory_verified.js
+hushline/routes/directory.py
+hushline/static/js/directory_verified.js
+hushline/templates/directory.html
+tests/test_directory.py
+tests/test_frontend_compat.py
+==> Refresh local runtime after schema changes
+Skipped: no schema-affecting files changed.
+==> Run lint
+docker compose run --rm app poetry run ruff format --check && \
+	docker compose run --rm app poetry run ruff check --output-format full && \
+	docker compose run --rm app poetry run mypy . && \
+	docker compose run --rm app sh -lc 'if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js; elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js; else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-d2145b757f63 Creating 
+ Container hushline-app-run-d2145b757f63 Created 
+227 files already formatted
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-744347abe11e Creating 
+ Container hushline-app-run-744347abe11e Created 
+All checks passed!
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-919582ac4eeb Creating 
+ Container hushline-app-run-919582ac4eeb Created 
+hushline/routes/directory.py:759: error: Argument 1 to "_attorney_filter_metadata" has incompatible type "Sequence[PublicRecordListing]"; expected "list[PublicRecordListing] | tuple[PublicRecordListing, ...]"  [arg-type]
+hushline/routes/directory.py:768: error: Argument 1 to "_filter_public_record_listings" has incompatible type "Sequence[PublicRecordListing]"; expected "list[PublicRecordListing] | tuple[PublicRecordListing, ...]"  [arg-type]
+hushline/routes/directory.py:786: error: Argument 1 to "_newsroom_filter_metadata" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:795: error: Argument 1 to "_filter_newsroom_listings" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:816: error: Argument 1 to "_newsroom_filter_metadata" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:845: error: Argument 1 to "_filter_newsroom_listings" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+Found 6 errors in 1 file (checked 226 source files)
+
+make: *** [lint] Error 1
+Workflow checks failed; Codex self-heal attempt 7.
+Codex execution started; transcript output is excluded from persisted run logs.
+Prompt stats: bytes=6328 lines=81 words=710
+Pre-Codex worktree snapshot:
+git status --short:
+ M assets/js/directory_verified.js
+ M hushline/routes/directory.py
+ M hushline/static/js/directory_verified.js
+ M hushline/templates/directory.html
+ M tests/test_directory.py
+ M tests/test_frontend_compat.py
+Non-log changed files:
+assets/js/directory_verified.js
+hushline/routes/directory.py
+hushline/static/js/directory_verified.js
+hushline/templates/directory.html
+tests/test_directory.py
+tests/test_frontend_compat.py
+Codex execution failed (exit 1).
+Post-Codex worktree snapshot:
+git status --short:
+ M assets/js/directory_verified.js
+ M hushline/routes/directory.py
+ M hushline/static/js/directory_verified.js
+ M hushline/templates/directory.html
+ M tests/test_directory.py
+ M tests/test_frontend_compat.py
+Non-log changed files:
+assets/js/directory_verified.js
+hushline/routes/directory.py
+hushline/static/js/directory_verified.js
+hushline/templates/directory.html
+tests/test_directory.py
+tests/test_frontend_compat.py
+==> Refresh local runtime after schema changes
+Skipped: no schema-affecting files changed.
+==> Run lint
+docker compose run --rm app poetry run ruff format --check && \
+	docker compose run --rm app poetry run ruff check --output-format full && \
+	docker compose run --rm app poetry run mypy . && \
+	docker compose run --rm app sh -lc 'if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js; elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier --ignore-path /dev/null --check ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js; else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-12640c4fd0a8 Creating 
+ Container hushline-app-run-12640c4fd0a8 Created 
+227 files already formatted
+ Container hushline-postgres-1 Running 
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-77b3acced4e5 Creating 
+ Container hushline-app-run-77b3acced4e5 Created 
+All checks passed!
+ Container hushline-blob-storage-1 Running 
+ Container hushline-postgres-1 Running 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-dev_data-1 Starting 
+ Container hushline-dev_data-1 Started 
+ Container hushline-blob-storage-1 Waiting 
+ Container hushline-dev_data-1 Waiting 
+ Container hushline-postgres-1 Waiting 
+ Container hushline-postgres-1 Healthy 
+ Container hushline-blob-storage-1 Healthy 
+ Container hushline-dev_data-1 Exited 
+ Container hushline-app-run-dc24e9c01e02 Creating 
+ Container hushline-app-run-dc24e9c01e02 Created 
+hushline/routes/directory.py:759: error: Argument 1 to "_attorney_filter_metadata" has incompatible type "Sequence[PublicRecordListing]"; expected "list[PublicRecordListing] | tuple[PublicRecordListing, ...]"  [arg-type]
+hushline/routes/directory.py:768: error: Argument 1 to "_filter_public_record_listings" has incompatible type "Sequence[PublicRecordListing]"; expected "list[PublicRecordListing] | tuple[PublicRecordListing, ...]"  [arg-type]
+hushline/routes/directory.py:786: error: Argument 1 to "_newsroom_filter_metadata" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:795: error: Argument 1 to "_filter_newsroom_listings" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:816: error: Argument 1 to "_newsroom_filter_metadata" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+hushline/routes/directory.py:845: error: Argument 1 to "_filter_newsroom_listings" has incompatible type "Sequence[NewsroomDirectoryListing]"; expected "list[NewsroomDirectoryListing] | tuple[NewsroomDirectoryListing, ...]"  [arg-type]
+Found 6 errors in 1 file (checked 226 source files)
+
+make: *** [lint] Error 1
+Blocked: workflow checks failed after 8 self-heal attempt(s) for issue #1994.
+Warning: issue implementation failed; opening a sanitized diagnostic PR instead of leaving the checkout stranded.
+Restoring non-log worktree changes before opening diagnostic PR.
+assets/js/directory_verified.js
+hushline/routes/directory.py
+hushline/static/js/directory_verified.js
+hushline/templates/directory.html
+tests/test_directory.py
+tests/test_frontend_compat.py
+Pruning old runner logs, keeping newest 10.
+[codex/daily-issue-1994 aa2a5f7c] chore: agent daily for #1994
+ 3 files changed, 2371 insertions(+), 19803 deletions(-)
+ delete mode 100644 docs/agent-logs/run-20260505T232832Z-issue-1919.txt
+ create mode 100644 docs/agent-logs/run-20260521T040225Z-issue-1994.txt
+Remote branch 'codex/daily-issue-1994' does not exist; creating it with a standard push.
+remote: 
+remote: Create a pull request for 'codex/daily-issue-1994' on GitHub by visiting:        
+remote:      https://github.com/scidsg/hushline/pull/new/codex/daily-issue-1994        
+remote: 
+To github.com:scidsg/hushline.git
+ * [new branch]        codex/daily-issue-1994 -> codex/daily-issue-1994
+branch 'codex/daily-issue-1994' set up to track 'origin/codex/daily-issue-1994'.
+Opened PR: https://github.com/scidsg/hushline/pull/1995
+==> Mark issue #1994 as Ready for Review
+Coverage gap issue skipped: no missed statements found in the latest test coverage snapshot.
