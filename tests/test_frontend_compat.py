@@ -272,11 +272,19 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert "controller.activeFilterCount = function () {" in directory_verified_js
     assert "controller.updateCountBadge = function () {" in directory_verified_js
     assert "updateLocationFilterCountBadges();" in directory_verified_js
+    assert "hasTabData(controller.tabName, loadedDirectorySearch)" in directory_verified_js
+    assert "hasTabData(controller.tabName, loadedDirectorySearch)" in directory_verified_static_js
     assert 'const directoryPath = window.location.pathname.replace(/\\/$/, "");' in (
         directory_verified_js
     )
     assert "tabDataCache" in directory_verified_js
     assert 'params.set("tab", tab);' in directory_verified_js
+    assert "void ensureTabData(tab, window.location.search, { showLoading: false });" in (
+        directory_verified_js
+    )
+    assert "void ensureTabData(tab, window.location.search, { showLoading: false });" in (
+        directory_verified_static_js
+    )
     assert 'role="status">Loading ${scopeLabel(tab)}...' in directory_verified_js
     assert "fetch(`${directoryPath}/users.json${tabDataSearch(tab, search)}`" in (
         directory_verified_js

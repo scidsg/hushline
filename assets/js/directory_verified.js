@@ -624,6 +624,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (!hasTabData(tab, loadedDirectorySearch)) {
+      void ensureTabData(tab, window.location.search, { showLoading: false });
       return;
     }
 
@@ -1289,7 +1290,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function updateLocationFilterCountBadges() {
     locationFilterControllers.forEach((controller) => {
-      controller.updateCountBadge();
+      if (hasTabData(controller.tabName, loadedDirectorySearch)) {
+        controller.updateCountBadge();
+      }
     });
     if (securedropCountBadge && hasTabData("securedrop", loadedDirectorySearch)) {
       securedropCountBadge.textContent = usersForTab("securedrop").length.toString();

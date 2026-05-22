@@ -703,6 +703,7 @@
       }
 
       if (!hasTabData(tab, loadedDirectorySearch)) {
+        void ensureTabData(tab, window.location.search, { showLoading: false });
         return;
       }
 
@@ -1440,7 +1441,9 @@
 
     function updateLocationFilterCountBadges() {
       locationFilterControllers.forEach((controller) => {
-        controller.updateCountBadge();
+        if (hasTabData(controller.tabName, loadedDirectorySearch)) {
+          controller.updateCountBadge();
+        }
       });
       if (
         securedropCountBadge &&
