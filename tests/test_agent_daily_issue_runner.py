@@ -2123,6 +2123,52 @@ run_codex_from_prompt > {shlex.quote(str(run_log_file))} 2>&1
     assert "Safe final summary" in run_log_text
 
 
+def test_run_codex_from_prompt_reports_no_credits_without_transcript(
+    tmp_path: Path,
+) -> None:
+    prompt_file = tmp_path / "prompt.txt"
+    output_file = tmp_path / "codex-output.txt"
+    transcript_file = tmp_path / "codex-transcript.txt"
+    run_log_file = tmp_path / "run-log.txt"
+    console_file = tmp_path / "console.txt"
+
+    prompt_file.write_text("issue prompt\n", encoding="utf-8")
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(tmp_path))}
+PROMPT_FILE={shlex.quote(str(prompt_file))}
+CODEX_OUTPUT_FILE={shlex.quote(str(output_file))}
+CODEX_TRANSCRIPT_FILE={shlex.quote(str(transcript_file))}
+CODEX_MODEL=test-model
+CODEX_REASONING_EFFORT=high
+VERBOSE_CODEX_OUTPUT=0
+exec 3>{shlex.quote(str(console_file))}
+codex() {{
+  printf '%s\\n' '{{"rate_limits":{{"credits":{{"has_credits":false}}}}}}'
+  printf 'SECRET_TRANSCRIPT_LINE\\n'
+  return 1
+}}
+if run_codex_from_prompt > {shlex.quote(str(run_log_file))} 2>&1; then
+  rc=0
+else
+  rc=$?
+fi
+printf 'rc=%s unavailable=%s\\n' "$rc" "$CODEX_EXEC_UNAVAILABLE"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "rc=1 unavailable=1"
+    run_log_text = run_log_file.read_text(encoding="utf-8")
+    transcript_text = transcript_file.read_text(encoding="utf-8")
+    assert "Codex execution failed (exit 1)." in run_log_text
+    assert "Codex unavailable: account has no credits" in run_log_text
+    assert "SECRET_TRANSCRIPT_LINE" in transcript_text
+    assert "SECRET_TRANSCRIPT_LINE" not in run_log_text
+
+
 def test_write_pr_narrative_lead_adds_plain_language_summary() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
@@ -2733,6 +2779,8 @@ def test_recent_failure_block_from_text_extracts_recent_actionable_context() -> 
         "$'tests/test_setup.py::test_boot PASSED [  1%]\\n'\\\n"
         "$'/Users/scidsg/hushline/tests/test_module.py:12:34: "
         "F821 Undefined name `MissingName`\\n'\\\n"
+        "$'hushline/routes/profile.py                         272     17    94%\\n'\\\n"
+        "$'hushline/settings/common.py                        374      4    99%\\n'\\\n"
         "$'make: *** [fix] Error 1\\nFAILED tests/test_example.py::test_case\\n"
         "/tmp/codex-secret-artifact.txt\\nTraceback\\n'"
     )
@@ -2748,6 +2796,8 @@ recent_failure_block_from_text "$failure_text"
     assert result.returncode == 0, result.stderr
     assert "Container hushline-dev_data-1 Exited" not in result.stdout
     assert "PASSED" not in result.stdout
+    assert "hushline/routes/profile.py" not in result.stdout
+    assert "hushline/settings/common.py" not in result.stdout
     assert "/Users/scidsg/hushline" not in result.stdout
     assert "tests/test_module.py:12:34: F821 Undefined name `MissingName`" in result.stdout
     assert "FAILED tests/test_example.py::test_case" in result.stdout
@@ -2780,6 +2830,30 @@ recent_failure_block_from_text "$failure_text"
     assert "abc/def+ghi~jkl" not in result.stdout
     assert "zyx/wvu+tsr~qpo" not in result.stdout
     assert "hunter2" not in result.stdout
+
+
+def test_recent_failure_block_keeps_traceback_when_coverage_table_follows() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+failure_text=$'FAILED tests/test_embeddable_forms_settings.py::test_origin\\n'\
+$'Traceback (most recent call last):\\n'\
+$'  File "/app/hushline/settings/common.py", line 358, in handle_embed_settings_form\\n'\
+$'    username.set_embed_allowed_origins(form.normalized_origins)\\n'\
+$'AttributeError: EmbedSettingsForm has no attribute normalized_origins\\n'
+for i in $(seq 1 180); do
+  failure_text+=$'hushline/module_'$i$'.py                         100      1    99%\\n'
+done
+failure_text+=$'FAILED tests/test_embeddable_forms_settings.py::test_origin - assert 500 == 400\\n'
+recent_failure_block_from_text "$failure_text"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Traceback (most recent call last):" in result.stdout
+    assert "AttributeError: EmbedSettingsForm has no attribute normalized_origins" in result.stdout
+    assert "hushline/module_180.py" not in result.stdout
+    assert "FAILED tests/test_embeddable_forms_settings.py::test_origin" in result.stdout
 
 
 def test_failure_excerpt_from_text_redacts_sensitive_values() -> None:
@@ -4371,6 +4445,48 @@ printf 'rc=%s\\n' "$rc"
     assert "rc=1" in result.stdout
     assert (
         "Blocked: workflow checks failed after 2 self-heal attempt(s) for issue #1558."
+        in result.stderr
+    )
+
+
+def test_fix_attempt_loop_stops_when_codex_is_unavailable(tmp_path: Path) -> None:
+    check_log_file = tmp_path / "check.log"
+    codex_output_file = tmp_path / "codex-output.txt"
+    call_log = tmp_path / "calls.txt"
+    check_log_file.write_text("persistent failure\n", encoding="utf-8")
+    codex_output_file.write_text("prior summary\n", encoding="utf-8")
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+MAX_FIX_ATTEMPTS=4
+CHECK_LOG_FILE={shlex.quote(str(check_log_file))}
+CODEX_OUTPUT_FILE={shlex.quote(str(codex_output_file))}
+PREVIOUS_FAILURE_SIGNATURE=""
+FAILURE_SIGNATURE=""
+REPEATED_FAILURE_COUNT=0
+run_local_workflow_checks() {{ return 1; }}
+failure_signature_from_text() {{ printf 'same-failure\\n'; }}
+current_change_summary() {{ printf 'summary\\n'; }}
+build_fix_prompt() {{ :; }}
+run_codex_from_prompt() {{
+  printf 'codex\\n' >> {shlex.quote(str(call_log))}
+  CODEX_EXEC_UNAVAILABLE=1
+  return 1
+}}
+set +e
+run_fix_attempt_loop 1558 "Title" "Body" "" "branch"
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=1" in result.stdout
+    assert call_log.read_text(encoding="utf-8").splitlines() == ["codex"]
+    assert (
+        "Blocked: Codex self-heal is unavailable for issue #1558; stopping retry loop."
         in result.stderr
     )
 
