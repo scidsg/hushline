@@ -237,6 +237,10 @@ def _legacy_public_record_listings() -> list[PublicRecordListing]:
     ]
 
 
+def _eager_directory_url() -> str:
+    return f"{url_for('directory')}?eager=1"
+
+
 def _find_directory_card(panel: BeautifulSoup | Tag | None, display_name: str) -> Tag:
     assert panel is not None
     for card in panel.select("article.user"):
@@ -254,12 +258,38 @@ def test_directory_accessible(client: FlaskClient) -> None:
     assert "Journalists" in response.text
     assert "GlobaLeaks" in response.text
     assert "SecureDrop" in response.text
-    assert "🤖 Automated" in response.text
-    assert "⚖️ Attorney" in response.text
+    assert "Select this tab to load attorney listings." in response.text
+    assert "🤖 Automated" not in response.text
+    assert "⚖️ Attorney" not in response.text
+
+
+def test_directory_initial_render_lazy_loads_inactive_tab_data(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fail_inactive_listing_load() -> None:
+        raise AssertionError("inactive directory listings should not load during initial render")
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings", fail_inactive_listing_load
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings", fail_inactive_listing_load
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_globaleaks_directory_listings", fail_inactive_listing_load
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_securedrop_directory_listings", fail_inactive_listing_load
+    )
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+    assert "Select this tab to load attorney listings." in response.text
+    assert "Select this tab to load directory listings." in response.text
 
 
 def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> None:
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -283,7 +313,7 @@ def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> N
 def test_directory_securedrop_banner_links_to_admin_without_tor_copy(
     client: FlaskClient,
 ) -> None:
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -311,7 +341,7 @@ def test_directory_securedrop_banner_links_to_admin_without_tor_copy(
 def test_directory_globaleaks_banner_links_to_admin_without_tor_copy(
     client: FlaskClient,
 ) -> None:
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -345,7 +375,7 @@ def test_directory_newsrooms_banner_links_to_admin(
         lambda: (_sample_newsroom_listing(), _sample_european_network_listing()),
     )
 
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -384,7 +414,7 @@ def test_directory_newsrooms_banner_links_to_admin(
 
 
 def test_directory_all_tab_banner_links_to_admin(client: FlaskClient) -> None:
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -406,7 +436,7 @@ def test_directory_all_tab_banner_links_to_admin(client: FlaskClient) -> None:
 def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient) -> None:
     client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
     try:
-        response = client.get(url_for("directory"))
+        response = client.get(_eager_directory_url())
     finally:
         client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = True
 
@@ -448,12 +478,12 @@ def test_directory_users_json_excludes_public_records_when_verified_tabs_disable
 def test_directory_lists_only_opted_in_users(client: FlaskClient, user: User) -> None:
     user.primary_username.show_in_directory = True
     db.session.commit()
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert user.primary_username.username in response.text, response.text
 
     user.primary_username.show_in_directory = False
     db.session.commit()
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert user.primary_username.username not in response.text
 
 
@@ -708,7 +738,7 @@ def test_directory_self_reported_attorneys_render_in_attorneys_tab(
     user2.primary_username._display_name = "Non-Attorney"
     db.session.commit()
 
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -743,7 +773,7 @@ def test_directory_self_reported_journalists_and_newsrooms_render_in_newsrooms_t
     user2.primary_username.bio = "Newsroom profile."
     db.session.commit()
 
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -919,7 +949,7 @@ def test_directory_public_records_render_only_in_public_records_and_all(
 ) -> None:
     listing = _first_public_record_listing_or_skip()
 
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -967,6 +997,35 @@ def test_directory_users_json_includes_public_record_rows(client: FlaskClient) -
     assert row["practice_tags"] == list(listing.practice_tags)
     assert row["source_label"] == listing.source_label
     assert row["directory_section"] == "public_record"
+
+
+def test_directory_users_json_loads_only_requested_lazy_tab(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    listing = _sample_globaleaks_listing()
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_globaleaks_directory_listings",
+        lambda: (listing,),
+    )
+
+    def fail_unselected_tab_load() -> None:
+        raise AssertionError("unselected tab data should not be loaded")
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings", fail_unselected_tab_load
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings", fail_unselected_tab_load
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_securedrop_directory_listings", fail_unselected_tab_load
+    )
+
+    response = client.get(f"{url_for('directory_users')}?tab=globaleaks")
+    assert response.status_code == 200
+    rows = response.json or []
+    assert [row["display_name"] for row in rows] == [listing.name]
 
 
 def test_directory_card_bio_uses_bio_length_limit_with_ascii_ellipsis() -> None:
@@ -1041,7 +1100,7 @@ def test_directory_public_record_cards_truncate_long_automated_listing_bios(
     monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
 
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -1061,7 +1120,7 @@ def test_directory_public_record_cards_truncate_long_automated_listing_bios(
 def test_directory_public_record_cards_do_not_show_location(client: FlaskClient) -> None:
     listing = _first_public_record_listing_or_skip()
 
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -1198,7 +1257,7 @@ def test_directory_attorney_filter_panel_hidden_by_default(
     monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
 
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -1279,7 +1338,7 @@ def test_directory_newsroom_filter_panel_hidden_by_default(
     monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
 
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -1395,7 +1454,7 @@ def test_directory_all_filter_panel_hidden_by_default(
         lambda: (globaleaks_listing,),
     )
 
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -2904,7 +2963,7 @@ def test_directory_securedrop_render_only_in_securedrop_and_all(
 ) -> None:
     listing = _first_securedrop_listing_or_skip()
 
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -2938,7 +2997,7 @@ def test_directory_globaleaks_render_only_in_globaleaks_and_all(
         lambda: (listing,),
     )
 
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -3008,7 +3067,7 @@ def test_directory_globaleaks_cards_do_not_show_location(
         lambda: (listing,),
     )
 
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -3095,7 +3154,7 @@ def test_directory_newsroom_cards_do_not_show_location(
         lambda: (listing,),
     )
 
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -3138,7 +3197,7 @@ def test_directory_users_json_includes_securedrop_rows(client: FlaskClient) -> N
 def test_directory_securedrop_cards_do_not_show_location(client: FlaskClient) -> None:
     listing = _first_securedrop_listing_or_skip()
 
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -3488,7 +3547,7 @@ def test_directory_all_tab_is_homogeneous_with_admin_first_and_info_only_badge(
         lambda: mocked_newsroom_listings,
     )
 
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -3568,7 +3627,7 @@ def test_directory_attorney_and_journalist_tabs_show_info_only_badge(
     monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
 
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -3630,7 +3689,7 @@ def test_directory_all_tab_does_not_promote_non_admin_named_admin(
     monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
 
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -3705,7 +3764,7 @@ def test_directory_all_tab_moves_caution_accounts_to_bottom(
     monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
 
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -3785,7 +3844,7 @@ def test_directory_all_tab_orders_users_by_display_name_after_admin_pin(
     monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
 
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -3845,7 +3904,7 @@ def test_directory_all_tab_preserves_transliterated_display_name_order(
     monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
 
-    response = client.get(url_for("directory"))
+    response = client.get(_eager_directory_url())
     assert response.status_code == 200
 
     soup = BeautifulSoup(response.text, "html.parser")

@@ -48,7 +48,7 @@
             >
               Attorneys
               <span id="public-record-count" class="badge" role="img" aria-label="Attorney count"
-                >{{ public_record_total_count }}</span
+                >{{ "..." if public_record_total_count is none else public_record_total_count }}</span
               >
             </button>
           </li>
@@ -68,7 +68,7 @@
                 class="badge"
                 role="img"
                 aria-label="Journalist and newsroom listing count"
-                >{{ newsroom_total_count }}</span
+                >{{ "..." if newsroom_total_count is none else newsroom_total_count }}</span
               >
             </button>
           </li>
@@ -83,8 +83,12 @@
               id="securedrop-tab"
             >
               SecureDrop
-              <span class="badge" role="img" aria-label="SecureDrop instance count"
-                >{{ securedrop_total_count }}</span
+              <span
+                id="securedrop-count"
+                class="badge"
+                role="img"
+                aria-label="SecureDrop instance count"
+                >{{ "..." if securedrop_total_count is none else securedrop_total_count }}</span
               >
             </button>
           </li>
@@ -99,8 +103,12 @@
               id="globaleaks-tab"
             >
               GlobaLeaks
-              <span class="badge" role="img" aria-label="GlobaLeaks instance count"
-                >{{ globaleaks_total_count }}</span
+              <span
+                id="globaleaks-count"
+                class="badge"
+                role="img"
+                aria-label="GlobaLeaks instance count"
+                >{{ "..." if globaleaks_total_count is none else globaleaks_total_count }}</span
               >
             </button>
           </li>
@@ -659,6 +667,10 @@
             </article>
           {% endfor %}
         </div>
+      {% elif lazy_directory_tabs %}
+        <p class="empty-message" data-directory-lazy-placeholder="true">
+          Select this tab to load attorney listings.
+        </p>
       {% endif %}
     </div>
   {% endif %}
@@ -720,6 +732,10 @@
             </article>
           {% endfor %}
         </div>
+      {% elif lazy_directory_tabs %}
+        <p class="empty-message" data-directory-lazy-placeholder="true">
+          Select this tab to load journalist and newsroom listings.
+        </p>
       {% endif %}
     </div>
   {% endif %}
@@ -750,6 +766,10 @@
             </article>
           {% endfor %}
         </div>
+      {% elif lazy_directory_tabs %}
+        <p class="empty-message" data-directory-lazy-placeholder="true">
+          Select this tab to load GlobaLeaks listings.
+        </p>
       {% endif %}
     </div>
   {% endif %}
@@ -781,6 +801,10 @@
             </article>
           {% endfor %}
         </div>
+      {% elif lazy_directory_tabs %}
+        <p class="empty-message" data-directory-lazy-placeholder="true">
+          Select this tab to load SecureDrop listings.
+        </p>
       {% endif %}
     </div>
   {% endif %}
@@ -798,6 +822,11 @@
       </p>
     {% endif %}
     <div class="user-list">
+      {% if lazy_directory_tabs %}
+        <p class="empty-message" data-directory-lazy-placeholder="true">
+          Select this tab to load directory listings.
+        </p>
+      {% endif %}
       {% for entry in all_directory_entries %}
         <article class="user">
           <h3>{{ entry.display_name }}</h3>

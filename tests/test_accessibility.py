@@ -44,7 +44,7 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     assert badge is not None
     assert badge.get("role") == "img"
     assert badge.get("aria-label") == "Attorney count"
-    assert badge.get_text(strip=True).isdigit()
+    assert badge.get_text(strip=True) == "..."
 
     # Button label text excluding the badge
     label_text = (
@@ -60,7 +60,7 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     assert journalists_badge is not None
     assert journalists_badge.get("role") == "img"
     assert journalists_badge.get("aria-label") == "Journalist and newsroom listing count"
-    assert journalists_badge.get_text(strip=True).isdigit()
+    assert journalists_badge.get_text(strip=True) == "..."
     journalists_label_text = (
         journalists_tab.get_text(" ", strip=True)
         .replace(journalists_badge.get_text(" ", strip=True), "")
@@ -74,7 +74,7 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     assert globaleaks_badge is not None
     assert globaleaks_badge.get("role") == "img"
     assert globaleaks_badge.get("aria-label") == "GlobaLeaks instance count"
-    assert globaleaks_badge.get_text(strip=True).isdigit()
+    assert globaleaks_badge.get_text(strip=True) == "..."
     globaleaks_label_text = (
         globaleaks_tab.get_text(" ", strip=True)
         .replace(globaleaks_badge.get_text(" ", strip=True), "")
@@ -88,7 +88,7 @@ def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
     assert securedrop_badge is not None
     assert securedrop_badge.get("role") == "img"
     assert securedrop_badge.get("aria-label") == "SecureDrop instance count"
-    assert securedrop_badge.get_text(strip=True).isdigit()
+    assert securedrop_badge.get_text(strip=True) == "..."
     securedrop_label_text = (
         securedrop_tab.get_text(" ", strip=True)
         .replace(securedrop_badge.get_text(" ", strip=True), "")
