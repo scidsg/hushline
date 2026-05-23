@@ -67,6 +67,7 @@ PROMPT_FILE=""
 PR_BODY_FILE=""
 CODEX_OUTPUT_FILE=""
 CODEX_TRANSCRIPT_FILE=""
+CODEX_EXEC_UNAVAILABLE=0
 RUN_LOG_TMP_FILE=""
 RUN_LOG_TIMESTAMP=""
 RUN_LOG_GIT_PATH=""
@@ -3072,8 +3073,17 @@ persist_run_log() {
   fi
 }
 
+codex_transcript_has_rate_quota_or_credit_failure() {
+  local transcript_file="$1"
+  local access_failure_pattern
+
+  access_failure_pattern='(^|[^[:alnum:]_])(rate[ -]?limit(ed|ing)?|too many requests|quota[ _-]*(exceeded|exhausted|reached|depleted|unavailable)|exceeded[ _-]+quota|insufficient[ _-]+quota|no[ _-]+credits?|out[ _-]+of[ _-]+credits?|insufficient[ _-]+credits?|credits?[ _-]+(exhausted|depleted|required|unavailable))([^[:alnum:]_]|$)'
+  grep -Eiq "$access_failure_pattern" "$transcript_file"
+}
+
 run_codex_from_prompt() {
   local rc=0
+  CODEX_EXEC_UNAVAILABLE=0
   : > "$CODEX_OUTPUT_FILE"
   : > "$CODEX_TRANSCRIPT_FILE"
 
@@ -3104,6 +3114,13 @@ run_codex_from_prompt() {
 
   if (( rc != 0 )); then
     echo "Codex execution failed (exit ${rc})."
+    if grep -Eq '"has_credits"[[:space:]]*:[[:space:]]*false' "$CODEX_TRANSCRIPT_FILE"; then
+      CODEX_EXEC_UNAVAILABLE=1
+      echo "Codex unavailable: account has no credits; self-heal cannot proceed until credits are restored."
+    elif codex_transcript_has_rate_quota_or_credit_failure "$CODEX_TRANSCRIPT_FILE"; then
+      CODEX_EXEC_UNAVAILABLE=1
+      echo "Codex unavailable: transcript indicates a rate limit, quota, or credit failure; self-heal cannot proceed until access is restored."
+    fi
     log_worktree_snapshot "Post-Codex worktree snapshot:"
     return "$rc"
   fi
@@ -3224,6 +3241,7 @@ recent_failure_block_from_text() {
     /^Coverage HTML written/ { next }
     /^Name[[:space:]]+Stmts[[:space:]]+Miss/ { next }
     /^TOTAL[[:space:]]+/ { next }
+    /^[^[:space:]]+\.py[[:space:]]+[0-9]+[[:space:]]+[0-9]+[[:space:]]+[0-9]+%$/ { next }
     /^={5,}/ { next }
     /^-{5,}/ { next }
     /^tests\/.* (PASSED|XFAIL|XPASS|SKIPPED)([[:space:]]|\[)/ { next }
@@ -3531,7 +3549,12 @@ run_fix_attempt_loop() {
       "$FAILURE_CONTEXT" \
       "$FAILURE_SIGNATURE" \
       "$REPEATED_FAILURE_COUNT"
-    run_codex_from_prompt
+    if ! run_codex_from_prompt; then
+      if [[ "$CODEX_EXEC_UNAVAILABLE" == "1" ]]; then
+        echo "Blocked: Codex self-heal is unavailable for issue #$issue_number; stopping retry loop." >&2
+        return 1
+      fi
+    fi
     fix_attempt=$((fix_attempt + 1))
   done
 
@@ -3553,7 +3576,12 @@ run_issue_attempt_loop() {
 
   while (( issue_attempt <= MAX_ISSUE_ATTEMPTS )); do
     echo "==> Codex issue attempt $issue_attempt"
-    run_codex_from_prompt
+    if ! run_codex_from_prompt; then
+      if [[ "$CODEX_EXEC_UNAVAILABLE" == "1" ]]; then
+        echo "Blocked: Codex issue work is unavailable for issue #$issue_number; stopping retry loop." >&2
+        return 1
+      fi
+    fi
 
     if ! has_non_log_changes; then
       emit_codex_no_change_diagnostic "$issue_number" "$issue_attempt"
