@@ -3073,6 +3073,14 @@ persist_run_log() {
   fi
 }
 
+codex_transcript_has_rate_quota_or_credit_failure() {
+  local transcript_file="$1"
+  local access_failure_pattern
+
+  access_failure_pattern='(^|[^[:alnum:]_])(rate[ -]?limit(ed|ing)?|too many requests|quota[ _-]*(exceeded|exhausted|reached|depleted|unavailable)|exceeded[ _-]+quota|insufficient[ _-]+quota|no[ _-]+credits?|out[ _-]+of[ _-]+credits?|insufficient[ _-]+credits?|credits?[ _-]+(exhausted|depleted|required|unavailable))([^[:alnum:]_]|$)'
+  grep -Eiq "$access_failure_pattern" "$transcript_file"
+}
+
 run_codex_from_prompt() {
   local rc=0
   CODEX_EXEC_UNAVAILABLE=0
@@ -3109,7 +3117,7 @@ run_codex_from_prompt() {
     if grep -Eq '"has_credits"[[:space:]]*:[[:space:]]*false' "$CODEX_TRANSCRIPT_FILE"; then
       CODEX_EXEC_UNAVAILABLE=1
       echo "Codex unavailable: account has no credits; self-heal cannot proceed until credits are restored."
-    elif grep -Eiq 'rate.?limit|quota|credit' "$CODEX_TRANSCRIPT_FILE"; then
+    elif codex_transcript_has_rate_quota_or_credit_failure "$CODEX_TRANSCRIPT_FILE"; then
       CODEX_EXEC_UNAVAILABLE=1
       echo "Codex unavailable: transcript indicates a rate limit, quota, or credit failure; self-heal cannot proceed until access is restored."
     fi

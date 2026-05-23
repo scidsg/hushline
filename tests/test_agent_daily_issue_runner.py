@@ -2169,6 +2169,52 @@ printf 'rc=%s unavailable=%s\\n' "$rc" "$CODEX_EXEC_UNAVAILABLE"
     assert "SECRET_TRANSCRIPT_LINE" not in run_log_text
 
 
+def test_run_codex_from_prompt_ignores_positive_credit_telemetry(
+    tmp_path: Path,
+) -> None:
+    prompt_file = tmp_path / "prompt.txt"
+    output_file = tmp_path / "codex-output.txt"
+    transcript_file = tmp_path / "codex-transcript.txt"
+    run_log_file = tmp_path / "run-log.txt"
+    console_file = tmp_path / "console.txt"
+
+    prompt_file.write_text("issue prompt\n", encoding="utf-8")
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(tmp_path))}
+PROMPT_FILE={shlex.quote(str(prompt_file))}
+CODEX_OUTPUT_FILE={shlex.quote(str(output_file))}
+CODEX_TRANSCRIPT_FILE={shlex.quote(str(transcript_file))}
+CODEX_MODEL=test-model
+CODEX_REASONING_EFFORT=high
+VERBOSE_CODEX_OUTPUT=0
+exec 3>{shlex.quote(str(console_file))}
+codex() {{
+  printf '%s\\n' '{{"rate_limits":{{"credits":{{"has_credits":true}}}}}}'
+  printf 'unrelated execution failure\\n'
+  return 1
+}}
+if run_codex_from_prompt > {shlex.quote(str(run_log_file))} 2>&1; then
+  rc=0
+else
+  rc=$?
+fi
+printf 'rc=%s unavailable=%s\\n' "$rc" "$CODEX_EXEC_UNAVAILABLE"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "rc=1 unavailable=0"
+    run_log_text = run_log_file.read_text(encoding="utf-8")
+    transcript_text = transcript_file.read_text(encoding="utf-8")
+    assert "Codex execution failed (exit 1)." in run_log_text
+    assert "Codex unavailable:" not in run_log_text
+    assert '"has_credits":true' in transcript_text
+    assert "unrelated execution failure" in transcript_text
+
+
 def test_write_pr_narrative_lead_adds_plain_language_summary() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
