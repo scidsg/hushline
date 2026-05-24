@@ -935,6 +935,55 @@ def test_embed_profile_malformed_recipient_ciphertexts_use_generic_notification_
     ]
 
 
+@pytest.mark.parametrize(
+    "recipient_ciphertexts",
+    [
+        "",
+        '{"not-id": {}, "123": "not-an-object"}',
+    ],
+)
+def test_embed_profile_invalid_recipient_ciphertexts_use_generic_notification_body(
+    recipient_ciphertexts: str,
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _configure_default_smtp(app)
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email_encrypt_entire_body = False
+    user.email = "primary@example.com"
+    _add_secondary_notification_recipient(user)
+    db.session.commit()
+    _configure_embed(user.primary_username)
+
+    send_email = MagicMock(return_value=True)
+    monkeypatch.setattr("hushline.routes.common.create_smtp_config", MagicMock())
+    monkeypatch.setattr("hushline.routes.common.send_email", send_email)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "sender-contact@example.com",
+            "field_1": "secret disclosure body",
+            "encrypted_email_fields_by_recipient": recipient_ciphertexts,
+            **submission_data,
+        },
+    )
+
+    assert post_response.status_code == 200, post_response.text
+    assert [call.args[2] for call in send_email.call_args_list] == [
+        "You have a new Hush Line message! Please log in to read it.",
+        "You have a new Hush Line message! Please log in to read it.",
+    ]
+
+
 def test_embed_profile_has_no_postmessage_submission_path(client: FlaskClient, user: User) -> None:
     _enable_embeds_globally()
     _make_message_capable(user)
@@ -1016,6 +1065,24 @@ def test_non_super_non_admin_user_cannot_access_developer_settings(
     assert post_response.status_code == 401
     db.session.refresh(user.primary_username)
     assert user.primary_username.embed_enabled is False
+
+
+def test_developer_settings_requires_primary_username(client: FlaskClient, user: User) -> None:
+    _make_current_paid_super_user(user)
+    username = user.primary_username
+    with client.session_transaction() as session:
+        session["user_id"] = user.id
+        session["session_id"] = user.session_id
+        session["username"] = username.username
+        session["is_authenticated"] = True
+
+    username.is_primary = False
+    db.session.commit()
+    db.session.expire(user, ["primary_username"])
+
+    response = client.get(url_for("settings.developer"))
+
+    assert response.status_code == 500
 
 
 def test_settings_nav_shows_developer_for_admin_or_current_paid_super_user(

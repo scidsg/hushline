@@ -222,7 +222,7 @@ class EmbedSettingsForm(FlaskForm):
     embed_enabled = BooleanField("Allow this tip line to be embedded")
     embed_allowed_origins = TextAreaField(
         "Allowed Parent Origins",
-        validators=[OptionalField(), Length(max=5000)],
+        validators=[Length(max=5000)],
     )
     submit = SubmitField("Update Embed Settings", name="update_embed_settings", widget=Button())
 
