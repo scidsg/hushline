@@ -1,3 +1,6 @@
+from types import SimpleNamespace
+from unittest.mock import patch
+
 import pytest
 
 from hushline.db import db
@@ -151,6 +154,26 @@ def test_embed_origin_normalization_rejects_invalid_ports_and_deduplicates(user:
         "https://tips.example",
         "https://other.example",
     ]
+
+
+def test_embed_origin_normalization_rejects_parsed_wildcard_host() -> None:
+    parsed = SimpleNamespace(
+        scheme="https",
+        netloc="tips.example",
+        hostname="*.example",
+        username=None,
+        password=None,
+        path="",
+        query="",
+        fragment="",
+        port=None,
+    )
+
+    with (
+        patch("hushline.model.username.urlsplit", return_value=parsed),
+        pytest.raises(ValueError, match="cannot contain wildcards"),
+    ):
+        normalize_embed_origin("https://tips.example")
 
 
 @pytest.mark.parametrize(
