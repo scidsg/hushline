@@ -614,7 +614,7 @@ main
     assert "runtime-bootstrap" not in calls
 
 
-def test_main_exits_before_runtime_bootstrap_when_issue_is_already_in_progress(
+def test_main_resumes_in_progress_issue_before_selecting_new_work(
     tmp_path: Path,
 ) -> None:
     call_log = tmp_path / "calls.txt"
@@ -643,10 +643,6 @@ resolve_issue_parent_epic() {{ :; }}
 start_runtime_stack_and_seed_dev_data() {{
   printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
 }}
-count_open_bot_prs() {{
-  printf 'count-open-bot-prs\\n' >> {shlex.quote(str(call_log))}
-  printf '0\\n'
-}}
 count_open_human_prs() {{
   printf 'count-open-human-prs\\n' >> {shlex.quote(str(call_log))}
   printf '0\\n'
@@ -655,9 +651,17 @@ count_open_project_issues_in_status() {{
   printf 'count-open-project-issues-in-status:%s\\n' "$1" >> {shlex.quote(str(call_log))}
   printf '1\\n'
 }}
+collect_issue_candidates_in_status() {{
+  printf 'collect-issue-candidates-in-status:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  printf '1558\\n'
+}}
 collect_issue_candidates() {{
   printf 'collect-issue-candidates\\n' >> {shlex.quote(str(call_log))}
-  printf '1558\\n'
+  printf '9999\\n'
+}}
+count_open_bot_prs_excluding_heads() {{
+  printf 'count-open-bot-prs-excluding-heads:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+  printf '1\\n'
 }}
 main
 """
@@ -665,15 +669,17 @@ main
     result = _run_bash(shell_script)
 
     assert result.returncode == 0, result.stderr
-    assert "Skipped: found 1 open issue(s) in project status 'In Progress'." in result.stdout
+    assert "Resuming assigned issue #1558 from project status 'In Progress'." in result.stdout
+    assert "Skipped: found 1 open PR(s) by hushline-dev." in result.stdout
 
     calls = call_log.read_text(encoding="utf-8").splitlines()
     assert "collect-issue-candidates" not in calls
+    assert "collect-issue-candidates-in-status:In Progress" in calls
     assert "count-open-human-prs" in calls
     assert "count-open-project-issues-in-status:In Progress" in calls
     assert "Fetch latest from origin" not in calls
     assert "Reset to origin/main" not in calls
-    assert "count-open-bot-prs" not in calls
+    assert "count-open-bot-prs-excluding-heads:" in calls
     assert "configure-bot-git" not in calls
     assert "runtime-bootstrap" not in calls
 
@@ -2215,6 +2221,49 @@ printf 'rc=%s unavailable=%s\\n' "$rc" "$CODEX_EXEC_UNAVAILABLE"
     assert "unrelated execution failure" in transcript_text
 
 
+def test_run_codex_from_prompt_reports_usage_limit_without_retries(
+    tmp_path: Path,
+) -> None:
+    prompt_file = tmp_path / "prompt.txt"
+    output_file = tmp_path / "codex-output.txt"
+    transcript_file = tmp_path / "codex-transcript.txt"
+    run_log_file = tmp_path / "run-log.txt"
+    console_file = tmp_path / "console.txt"
+
+    prompt_file.write_text("issue prompt\n", encoding="utf-8")
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(tmp_path))}
+PROMPT_FILE={shlex.quote(str(prompt_file))}
+CODEX_OUTPUT_FILE={shlex.quote(str(output_file))}
+CODEX_TRANSCRIPT_FILE={shlex.quote(str(transcript_file))}
+CODEX_MODEL=test-model
+CODEX_REASONING_EFFORT=high
+VERBOSE_CODEX_OUTPUT=0
+exec 3>{shlex.quote(str(console_file))}
+codex() {{
+  printf '%s\\n' "ERROR: You've hit your usage limit. Try again at 7:41 PM."
+  return 1
+}}
+if run_codex_from_prompt > {shlex.quote(str(run_log_file))} 2>&1; then
+  rc=0
+else
+  rc=$?
+fi
+printf 'rc=%s unavailable=%s\\n' "$rc" "$CODEX_EXEC_UNAVAILABLE"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "rc=1 unavailable=1"
+    run_log_text = run_log_file.read_text(encoding="utf-8")
+    transcript_text = transcript_file.read_text(encoding="utf-8")
+    assert "Codex unavailable:" in run_log_text
+    assert "usage limit" in transcript_text
+
+
 def test_write_pr_narrative_lead_adds_plain_language_summary() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
@@ -3683,12 +3732,19 @@ def test_pr_feedback_action_waits_for_pending_checks() -> None:
         "changes_requested_reviews=0 discussion_comments=0 failing_checks=0 pending_checks=0\n"
         "Feedback 1: unresolved review thread by @reviewer on hushline/templates/base.html:100"
     )
+    comment_with_pending_summary = (
+        "Post-PR feedback summary: unresolved_review_threads=0 "
+        "changes_requested_reviews=0 discussion_comments=1 failing_checks=0 pending_checks=2\n"
+        "Feedback comment 1: @maintainer :: This does not address the issue.\n"
+        "Feedback pending check 1: pending PR check Run Linter and Tests / test (IN_PROGRESS)"
+    )
 
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
 pending_only_summary={shlex.quote(pending_only_summary)}
 failing_with_pending_summary={shlex.quote(failing_with_pending_summary)}
 unresolved_summary={shlex.quote(unresolved_summary)}
+comment_with_pending_summary={shlex.quote(comment_with_pending_summary)}
 set +e
 pr_feedback_summary_requires_runner_action "$pending_only_summary"
 pending_rc=$?
@@ -3696,10 +3752,13 @@ pr_feedback_summary_requires_runner_action "$failing_with_pending_summary"
 failing_with_pending_rc=$?
 pr_feedback_summary_requires_runner_action "$unresolved_summary"
 unresolved_rc=$?
+pr_feedback_summary_requires_runner_action "$comment_with_pending_summary"
+comment_with_pending_rc=$?
 set -e
 printf 'pending_rc=%s\\n' "$pending_rc"
 printf 'failing_with_pending_rc=%s\\n' "$failing_with_pending_rc"
 printf 'unresolved_rc=%s\\n' "$unresolved_rc"
+printf 'comment_with_pending_rc=%s\\n' "$comment_with_pending_rc"
 """
 
     result = _run_bash(shell_script)
@@ -3708,6 +3767,7 @@ printf 'unresolved_rc=%s\\n' "$unresolved_rc"
     assert "pending_rc=1" in result.stdout
     assert "failing_with_pending_rc=1" in result.stdout
     assert "unresolved_rc=0" in result.stdout
+    assert "comment_with_pending_rc=0" in result.stdout
 
 
 def test_pr_feedback_action_key_ignores_pending_count_changes() -> None:
@@ -4135,7 +4195,7 @@ resolve_pr_number_from_ref "https://github.com/scidsg/hushline/pull/2000"
     assert "unexpected gh invocation" not in result.stderr
 
 
-def test_main_opens_diagnostic_pr_when_only_runner_artifacts_exist(tmp_path: Path) -> None:
+def test_main_refuses_review_pr_when_issue_loop_fails(tmp_path: Path) -> None:
     call_log = tmp_path / "calls.txt"
     repo_dir = tmp_path / "repo"
 
@@ -4186,15 +4246,20 @@ resolve_issue_parent_epic() {{ :; }}
 count_open_human_prs() {{ printf '0\\n'; }}
 count_open_project_issues_in_status() {{ printf '0\\n'; }}
 count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
-set_issue_project_status() {{ :; }}
+set_issue_project_status() {{
+  printf 'status:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
+}}
 configure_bot_git_identity() {{ :; }}
 start_runtime_stack_and_seed_dev_data() {{ :; }}
 kill_all_docker_containers() {{ :; }}
 kill_processes_on_ports() {{ :; }}
 remote_branch_exists() {{ return 1; }}
 build_issue_prompt() {{ :; }}
-run_issue_attempt_loop() {{ return 1; }}
-has_non_log_changes() {{ return 1; }}
+run_issue_attempt_loop() {{
+  RUNNER_NO_USABLE_CHANGES=0
+  return 1
+}}
+has_non_log_changes() {{ return 0; }}
 persist_run_log() {{
   RUN_LOG_GIT_PATH="docs/agent-logs/run-test-issue-$1.txt"
   printf 'persist:%s\\n' "$1" >> {shlex.quote(str(call_log))}
@@ -4240,16 +4305,18 @@ printf 'rc=%s\\n' "$rc"
     result = _run_bash(shell_script)
 
     assert result.returncode == 0, result.stderr
-    assert "rc=0" in result.stdout
-    assert (
-        "opening a sanitized diagnostic PR instead of leaving the checkout stranded"
-        in result.stderr
-    )
+    assert "rc=1" in result.stdout
+    assert "assigned issue #1558 still requires implementation" in result.stderr
+    assert "keeping it in progress" in result.stderr
+    assert "refusing to open a diagnostic PR or mark it ready for review" in result.stderr
     calls = call_log.read_text(encoding="utf-8").splitlines() if call_log.exists() else []
-    assert any(line == "restore-non-log" for line in calls)
-    assert any(line == "body:diagnostic=1:implementation did not complete" for line in calls)
-    assert any(line.startswith("pr-create:") for line in calls)
-    assert any(line.startswith("persist:1558") for line in calls)
+    assert "status:1558:In Progress" in calls
+    assert "status:1558:Agent Eligible" not in calls
+    assert "status:1558:Ready for Review" not in calls
+    assert "restore-non-log" not in calls
+    assert not any(line.startswith("body:") for line in calls)
+    assert not any(line.startswith("pr-create:") for line in calls)
+    assert not any(line.startswith("persist:1558") for line in calls)
 
 
 def test_main_continues_after_pr_create_when_pr_number_lookup_fails(

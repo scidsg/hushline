@@ -30,6 +30,20 @@ Script: `scripts/agent_daily_issue_runner.sh`
 
 This runner runs directly in the local repo and performs a narrow local gate before opening a PR.
 
+## Operational Contract
+
+The issue runner has one job: turn one assigned GitHub issue into one reviewed pull request.
+
+1. Pull the latest base branch after an issue is selected and cheap GitHub guards pass.
+2. Select exactly one assigned issue from the configured project queue, or the issue passed with `--issue`.
+3. Make the smallest safe code, test, or documentation changes needed for that issue.
+4. Before opening or updating a PR, run `make lint` and `make test`; if either fails, repair the failure and rerun the checks.
+5. Open or update the PR only when there are meaningful non-log changes and local validation is clean.
+6. Poll the open PR for actionable comments, review threads, change requests, and failing checks.
+7. Address and resolve actionable feedback, push the PR update, and continue polling until the PR is closed.
+
+Every queued issue is assumed to require a real change. Once the runner claims an issue, the only successful terminal outcome is a clean, usable PR. If an attempt does not complete a validated implementation, the issue stays claimed as `In Progress`; the next runner pass must resume that same assigned issue instead of selecting new work, returning it to the eligible queue, opening a diagnostic PR, or moving it to `Ready for Review`.
+
 ## Execution Flow
 
 1. Parse arguments (`--issue` optional) and resolve runtime configuration.
@@ -40,8 +54,8 @@ This runner runs directly in the local repo and performs a narrow local gate bef
 6. Resume monitoring any open bot-authored issue PR whose head branch matches the daily issue branch pattern before selecting new issue work. This makes PR polling restart-resilient after launchd unloads, crashes, or reboots.
 7. Check cheap GitHub exit conditions before any new-work queue lookup or network sync/Docker work:
    - exit if any open human-authored PR exists
-   - exit if any open issue is already in project status `In Progress`
 8. Select issue target before any network sync or Docker work:
+   - resume the top open issue already in project status `In Progress`, otherwise
    - Use `--issue <n>` when provided (must still be open), otherwise
    - select the top open issue from project `Hush Line Roadmap`, column `Agent Eligible`.
 9. Check remaining cheap GitHub exit conditions before any network sync or Docker work:
@@ -107,7 +121,7 @@ This runner runs directly in the local repo and performs a narrow local gate bef
     - `Validation` lists automated checks run by the runner or CI.
     - `Manual Testing` lists human reviewer steps to exercise the changed feature after the PR opens. It is not a log of actions the LLM or runner performed.
 25. Refresh run log after PR creation (including opened PR URL, coverage gap issue URL when created, and post-check steps), commit/push that log update when changed.
-26. Poll the open PR until it closes. When the monitor sees actionable feedback (discussion comments, change-request reviews, unresolved review threads, or failing PR checks), it first waits for all pending PR checks to settle, then invokes Codex on the PR branch, reruns `make lint` and `make test`, commits and pushes any fix, and resumes polling.
+26. Poll the open PR until it closes. When the monitor sees human/reviewer feedback (discussion comments, change-request reviews, or unresolved review threads), it invokes Codex on the PR branch immediately, reruns `make lint` and `make test`, commits and pushes any fix, resolves addressed review threads, and resumes polling. When the only actionable item is a failing check, it waits for pending PR checks to settle before invoking Codex so transient in-progress checks do not trigger unnecessary fixes.
 27. Return to a clean `main` on normal completion or PR closure.
     - If the run fails after creating branch work, cleanup resets the checkout back to a clean base branch.
     - A new scheduled pass discards local worktree changes and switches back to the base branch before evaluating GitHub queue guards.
@@ -153,20 +167,14 @@ This runner runs directly in the local repo and performs a narrow local gate bef
 +------------------------------------------------+
       |
       v
-+-----------------------------------------------+
-| Select issue: forced --issue or project queue |
-+-----------------------------------------------+
++------------------------------------------------+
+| Select issue: forced --issue, In Progress,     |
+| or project queue                               |
++------------------------------------------------+
       |
 +------------------------+
 | Open human PRs > 0 ?   |--yes--> [Skip + Exit]
 +------------------------+
-      |
-      no
-      |
-      v
-+-------------------------------------+
-| Any issue already In Progress ?     |--yes--> [Skip + Exit]
-+-------------------------------------+
       |
       no
       |

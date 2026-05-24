@@ -90,6 +90,7 @@ PR_FEEDBACK_MONITOR_PR_NUMBER=""
 PR_FEEDBACK_MONITOR_BRANCH=""
 RUNNER_DIAGNOSTIC_PR=0
 RUNNER_DIAGNOSTIC_REASON=""
+RUNNER_NO_USABLE_CHANGES=0
 
 parse_args() {
   while [[ $# -gt 0 ]]; do
@@ -1429,19 +1430,26 @@ pr_feedback_summary_has_actionable_items() {
 pr_feedback_summary_requires_runner_action() {
   local feedback_summary="$1"
   local summary_line=""
+  local review_or_comment_count=0
 
   summary_line="$(printf '%s\n' "$feedback_summary" | sed -n '1p')"
   if [[ ! "$summary_line" =~ unresolved_review_threads=([0-9]+).*changes_requested_reviews=([0-9]+).*discussion_comments=([0-9]+).*failing_checks=([0-9]+).*pending_checks=([0-9]+) ]]; then
     return 1
   fi
 
-  # Wait for the full PR check set to settle before acting so failures from
-  # slower jobs, especially the test jobs, are included in one repair pass.
+  review_or_comment_count=$((BASH_REMATCH[1] + BASH_REMATCH[2] + BASH_REMATCH[3]))
+  if (( review_or_comment_count > 0 )); then
+    return 0
+  fi
+
+  # For check-only feedback, wait for the full PR check set to settle so
+  # failures from slower jobs, especially test jobs, are included in one repair
+  # pass. Human comments and review feedback should not wait behind CI.
   if (( BASH_REMATCH[5] > 0 )); then
     return 1
   fi
 
-  (( BASH_REMATCH[1] + BASH_REMATCH[2] + BASH_REMATCH[3] + BASH_REMATCH[4] > 0 ))
+  (( BASH_REMATCH[4] > 0 ))
 }
 
 pr_feedback_action_key() {
@@ -2468,20 +2476,26 @@ collect_issue_candidates() {
   collect_issue_candidates_from_project "$project_number"
 }
 
-count_open_project_issues_in_status() {
+collect_issue_candidates_in_status() {
   local target_status_name="$1"
-  local project_number issue_number count=0
+  local project_number
 
   project_number="$(resolve_project_number)"
   if [[ -z "$project_number" ]]; then
-    printf '0\n'
     return 0
   fi
+
+  collect_issue_candidates_from_project "$project_number" "$target_status_name"
+}
+
+count_open_project_issues_in_status() {
+  local target_status_name="$1"
+  local issue_number count=0
 
   while IFS= read -r issue_number; do
     [[ -n "$issue_number" ]] || continue
     count=$((count + 1))
-  done < <(collect_issue_candidates_from_project "$project_number" "$target_status_name")
+  done < <(collect_issue_candidates_in_status "$target_status_name")
 
   printf '%s\n' "$count"
 }
@@ -3077,7 +3091,7 @@ codex_transcript_has_rate_quota_or_credit_failure() {
   local transcript_file="$1"
   local access_failure_pattern
 
-  access_failure_pattern='(^|[^[:alnum:]_])(rate[ -]?limit(ed|ing)?|too many requests|quota[ _-]*(exceeded|exhausted|reached|depleted|unavailable)|exceeded[ _-]+quota|insufficient[ _-]+quota|no[ _-]+credits?|out[ _-]+of[ _-]+credits?|insufficient[ _-]+credits?|credits?[ _-]+(exhausted|depleted|required|unavailable))([^[:alnum:]_]|$)'
+  access_failure_pattern='(^|[^[:alnum:]_])((usage|rate)[ -]?limit(ed|ing)?|too many requests|quota[ _-]*(exceeded|exhausted|reached|depleted|unavailable)|exceeded[ _-]+quota|insufficient[ _-]+quota|no[ _-]+credits?|out[ _-]+of[ _-]+credits?|insufficient[ _-]+credits?|credits?[ _-]+(exhausted|depleted|required|unavailable))([^[:alnum:]_]|$)'
   grep -Eiq "$access_failure_pattern" "$transcript_file"
 }
 
@@ -3570,6 +3584,7 @@ run_issue_attempt_loop() {
   local issue_branch="$5"
   local issue_attempt=1
 
+  RUNNER_NO_USABLE_CHANGES=0
   PREVIOUS_FAILURE_SIGNATURE=""
   FAILURE_SIGNATURE=""
   REPEATED_FAILURE_COUNT=0
@@ -3603,6 +3618,7 @@ run_issue_attempt_loop() {
   done
 
   echo "Blocked: Codex produced no usable changes for issue #$issue_number after $MAX_ISSUE_ATTEMPTS attempt(s)." >&2
+  RUNNER_NO_USABLE_CHANGES=1
   return 1
 }
 
@@ -3662,13 +3678,13 @@ main() {
     OPEN_IN_PROGRESS_ISSUES="$(count_open_project_issues_in_status "$PROJECT_STATUS_IN_PROGRESS")"
     echo "Open project issues in ${PROJECT_STATUS_IN_PROGRESS}: ${OPEN_IN_PROGRESS_ISSUES}"
     if [[ "$OPEN_IN_PROGRESS_ISSUES" != "0" ]]; then
-      runner_status "Skipped: found ${OPEN_IN_PROGRESS_ISSUES} open issue(s) in project status '${PROJECT_STATUS_IN_PROGRESS}'."
-      exit 0
-    fi
-
-    ISSUE_NUMBER="$(collect_issue_candidates | sed -n '1p')"
-    if [[ -n "$ISSUE_NUMBER" ]]; then
-      echo "Selected issue #${ISSUE_NUMBER} from project queue."
+      ISSUE_NUMBER="$(collect_issue_candidates_in_status "$PROJECT_STATUS_IN_PROGRESS" | sed -n '1p')"
+      echo "Resuming assigned issue #${ISSUE_NUMBER} from project status '${PROJECT_STATUS_IN_PROGRESS}'."
+    else
+      ISSUE_NUMBER="$(collect_issue_candidates | sed -n '1p')"
+      if [[ -n "$ISSUE_NUMBER" ]]; then
+        echo "Selected issue #${ISSUE_NUMBER} from project queue."
+      fi
     fi
   fi
 
@@ -3701,13 +3717,6 @@ main() {
       runner_status "Skipped: found ${OPEN_HUMAN_PRS} open human-authored PR(s)."
       exit 0
     fi
-  fi
-
-  OPEN_IN_PROGRESS_ISSUES="$(count_open_project_issues_in_status "$PROJECT_STATUS_IN_PROGRESS")"
-  echo "Open project issues in ${PROJECT_STATUS_IN_PROGRESS}: ${OPEN_IN_PROGRESS_ISSUES}"
-  if [[ "$OPEN_IN_PROGRESS_ISSUES" != "0" ]]; then
-    runner_status "Skipped: found ${OPEN_IN_PROGRESS_ISSUES} open issue(s) in project status '${PROJECT_STATUS_IN_PROGRESS}'."
-    exit 0
   fi
 
   if [[ -n "$EPIC_ISSUE_NUMBER" ]]; then
@@ -3786,14 +3795,11 @@ main() {
 
   build_issue_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY"
   if ! run_issue_attempt_loop "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY" "$ISSUE_LABELS" "$BRANCH_NAME"; then
-    RUNNER_DIAGNOSTIC_PR=1
-    RUNNER_DIAGNOSTIC_REASON="implementation did not complete"
-    echo "Warning: issue implementation failed; opening a sanitized diagnostic PR instead of leaving the checkout stranded." >&2
-    restore_non_log_worktree_changes
+    echo "Blocked: assigned issue #${ISSUE_NUMBER} still requires implementation; keeping it in progress and refusing to open a diagnostic PR or mark it ready for review." >&2
+    exit 1
   elif ! has_non_log_changes; then
-    RUNNER_DIAGNOSTIC_PR=1
-    RUNNER_DIAGNOSTIC_REASON="implementation produced no usable non-log changes"
-    echo "Warning: no usable non-log changes remain; opening a sanitized diagnostic PR instead of leaving the checkout stranded." >&2
+    echo "Blocked: assigned issue #${ISSUE_NUMBER} still requires implementation; keeping it in progress and refusing to open a diagnostic PR or mark it ready for review." >&2
+    exit 1
   fi
 
   persist_run_log "$ISSUE_NUMBER"
