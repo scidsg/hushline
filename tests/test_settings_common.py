@@ -64,6 +64,7 @@ from hushline.settings.forms import (
     NewAliasForm,
     PGPKeyForm,
     ProfileForm,
+    strip_whitespace,
 )
 
 
@@ -297,6 +298,11 @@ def test_profile_form_preserves_unknown_saved_country_choice(app: Flask) -> None
 
     assert form.country.data == "Atlantis"
     assert form.country.choices[:2] == [("", "Select"), ("Atlantis", "Atlantis")]
+
+
+def test_strip_whitespace_leaves_non_string_values_unchanged() -> None:
+    value = object()
+    assert strip_whitespace(value) is value
 
 
 def test_profile_form_preserves_unknown_saved_subdivision_and_city_labels(
