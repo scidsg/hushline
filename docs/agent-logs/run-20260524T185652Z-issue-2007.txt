@@ -2243,3 +2243,19 @@ Coverage HTML written to dir /tmp/hushline-htmlcov
 
 
 ========== 1792 passed, 1 deselected, 1 xfailed in 389.25s (0:06:29) ===========
+Pruning old runner logs, keeping newest 10.
+[codex/daily-issue-2007 2c33fa15] chore: agent daily for #2007
+ 3 files changed, 2261 insertions(+), 6440 deletions(-)
+ delete mode 100644 docs/agent-logs/run-20260507T074018Z-issue-1938.txt
+ create mode 100644 docs/agent-logs/run-20260524T185652Z-issue-2007.txt
+Remote branch 'codex/daily-issue-2007' does not exist; creating it with a standard push.
+remote: 
+remote: Create a pull request for 'codex/daily-issue-2007' on GitHub by visiting:        
+remote:      https://github.com/scidsg/hushline/pull/new/codex/daily-issue-2007        
+remote: 
+To github.com:scidsg/hushline.git
+ * [new branch]        codex/daily-issue-2007 -> codex/daily-issue-2007
+branch 'codex/daily-issue-2007' set up to track 'origin/codex/daily-issue-2007'.
+Opened PR: https://github.com/scidsg/hushline/pull/2008
+==> Mark issue #2007 as Ready for Review
+Coverage gap issue skipped: no missed statements found in the latest test coverage snapshot.
