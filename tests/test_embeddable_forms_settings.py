@@ -1088,6 +1088,28 @@ def test_admin_non_super_user_can_access_developer_global_embed_settings_only(
     assert 'name="embed_enabled"' not in response.text
 
 
+def test_admin_non_super_user_cannot_update_profile_embed_settings(
+    client: FlaskClient, user: User
+) -> None:
+    user.is_admin = True
+    db.session.commit()
+    with client.session_transaction() as session:
+        session["user_id"] = user.id
+        session["session_id"] = user.session_id
+        session["username"] = user.primary_username.username
+        session["is_authenticated"] = True
+
+    response = client.post(
+        url_for("settings.developer"),
+        data=_embed_settings_data(True, "https://tips.example"),
+    )
+
+    assert response.status_code == 401
+    db.session.refresh(user.primary_username)
+    assert user.primary_username.embed_enabled is False
+    assert user.primary_username.embed_allowed_origins == []
+
+
 def test_developer_embed_settings_require_usable_recipient_key(
     client: FlaskClient, user: User
 ) -> None:
@@ -1527,6 +1549,30 @@ def test_alias_embed_settings_are_independent(
         username=user_alias.username,
         _external=True,
     )
+
+
+def test_alias_embed_settings_reject_invalid_origin(
+    client: FlaskClient, user: User, user_alias: Username
+) -> None:
+    _make_message_capable(user)
+    with client.session_transaction() as session:
+        session["user_id"] = user.id
+        session["session_id"] = user.session_id
+        session["username"] = user.primary_username.username
+        session["is_authenticated"] = True
+
+    response = client.post(
+        url_for("settings.alias", username_id=user_alias.id),
+        data=_embed_settings_data(True, "https://alias.example/path"),
+    )
+
+    assert response.status_code == 400
+    assert (
+        "Embed origins must be exact http(s) origins without paths or wildcards." in response.text
+    )
+    db.session.refresh(user_alias)
+    assert user_alias.embed_enabled is False
+    assert user_alias.embed_allowed_origins == []
 
 
 def test_alias_embed_settings_require_alias_owner(

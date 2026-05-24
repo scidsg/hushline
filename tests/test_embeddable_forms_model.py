@@ -127,6 +127,9 @@ def test_embed_origin_normalization_canonicalizes_host_and_ports() -> None:
     assert normalize_embed_origin("http://localhost:80") == "http://localhost"
     assert normalize_embed_origin("http://127.0.0.2:80") == "http://127.0.0.2"
     assert normalize_embed_origin("http://exampleonion.onion:80") == "http://exampleonion.onion"
+    assert normalize_embed_origin("https://[2001:4860:4860::8888]:443") == (
+        "https://[2001:4860:4860::8888]"
+    )
 
 
 def test_embed_origin_normalization_rejects_invalid_ports_and_deduplicates(user: User) -> None:

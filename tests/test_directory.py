@@ -969,6 +969,90 @@ def test_directory_users_json_includes_public_record_rows(client: FlaskClient) -
     assert row["directory_section"] == "public_record"
 
 
+def test_directory_session_user_json_reflects_login_state(client: FlaskClient, user: User) -> None:
+    logged_out_response = client.get(url_for("session_user"))
+    assert logged_out_response.status_code == 200
+    assert logged_out_response.json == {"logged_in": False}
+
+    with client.session_transaction() as session:
+        session["user_id"] = user.id
+
+    logged_in_response = client.get(url_for("session_user"))
+    assert logged_in_response.status_code == 200
+    assert logged_in_response.json == {"logged_in": True}
+
+
+@pytest.mark.parametrize(
+    "endpoint",
+    ["directory_attorney_filters", "directory_newsroom_filters"],
+)
+def test_directory_filter_json_returns_empty_metadata_when_verified_tabs_disabled(
+    client: FlaskClient, endpoint: str
+) -> None:
+    client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
+    try:
+        response = client.get(url_for(endpoint))
+    finally:
+        client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = True
+
+    assert response.status_code == 200
+    assert response.json == {"countries": [], "regions": {}}
+
+
+def test_directory_all_filters_json_returns_empty_metadata_when_verified_tabs_disabled(
+    client: FlaskClient,
+) -> None:
+    client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
+    try:
+        response = client.get(url_for("directory_all_filters"))
+    finally:
+        client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = True
+
+    assert response.status_code == 200
+    assert response.json == {"countries": [], "regions": {}, "listing_types": []}
+
+
+def test_directory_users_json_excludes_verified_tab_sources_when_disabled(
+    client: FlaskClient,
+    monkeypatch: pytest.MonkeyPatch,
+    user: User,
+) -> None:
+    user.primary_username.show_in_directory = True
+    user.primary_username.display_name = "Directory User"
+    db.session.commit()
+
+    def fail_if_verified_source_loads(source: str) -> None:
+        pytest.fail(f"{source} listings should not load when verified tabs are disabled")
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: fail_if_verified_source_loads("public-record"),
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_globaleaks_directory_listings",
+        lambda: fail_if_verified_source_loads("GlobaLeaks"),
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: fail_if_verified_source_loads("newsroom"),
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_securedrop_directory_listings",
+        lambda: fail_if_verified_source_loads("SecureDrop"),
+    )
+
+    client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
+    try:
+        response = client.get(url_for("directory_users"))
+    finally:
+        client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = True
+
+    assert response.status_code == 200
+    rows = response.json or []
+    assert [row["display_name"] for row in rows] == ["Directory User"]
+    assert rows[0]["entry_type"] == "user"
+
+
 def test_directory_card_bio_uses_bio_length_limit_with_ascii_ellipsis() -> None:
     short_bio = "Short automated listing bio."
     long_bio = "A" * (directory_routes.Username.BIO_MAX_LENGTH + 10)

@@ -371,6 +371,20 @@ def test_notification_email_encryption_target_deduplicates_repeated_keys_in_mult
     ]
 
 
+def test_notification_recipient_public_key_entries_skip_unsaved_recipients(user: User) -> None:
+    unsaved_recipient = NotificationRecipient(position=0, enabled=True)
+    unsaved_recipient.email = "unsaved@example.com"
+    unsaved_recipient.pgp_key = "unsaved-key"
+
+    with patch.object(
+        User,
+        "enabled_notification_recipients",
+        new_callable=PropertyMock,
+        return_value=[unsaved_recipient],
+    ):
+        assert routes_common.notification_recipient_public_key_entries(user) == []
+
+
 def test_do_send_email_continues_after_single_recipient_failure(
     app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
 ) -> None:
