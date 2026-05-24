@@ -412,6 +412,138 @@ def test_embed_profile_rejects_captcha_token_for_different_profile(
     assert "Incorrect CAPTCHA" in response.text
 
 
+@pytest.mark.usefixtures("_pgp_user")
+def test_embed_profile_post_404s_if_account_is_suspended_after_render(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_current_paid_super_user(user)
+    _configure_embed(user.primary_username)
+    db.session.commit()
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    user.is_suspended = True
+    db.session.commit()
+
+    response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            **submission_data,
+        },
+    )
+
+    assert response.status_code == 404
+    csp = (response.headers.get("Content-Security-Policy") or "").strip()
+    assert "frame-ancestors 'none'" in csp
+
+
+@pytest.mark.usefixtures("_pgp_user")
+def test_embed_profile_rejects_if_account_is_suspended_during_submission(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_current_paid_super_user(user)
+    _configure_embed(user.primary_username)
+    db.session.commit()
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    rate_limit_result = MagicMock(
+        limited=False,
+        profile_hash="profile-hash",
+        source_bucket_hash="source-bucket-hash",
+    )
+
+    def suspend_after_initial_block_check(_username: Username) -> MagicMock:
+        user.is_suspended = True
+        return rate_limit_result
+
+    with (
+        patch(
+            "hushline.routes.profile.check_embed_rate_limit",
+            side_effect=suspend_after_initial_block_check,
+        ),
+        patch("hushline.routes.profile.emit_embed_abuse_counter") as emit_counter,
+    ):
+        response = client.post(
+            url_for("embed_profile", username=user.primary_username.username),
+            data={
+                "field_0": msg_contact_method,
+                "field_1": msg_content,
+                **submission_data,
+            },
+        )
+
+    assert response.status_code == 400
+    assert suspended_message in response.text
+    assert any(call.kwargs.get("reason") == "suspended" for call in emit_counter.call_args_list)
+    assert (
+        db.session.scalars(
+            db.select(Message).filter_by(username_id=user.primary_username.id)
+        ).first()
+        is None
+    )
+
+
+@pytest.mark.usefixtures("_pgp_user")
+def test_embed_profile_rejects_if_recipient_keys_are_removed_during_submission(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_current_paid_super_user(user)
+    _configure_embed(user.primary_username)
+    db.session.commit()
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    rate_limit_result = MagicMock(
+        limited=False,
+        profile_hash="profile-hash",
+        source_bucket_hash="source-bucket-hash",
+    )
+
+    def remove_keys_after_initial_block_check(_username: Username) -> MagicMock:
+        user.pgp_key = None
+        for recipient in user.notification_recipients:
+            recipient.pgp_key = None
+        return rate_limit_result
+
+    with (
+        patch(
+            "hushline.routes.profile.check_embed_rate_limit",
+            side_effect=remove_keys_after_initial_block_check,
+        ),
+        patch("hushline.routes.profile.emit_embed_abuse_counter") as emit_counter,
+    ):
+        response = client.post(
+            url_for("embed_profile", username=user.primary_username.username),
+            data={
+                "field_0": msg_contact_method,
+                "field_1": msg_content,
+                **submission_data,
+            },
+        )
+
+    assert response.status_code == 400
+    assert "do not have any usable recipient PGP keys" in response.text
+    assert any(
+        call.kwargs.get("reason") == "missing_recipient_keys"
+        for call in emit_counter.call_args_list
+    )
+    assert (
+        db.session.scalars(
+            db.select(Message).filter_by(username_id=user.primary_username.id)
+        ).first()
+        is None
+    )
+
+
 @pytest.mark.usefixtures("_authenticated_user")
 def test_profile_pgp_required(client: FlaskClient, app: Flask, user: User) -> None:
     response = client.get(url_for("profile", username=user.primary_username.username))

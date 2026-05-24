@@ -185,6 +185,22 @@ def test_send_email_success_and_retry(app: Flask) -> None:
         sleep_mock.assert_called_once()
 
 
+def test_send_email_returns_false_when_final_login_attempt_fails(app: Flask) -> None:
+    smtp_server = MagicMock()
+    cfg = _FlakyLoginConfig(smtp_server=smtp_server)
+
+    with (
+        app.app_context(),
+        patch("hushline.email.is_safe_smtp_host", return_value=True),
+        patch("hushline.email.time.sleep") as sleep_mock,
+    ):
+        app.config["SMTP_SEND_ATTEMPTS"] = 1
+        assert email_mod.send_email("to@example.com", "subject", "body", cfg) is False
+
+    smtp_server.send_message.assert_not_called()
+    sleep_mock.assert_not_called()
+
+
 def test_send_email_does_not_retry_after_message_submission_attempt(app: Flask) -> None:
     smtp_server = MagicMock()
     smtp_server.send_message.side_effect = smtplib.SMTPServerDisconnected("after DATA")
