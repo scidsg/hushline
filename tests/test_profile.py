@@ -424,17 +424,23 @@ def test_embed_profile_post_404s_if_account_is_suspended_after_render(
     response = client.get(url_for("embed_profile", username=user.primary_username.username))
     assert response.status_code == 200
     submission_data = _embed_submission_data(response.text)
-    user.is_suspended = True
-    db.session.commit()
 
-    response = client.post(
-        url_for("embed_profile", username=user.primary_username.username),
-        data={
-            "field_0": msg_contact_method,
-            "field_1": msg_content,
-            **submission_data,
-        },
-    )
+    def suspend_after_embed_eligibility_check(*_args: object, **_kwargs: object) -> str:
+        user.is_suspended = True
+        return "Submit a message"
+
+    with patch(
+        "hushline.routes.profile.safe_render_template",
+        side_effect=suspend_after_embed_eligibility_check,
+    ):
+        response = client.post(
+            url_for("embed_profile", username=user.primary_username.username),
+            data={
+                "field_0": msg_contact_method,
+                "field_1": msg_content,
+                **submission_data,
+            },
+        )
 
     assert response.status_code == 404
     csp = (response.headers.get("Content-Security-Policy") or "").strip()
