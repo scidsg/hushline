@@ -61,6 +61,11 @@ RUNTIME_BOOTSTRAP_ATTEMPTS="${HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_ATTEMPTS:-3}"
 RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS="${HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS:-10}"
 CHECK_TIMEOUT_SECONDS="${HUSHLINE_DAILY_CHECK_TIMEOUT_SECONDS:-1800}"
 POST_PR_FEEDBACK_DELAY_SECONDS="${HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS:-60}"
+CODEX_STATUS_CHECK_ENABLED="${HUSHLINE_DAILY_CODEX_STATUS_CHECK_ENABLED:-1}"
+CODEX_STATUS_CHECK_TIMEOUT_SECONDS="${HUSHLINE_DAILY_CODEX_STATUS_CHECK_TIMEOUT_SECONDS:-15}"
+CODEX_STATUS_RESET_BUFFER_SECONDS="${HUSHLINE_DAILY_CODEX_STATUS_RESET_BUFFER_SECONDS:-60}"
+CODEX_STATUS_MIN_REMAINING_PERCENT="${HUSHLINE_DAILY_CODEX_STATUS_MIN_REMAINING_PERCENT:-25}"
+CODEX_STATUS_STALE_RESET_RECHECK_SECONDS="${HUSHLINE_DAILY_CODEX_STATUS_STALE_RESET_RECHECK_SECONDS:-60}"
 
 CHECK_LOG_FILE=""
 PROMPT_FILE=""
@@ -113,6 +118,183 @@ parse_args() {
 
 runner_status() {
   printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S %Z')" "$*"
+}
+
+epoch_to_local_time() {
+  local epoch="$1"
+
+  if date -r "$epoch" '+%Y-%m-%d %H:%M:%S %Z' >/dev/null 2>&1; then
+    date -r "$epoch" '+%Y-%m-%d %H:%M:%S %Z'
+  else
+    date -d "@$epoch" '+%Y-%m-%d %H:%M:%S %Z'
+  fi
+}
+
+fetch_codex_status_json() {
+  if [[ -n "${HUSHLINE_DAILY_CODEX_STATUS_JSON:-}" ]]; then
+    printf '%s\n' "$HUSHLINE_DAILY_CODEX_STATUS_JSON"
+    return 0
+  fi
+
+  CODEX_STATUS_CHECK_TIMEOUT_SECONDS="$CODEX_STATUS_CHECK_TIMEOUT_SECONDS" node -e '
+const { spawn } = require("node:child_process");
+
+const timeoutSeconds = Number(process.env.CODEX_STATUS_CHECK_TIMEOUT_SECONDS || "15");
+const timeoutMs = Math.max(1, timeoutSeconds) * 1000;
+const child = spawn("codex", ["app-server", "--listen", "stdio://"], {
+  stdio: ["pipe", "pipe", "pipe"],
+});
+let completed = false;
+let stdoutBuffer = "";
+
+function finish(code) {
+  if (completed) return;
+  completed = true;
+  clearTimeout(timer);
+  child.kill("SIGTERM");
+  process.exit(code);
+}
+
+const timer = setTimeout(() => {
+  console.error("Codex /status rate limit check timed out.");
+  finish(2);
+}, timeoutMs);
+
+child.stdout.setEncoding("utf8");
+child.stdout.on("data", (chunk) => {
+  stdoutBuffer += chunk;
+  const lines = stdoutBuffer.split(/\n/);
+  stdoutBuffer = lines.pop() || "";
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    let message;
+    try {
+      message = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (message.id === 2) {
+      if (message.error) {
+        console.error(`Codex /status rate limit check failed: ${message.error.message || "unknown error"}`);
+        finish(2);
+      }
+      process.stdout.write(`${JSON.stringify(message.result || {})}\n`);
+      finish(0);
+    }
+  }
+});
+child.stderr.on("data", () => {});
+child.on("error", (error) => {
+  console.error(`Codex /status rate limit check failed: ${error.message}`);
+  finish(2);
+});
+child.on("exit", (code) => {
+  if (!completed) {
+    console.error(`Codex /status rate limit check exited before returning status: ${code}`);
+    finish(2);
+  }
+});
+
+child.stdin.write(`${JSON.stringify({
+  method: "initialize",
+  id: 1,
+  params: {
+    clientInfo: {
+      name: "hushline_runner",
+      title: "Hush Line Runner",
+      version: "1",
+    },
+  },
+})}\n`);
+child.stdin.write(`${JSON.stringify({ method: "initialized", params: {} })}\n`);
+child.stdin.write(`${JSON.stringify({ method: "account/rateLimits/read", id: 2 })}\n`);
+'
+}
+
+parse_codex_primary_limit_status() {
+  node -e '
+const fs = require("node:fs");
+const input = fs.readFileSync(0, "utf8");
+const root = JSON.parse(input);
+const limits =
+  root.rateLimitsByLimitId?.codex ||
+  root.rateLimits ||
+  root;
+const primary = limits.primary;
+if (!primary) {
+  process.exit(2);
+}
+const usedPercent = Number(primary.usedPercent);
+const windowDurationMins = Number(primary.windowDurationMins);
+const resetsAt = Number(primary.resetsAt);
+const reachedType = limits.rateLimitReachedType || "";
+if (!Number.isFinite(usedPercent) || !Number.isFinite(windowDurationMins) || !Number.isFinite(resetsAt)) {
+  process.exit(2);
+}
+process.stdout.write([
+  Math.trunc(usedPercent),
+  Math.trunc(windowDurationMins),
+  Math.trunc(resetsAt),
+  reachedType,
+].join("\t"));
+'
+}
+
+wait_for_codex_status_credit_window() {
+  local status_json=""
+  local parsed_status=""
+  local used_percent=""
+  local window_duration_mins=""
+  local resets_at=""
+  local reached_type=""
+  local now_epoch=""
+  local sleep_seconds=""
+  local reset_label=""
+  local remaining_percent=""
+
+  if [[ "$CODEX_STATUS_CHECK_ENABLED" != "1" ]]; then
+    echo "Codex /status preflight disabled by HUSHLINE_DAILY_CODEX_STATUS_CHECK_ENABLED."
+    return 0
+  fi
+
+  while :; do
+    echo "==> Check Codex /status usage limits"
+    if ! status_json="$(fetch_codex_status_json)"; then
+      echo "Warning: Codex /status preflight failed; continuing so the runner can still attempt assigned work." >&2
+      return 0
+    fi
+
+    if ! parsed_status="$(printf '%s\n' "$status_json" | parse_codex_primary_limit_status)"; then
+      echo "Warning: Codex /status preflight returned unparseable rate limit data; continuing." >&2
+      return 0
+    fi
+
+    IFS=$'\t' read -r used_percent window_duration_mins resets_at reached_type <<< "$parsed_status"
+    reset_label="$(epoch_to_local_time "$resets_at")"
+    remaining_percent=$((100 - used_percent))
+    if (( remaining_percent < 0 )); then
+      remaining_percent=0
+    fi
+    echo "Codex /status: primary ${window_duration_mins}m window ${used_percent}% used; ${remaining_percent}% remaining; resets at ${reset_label}."
+
+    if (( window_duration_mins == 300 && remaining_percent < CODEX_STATUS_MIN_REMAINING_PERCENT )); then
+      now_epoch="$(date +%s)"
+      if (( resets_at > now_epoch )); then
+        sleep_seconds=$((resets_at - now_epoch + CODEX_STATUS_RESET_BUFFER_SECONDS))
+        runner_status "Codex 5h remaining quota is ${remaining_percent}%, below ${CODEX_STATUS_MIN_REMAINING_PERCENT}%; waiting ${sleep_seconds}s until after reset at ${reset_label}."
+        sleep "$sleep_seconds"
+        continue
+      fi
+      runner_status "Codex 5h remaining quota is below ${CODEX_STATUS_MIN_REMAINING_PERCENT}%, but reset time has passed; waiting ${CODEX_STATUS_STALE_RESET_RECHECK_SECONDS}s before rechecking."
+      sleep "$CODEX_STATUS_STALE_RESET_RECHECK_SECONDS"
+      continue
+    fi
+
+    if [[ -n "$reached_type" && "$reached_type" != "null" ]]; then
+      echo "Codex /status reported reached limit type '${reached_type}', but the 5h window still has capacity; proceeding."
+    fi
+    return 0
+  done
 }
 
 initialize_run_state() {
@@ -299,6 +481,16 @@ require_non_negative_integer() {
 
   if ! [[ "$value" =~ ^[0-9]+$ ]]; then
     echo "${name} must be a non-negative integer (got '${value}')." >&2
+    return 1
+  fi
+}
+
+require_percentage_integer() {
+  local name="$1"
+  local value="$2"
+
+  if ! [[ "$value" =~ ^[0-9]+$ ]] || (( value > 100 )); then
+    echo "${name} must be an integer percentage from 0 to 100 (got '${value}')." >&2
     return 1
   fi
 }
@@ -3645,6 +3837,20 @@ main() {
   require_non_negative_integer \
     "HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS" \
     "$POST_PR_FEEDBACK_DELAY_SECONDS"
+  require_positive_integer \
+    "HUSHLINE_DAILY_CODEX_STATUS_CHECK_TIMEOUT_SECONDS" \
+    "$CODEX_STATUS_CHECK_TIMEOUT_SECONDS"
+  require_non_negative_integer \
+    "HUSHLINE_DAILY_CODEX_STATUS_RESET_BUFFER_SECONDS" \
+    "$CODEX_STATUS_RESET_BUFFER_SECONDS"
+  require_percentage_integer \
+    "HUSHLINE_DAILY_CODEX_STATUS_MIN_REMAINING_PERCENT" \
+    "$CODEX_STATUS_MIN_REMAINING_PERCENT"
+  require_positive_integer \
+    "HUSHLINE_DAILY_CODEX_STATUS_STALE_RESET_RECHECK_SECONDS" \
+    "$CODEX_STATUS_STALE_RESET_RECHECK_SECONDS"
+
+  wait_for_codex_status_credit_window
 
   if [[ ! -d "$REPO_DIR/.git" ]]; then
     echo "Repository not found: $REPO_DIR" >&2
