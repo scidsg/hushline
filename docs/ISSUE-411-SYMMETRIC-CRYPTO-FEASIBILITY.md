@@ -249,6 +249,9 @@ Write an architecture decision record that defines:
 - Operator recovery expectations if `ENCRYPTION_KEY` or future key material is
   lost.
 
+Status: completed in
+[`ENCRYPTED-FIELD-MODERNIZATION-ADR.md`](ENCRYPTED-FIELD-MODERNIZATION-ADR.md).
+
 ### Phase 1: Inventory And Tests
 
 Add tests that inventory every encrypted field and lock current behavior before
@@ -351,7 +354,7 @@ requirements before merge:
 
 ## Suggested Follow-Up Issues
 
-1. Write the encrypted-field threat model and ADR.
+1. Completed: write the encrypted-field threat model and ADR.
 2. Add an encrypted-field inventory test suite.
 3. Introduce a versioned encryption envelope that preserves legacy Fernet reads.
 4. Design stable domains and AAD for each encrypted field.
