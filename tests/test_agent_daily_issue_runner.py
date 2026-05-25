@@ -46,13 +46,33 @@ printf '%s %s\\n' "$CODEX_MODEL" "$CODEX_REASONING_EFFORT"
 def test_runner_defaults_to_ten_minute_idle_polling() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
-printf '%s %s\\n' "$POST_PR_FEEDBACK_DELAY_SECONDS" "$CODEX_STATUS_STALE_RESET_RECHECK_SECONDS"
+printf '%s %s %s\\n' \\
+  "$POST_PR_FEEDBACK_DELAY_SECONDS" \\
+  "$CODEX_STATUS_STALE_RESET_RECHECK_SECONDS" \\
+  "$CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS"
 """
 
     result = _run_bash(shell_script)
 
     assert result.returncode == 0, result.stderr
-    assert result.stdout.strip() == "600 600"
+    assert result.stdout.strip() == "600 600 3600"
+
+
+def test_runner_defaults_idle_status_state_file_outside_lock_dir(tmp_path: Path) -> None:
+    lock_dir = tmp_path / "hushline-lock"
+    expected_state_file = tmp_path / ".hushline-lock.codex-status-last-check"
+
+    shell_script = f"""
+HUSHLINE_DAILY_RUNNER_LOCK_DIR={shlex.quote(str(lock_dir))}/
+source {shlex.quote(str(RUNNER_SCRIPT))}
+printf '%s\\n' "$CODEX_STATUS_IDLE_CHECK_STATE_FILE"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == str(expected_state_file)
+    assert expected_state_file.parent == tmp_path
 
 
 def test_wait_for_codex_status_credit_window_proceeds_when_5h_has_capacity() -> None:
@@ -157,6 +177,49 @@ wait_for_codex_status_credit_window
     assert "Codex /status: primary 300m window 7% used; 93% remaining" in result.stdout
     assert call_count_file.read_text(encoding="utf-8").strip() == "2"
     assert sleep_log.read_text(encoding="utf-8").strip() == "sleep:17"
+
+
+def test_idle_codex_status_check_skips_when_recent(tmp_path: Path) -> None:
+    state_file = tmp_path / "last-check"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_CHECK_ENABLED=1
+CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS=3600
+CODEX_STATUS_IDLE_CHECK_STATE_FILE={shlex.quote(str(state_file))}
+date +%s > "$CODEX_STATUS_IDLE_CHECK_STATE_FILE"
+fetch_codex_status_json() {{
+  printf 'unexpected-fetch\\n'
+  return 1
+}}
+check_codex_status_once_for_idle_run
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "unexpected-fetch" not in result.stdout
+    assert "Hourly idle Codex /status check due" not in result.stdout
+
+
+def test_idle_codex_status_check_runs_when_due(tmp_path: Path) -> None:
+    state_file = tmp_path / "last-check"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_CHECK_ENABLED=1
+CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS=0
+CODEX_STATUS_IDLE_CHECK_STATE_FILE={shlex.quote(str(state_file))}
+HUSHLINE_DAILY_CODEX_STATUS_JSON='{{"rateLimits":{{"primary":{{"usedPercent":51,"windowDurationMins":300,"resetsAt":1779683479}},"secondary":null,"rateLimitReachedType":null}}}}'
+check_codex_status_once_for_idle_run
+test -s "$CODEX_STATUS_IDLE_CHECK_STATE_FILE"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Hourly idle Codex /status check due" in result.stdout
+    assert "Codex /status: primary 300m window 51% used; 49% remaining" in result.stdout
 
 
 def test_count_open_bot_prs_excluding_heads_fails_closed_when_pr_query_fails() -> None:

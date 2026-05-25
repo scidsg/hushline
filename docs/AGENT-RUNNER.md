@@ -154,12 +154,6 @@ Every queued issue is assumed to require a real change. Once the runner claims a
 +-----------------------------------------------+
       |
       v
-+-----------------------------------------------+
-| Check Codex /status rate-limit data           |
-| 5h quota below floor? wait, then re-check     |
-+-----------------------------------------------+
-      |
-      v
 +--------------------------------------------------+
 | Normalize agent-only checkout                 |
 | Discard dirty work + switch to base branch    |
@@ -172,15 +166,17 @@ Every queued issue is assumed to require a real change. Once the runner claims a
       |
       v
 +------------------------------------------------+
-| Select issue: forced --issue, In Progress,     |
-| or project queue                               |
+| Cheap GitHub guards + issue selection:         |
+| human PRs, In Progress, or project queue       |
 +------------------------------------------------+
       |
-+------------------------+
-| Open human PRs > 0 ?   |--yes--> [Skip + Exit]
-+------------------------+
+      +-- no issue / blocked by human PR --> [Hourly idle /status if due, then skip]
       |
-      no
+      v
++-----------------------------------------------+
+| Assigned issue exists: check Codex /status    |
+| 5h quota below floor? wait, then re-check     |
++-----------------------------------------------+
       |
       v
 +----------------------------------------------+
@@ -199,13 +195,7 @@ Every queued issue is assumed to require a real change. Once the runner claims a
 +----------------------------------------------+
       |
       v
-+------------------------+
-| Issue found?           |--no--> [Skip + Exit]
-+------------------------+
-      |
-      yes
-      |
-      v
++----------------------------------------------+
 | Load issue metadata + checkout work branch   |
 | Build initial issue prompt                   |
 +----------------------------------------------+
@@ -377,11 +367,13 @@ The runner now performs an SSH signing preflight immediately after configuring g
 - `HUSHLINE_DAILY_RUN_LOG_RETENTION` (default `10`)
 - `HUSHLINE_DAILY_MAX_ISSUE_ATTEMPTS` (default `10`; positive integer)
 - `HUSHLINE_DAILY_MAX_FIX_ATTEMPTS` (default `8`; positive integer)
-- `HUSHLINE_DAILY_CODEX_STATUS_CHECK_ENABLED` (default `1`; set `0` to skip the pre-work Codex `/status` rate-limit check)
+- `HUSHLINE_DAILY_CODEX_STATUS_CHECK_ENABLED` (default `1`; set `0` to skip Codex `/status` rate-limit checks)
 - `HUSHLINE_DAILY_CODEX_STATUS_CHECK_TIMEOUT_SECONDS` (default `15`; positive integer)
 - `HUSHLINE_DAILY_CODEX_STATUS_RESET_BUFFER_SECONDS` (default `60`; non-negative integer; extra wait after the 5h window reset before rechecking)
 - `HUSHLINE_DAILY_CODEX_STATUS_MIN_REMAINING_PERCENT` (default `25`; integer percentage from `0` to `100`; wait for the 5h window reset when remaining primary quota is below this floor)
 - `HUSHLINE_DAILY_CODEX_STATUS_STALE_RESET_RECHECK_SECONDS` (default `600`; positive integer; backoff before rechecking when Codex reports low remaining 5h quota but the reset timestamp has already passed)
+- `HUSHLINE_DAILY_CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS` (default `3600`; non-negative integer; when no issue work is assigned, perform at most one lightweight Codex `/status` check per interval and do not wait on low quota)
+- `HUSHLINE_DAILY_CODEX_STATUS_IDLE_CHECK_STATE_FILE` (default: a hidden sibling file next to `HUSHLINE_DAILY_RUNNER_LOCK_DIR`, for example `/tmp/.hushline-code-agent.lock.codex-status-last-check`; stores the last idle `/status` attempt timestamp without placing files inside the lock directory)
 - `HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS` (default `600`; non-negative integer; set `0` to skip continuous PR feedback monitoring; when enabled, the issue runner keeps the PR branch checked out and polls until the PR closes)
 - `HUSHLINE_DAILY_RUNNER_LOCK_DIR` (default `${TMPDIR:-/tmp}/hushline-code-agent.lock`)
 - `HUSHLINE_CODEX_MODEL` (default `gpt-5.5`)
