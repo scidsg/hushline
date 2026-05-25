@@ -43,6 +43,18 @@ printf '%s %s\\n' "$CODEX_MODEL" "$CODEX_REASONING_EFFORT"
     assert result.stdout.strip() == "gpt-5.5 high"
 
 
+def test_runner_defaults_to_ten_minute_idle_polling() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+printf '%s %s\\n' "$POST_PR_FEEDBACK_DELAY_SECONDS" "$CODEX_STATUS_STALE_RESET_RECHECK_SECONDS"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "600 600"
+
+
 def test_wait_for_codex_status_credit_window_proceeds_when_5h_has_capacity() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
@@ -3784,7 +3796,7 @@ def test_check_pr_feedback_after_delay_polls_until_pr_closes(tmp_path: Path) -> 
 
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
-POST_PR_FEEDBACK_DELAY_SECONDS=60
+POST_PR_FEEDBACK_DELAY_SECONDS=600
 counter_file={shlex.quote(str(counter_file))}
 rm -f "$counter_file"
 sleep() {{
@@ -3814,7 +3826,7 @@ rm -f "$counter_file"
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.count("==> Check PR #2000 feedback and checks") == 3
-    assert result.stdout.count("sleep:60") == 2
+    assert result.stdout.count("sleep:600") == 2
     assert "Feedback comment 1: @reviewer1 :: Please fix the branch handling." in result.stdout
     assert "PR #2000 is MERGED; returning to main." in result.stdout
 
@@ -3975,7 +3987,7 @@ def test_check_pr_feedback_after_delay_addresses_actionable_feedback_once(
 
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
-POST_PR_FEEDBACK_DELAY_SECONDS=60
+POST_PR_FEEDBACK_DELAY_SECONDS=600
 counter_file={shlex.quote(str(counter_file))}
 calls_file={shlex.quote(str(calls_file))}
 rm -f "$counter_file" "$calls_file"

@@ -4,25 +4,25 @@ This document tracks the current state of the repo-managed agent automation used
 
 ## Repo-Managed Agent State
 
-| Script                                                | Role                           | Current State                                                      | PR / Output Surface                                               |
-| ----------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------ | ----------------------------------------------------------------- |
-| `scripts/agent_daily_issue_runner.sh`                 | GitHub issue implementation    | Disabled on this host while runner reliability fixes are validated | issue-specific branches and PRs                                   |
-| `scripts/weekly_hushline_code_agent_report_runner.py` | Weekly local agent reporting   | Active, local Mail.app delivery and local report persistence       | email to `glenn@hushline.app`; local `logs/weekly-agent-reports/` |
-| `scripts/agent_issue_bootstrap.sh`                    | Local runtime/bootstrap helper | Active, manual helper used by issue and local workflows            | local Docker/bootstrap only                                       |
+| Script                                                | Role                           | Current State                                                 | PR / Output Surface                                               |
+| ----------------------------------------------------- | ------------------------------ | ------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `scripts/agent_daily_issue_runner.sh`                 | GitHub issue implementation    | Paused on this host; configured for 10-minute launchd cadence | issue-specific branches and PRs                                   |
+| `scripts/weekly_hushline_code_agent_report_runner.py` | Weekly local agent reporting   | Active, local Mail.app delivery and local report persistence  | email to `glenn@hushline.app`; local `logs/weekly-agent-reports/` |
+| `scripts/agent_issue_bootstrap.sh`                    | Local runtime/bootstrap helper | Active, manual helper used by issue and local workflows       | local Docker/bootstrap only                                       |
 
 The repository does not currently include runner scripts for the social or docs launch agents listed below. Those host jobs exist outside this repository and should be documented here only as installed host context, not as repo-managed automation.
 
 ## Installed Host Jobs
 
-| Label                                             | Scope                                | Schedule                                       | Source                                                  |
-| ------------------------------------------------- | ------------------------------------ | ---------------------------------------------- | ------------------------------------------------------- |
-| org.scidsg.hushline-code-agent                    | Hush Line issue runner               | Disabled pending runner reliability validation | org.scidsg.hushline-code-agent.plist                    |
-| com.hushline.social.daily-planner                 | Social planner                       | Mon-Fri at 6:00 AM                             | com.hushline.social.daily-planner.plist                 |
-| com.hushline.social.linkedin.daily                | Social LinkedIn daily                | Mon-Fri at 6:10 AM                             | com.hushline.social.linkedin.daily.plist                |
-| com.hushline.weekly-agent-report                  | Weekly local agent report            | Sunday at 10:30 PM                             | com.hushline.weekly-agent-report.plist                  |
-| com.hushline.social.verified-user.weekly          | Social verified-user weekly          | Monday at 12:00 PM                             | com.hushline.social.verified-user.weekly.plist          |
-| com.hushline.social.linkedin.verified-user.weekly | Social verified-user LinkedIn weekly | Monday at 12:10 PM                             | com.hushline.social.linkedin.verified-user.weekly.plist |
-| com.hushline.docs.weekly-article                  | Docs weekly article                  | Wednesday at 10:00 AM                          | com.hushline.docs.weekly-article.plist                  |
+| Label                                             | Scope                                | Schedule                                  | Source                                                  |
+| ------------------------------------------------- | ------------------------------------ | ----------------------------------------- | ------------------------------------------------------- |
+| org.scidsg.hushline-code-agent                    | Hush Line issue runner               | Disabled; configured for every 10 minutes | org.scidsg.hushline-code-agent.plist                    |
+| com.hushline.social.daily-planner                 | Social planner                       | Mon-Fri at 6:00 AM                        | com.hushline.social.daily-planner.plist                 |
+| com.hushline.social.linkedin.daily                | Social LinkedIn daily                | Mon-Fri at 6:10 AM                        | com.hushline.social.linkedin.daily.plist                |
+| com.hushline.weekly-agent-report                  | Weekly local agent report            | Sunday at 10:30 PM                        | com.hushline.weekly-agent-report.plist                  |
+| com.hushline.social.verified-user.weekly          | Social verified-user weekly          | Monday at 12:00 PM                        | com.hushline.social.verified-user.weekly.plist          |
+| com.hushline.social.linkedin.verified-user.weekly | Social verified-user LinkedIn weekly | Monday at 12:10 PM                        | com.hushline.social.linkedin.verified-user.weekly.plist |
+| com.hushline.docs.weekly-article                  | Docs weekly article                  | Wednesday at 10:00 AM                     | com.hushline.docs.weekly-article.plist                  |
 
 ## Daily Issue Runner
 
@@ -381,8 +381,8 @@ The runner now performs an SSH signing preflight immediately after configuring g
 - `HUSHLINE_DAILY_CODEX_STATUS_CHECK_TIMEOUT_SECONDS` (default `15`; positive integer)
 - `HUSHLINE_DAILY_CODEX_STATUS_RESET_BUFFER_SECONDS` (default `60`; non-negative integer; extra wait after the 5h window reset before rechecking)
 - `HUSHLINE_DAILY_CODEX_STATUS_MIN_REMAINING_PERCENT` (default `25`; integer percentage from `0` to `100`; wait for the 5h window reset when remaining primary quota is below this floor)
-- `HUSHLINE_DAILY_CODEX_STATUS_STALE_RESET_RECHECK_SECONDS` (default `60`; positive integer; backoff before rechecking when Codex reports low remaining 5h quota but the reset timestamp has already passed)
-- `HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS` (default `60`; non-negative integer; set `0` to skip continuous PR feedback monitoring; when enabled, the issue runner keeps the PR branch checked out and polls until the PR closes)
+- `HUSHLINE_DAILY_CODEX_STATUS_STALE_RESET_RECHECK_SECONDS` (default `600`; positive integer; backoff before rechecking when Codex reports low remaining 5h quota but the reset timestamp has already passed)
+- `HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS` (default `600`; non-negative integer; set `0` to skip continuous PR feedback monitoring; when enabled, the issue runner keeps the PR branch checked out and polls until the PR closes)
 - `HUSHLINE_DAILY_RUNNER_LOCK_DIR` (default `${TMPDIR:-/tmp}/hushline-code-agent.lock`)
 - `HUSHLINE_CODEX_MODEL` (default `gpt-5.5`)
 - `HUSHLINE_CODEX_REASONING_EFFORT` (default `high`)
