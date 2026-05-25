@@ -43,6 +43,110 @@ printf '%s %s\\n' "$CODEX_MODEL" "$CODEX_REASONING_EFFORT"
     assert result.stdout.strip() == "gpt-5.5 high"
 
 
+def test_wait_for_codex_status_credit_window_proceeds_when_5h_has_capacity() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_CHECK_ENABLED=1
+HUSHLINE_DAILY_CODEX_STATUS_JSON='{{"rateLimits":{{"primary":{{"usedPercent":42,"windowDurationMins":300,"resetsAt":1779683479}},"secondary":null,"rateLimitReachedType":null}}}}'
+sleep() {{
+  printf 'unexpected-sleep:%s\\n' "$1"
+  return 1
+}}
+wait_for_codex_status_credit_window
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Codex /status: primary 300m window 42% used; 58% remaining" in result.stdout
+    assert "unexpected-sleep" not in result.stdout
+
+
+def test_wait_for_codex_status_credit_window_sleeps_until_low_5h_quota_resets(
+    tmp_path: Path,
+) -> None:
+    call_count_file = tmp_path / "status-calls.txt"
+    sleep_log = tmp_path / "sleep-log.txt"
+    call_count_file.write_text("0\n", encoding="utf-8")
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_CHECK_ENABLED=1
+CODEX_STATUS_RESET_BUFFER_SECONDS=11
+fetch_codex_status_json() {{
+  count="$(cat {shlex.quote(str(call_count_file))})"
+  count=$((count + 1))
+  printf '%s\\n' "$count" > {shlex.quote(str(call_count_file))}
+  if [[ "$count" == "1" ]]; then
+    reset_at=$(($(date +%s) + 5))
+    printf '%s' '{{"rateLimits":{{"primary":{{"usedPercent":76,'
+    printf '%s' '"windowDurationMins":300,'
+    printf '"resetsAt":%s}},"secondary":null,' "$reset_at"
+    printf '%s\n' '"rateLimitReachedType":"primary"}}}}'
+  else
+    printf '%s' '{{"rateLimits":{{"primary":{{"usedPercent":7,'
+    printf '%s' '"windowDurationMins":300,"resetsAt":1779683479}},'
+    printf '%s\n' '"secondary":null,"rateLimitReachedType":null}}}}'
+  fi
+}}
+sleep() {{
+  printf 'sleep:%s\\n' "$1" >> {shlex.quote(str(sleep_log))}
+}}
+wait_for_codex_status_credit_window
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Codex 5h remaining quota is 24%, below 25%" in result.stdout
+    assert "Codex /status: primary 300m window 7% used; 93% remaining" in result.stdout
+    assert call_count_file.read_text(encoding="utf-8").strip() == "2"
+    slept_seconds = int(sleep_log.read_text(encoding="utf-8").strip().split(":")[1])
+    assert slept_seconds >= 11
+
+
+def test_wait_for_codex_status_credit_window_backs_off_when_reset_is_stale(
+    tmp_path: Path,
+) -> None:
+    call_count_file = tmp_path / "status-calls.txt"
+    sleep_log = tmp_path / "sleep-log.txt"
+    call_count_file.write_text("0\n", encoding="utf-8")
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_CHECK_ENABLED=1
+CODEX_STATUS_STALE_RESET_RECHECK_SECONDS=17
+fetch_codex_status_json() {{
+  count="$(cat {shlex.quote(str(call_count_file))})"
+  count=$((count + 1))
+  printf '%s\\n' "$count" > {shlex.quote(str(call_count_file))}
+  if [[ "$count" == "1" ]]; then
+    reset_at=$(($(date +%s) - 5))
+    printf '%s' '{{"rateLimits":{{"primary":{{"usedPercent":76,'
+    printf '%s' '"windowDurationMins":300,'
+    printf '"resetsAt":%s}},"secondary":null,' "$reset_at"
+    printf '%s\n' '"rateLimitReachedType":"primary"}}}}'
+  else
+    printf '%s' '{{"rateLimits":{{"primary":{{"usedPercent":7,'
+    printf '%s' '"windowDurationMins":300,"resetsAt":1779683479}},'
+    printf '%s\n' '"secondary":null,"rateLimitReachedType":null}}}}'
+  fi
+}}
+sleep() {{
+  printf 'sleep:%s\\n' "$1" >> {shlex.quote(str(sleep_log))}
+}}
+wait_for_codex_status_credit_window
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "reset time has passed; waiting 17s before rechecking" in result.stdout
+    assert "Codex /status: primary 300m window 7% used; 93% remaining" in result.stdout
+    assert call_count_file.read_text(encoding="utf-8").strip() == "2"
+    assert sleep_log.read_text(encoding="utf-8").strip() == "sleep:17"
+
+
 def test_count_open_bot_prs_excluding_heads_fails_closed_when_pr_query_fails() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
