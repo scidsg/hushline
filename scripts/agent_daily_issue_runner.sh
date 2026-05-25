@@ -66,6 +66,7 @@ CODEX_STATUS_CHECK_TIMEOUT_SECONDS="${HUSHLINE_DAILY_CODEX_STATUS_CHECK_TIMEOUT_
 CODEX_STATUS_RESET_BUFFER_SECONDS="${HUSHLINE_DAILY_CODEX_STATUS_RESET_BUFFER_SECONDS:-60}"
 CODEX_STATUS_MIN_REMAINING_PERCENT="${HUSHLINE_DAILY_CODEX_STATUS_MIN_REMAINING_PERCENT:-25}"
 CODEX_STATUS_STALE_RESET_RECHECK_SECONDS="${HUSHLINE_DAILY_CODEX_STATUS_STALE_RESET_RECHECK_SECONDS:-600}"
+CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS="${HUSHLINE_DAILY_CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS:-3600}"
 
 CHECK_LOG_FILE=""
 PROMPT_FILE=""
@@ -96,6 +97,8 @@ PR_FEEDBACK_MONITOR_BRANCH=""
 RUNNER_DIAGNOSTIC_PR=0
 RUNNER_DIAGNOSTIC_REASON=""
 RUNNER_NO_USABLE_CHANGES=0
+RUNNER_LOCK_STATE_BASENAME="${RUNNER_LOCK_DIR%/}"
+CODEX_STATUS_IDLE_CHECK_STATE_FILE="${HUSHLINE_DAILY_CODEX_STATUS_IDLE_CHECK_STATE_FILE:-$(dirname "$RUNNER_LOCK_STATE_BASENAME")/.$(basename "$RUNNER_LOCK_STATE_BASENAME").codex-status-last-check}"
 
 parse_args() {
   while [[ $# -gt 0 ]]; do
@@ -295,6 +298,74 @@ wait_for_codex_status_credit_window() {
     fi
     return 0
   done
+}
+
+codex_idle_status_check_due() {
+  local now_epoch=""
+  local last_epoch=""
+
+  if [[ "$CODEX_STATUS_CHECK_ENABLED" != "1" ]]; then
+    return 1
+  fi
+
+  if (( CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS == 0 )); then
+    return 0
+  fi
+
+  now_epoch="$(date +%s)"
+  if [[ -r "$CODEX_STATUS_IDLE_CHECK_STATE_FILE" ]]; then
+    last_epoch="$(tr -cd '0-9' < "$CODEX_STATUS_IDLE_CHECK_STATE_FILE")"
+    if [[ -n "$last_epoch" ]] && (( now_epoch - last_epoch < CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS )); then
+      return 1
+    fi
+  fi
+
+  return 0
+}
+
+record_codex_idle_status_check_attempt() {
+  mkdir -p "$(dirname "$CODEX_STATUS_IDLE_CHECK_STATE_FILE")"
+  date +%s > "$CODEX_STATUS_IDLE_CHECK_STATE_FILE"
+}
+
+check_codex_status_once_for_idle_run() {
+  local status_json=""
+  local parsed_status=""
+  local used_percent=""
+  local window_duration_mins=""
+  local resets_at=""
+  local reached_type=""
+  local reset_label=""
+  local remaining_percent=""
+
+  if ! codex_idle_status_check_due; then
+    return 0
+  fi
+
+  record_codex_idle_status_check_attempt
+  runner_status "Hourly idle Codex /status check due."
+  echo "==> Check Codex /status usage limits"
+  if ! status_json="$(fetch_codex_status_json)"; then
+    echo "Warning: idle Codex /status check failed; continuing idle exit." >&2
+    return 0
+  fi
+
+  if ! parsed_status="$(printf '%s\n' "$status_json" | parse_codex_primary_limit_status)"; then
+    echo "Warning: idle Codex /status check returned unparseable rate limit data; continuing idle exit." >&2
+    return 0
+  fi
+
+  IFS=$'\t' read -r used_percent window_duration_mins resets_at reached_type <<< "$parsed_status"
+  reset_label="$(epoch_to_local_time "$resets_at")"
+  remaining_percent=$((100 - used_percent))
+  if (( remaining_percent < 0 )); then
+    remaining_percent=0
+  fi
+  echo "Codex /status: primary ${window_duration_mins}m window ${used_percent}% used; ${remaining_percent}% remaining; resets at ${reset_label}."
+
+  if [[ -n "$reached_type" && "$reached_type" != "null" ]]; then
+    echo "Codex /status reported reached limit type '${reached_type}' during idle check."
+  fi
 }
 
 initialize_run_state() {
@@ -3849,8 +3920,9 @@ main() {
   require_positive_integer \
     "HUSHLINE_DAILY_CODEX_STATUS_STALE_RESET_RECHECK_SECONDS" \
     "$CODEX_STATUS_STALE_RESET_RECHECK_SECONDS"
-
-  wait_for_codex_status_credit_window
+  require_non_negative_integer \
+    "HUSHLINE_DAILY_CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS" \
+    "$CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS"
 
   if [[ ! -d "$REPO_DIR/.git" ]]; then
     echo "Repository not found: $REPO_DIR" >&2
@@ -3877,6 +3949,7 @@ main() {
     OPEN_HUMAN_PRS="$(count_open_human_prs)"
     echo "Open human-authored PR count: ${OPEN_HUMAN_PRS}"
     if [[ "$OPEN_HUMAN_PRS" != "0" ]]; then
+      check_codex_status_once_for_idle_run
       runner_status "Skipped: found ${OPEN_HUMAN_PRS} open human-authored PR(s)."
       exit 0
     fi
@@ -3895,9 +3968,12 @@ main() {
   fi
 
   if [[ -z "$ISSUE_NUMBER" ]]; then
+    check_codex_status_once_for_idle_run
     runner_status "Skipped: no open issues found in project '${PROJECT_TITLE}' column '${PROJECT_COLUMN}'."
     exit 0
   fi
+
+  wait_for_codex_status_credit_window
 
   EPIC_ISSUE_NUMBER=""
   EPIC_ISSUE_TITLE=""
