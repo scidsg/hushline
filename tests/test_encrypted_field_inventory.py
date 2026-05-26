@@ -9,6 +9,7 @@ import pytest
 from cryptography.fernet import Fernet, InvalidToken
 from pytest_mock import MockFixture
 
+from hushline.crypto import serialize_encrypted_field_envelope
 from hushline.db import db
 from hushline.model import (
     FieldDefinition,
@@ -172,6 +173,16 @@ def _object_for_field(field: EncryptedField, user: User) -> object:
     raise AssertionError(f"Unhandled encrypted field inventory entry: {field.id}")
 
 
+def _plaintext_for_field(field: EncryptedField) -> str:
+    if field.model is User:
+        return USER_LEGACY_VALUES[field.property_name]
+    if field.model is NotificationRecipient:
+        return NOTIFICATION_RECIPIENT_LEGACY_VALUES[field.property_name]
+    if field.model is FieldValue:
+        return PGP_CIPHERTEXT
+    raise AssertionError(f"Unhandled encrypted field inventory entry: {field.id}")
+
+
 def _encrypted_field_id(field: EncryptedField) -> str:
     return field.id
 
@@ -255,6 +266,23 @@ def test_legacy_fernet_field_value_decrypts_encrypted_custom_message_value(
     assert field_value.encrypted is True
     assert field_value._value != PGP_CIPHERTEXT
     assert field_value.value == PGP_CIPHERTEXT
+
+
+@pytest.mark.parametrize(
+    "field",
+    ENCRYPTED_FIELD_INVENTORY,
+    ids=_encrypted_field_id,
+)
+def test_versioned_envelope_field_ciphertext_decrypts_through_properties(
+    user: User, field: EncryptedField
+) -> None:
+    plaintext = _plaintext_for_field(field)
+    obj = _object_for_field(field, user)
+    envelope = serialize_encrypted_field_envelope(_legacy_fernet_token(plaintext))
+    setattr(obj, field.raw_attr, envelope)
+
+    assert getattr(obj, field.raw_attr) != plaintext
+    assert getattr(obj, field.property_name) == plaintext
 
 
 @pytest.mark.parametrize(

@@ -1,4 +1,5 @@
-from base64 import urlsafe_b64decode
+import json
+from base64 import urlsafe_b64decode, urlsafe_b64encode
 from unittest.mock import call
 
 import pytest
@@ -39,7 +40,82 @@ def test_encrypt_and_decrypt_field(monkeypatch: pytest.MonkeyPatch) -> None:
 
     encrypted = crypto.encrypt_field("secret", scope="x", salt=salt)
     assert encrypted is not None
+    assert not encrypted.startswith(crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX)
     assert crypto.decrypt_field(encrypted, scope="x", salt=salt) == "secret"
+
+
+def test_encrypted_field_envelope_roundtrips_wrapped_fernet(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+
+    encrypted = crypto.encrypt_field("secret")
+    assert encrypted is not None
+    envelope = crypto.serialize_encrypted_field_envelope(encrypted)
+
+    parsed = crypto.parse_encrypted_field_envelope(envelope)
+    assert parsed == crypto.EncryptedFieldEnvelope(
+        version=crypto.ENCRYPTED_FIELD_ENVELOPE_VERSION,
+        algorithm=crypto.ENCRYPTED_FIELD_ENVELOPE_ALGORITHM,
+        ciphertext=encrypted,
+    )
+    assert crypto.decrypt_field(envelope) == "secret"
+
+
+def test_legacy_fernet_token_has_no_envelope(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+
+    encrypted = crypto.encrypt_field("legacy")
+    assert encrypted is not None
+    assert crypto.parse_encrypted_field_envelope(encrypted) is None
+    assert crypto.decrypt_field(encrypted) == "legacy"
+
+
+def _make_envelope(payload: object) -> str:
+    encoded_payload = urlsafe_b64encode(
+        json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
+    ).decode()
+    return f"{crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX}{encoded_payload.rstrip('=')}"
+
+
+def test_unknown_encrypted_field_envelope_version_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    encrypted = crypto.encrypt_field("secret")
+    assert encrypted is not None
+
+    envelope = _make_envelope(
+        {
+            "alg": crypto.ENCRYPTED_FIELD_ENVELOPE_ALGORITHM,
+            "ct": encrypted,
+            "v": crypto.ENCRYPTED_FIELD_ENVELOPE_VERSION + 1,
+        }
+    )
+
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field(envelope)
+
+
+@pytest.mark.parametrize(
+    "envelope",
+    [
+        crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX,
+        f"{crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX}not-json",
+        _make_envelope([]),
+        _make_envelope({"alg": crypto.ENCRYPTED_FIELD_ENVELOPE_ALGORITHM, "v": 1}),
+        _make_envelope({"alg": "unknown", "ct": "ciphertext", "v": 1}),
+        _make_envelope({"alg": crypto.ENCRYPTED_FIELD_ENVELOPE_ALGORITHM, "ct": "", "v": 1}),
+        _make_envelope({"alg": crypto.ENCRYPTED_FIELD_ENVELOPE_ALGORITHM, "ct": 1, "v": 1}),
+    ],
+)
+def test_malformed_encrypted_field_envelopes_fail_closed(
+    monkeypatch: pytest.MonkeyPatch, envelope: str
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field(envelope)
 
 
 def test_encrypt_field_uses_zero_timestamp(monkeypatch: pytest.MonkeyPatch) -> None:
