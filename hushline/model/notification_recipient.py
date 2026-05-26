@@ -33,7 +33,7 @@ class NotificationRecipient(Model):
         default=0,
         server_default=text("0"),
     )
-    _email: Mapped[Optional[str]] = mapped_column("email", db.String(EMAIL_MAX_LENGTH))
+    _email: Mapped[Optional[str]] = mapped_column("email", db.Text)
     _pgp_key: Mapped[Optional[str]] = mapped_column("pgp_key", db.Text)
 
     user: Mapped["User"] = relationship(back_populates="notification_recipients")

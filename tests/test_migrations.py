@@ -114,3 +114,22 @@ def test_double_upgrade(revision: str, app: Flask) -> None:
     cfg = typing.cast(alembic.config.Config, migrate.get_config())
     command.upgrade(cfg, revision)
     command.upgrade(cfg, revision)
+
+
+def test_encrypted_column_downgrade_refuses_oversized_ciphertext(app: Flask) -> None:
+    cfg = typing.cast(alembic.config.Config, migrate.get_config())
+    command.upgrade(cfg, "b2039e7c0a1d")
+
+    mod = __import__(
+        "tests.migrations.revision_b2039e7c0a1d",
+        fromlist=["DowngradeGuardTester"],
+    )
+    downgrade_guard_tester = mod.DowngradeGuardTester()
+    downgrade_guard_tester.load_data()
+    db.session.close()
+
+    with pytest.raises(RuntimeError, match=r"users\.email.*exceed 255 characters"):
+        command.downgrade(cfg, "-1")
+
+    db.session.rollback()
+    downgrade_guard_tester.check_value_preserved()
