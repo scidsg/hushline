@@ -27,6 +27,7 @@ This directory now includes a GitHub-first mirror of the public Hush Line Librar
 - [Public-record provenance roadmap](./PUBLIC-RECORD-PROVENANCE-ROADMAP.md)
 - [Encrypted-field migration runbook](./ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md)
 - [Encrypted-field AEAD evaluation](./ENCRYPTED-FIELD-AEAD-EVALUATION.md)
+- [Operational key management design](./OPERATIONAL-KEY-MANAGEMENT-DESIGN.md)
 - [Password hash modernization evaluation](./PASSWORD-HASH-MODERNIZATION-EVALUATION.md)
 - [Embeddable E2EE profile forms feasibility study](./EMBEDDABLE-E2EE-PROFILE-FORMS-FEASIBILITY.md)
 - [Whistleblower-protection accountability wall feasibility memo](./WHISTLEBLOWER-PROTECTION-ACCOUNTABILITY-WALL-FEASIBILITY.md)
