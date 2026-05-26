@@ -2512,3 +2512,20 @@ Coverage HTML written to dir /tmp/hushline-htmlcov
 
 
 ========== 1843 passed, 1 deselected, 1 xfailed in 396.83s (0:06:36) ===========
+Pruning old runner logs, keeping newest 10.
+[codex/daily-issue-2014 9b028bd0] chore: agent daily for #2014 (epic #2013)
+ 6 files changed, 2896 insertions(+), 4315 deletions(-)
+ delete mode 100644 docs/agent-logs/run-20260519T232044Z-issue-1990.txt
+ create mode 100644 docs/agent-logs/run-20260526T042438Z-issue-2014.txt
+Remote branch 'codex/daily-issue-2014' does not exist; creating it with a standard push.
+remote: 
+remote: Create a pull request for 'codex/daily-issue-2014' on GitHub by visiting:        
+remote:      https://github.com/scidsg/hushline/pull/new/codex/daily-issue-2014        
+remote: 
+To github.com:scidsg/hushline.git
+ * [new branch]        codex/daily-issue-2014 -> codex/daily-issue-2014
+branch 'codex/daily-issue-2014' set up to track 'origin/codex/daily-issue-2014'.
+Opened PR: https://github.com/scidsg/hushline/pull/2027
+==> Mark issue #2014 as Ready for Review
+Opened coverage gap issue: https://github.com/scidsg/hushline/issues/2028
+==> Add coverage gap issue #2028 to Agent Eligible
