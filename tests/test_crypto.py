@@ -33,6 +33,18 @@ def test_scoped_key_derivation_changes_key(monkeypatch: pytest.MonkeyPatch) -> N
         key_b.decrypt(token)
 
 
+def test_partial_scope_or_salt_uses_base_key_for_legacy_compatibility(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    salt = crypto.generate_salt()
+
+    base_token = crypto.get_encryption_key().encrypt(b"legacy-value")
+
+    assert crypto.get_encryption_key("scope-only").decrypt(base_token) == b"legacy-value"
+    assert crypto.get_encryption_key(salt=salt).decrypt(base_token) == b"legacy-value"
+
+
 def test_encrypt_and_decrypt_field(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
     salt = crypto.generate_salt()
@@ -40,6 +52,28 @@ def test_encrypt_and_decrypt_field(monkeypatch: pytest.MonkeyPatch) -> None:
     encrypted = crypto.encrypt_field("secret", scope="x", salt=salt)
     assert encrypted is not None
     assert crypto.decrypt_field(encrypted, scope="x", salt=salt) == "secret"
+
+
+def test_encrypt_field_accepts_bytes(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+
+    encrypted = crypto.encrypt_field(b"secret-bytes")
+
+    assert encrypted is not None
+    assert crypto.decrypt_field(encrypted) == "secret-bytes"
+
+
+def test_scoped_field_ciphertext_requires_matching_scope_and_salt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    salt = crypto.generate_salt()
+
+    encrypted = crypto.encrypt_field("scoped secret", scope="profile:email", salt=salt)
+
+    assert encrypted is not None
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field(encrypted, scope="profile:pgp-key", salt=salt)
 
 
 def test_encrypt_field_uses_zero_timestamp(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -80,6 +114,14 @@ def test_pgp_helpers_invalid_key(app: Flask) -> None:
         assert crypto.encrypt_bytes(b"hello", "not-a-key") is None
 
 
+def test_can_encrypt_with_pgp_key_rejects_empty_encryption_result(app: Flask, mocker) -> None:  # type: ignore[no-untyped-def]
+    with app.app_context():
+        mocker.patch("hushline.crypto.Cert.from_bytes", return_value=object())
+        mocker.patch("hushline.crypto.encrypt", return_value=b"")
+
+        assert not crypto.can_encrypt_with_pgp_key("pgp-key")
+
+
 def test_encrypt_message_uses_all_recipient_keys(app: Flask, mocker) -> None:  # type: ignore[no-untyped-def]
     cert_one = object()
     cert_two = object()
@@ -98,6 +140,14 @@ def test_encrypt_message_uses_all_recipient_keys(app: Flask, mocker) -> None:  #
 def test_load_recipient_certs_requires_at_least_one_key() -> None:
     with pytest.raises(ValueError, match="At least one PGP key is required"):
         crypto._load_recipient_certs([])
+
+
+def test_public_pgp_encrypt_helpers_reject_empty_recipient_list(app: Flask) -> None:
+    with app.app_context():
+        with pytest.raises(ValueError, match="At least one PGP key is required"):
+            crypto.encrypt_message("hello", [])
+
+        assert crypto.encrypt_bytes(b"hello", []) is None
 
 
 def test_gen_reply_slug_uses_diceware_words() -> None:
