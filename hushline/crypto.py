@@ -13,8 +13,10 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
-from flask import current_app
+from flask import current_app, has_app_context
 from pysequoia import Cert, encrypt
+
+from hushline.config import ENCRYPTED_FIELD_WRITE_FORMAT, EncryptedFieldWriteFormat
 
 with open(Path(__file__).parent / "files" / "diceware.txt") as f:
     DICEWARE_WORDS = [x.strip() for x in f]
@@ -184,6 +186,23 @@ def get_encryption_key(scope: bytes | str | None = None, salt: str | None = None
         encryption_key = urlsafe_b64encode(new_encryption_key_bytes).decode()
 
     return Fernet(encryption_key)
+
+
+def encrypted_field_write_format() -> EncryptedFieldWriteFormat:
+    configured: EncryptedFieldWriteFormat | str | None = None
+    if has_app_context():
+        configured = current_app.config.get(ENCRYPTED_FIELD_WRITE_FORMAT)
+
+    if configured is None:
+        configured = os.environ.get(
+            ENCRYPTED_FIELD_WRITE_FORMAT,
+            EncryptedFieldWriteFormat.LEGACY_FERNET.value,
+        )
+
+    if isinstance(configured, EncryptedFieldWriteFormat):
+        return configured
+
+    return EncryptedFieldWriteFormat.parse(configured)
 
 
 def build_encrypted_field_aad(contract: EncryptedFieldContract, values: Mapping[str, int]) -> bytes:
@@ -402,7 +421,12 @@ def encrypt_field(
 
     # We explicitly set the current time to 0 to avoid storing timestamps
     # that could be used to de-anonymize user-activity per the threat model.
-    return fernet.encrypt_at_time(data, current_time=0).decode()
+    ciphertext = fernet.encrypt_at_time(data, current_time=0).decode()
+
+    if encrypted_field_write_format() == EncryptedFieldWriteFormat.ENVELOPE_FERNET:
+        return serialize_encrypted_field_envelope(ciphertext)
+
+    return ciphertext
 
 
 def decrypt_field(

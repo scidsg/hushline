@@ -9,10 +9,13 @@ import pytest
 from cryptography.fernet import Fernet, InvalidToken
 from pytest_mock import MockFixture
 
+from hushline.config import ENCRYPTED_FIELD_WRITE_FORMAT, EncryptedFieldWriteFormat
 from hushline.crypto import (
     ENCRYPTED_FIELD_CONTRACT_BY_ID,
     ENCRYPTED_FIELD_CONTRACTS,
+    ENCRYPTED_FIELD_ENVELOPE_PREFIX,
     ENCRYPTED_FIELD_MUTABLE_AAD_NAMES,
+    parse_encrypted_field_envelope,
     serialize_encrypted_field_envelope,
 )
 from hushline.db import db
@@ -302,6 +305,28 @@ def test_versioned_envelope_field_ciphertext_decrypts_through_properties(
     setattr(obj, field.raw_attr, envelope)
 
     assert getattr(obj, field.raw_attr) != plaintext
+    assert getattr(obj, field.property_name) == plaintext
+
+
+@pytest.mark.parametrize(
+    "field",
+    ENCRYPTED_FIELD_INVENTORY,
+    ids=_encrypted_field_id,
+)
+def test_configured_envelope_write_format_stores_one_envelope_through_properties(
+    app: Any, user: User, field: EncryptedField
+) -> None:
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_FERNET
+    plaintext = _plaintext_for_field(field)
+    obj = _object_for_field(field, user)
+
+    setattr(obj, field.property_name, plaintext)
+
+    ciphertext = getattr(obj, field.raw_attr)
+    assert ciphertext.startswith(ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+    parsed = parse_encrypted_field_envelope(ciphertext)
+    assert parsed is not None
+    assert not parsed.ciphertext.startswith(ENCRYPTED_FIELD_ENVELOPE_PREFIX)
     assert getattr(obj, field.property_name) == plaintext
 
 
