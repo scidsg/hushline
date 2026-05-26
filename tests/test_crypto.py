@@ -59,13 +59,11 @@ def test_encrypt_field_defaults_to_legacy_fernet_write_format(
 
 
 def test_encrypt_field_can_write_versioned_fernet_envelope(
+    app: Flask,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
-    monkeypatch.setenv(
-        ENCRYPTED_FIELD_WRITE_FORMAT,
-        EncryptedFieldWriteFormat.ENVELOPE_FERNET.value,
-    )
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_FERNET
 
     encrypted = crypto.encrypt_field("secret")
 
@@ -77,20 +75,28 @@ def test_encrypt_field_can_write_versioned_fernet_envelope(
     assert crypto.decrypt_field(encrypted) == "secret"
 
 
-def test_encrypt_field_transition_reads_legacy_and_envelope_formats(
+def test_encrypt_field_envelope_write_requires_schema_check_context(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
     monkeypatch.setenv(
         ENCRYPTED_FIELD_WRITE_FORMAT,
-        EncryptedFieldWriteFormat.LEGACY_FERNET.value,
-    )
-    legacy_ciphertext = crypto.encrypt_field("legacy")
-
-    monkeypatch.setenv(
-        ENCRYPTED_FIELD_WRITE_FORMAT,
         EncryptedFieldWriteFormat.ENVELOPE_FERNET.value,
     )
+
+    with pytest.raises(crypto.EncryptedFieldSchemaNotReadyError, match="outside a Flask"):
+        crypto.encrypt_field("secret")
+
+
+def test_encrypt_field_transition_reads_legacy_and_envelope_formats(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.LEGACY_FERNET
+    legacy_ciphertext = crypto.encrypt_field("legacy")
+
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_FERNET
     envelope_ciphertext = crypto.encrypt_field("envelope")
 
     assert legacy_ciphertext is not None
