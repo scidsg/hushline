@@ -5,9 +5,13 @@ import secrets
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
+from typing import Mapping, Sequence
 
+from cryptography.exceptions import InvalidTag
 from cryptography.fernet import Fernet, InvalidToken
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from flask import current_app
 from pysequoia import Cert, encrypt
@@ -26,6 +30,26 @@ _SCRYPT_PARAMS = {
 ENCRYPTED_FIELD_ENVELOPE_PREFIX = "hlfield:"
 ENCRYPTED_FIELD_ENVELOPE_VERSION = 1
 ENCRYPTED_FIELD_ENVELOPE_ALGORITHM = "fernet"
+ENCRYPTED_FIELD_AEAD_ENVELOPE_VERSION = 2
+ENCRYPTED_FIELD_AEAD_ENVELOPE_ALGORITHM = "aes-256-gcm"
+ENCRYPTED_FIELD_AAD_SCHEMA = "hushline.encrypted-field.aad.v1"
+ENCRYPTED_FIELD_AEAD_KEY_INFO = b"hushline:encrypted-field:aes-256-gcm:v2"
+ENCRYPTED_FIELD_MUTABLE_AAD_NAMES = frozenset(
+    {
+        "bio",
+        "display_name",
+        "email",
+        "field_value",
+        "message",
+        "message_text",
+        "pgp_key",
+        "profile_text",
+        "smtp_password",
+        "smtp_server",
+        "smtp_username",
+        "username",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -33,6 +57,91 @@ class EncryptedFieldEnvelope:
     version: int
     algorithm: str
     ciphertext: str
+
+
+@dataclass(frozen=True)
+class EncryptedFieldContract:
+    id: str
+    domain: str
+    table: str
+    column: str
+    aad_fields: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class EncryptedFieldAEADEnvelope:
+    version: int
+    algorithm: str
+    nonce: bytes
+    ciphertext: bytes
+
+
+ENCRYPTED_FIELD_CONTRACTS = (
+    EncryptedFieldContract(
+        id="User.totp_secret",
+        domain="hushline.encrypted-field.users.totp_secret",
+        table="users",
+        column="totp_secret",
+        aad_fields=("user_id",),
+    ),
+    EncryptedFieldContract(
+        id="User.email",
+        domain="hushline.encrypted-field.users.email",
+        table="users",
+        column="email",
+        aad_fields=("user_id",),
+    ),
+    EncryptedFieldContract(
+        id="User.smtp_server",
+        domain="hushline.encrypted-field.users.smtp_server",
+        table="users",
+        column="smtp_server",
+        aad_fields=("user_id",),
+    ),
+    EncryptedFieldContract(
+        id="User.smtp_username",
+        domain="hushline.encrypted-field.users.smtp_username",
+        table="users",
+        column="smtp_username",
+        aad_fields=("user_id",),
+    ),
+    EncryptedFieldContract(
+        id="User.smtp_password",
+        domain="hushline.encrypted-field.users.smtp_password",
+        table="users",
+        column="smtp_password",
+        aad_fields=("user_id",),
+    ),
+    EncryptedFieldContract(
+        id="User.pgp_key",
+        domain="hushline.encrypted-field.users.pgp_key",
+        table="users",
+        column="pgp_key",
+        aad_fields=("user_id",),
+    ),
+    EncryptedFieldContract(
+        id="NotificationRecipient.email",
+        domain="hushline.encrypted-field.notification_recipients.email",
+        table="notification_recipients",
+        column="email",
+        aad_fields=("notification_recipient_id", "user_id"),
+    ),
+    EncryptedFieldContract(
+        id="NotificationRecipient.pgp_key",
+        domain="hushline.encrypted-field.notification_recipients.pgp_key",
+        table="notification_recipients",
+        column="pgp_key",
+        aad_fields=("notification_recipient_id", "user_id"),
+    ),
+    EncryptedFieldContract(
+        id="FieldValue.value",
+        domain="hushline.encrypted-field.field_values._value",
+        table="field_values",
+        column="_value",
+        aad_fields=("field_definition_id", "field_value_id", "message_id"),
+    ),
+)
+ENCRYPTED_FIELD_CONTRACT_BY_ID = {contract.id: contract for contract in ENCRYPTED_FIELD_CONTRACTS}
 
 
 def generate_salt() -> str:
@@ -75,6 +184,59 @@ def get_encryption_key(scope: bytes | str | None = None, salt: str | None = None
         encryption_key = urlsafe_b64encode(new_encryption_key_bytes).decode()
 
     return Fernet(encryption_key)
+
+
+def build_encrypted_field_aad(contract: EncryptedFieldContract, values: Mapping[str, int]) -> bytes:
+    mutable_names = ENCRYPTED_FIELD_MUTABLE_AAD_NAMES.intersection(values)
+    if mutable_names:
+        names = ", ".join(sorted(mutable_names))
+        raise ValueError(f"Mutable values are not allowed in encrypted field AAD: {names}")
+
+    expected_fields = set(contract.aad_fields)
+    actual_fields = set(values)
+    if actual_fields != expected_fields:
+        missing = ", ".join(sorted(expected_fields - actual_fields)) or "none"
+        extra = ", ".join(sorted(actual_fields - expected_fields)) or "none"
+        raise ValueError(f"Encrypted field AAD mismatch; missing: {missing}; extra: {extra}")
+
+    for name, value in values.items():
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            raise ValueError(f"Encrypted field AAD value {name!r} must be a positive integer")
+
+    return json.dumps(
+        {
+            "alg": ENCRYPTED_FIELD_AEAD_ENVELOPE_ALGORITHM,
+            "column": contract.column,
+            "domain": contract.domain,
+            "row": {name: values[name] for name in contract.aad_fields},
+            "schema": ENCRYPTED_FIELD_AAD_SCHEMA,
+            "table": contract.table,
+            "v": ENCRYPTED_FIELD_AEAD_ENVELOPE_VERSION,
+        },
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+
+
+def _get_encrypted_field_aead_key() -> bytes:
+    if not (encryption_key := os.environ.get("ENCRYPTION_KEY", None)):
+        raise ValueError("Encryption key not found via env var ENCRYPTION_KEY")
+
+    encryption_key_bytes = urlsafe_b64decode(encryption_key)
+    return HKDF(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=None,
+        info=ENCRYPTED_FIELD_AEAD_KEY_INFO,
+    ).derive(encryption_key_bytes)
+
+
+def _encode_unpadded_urlsafe(data: bytes) -> str:
+    return urlsafe_b64encode(data).decode().rstrip("=")
+
+
+def _decode_unpadded_urlsafe(data: str) -> bytes:
+    return urlsafe_b64decode(data + "=" * (-len(data) % 4))
 
 
 def serialize_encrypted_field_envelope(
@@ -128,6 +290,97 @@ def parse_encrypted_field_envelope(data: str) -> EncryptedFieldEnvelope | None:
         algorithm=algorithm,
         ciphertext=ciphertext,
     )
+
+
+def serialize_encrypted_field_aead_envelope(ciphertext: bytes, nonce: bytes) -> str:
+    if not ciphertext:
+        raise ValueError("Encrypted field envelope ciphertext is required")
+    if not nonce:
+        raise ValueError("Encrypted field envelope nonce is required")
+
+    payload = json.dumps(
+        {
+            "alg": ENCRYPTED_FIELD_AEAD_ENVELOPE_ALGORITHM,
+            "ct": _encode_unpadded_urlsafe(ciphertext),
+            "n": _encode_unpadded_urlsafe(nonce),
+            "v": ENCRYPTED_FIELD_AEAD_ENVELOPE_VERSION,
+        },
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+    encoded_payload = _encode_unpadded_urlsafe(payload)
+    return f"{ENCRYPTED_FIELD_ENVELOPE_PREFIX}{encoded_payload}"
+
+
+def parse_encrypted_field_aead_envelope(data: str) -> EncryptedFieldAEADEnvelope:
+    if not data.startswith(ENCRYPTED_FIELD_ENVELOPE_PREFIX):
+        raise InvalidToken
+
+    encoded_payload = data[len(ENCRYPTED_FIELD_ENVELOPE_PREFIX) :]
+    try:
+        payload = _decode_unpadded_urlsafe(encoded_payload)
+        envelope = json.loads(payload.decode())
+        nonce = _decode_unpadded_urlsafe(envelope["n"])
+        ciphertext = _decode_unpadded_urlsafe(envelope["ct"])
+    except (binascii.Error, KeyError, TypeError, ValueError, UnicodeDecodeError) as exc:
+        raise InvalidToken from exc
+
+    if not isinstance(envelope, dict):
+        raise InvalidToken
+
+    version = envelope.get("v")
+    algorithm = envelope.get("alg")
+    if (
+        version != ENCRYPTED_FIELD_AEAD_ENVELOPE_VERSION
+        or algorithm != ENCRYPTED_FIELD_AEAD_ENVELOPE_ALGORITHM
+        or not nonce
+        or not ciphertext
+    ):
+        raise InvalidToken
+
+    return EncryptedFieldAEADEnvelope(
+        version=version,
+        algorithm=algorithm,
+        nonce=nonce,
+        ciphertext=ciphertext,
+    )
+
+
+def encrypt_field_aead_prototype(
+    data: bytes | str | None,
+    contract: EncryptedFieldContract,
+    aad_values: Mapping[str, int],
+) -> str | None:
+    if data is None:
+        return None
+    if not isinstance(data, bytes):
+        data = data.encode()
+
+    aad = build_encrypted_field_aad(contract, aad_values)
+    nonce = os.urandom(12)
+    ciphertext = AESGCM(_get_encrypted_field_aead_key()).encrypt(nonce, data, aad)
+    return serialize_encrypted_field_aead_envelope(ciphertext, nonce)
+
+
+def decrypt_field_aead_prototype(
+    data: str | None,
+    contract: EncryptedFieldContract,
+    aad_values: Mapping[str, int],
+) -> str | None:
+    if data is None:
+        return None
+
+    envelope = parse_encrypted_field_aead_envelope(data)
+    aad = build_encrypted_field_aad(contract, aad_values)
+    try:
+        plaintext = AESGCM(_get_encrypted_field_aead_key()).decrypt(
+            envelope.nonce,
+            envelope.ciphertext,
+            aad,
+        )
+    except InvalidTag as exc:
+        raise InvalidToken from exc
+    return plaintext.decode()
 
 
 def encrypt_field(

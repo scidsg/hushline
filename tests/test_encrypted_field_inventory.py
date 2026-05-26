@@ -9,7 +9,12 @@ import pytest
 from cryptography.fernet import Fernet, InvalidToken
 from pytest_mock import MockFixture
 
-from hushline.crypto import serialize_encrypted_field_envelope
+from hushline.crypto import (
+    ENCRYPTED_FIELD_CONTRACT_BY_ID,
+    ENCRYPTED_FIELD_CONTRACTS,
+    ENCRYPTED_FIELD_MUTABLE_AAD_NAMES,
+    serialize_encrypted_field_envelope,
+)
 from hushline.db import db
 from hushline.model import (
     FieldDefinition,
@@ -197,6 +202,21 @@ def test_encrypted_field_inventory_columns_match_models() -> None:
         assert field.model.__tablename__ == field.table_name
         column = getattr(field.model, field.raw_attr).property.columns[0]
         assert column.name == field.column_name
+
+
+def test_encrypted_field_domain_contract_covers_inventory() -> None:
+    inventory_ids = {field.id for field in ENCRYPTED_FIELD_INVENTORY}
+    assert set(ENCRYPTED_FIELD_CONTRACT_BY_ID) == inventory_ids
+
+    domains = [contract.domain for contract in ENCRYPTED_FIELD_CONTRACTS]
+    assert len(domains) == len(set(domains))
+
+    for field in ENCRYPTED_FIELD_INVENTORY:
+        contract = ENCRYPTED_FIELD_CONTRACT_BY_ID[field.id]
+        assert contract.domain == f"hushline.encrypted-field.{field.table_name}.{field.column_name}"
+        assert contract.table == field.table_name
+        assert contract.column == field.column_name
+        assert ENCRYPTED_FIELD_MUTABLE_AAD_NAMES.isdisjoint(contract.aad_fields)
 
 
 def test_user_encrypted_properties_store_fernet_ciphertext(user: User) -> None:

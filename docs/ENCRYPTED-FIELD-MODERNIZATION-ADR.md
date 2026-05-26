@@ -45,7 +45,7 @@ are currently passed through `encrypt_field()` and `decrypt_field()`:
 | `User`                  | `users.pgp_key`                   | `pgp_key`            | Recipient public PGP key material         |
 | `NotificationRecipient` | `notification_recipients.email`   | `email`              | Notification recipient email address      |
 | `NotificationRecipient` | `notification_recipients.pgp_key` | `pgp_key`            | Notification recipient public PGP key     |
-| `FieldValue`            | `field_values.value`              | `value`              | Custom field values or PGP ciphertext     |
+| `FieldValue`            | `field_values._value`             | `value`              | Custom field values or PGP ciphertext     |
 
 `FieldValue.value` needs special handling in future designs. For custom fields
 marked encrypted, Hush Line may store recipient PGP ciphertext inside the
@@ -53,6 +53,50 @@ database-field encryption wrapper. For custom fields not marked encrypted, Hush
 Line stores submitted values inside the database-field encryption wrapper only.
 In both cases, access to the wrapper depends on server-side encrypted-field key
 material.
+
+## Stable Domain And AAD Contract
+
+Future encrypted-field envelopes must authenticate a code-owned domain string
+and canonical associated data (AAD). This contract is defined in
+`hushline.crypto.ENCRYPTED_FIELD_CONTRACTS` and is intentionally keyed to stable
+database concepts rather than SQLAlchemy model names, route names, form labels,
+profile text, or user-entered values.
+
+| Contract ID                     | Stable domain                                              | AAD row values                                        |
+| ------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------- |
+| `User.totp_secret`              | `hushline.encrypted-field.users.totp_secret`               | `user_id`                                             |
+| `User.email`                    | `hushline.encrypted-field.users.email`                     | `user_id`                                             |
+| `User.smtp_server`              | `hushline.encrypted-field.users.smtp_server`               | `user_id`                                             |
+| `User.smtp_username`            | `hushline.encrypted-field.users.smtp_username`             | `user_id`                                             |
+| `User.smtp_password`            | `hushline.encrypted-field.users.smtp_password`             | `user_id`                                             |
+| `User.pgp_key`                  | `hushline.encrypted-field.users.pgp_key`                   | `user_id`                                             |
+| `NotificationRecipient.email`   | `hushline.encrypted-field.notification_recipients.email`   | `notification_recipient_id`, `user_id`                |
+| `NotificationRecipient.pgp_key` | `hushline.encrypted-field.notification_recipients.pgp_key` | `notification_recipient_id`, `user_id`                |
+| `FieldValue.value`              | `hushline.encrypted-field.field_values._value`             | `field_definition_id`, `field_value_id`, `message_id` |
+
+Canonical AAD bytes include the envelope algorithm, envelope version, AAD
+schema identifier, stable domain, table, column, and the row values listed
+above. Row values must be immutable database identifiers that are retained with
+the ciphertext for as long as that ciphertext must remain decryptable.
+
+AAD must not require mutable usernames, email addresses, display names, bio or
+profile text, custom field text, message text, SMTP settings, PGP key text, or
+other user-editable values unless a future migration permanently retains the
+historical value that was authenticated when the ciphertext was written. The
+current contract rejects those mutable context names when building AAD.
+
+Domain strings remain stable across model refactors. If a SQLAlchemy property,
+Python class, route, template, or form changes while the underlying encrypted
+data remains the same logical field, the existing domain and AAD schema must be
+preserved. If a database migration splits, merges, or replaces an encrypted
+field, the migration plan must either retain the old domain for migrated
+ciphertext or introduce a new explicit domain with dual-read compatibility,
+rollback guidance, and decryptability tests for both formats.
+
+The Phase 3 prototype envelope uses AES-256-GCM with AAD to demonstrate
+wrong-domain and wrong-AAD failures. It is not wired into production model
+writes; current writes continue to use the legacy Fernet path until a separate
+rollout issue enables dual-read, single-write behavior.
 
 Fields outside this inventory are not protected by encrypted-field
 modernization. Examples include account IDs, usernames, directory/profile
