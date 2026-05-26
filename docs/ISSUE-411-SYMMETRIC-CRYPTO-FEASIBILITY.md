@@ -340,6 +340,9 @@ If Argon2 remains desirable, open a separate password hashing issue and PR
 series. It should build on `hushline/password_hasher.py` instead of replacing it
 as part of field encryption.
 
+Status: completed in
+[`PASSWORD-HASH-MODERNIZATION-EVALUATION.md`](PASSWORD-HASH-MODERNIZATION-EVALUATION.md).
+
 ## Migration Safety Requirements
 
 Any implementation that touches encrypted production data must satisfy these
