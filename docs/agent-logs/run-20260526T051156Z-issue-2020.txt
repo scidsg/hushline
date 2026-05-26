@@ -2331,3 +2331,20 @@ Coverage HTML written to dir /tmp/hushline-htmlcov
 
 
 ========== 1858 passed, 1 deselected, 1 xfailed in 407.48s (0:06:47) ===========
+Pruning old runner logs, keeping newest 10.
+[codex/daily-issue-2020 5fa8a584] chore: agent daily for #2020 (epic #2013)
+ 8 files changed, 2530 insertions(+), 1176 deletions(-)
+ delete mode 100644 docs/agent-logs/run-20260521T040225Z-issue-1994.txt
+ create mode 100644 docs/agent-logs/run-20260526T051156Z-issue-2020.txt
+Remote branch 'codex/daily-issue-2020' does not exist; creating it with a standard push.
+remote: 
+remote: Create a pull request for 'codex/daily-issue-2020' on GitHub by visiting:        
+remote:      https://github.com/scidsg/hushline/pull/new/codex/daily-issue-2020        
+remote: 
+To github.com:scidsg/hushline.git
+ * [new branch]        codex/daily-issue-2020 -> codex/daily-issue-2020
+branch 'codex/daily-issue-2020' set up to track 'origin/codex/daily-issue-2020'.
+Opened PR: https://github.com/scidsg/hushline/pull/2029
+==> Mark issue #2020 as Ready for Review
+Opened coverage gap issue: https://github.com/scidsg/hushline/issues/2030
+==> Add coverage gap issue #2030 to Agent Eligible
