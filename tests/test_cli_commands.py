@@ -1,10 +1,16 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
 from flask import Flask
 from werkzeug.security import generate_password_hash
 
+from hushline import crypto
+from hushline.cli_encrypted_field import EncryptedFieldCapacityReport
+from hushline.config import ENCRYPTED_FIELD_WRITE_FORMAT, EncryptedFieldWriteFormat
 from hushline.db import db
 from hushline.model import InviteCode, OrganizationSetting, Tier, User
+
+TEST_ENCRYPTION_KEY = "jY0gDbATEOQolx2SGj46YnkkbN6HQBB4YCABzwl1H1A="
 
 
 def test_reg_settings_command_outputs_current_values(app: Flask) -> None:
@@ -75,6 +81,85 @@ def test_reg_code_create_avoids_dash_prefixed_codes(app: Flask) -> None:
     delete_result = runner.invoke(args=["reg", "code-delete", invite_code.code])
     assert delete_result.exit_code == 0
     assert f"Invite code {invite_code.code} deleted." in delete_result.output
+
+
+def test_encrypted_field_preflight_reports_ready_without_sensitive_values(
+    app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    runner = app.test_cli_runner()
+
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.LEGACY_FERNET
+    user._totp_secret = crypto.encrypt_field("preflight legacy secret")
+    legacy_ciphertext = user._totp_secret
+    assert legacy_ciphertext is not None
+
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_FERNET
+    user._email = crypto.encrypt_field("preflight envelope secret")
+    envelope_ciphertext = user._email
+    assert envelope_ciphertext is not None
+    db.session.commit()
+
+    result = runner.invoke(args=["encrypted-field", "preflight"])
+
+    assert result.exit_code == 0
+    assert "Current Alembic revision: not stamped" in result.output
+    assert "User.totp_secret (users.totp_secret): ready" in result.output
+    assert "User.email (users.email): legacy Fernet: 0; envelope Fernet: 1" in result.output
+    assert "User.totp_secret (users.totp_secret): legacy Fernet: 1" in result.output
+    assert "malformed: 0; decryptable: yes" in result.output
+    assert "Encrypted-field preflight readiness: ready" in result.output
+    assert "preflight legacy secret" not in result.output
+    assert "preflight envelope secret" not in result.output
+    assert legacy_ciphertext not in result.output
+    assert envelope_ciphertext not in result.output
+
+    db.session.refresh(user)
+    assert user._totp_secret == legacy_ciphertext
+    assert user._email == envelope_ciphertext
+
+
+def test_encrypted_field_preflight_blocks_malformed_ciphertext(
+    app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    runner = app.test_cli_runner()
+    user._totp_secret = "not-a-valid-fernet-token"
+    db.session.commit()
+
+    result = runner.invoke(args=["encrypted-field", "preflight"])
+
+    assert result.exit_code == 1
+    assert "User.totp_secret (users.totp_secret): legacy Fernet: 0" in result.output
+    assert "malformed: 1; decryptable: no" in result.output
+    assert "Encrypted-field preflight readiness: blocked" in result.output
+    assert "malformed ciphertext values are present" in result.output
+    assert "not-a-valid-fernet-token" not in result.output
+
+
+def test_encrypted_field_preflight_blocks_schema_that_is_not_envelope_ready(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = app.test_cli_runner()
+    monkeypatch.setattr(
+        "hushline.cli_encrypted_field._encrypted_field_column_capacity_reports",
+        lambda: [
+            EncryptedFieldCapacityReport(
+                contract_id="User.email",
+                table="users",
+                column="email",
+                ready=False,
+                detail="length 255",
+            )
+        ],
+    )
+
+    result = runner.invoke(args=["encrypted-field", "preflight"])
+
+    assert result.exit_code == 1
+    assert "User.email (users.email): blocked (length 255)" in result.output
+    assert "Encrypted-field preflight readiness: blocked" in result.output
+    assert "schema is not envelope-ready" in result.output
 
 
 def test_password_hash_report_outputs_legacy_count_and_removal_gate(
