@@ -15,6 +15,7 @@ _STRING_CFG_PREFIX = "HL_CFG_"
 _JSON_CFG_PREFIX = "HL_CFG_JSON_"
 PASSWORD_HASH_REHASH_ON_AUTH_ENABLED = "PASSWORD_HASH_REHASH_ON_AUTH_ENABLED"  # noqa: S105
 PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT = "PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT"  # noqa: S105
+ENCRYPTED_FIELD_WRITE_FORMAT = "ENCRYPTED_FIELD_WRITE_FORMAT"
 SPLASH_SCREEN_DURATION_MS = "SPLASH_SCREEN_DURATION_MS"
 
 
@@ -40,6 +41,19 @@ class AliasMode(Enum):
 class FieldsMode(Enum):
     ALWAYS = "always"
     PREMIUM = "premium"
+
+    @classmethod
+    def parse(cls, string: str) -> Self:
+        for var in cls:
+            if var.value == string:
+                return var
+        raise ConfigParseError(f"Not a valid value for {cls.__name__}: {string!r}")
+
+
+@unique
+class EncryptedFieldWriteFormat(Enum):
+    LEGACY_FERNET = "legacy-fernet"
+    ENVELOPE_FERNET = "envelope-fernet"
 
     @classmethod
     def parse(cls, string: str) -> Self:
@@ -191,6 +205,13 @@ def _load_hushline_misc(env: Mapping[str, str]) -> Mapping[str, Any]:
         data["FIELDS_MODE"] = FieldsMode.parse(fields_str)
     else:
         data["FIELDS_MODE"] = FieldsMode.ALWAYS
+
+    if encrypted_field_write_format := env.get(ENCRYPTED_FIELD_WRITE_FORMAT):
+        data[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.parse(
+            encrypted_field_write_format
+        )
+    else:
+        data[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.LEGACY_FERNET
 
     return data
 

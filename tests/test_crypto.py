@@ -7,6 +7,7 @@ from cryptography.fernet import Fernet, InvalidToken
 from flask import Flask
 
 from hushline import crypto
+from hushline.config import ENCRYPTED_FIELD_WRITE_FORMAT, EncryptedFieldWriteFormat
 
 
 def _decode_fernet_token(token: str) -> bytes:
@@ -56,26 +57,85 @@ def test_encrypt_and_decrypt_field(monkeypatch: pytest.MonkeyPatch) -> None:
     assert crypto.decrypt_field(encrypted, scope="x", salt=salt) == "secret"
 
 
-def test_encrypt_field_accepts_bytes(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
-
-    encrypted = crypto.encrypt_field(b"secret-bytes")
-
-    assert encrypted is not None
-    assert crypto.decrypt_field(encrypted) == "secret-bytes"
-
-
-def test_scoped_field_ciphertext_requires_matching_scope_and_salt(
+def test_encrypt_field_defaults_to_legacy_fernet_write_format(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
-    salt = crypto.generate_salt()
+    monkeypatch.delenv(ENCRYPTED_FIELD_WRITE_FORMAT, raising=False)
 
-    encrypted = crypto.encrypt_field("scoped secret", scope="profile:email", salt=salt)
+    encrypted = crypto.encrypt_field("secret")
 
     assert encrypted is not None
-    with pytest.raises(InvalidToken):
-        crypto.decrypt_field(encrypted, scope="profile:pgp-key", salt=salt)
+    assert not encrypted.startswith(crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+    assert crypto.decrypt_field(encrypted) == "secret"
+
+
+def test_encrypt_field_can_write_versioned_fernet_envelope(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_FERNET
+
+    encrypted = crypto.encrypt_field("secret")
+
+    assert encrypted is not None
+    assert encrypted.startswith(crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+    parsed = crypto.parse_encrypted_field_envelope(encrypted)
+    assert parsed is not None
+    assert crypto.decrypt_field(parsed.ciphertext) == "secret"
+    assert crypto.decrypt_field(encrypted) == "secret"
+
+
+def test_encrypt_field_envelope_write_requires_schema_check_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    monkeypatch.setenv(
+        ENCRYPTED_FIELD_WRITE_FORMAT,
+        EncryptedFieldWriteFormat.ENVELOPE_FERNET.value,
+    )
+
+    with pytest.raises(crypto.EncryptedFieldSchemaNotReadyError, match="outside a Flask"):
+        crypto.encrypt_field("secret")
+
+
+def test_encrypt_field_transition_reads_legacy_and_envelope_formats(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.LEGACY_FERNET
+    legacy_ciphertext = crypto.encrypt_field("legacy")
+
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_FERNET
+    envelope_ciphertext = crypto.encrypt_field("envelope")
+
+    assert legacy_ciphertext is not None
+    assert envelope_ciphertext is not None
+    assert not legacy_ciphertext.startswith(crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+    assert envelope_ciphertext.startswith(crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+    assert crypto.decrypt_field(legacy_ciphertext) == "legacy"
+    assert crypto.decrypt_field(envelope_ciphertext) == "envelope"
+
+
+def test_encrypt_field_uses_app_configured_write_format(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    monkeypatch.setenv(
+        ENCRYPTED_FIELD_WRITE_FORMAT,
+        EncryptedFieldWriteFormat.LEGACY_FERNET.value,
+    )
+
+    with app.app_context():
+        app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_FERNET
+        encrypted = crypto.encrypt_field("secret")
+
+    assert encrypted is not None
+    assert encrypted.startswith(crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+    assert crypto.decrypt_field(encrypted) == "secret"
 
 
 def test_encrypted_field_envelope_roundtrips_wrapped_fernet(
@@ -212,6 +272,28 @@ def test_malformed_encrypted_field_envelopes_fail_closed(
 
     with pytest.raises(InvalidToken):
         crypto.decrypt_field(envelope)
+
+
+def test_encrypt_field_accepts_bytes(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+
+    encrypted = crypto.encrypt_field(b"secret-bytes")
+
+    assert encrypted is not None
+    assert crypto.decrypt_field(encrypted) == "secret-bytes"
+
+
+def test_scoped_field_ciphertext_requires_matching_scope_and_salt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    salt = crypto.generate_salt()
+
+    encrypted = crypto.encrypt_field("scoped secret", scope="profile:email", salt=salt)
+
+    assert encrypted is not None
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field(encrypted, scope="profile:pgp-key", salt=salt)
 
 
 def test_encrypt_field_uses_zero_timestamp(monkeypatch: pytest.MonkeyPatch) -> None:

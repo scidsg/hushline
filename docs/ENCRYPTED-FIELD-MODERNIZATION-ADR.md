@@ -95,8 +95,33 @@ rollback guidance, and decryptability tests for both formats.
 
 The Phase 3 prototype envelope uses AES-256-GCM with AAD to demonstrate
 wrong-domain and wrong-AAD failures. It is not wired into production model
-writes; current writes continue to use the legacy Fernet path until a separate
-rollout issue enables dual-read, single-write behavior.
+writes. Production writes default to the legacy Fernet path, with the
+versioned Fernet envelope available through the rollout control below.
+
+## Dual-Read, Single-Write Rollout Controls
+
+`ENCRYPTED_FIELD_WRITE_FORMAT` controls the format used for newly written
+encrypted database fields. Supported values are:
+
+- `legacy-fernet`: write the existing unprefixed Fernet token format. This is
+  the default.
+- `envelope-fernet`: write the approved `hlfield:` versioned envelope that wraps
+  one Fernet ciphertext.
+
+Readers support both formats before operators enable envelope writes. Legacy
+Fernet decrypt support remains enabled while envelope writes are tested,
+migration planning is completed, and rollback windows remain open.
+
+Operator rollout sequence:
+
+1. Deploy code with the dual reader while leaving
+   `ENCRYPTED_FIELD_WRITE_FORMAT` unset or set to `legacy-fernet`.
+2. Verify normal encrypted-field reads and writes on legacy Fernet data.
+3. Set `ENCRYPTED_FIELD_WRITE_FORMAT=envelope-fernet` for new writes only.
+4. Verify newly updated settings, notification recipients, and encrypted custom
+   field values read back successfully.
+5. Leave legacy Fernet read support deployed until a later migration issue
+   verifies all existing rows and documents rollback completion.
 
 Fields outside this inventory are not protected by encrypted-field
 modernization. Examples include account IDs, usernames, directory/profile

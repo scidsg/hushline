@@ -6,11 +6,13 @@ import pytest
 from hushline.config import (
     _JSON_CFG_PREFIX,
     _STRING_CFG_PREFIX,
+    ENCRYPTED_FIELD_WRITE_FORMAT,
     PASSWORD_HASH_REHASH_ON_AUTH_ENABLED,
     PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT,
     SPLASH_SCREEN_DURATION_MS,
     AliasMode,
     ConfigParseError,
+    EncryptedFieldWriteFormat,
     load_config,
 )
 
@@ -149,6 +151,26 @@ def test_password_hash_rehash_on_auth_flag_defaults_false_and_parses_true() -> N
     env[PASSWORD_HASH_REHASH_ON_AUTH_ENABLED] = "true"
     cfg = load_config(env)
     assert cfg[PASSWORD_HASH_REHASH_ON_AUTH_ENABLED] is True
+
+
+def test_encrypted_field_write_format_defaults_legacy_and_parses_envelope() -> None:
+    env = dict(**os.environ)
+    env.pop(ENCRYPTED_FIELD_WRITE_FORMAT, None)
+
+    cfg = load_config(env)
+    assert cfg[ENCRYPTED_FIELD_WRITE_FORMAT] == EncryptedFieldWriteFormat.LEGACY_FERNET
+
+    env[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_FERNET.value
+    cfg = load_config(env)
+    assert cfg[ENCRYPTED_FIELD_WRITE_FORMAT] == EncryptedFieldWriteFormat.ENVELOPE_FERNET
+
+
+def test_encrypted_field_write_format_rejects_unknown_value() -> None:
+    env = dict(**os.environ)
+    env[ENCRYPTED_FIELD_WRITE_FORMAT] = "unknown-format"
+
+    with pytest.raises(ConfigParseError, match="Not a valid value for EncryptedFieldWriteFormat"):
+        load_config(env)
 
 
 def test_splash_screen_duration_defaults_to_two_seconds_and_parses_override() -> None:
