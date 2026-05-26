@@ -300,6 +300,8 @@ Then enable new writes behind a feature flag or explicit config setting:
 ### Phase 5: Data Migration Runbook
 
 Only after phases 0 through 4 should Hush Line migrate existing rows.
+The operator runbook is drafted in
+[`ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md`](ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md).
 
 Migration requirements:
 
