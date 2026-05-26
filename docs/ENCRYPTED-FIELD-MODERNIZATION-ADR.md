@@ -60,6 +60,26 @@ visibility, message status, timestamps, field labels, notification preferences,
 SMTP port/encryption mode/sender, billing identifiers, and other relational or
 operational metadata unless future ADRs explicitly add them.
 
+Sensitive fields found during the Phase 1 inventory that are intentionally not
+encrypted by the current database-field wrapper and should remain visible for
+maintainer review:
+
+- `User.password_hash`: password verifier is hashed, not encrypted.
+- `User.smtp_port`, `User.smtp_encryption`, and `User.smtp_sender`: custom SMTP
+  metadata remains plaintext.
+- `User` Stripe billing identifiers and subscription metadata: billing
+  integration identifiers remain plaintext.
+- `User.account_category`, `User.country`, `User.city`, and `User.subdivision`:
+  profile and directory classification data remains plaintext.
+- `Username` username, display name, bio, and extra profile fields: public,
+  profile, and alias metadata remains plaintext.
+- `Username.embed_allowed_origins`: embed configuration metadata remains
+  plaintext.
+- `FieldDefinition` labels, field type, requirements, choices, and sort order:
+  custom form definitions remain plaintext.
+- `Message` status, timestamps, reply slug, and username link: message metadata
+  remains plaintext.
+
 ## In-Scope Attacker Capabilities
 
 Encrypted-field modernization is intended to reduce harm when an attacker can
