@@ -321,6 +321,9 @@ Migration requirements:
 After the envelope and migration path are proven, evaluate whether to switch new
 writes from Fernet to an AEAD such as ChaCha20-Poly1305 or AES-GCM.
 
+Status: completed in
+[`ENCRYPTED-FIELD-AEAD-EVALUATION.md`](ENCRYPTED-FIELD-AEAD-EVALUATION.md).
+
 The evaluation should include:
 
 - Dependency surface.
