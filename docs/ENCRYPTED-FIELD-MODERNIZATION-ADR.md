@@ -116,12 +116,23 @@ Operator rollout sequence:
 
 1. Deploy code with the dual reader while leaving
    `ENCRYPTED_FIELD_WRITE_FORMAT` unset or set to `legacy-fernet`.
-2. Verify normal encrypted-field reads and writes on legacy Fernet data.
-3. Set `ENCRYPTED_FIELD_WRITE_FORMAT=envelope-fernet` for new writes only.
-4. Verify newly updated settings, notification recipients, and encrypted custom
+2. Deploy migration `b2039e7c0a1d` to widen encrypted short-string columns
+   before any envelope write is allowed.
+3. Run the schema and ciphertext preflight and confirm it reports readiness.
+4. Set `ENCRYPTED_FIELD_WRITE_FORMAT=envelope-fernet` for new writes only after
+   the widening migration, migration tests, ciphertext fit tests, and preflight
+   verification have all passed.
+5. Verify newly updated settings, notification recipients, and encrypted custom
    field values read back successfully.
-5. Leave legacy Fernet read support deployed until a later migration issue
+6. Leave legacy Fernet read support deployed until a later migration issue
    verifies all existing rows and documents rollback completion.
+
+Envelope writes are release-blocked until the schema widening migration has
+completed. The application guard must fail closed when `envelope-fernet` is
+configured against legacy `VARCHAR(255)` encrypted columns. Downgrades from the
+widening migration must refuse to narrow columns when any stored envelope
+ciphertext exceeds the legacy limit, because truncating ciphertext would make
+protected data unrecoverable.
 
 Fields outside this inventory are not protected by encrypted-field
 modernization. Examples include account IDs, usernames, directory/profile

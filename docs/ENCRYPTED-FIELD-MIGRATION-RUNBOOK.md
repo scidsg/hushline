@@ -24,6 +24,9 @@ migrations.
 - Keep the dual reader deployed before, during, and after the migration.
 - Keep legacy Fernet read support enabled until migration completion and the
   rollback window are explicitly closed.
+- Do not enable envelope writes until the dual reader is deployed, migration
+  `b2039e7c0a1d` has widened encrypted short-string columns, the migration and
+  ciphertext fit tests have passed, and the executable preflight reports ready.
 - Do not drop, blank, truncate, or overwrite source ciphertext before the
   replacement value has been decrypted and verified for that row.
 - Do not assume a maintenance window. Run in small batches while normal reads
@@ -73,14 +76,18 @@ rollback plan proven in staging.
 
 1. Confirm the current release includes the dual reader and that legacy Fernet
    reads are still enabled.
-2. Confirm recent backups exist and a restore rehearsal has succeeded for the
+2. Confirm migration `b2039e7c0a1d` has widened encrypted short-string columns
+   and that migration and ciphertext fit tests passed for the release.
+3. Confirm recent backups exist and a restore rehearsal has succeeded for the
    same database version and key material.
-3. Run preflight checks and dry-run mode.
-4. Start with a small live batch. Increase batch size only after error-free
+4. Run preflight checks and dry-run mode.
+5. Enable envelope writes only after the schema/ciphertext preflight reports
+   ready.
+6. Start with a small live batch. Increase batch size only after error-free
    progress and normal application health are observed.
-5. Pause between batches when needed; do not hold long transactions across the
+7. Pause between batches when needed; do not hold long transactions across the
    full inventory.
-6. Keep the old reader deployed after completion until post-migration
+8. Keep the old reader deployed after completion until post-migration
    verification and rollback criteria have passed.
 
 ## Preflight Checks
@@ -254,7 +261,11 @@ operators investigate.
 Rollback requirements:
 
 1. Do not remove legacy Fernet read support.
-2. Do not run a destructive down migration against encrypted-field data.
+2. Do not run a destructive down migration against encrypted-field data. The
+   widening migration downgrade must fail if any value in a widened encrypted
+   short-string column is longer than 255 characters; operators must keep the
+   widened schema until oversized envelope ciphertext is removed or converted
+   through a maintainer-approved, per-row-verified path.
 3. If live migration has started, keep migrated target-envelope rows readable by
    the deployed dual reader.
 4. If helper code supports reverse rewriting, run it only after a restore
