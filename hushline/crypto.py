@@ -15,6 +15,8 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from flask import current_app, has_app_context
 from pysequoia import Cert, encrypt
+from sqlalchemy import inspect
+from sqlalchemy.exc import NoSuchTableError
 
 from hushline.config import ENCRYPTED_FIELD_WRITE_FORMAT, EncryptedFieldWriteFormat
 
@@ -32,6 +34,15 @@ _SCRYPT_PARAMS = {
 ENCRYPTED_FIELD_ENVELOPE_PREFIX = "hlfield:"
 ENCRYPTED_FIELD_ENVELOPE_VERSION = 1
 ENCRYPTED_FIELD_ENVELOPE_ALGORITHM = "fernet"
+ENCRYPTED_FIELD_LEGACY_MAX_LENGTH = 255
+ENCRYPTED_FIELD_ENVELOPE_READY_COLUMNS = (
+    ("users", "totp_secret"),
+    ("users", "email"),
+    ("users", "smtp_server"),
+    ("users", "smtp_username"),
+    ("users", "smtp_password"),
+    ("notification_recipients", "email"),
+)
 ENCRYPTED_FIELD_AEAD_ENVELOPE_VERSION = 2
 ENCRYPTED_FIELD_AEAD_ENVELOPE_ALGORITHM = "aes-256-gcm"
 ENCRYPTED_FIELD_AAD_SCHEMA = "hushline.encrypted-field.aad.v1"
@@ -76,6 +87,10 @@ class EncryptedFieldAEADEnvelope:
     algorithm: str
     nonce: bytes
     ciphertext: bytes
+
+
+class EncryptedFieldSchemaNotReadyError(RuntimeError):
+    pass
 
 
 ENCRYPTED_FIELD_CONTRACTS = (
@@ -203,6 +218,48 @@ def encrypted_field_write_format() -> EncryptedFieldWriteFormat:
         return configured
 
     return EncryptedFieldWriteFormat.parse(configured)
+
+
+def assert_encrypted_field_envelope_schema_ready() -> None:
+    if not has_app_context():
+        raise EncryptedFieldSchemaNotReadyError(
+            "ENCRYPTED_FIELD_WRITE_FORMAT=envelope-fernet requires "
+            "envelope-ready database schema, but the database schema cannot be "
+            "checked outside a Flask application context."
+        )
+
+    from hushline.db import db
+
+    inspector = inspect(db.engine)
+    constrained_columns: list[str] = []
+    missing_columns: list[str] = []
+    for table_name, column_name in ENCRYPTED_FIELD_ENVELOPE_READY_COLUMNS:
+        try:
+            columns = inspector.get_columns(table_name)
+        except NoSuchTableError:
+            missing_columns.append(f"{table_name}.{column_name}")
+            continue
+
+        column = next((column for column in columns if column["name"] == column_name), None)
+        if column is None:
+            missing_columns.append(f"{table_name}.{column_name}")
+            continue
+
+        length = getattr(column["type"], "length", None)
+        if length is not None and length <= ENCRYPTED_FIELD_LEGACY_MAX_LENGTH:
+            constrained_columns.append(f"{table_name}.{column_name}")
+
+    if constrained_columns or missing_columns:
+        details = []
+        if constrained_columns:
+            details.append("still constrained to 255 characters: " + ", ".join(constrained_columns))
+        if missing_columns:
+            details.append("missing: " + ", ".join(missing_columns))
+        raise EncryptedFieldSchemaNotReadyError(
+            "ENCRYPTED_FIELD_WRITE_FORMAT=envelope-fernet requires "
+            "envelope-ready database schema. Run migration b2039e7c0a1d before "
+            "enabling envelope writes; " + "; ".join(details) + "."
+        )
 
 
 def build_encrypted_field_aad(contract: EncryptedFieldContract, values: Mapping[str, int]) -> bytes:
@@ -412,6 +469,10 @@ def encrypt_field(
     if data is None:
         return None
 
+    write_format = encrypted_field_write_format()
+    if write_format == EncryptedFieldWriteFormat.ENVELOPE_FERNET:
+        assert_encrypted_field_envelope_schema_ready()
+
     fernet = get_encryption_key(scope, salt)
 
     # Check if data is already a bytes object
@@ -423,7 +484,7 @@ def encrypt_field(
     # that could be used to de-anonymize user-activity per the threat model.
     ciphertext = fernet.encrypt_at_time(data, current_time=0).decode()
 
-    if encrypted_field_write_format() == EncryptedFieldWriteFormat.ENVELOPE_FERNET:
+    if write_format == EncryptedFieldWriteFormat.ENVELOPE_FERNET:
         return serialize_encrypted_field_envelope(ciphertext)
 
     return ciphertext
