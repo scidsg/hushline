@@ -8,12 +8,14 @@ from typing import Any
 import pytest
 from cryptography.fernet import Fernet, InvalidToken
 from pytest_mock import MockFixture
+from sqlalchemy import select
 
 from hushline.config import ENCRYPTED_FIELD_WRITE_FORMAT, EncryptedFieldWriteFormat
 from hushline.crypto import (
     ENCRYPTED_FIELD_CONTRACT_BY_ID,
     ENCRYPTED_FIELD_CONTRACTS,
     ENCRYPTED_FIELD_ENVELOPE_PREFIX,
+    ENCRYPTED_FIELD_LEGACY_MAX_LENGTH,
     ENCRYPTED_FIELD_MUTABLE_AAD_NAMES,
     parse_encrypted_field_envelope,
     serialize_encrypted_field_envelope,
@@ -34,6 +36,11 @@ PGP_CIPHERTEXT = (
     "legacy encrypted custom field value\n"
     "-----END PGP MESSAGE-----"
 )
+LONG_EMAIL = f"{'u' * 64}@" f"{'d' * 63}." f"{'e' * 63}." f"{'f' * 61}"
+LONG_PGP_BLOCK = (
+    "-----BEGIN PGP PUBLIC KEY BLOCK-----\n\n" f"{'a' * 512}\n" "-----END PGP PUBLIC KEY BLOCK-----"
+)
+LONG_PGP_CIPHERTEXT = "-----BEGIN PGP MESSAGE-----\n\n" f"{'b' * 512}\n" "-----END PGP MESSAGE-----"
 
 
 @pytest.fixture()
@@ -96,6 +103,20 @@ USER_LEGACY_VALUES = {
 NOTIFICATION_RECIPIENT_LEGACY_VALUES = {
     "email": "recipient@example.com",
     "pgp_key": "recipient public pgp key",
+}
+
+USER_LONG_VALUES = {
+    "totp_secret": "A" * User.TOTP_SECRET_MAX_LENGTH,
+    "email": LONG_EMAIL,
+    "smtp_server": f"smtp.{'s' * 250}",
+    "smtp_username": "u" * User.SMTP_USERNAME_MAX_LENGTH,
+    "smtp_password": "p" * User.SMTP_PASSWORD_MAX_LENGTH,
+    "pgp_key": LONG_PGP_BLOCK,
+}
+
+NOTIFICATION_RECIPIENT_LONG_VALUES = {
+    "email": LONG_EMAIL,
+    "pgp_key": LONG_PGP_BLOCK,
 }
 
 
@@ -171,7 +192,7 @@ def _make_encrypted_field_value(user: User) -> FieldValue:
     )
 
 
-def _object_for_field(field: EncryptedField, user: User) -> object:
+def _object_for_field(field: EncryptedField, user: User) -> Any:
     if field.model is User:
         return user
     if field.model is NotificationRecipient:
@@ -189,6 +210,25 @@ def _plaintext_for_field(field: EncryptedField) -> str:
     if field.model is FieldValue:
         return PGP_CIPHERTEXT
     raise AssertionError(f"Unhandled encrypted field inventory entry: {field.id}")
+
+
+def _long_plaintext_for_field(field: EncryptedField) -> str:
+    if field.model is User:
+        return USER_LONG_VALUES[field.property_name]
+    if field.model is NotificationRecipient:
+        return NOTIFICATION_RECIPIENT_LONG_VALUES[field.property_name]
+    if field.model is FieldValue:
+        return LONG_PGP_CIPHERTEXT
+    raise AssertionError(f"Unhandled encrypted field inventory entry: {field.id}")
+
+
+def _stored_ciphertext(field: EncryptedField, row_id: int) -> str:
+    column = getattr(field.model, field.raw_attr)
+    ciphertext = db.session.scalar(
+        select(column).where(field.model.id == row_id),
+    )
+    assert isinstance(ciphertext, str)
+    return ciphertext
 
 
 def _encrypted_field_id(field: EncryptedField) -> str:
@@ -328,6 +368,34 @@ def test_configured_envelope_write_format_stores_one_envelope_through_properties
     assert parsed is not None
     assert not parsed.ciphertext.startswith(ENCRYPTED_FIELD_ENVELOPE_PREFIX)
     assert getattr(obj, field.property_name) == plaintext
+
+
+@pytest.mark.parametrize(
+    "field",
+    ENCRYPTED_FIELD_INVENTORY,
+    ids=_encrypted_field_id,
+)
+def test_envelope_write_round_trips_long_values_that_exceed_legacy_capacity(
+    app: Any, user: User, field: EncryptedField
+) -> None:
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_FERNET
+    plaintext = _long_plaintext_for_field(field)
+    obj = _object_for_field(field, user)
+    db.session.add(obj)
+
+    setattr(obj, field.property_name, plaintext)
+    db.session.flush()
+    row_id = obj.id
+    db.session.commit()
+
+    ciphertext = _stored_ciphertext(field, row_id)
+    assert ciphertext.startswith(ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+    assert len(ciphertext) > ENCRYPTED_FIELD_LEGACY_MAX_LENGTH
+
+    db.session.expire_all()
+    reloaded = db.session.get(field.model, row_id)
+    assert reloaded is not None
+    assert getattr(reloaded, field.property_name) == plaintext
 
 
 @pytest.mark.parametrize(
