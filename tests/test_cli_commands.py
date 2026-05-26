@@ -162,6 +162,31 @@ def test_encrypted_field_preflight_blocks_schema_that_is_not_envelope_ready(
     assert "schema is not envelope-ready" in result.output
 
 
+def test_encrypted_field_preflight_blocks_missing_schema_without_crashing(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = app.test_cli_runner()
+    monkeypatch.setattr(
+        "hushline.cli_encrypted_field.ENCRYPTED_FIELD_CONTRACTS",
+        (
+            crypto.EncryptedFieldContract(
+                id="User.missing_column",
+                domain="hushline.encrypted-field.users.missing_column",
+                table="users",
+                column="missing_column",
+                aad_fields=("user_id",),
+            ),
+        ),
+    )
+
+    result = runner.invoke(args=["encrypted-field", "preflight"], catch_exceptions=False)
+
+    assert result.exit_code == 1
+    assert "User.missing_column (users.missing_column): blocked (missing column)" in (result.output)
+    assert "Encrypted-field preflight readiness: blocked" in result.output
+    assert "schema is not envelope-ready" in result.output
+
+
 def test_password_hash_report_outputs_legacy_count_and_removal_gate(
     app: Flask, user: User, user2: User, user_password: str
 ) -> None:

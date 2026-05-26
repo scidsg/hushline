@@ -99,9 +99,19 @@ def _encrypted_field_column_capacity_reports() -> list[EncryptedFieldCapacityRep
 
 
 def _classify_encrypted_field_values() -> list[EncryptedFieldCiphertextReport]:
+    inspector = inspect(db.engine)
     reports: list[EncryptedFieldCiphertextReport] = []
     for contract in ENCRYPTED_FIELD_CONTRACTS:
-        table = db.metadata.tables[contract.table]
+        try:
+            columns = inspector.get_columns(contract.table)
+        except NoSuchTableError:
+            continue
+        if not any(candidate["name"] == contract.column for candidate in columns):
+            continue
+
+        table = db.metadata.tables.get(contract.table)
+        if table is None or contract.column not in table.c:
+            continue
         column = table.c[contract.column]
         legacy_fernet = 0
         envelope_fernet = 0
