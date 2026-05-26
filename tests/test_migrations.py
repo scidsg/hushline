@@ -11,9 +11,12 @@ import alembic.config
 import pytest
 from alembic import command
 from alembic.script import ScriptDirectory
+from cryptography.fernet import Fernet
 from flask import Flask
 from sqlalchemy import text
 
+from hushline import crypto
+from hushline.config import ENCRYPTED_FIELD_WRITE_FORMAT, EncryptedFieldWriteFormat
 from hushline.db import db, migrate
 
 REVISIONS_ROOT = Path(__file__).parent.parent / "migrations"
@@ -133,3 +136,58 @@ def test_encrypted_column_downgrade_refuses_oversized_ciphertext(app: Flask) -> 
 
     db.session.rollback()
     downgrade_guard_tester.check_value_preserved()
+
+
+def test_envelope_schema_readiness_columns_match_widening_migration() -> None:
+    mod = __import__(
+        "migrations.versions.b2039e7c0a1d_widen_encrypted_columns_for_envelopes",
+        fromlist=["ENCRYPTED_SHORT_STRING_COLUMNS"],
+    )
+
+    assert crypto.ENCRYPTED_FIELD_ENVELOPE_READY_COLUMNS == mod.ENCRYPTED_SHORT_STRING_COLUMNS
+
+
+def test_legacy_encrypted_field_writes_do_not_require_envelope_schema(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cfg = typing.cast(alembic.config.Config, migrate.get_config())
+    command.upgrade(cfg, "a4c8f2d9e713")
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.LEGACY_FERNET
+
+    encrypted = crypto.encrypt_field("secret")
+
+    assert encrypted is not None
+    assert not encrypted.startswith(crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+    assert crypto.decrypt_field(encrypted) == "secret"
+
+
+def test_envelope_encrypted_field_writes_reject_pre_migration_schema(app: Flask) -> None:
+    cfg = typing.cast(alembic.config.Config, migrate.get_config())
+    command.upgrade(cfg, "a4c8f2d9e713")
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_FERNET
+
+    with pytest.raises(crypto.EncryptedFieldSchemaNotReadyError) as excinfo:
+        crypto.encrypt_field("secret")
+
+    message = str(excinfo.value)
+    assert "Run migration b2039e7c0a1d" in message
+    for table_name, column_name in crypto.ENCRYPTED_FIELD_ENVELOPE_READY_COLUMNS:
+        assert f"{table_name}.{column_name}" in message
+
+
+def test_envelope_encrypted_field_writes_accept_widened_schema(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cfg = typing.cast(alembic.config.Config, migrate.get_config())
+    command.upgrade(cfg, "b2039e7c0a1d")
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_FERNET
+
+    encrypted = crypto.encrypt_field("secret")
+
+    assert encrypted is not None
+    assert encrypted.startswith(crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+    assert crypto.decrypt_field(encrypted) == "secret"
