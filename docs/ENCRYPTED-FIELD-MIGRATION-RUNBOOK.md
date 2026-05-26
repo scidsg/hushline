@@ -86,6 +86,23 @@ rollback plan proven in staging.
 ## Preflight Checks
 
 Preflight must be read-only and must fail closed before any write occurs.
+Run the executable preflight before enabling envelope writes:
+
+- Local: run `flask encrypted-field preflight` after seeded or synthetic
+  encrypted-field records exist and before changing
+  `ENCRYPTED_FIELD_WRITE_FORMAT`.
+- Staging: run the same command after deploying the dual-reader release and
+  completing the schema migration; save the output with staging rehearsal
+  evidence.
+- Production: run the same command after confirming backups and schema
+  migration completion, immediately before changing
+  `ENCRYPTED_FIELD_WRITE_FORMAT` to the target envelope format.
+
+The command reports the current Alembic revision, envelope-safe storage
+capacity for each encrypted-field contract, legacy Fernet, envelope Fernet,
+null/empty, and malformed counts, and whether every non-empty value decrypts
+through the deployed reader. It must not print plaintext or raw full
+ciphertext.
 
 - Confirm the deployed code can read legacy Fernet and the target envelope
   format.
