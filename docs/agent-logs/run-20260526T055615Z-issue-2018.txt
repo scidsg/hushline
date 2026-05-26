@@ -6796,3 +6796,22 @@ Coverage HTML written to dir /tmp/hushline-htmlcov
 
 
 ========== 1861 passed, 1 deselected, 1 xfailed in 411.82s (0:06:51) ===========
+Pruning old runner logs, keeping newest 10.
+[codex/daily-issue-2018 cef80f4a] chore: agent daily for #2018 (epic #2013)
+ 6 files changed, 7127 insertions(+), 474 deletions(-)
+ create mode 100644 docs/ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md
+ delete mode 100644 docs/agent-logs/run-20260523T014653Z-issue-1998.txt
+ create mode 100644 docs/agent-logs/run-20260526T055615Z-issue-2018.txt
+ create mode 100644 tests/test_encrypted_field_migration_runbook.py
+Remote branch 'codex/daily-issue-2018' does not exist; creating it with a standard push.
+remote: 
+remote: Create a pull request for 'codex/daily-issue-2018' on GitHub by visiting:        
+remote:      https://github.com/scidsg/hushline/pull/new/codex/daily-issue-2018        
+remote: 
+To github.com:scidsg/hushline.git
+ * [new branch]        codex/daily-issue-2018 -> codex/daily-issue-2018
+branch 'codex/daily-issue-2018' set up to track 'origin/codex/daily-issue-2018'.
+Opened PR: https://github.com/scidsg/hushline/pull/2031
+==> Mark issue #2018 as Ready for Review
+Opened coverage gap issue: https://github.com/scidsg/hushline/issues/2032
+==> Add coverage gap issue #2032 to Agent Eligible
