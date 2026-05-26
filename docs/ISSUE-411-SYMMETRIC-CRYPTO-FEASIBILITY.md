@@ -343,6 +343,15 @@ as part of field encryption.
 Status: completed in
 [`PASSWORD-HASH-MODERNIZATION-EVALUATION.md`](PASSWORD-HASH-MODERNIZATION-EVALUATION.md).
 
+### Phase 8: Separate Operational Key Management Work
+
+Operational key management should remain separate from encrypted-field envelope
+modernization because it affects deployment, recovery, operator workflows, and
+multi-instance startup behavior.
+
+Status: completed in
+[`OPERATIONAL-KEY-MANAGEMENT-DESIGN.md`](OPERATIONAL-KEY-MANAGEMENT-DESIGN.md).
+
 ## Migration Safety Requirements
 
 Any implementation that touches encrypted production data must satisfy these
@@ -370,7 +379,7 @@ requirements before merge:
 6. Write and test a resumable encrypted-field migration runbook.
 7. Evaluate AEAD algorithms for future new writes.
 8. Evaluate password hash modernization separately.
-9. Evaluate operational key management separately.
+9. Completed: evaluate operational key management separately.
 
 ## Recommendation
 
