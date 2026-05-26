@@ -1,10 +1,13 @@
+import binascii
+import json
 import os
 import secrets
 from base64 import urlsafe_b64decode, urlsafe_b64encode
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from flask import current_app
 from pysequoia import Cert, encrypt
@@ -20,6 +23,16 @@ _SCRYPT_PARAMS = {
     "r": 8,  # Block size parameter.
     "p": 1,  # Parallelization parameter.
 }
+ENCRYPTED_FIELD_ENVELOPE_PREFIX = "hlfield:"
+ENCRYPTED_FIELD_ENVELOPE_VERSION = 1
+ENCRYPTED_FIELD_ENVELOPE_ALGORITHM = "fernet"
+
+
+@dataclass(frozen=True)
+class EncryptedFieldEnvelope:
+    version: int
+    algorithm: str
+    ciphertext: str
 
 
 def generate_salt() -> str:
@@ -64,6 +77,59 @@ def get_encryption_key(scope: bytes | str | None = None, salt: str | None = None
     return Fernet(encryption_key)
 
 
+def serialize_encrypted_field_envelope(
+    ciphertext: str,
+    version: int = ENCRYPTED_FIELD_ENVELOPE_VERSION,
+    algorithm: str = ENCRYPTED_FIELD_ENVELOPE_ALGORITHM,
+) -> str:
+    if version != ENCRYPTED_FIELD_ENVELOPE_VERSION:
+        raise ValueError("Unsupported encrypted field envelope version")
+    if algorithm != ENCRYPTED_FIELD_ENVELOPE_ALGORITHM:
+        raise ValueError("Unsupported encrypted field envelope algorithm")
+    if not ciphertext:
+        raise ValueError("Encrypted field envelope ciphertext is required")
+
+    payload = json.dumps(
+        {"alg": algorithm, "ct": ciphertext, "v": version},
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+    encoded_payload = urlsafe_b64encode(payload).decode().rstrip("=")
+    return f"{ENCRYPTED_FIELD_ENVELOPE_PREFIX}{encoded_payload}"
+
+
+def parse_encrypted_field_envelope(data: str) -> EncryptedFieldEnvelope | None:
+    if not data.startswith(ENCRYPTED_FIELD_ENVELOPE_PREFIX):
+        return None
+
+    encoded_payload = data[len(ENCRYPTED_FIELD_ENVELOPE_PREFIX) :]
+    try:
+        payload = urlsafe_b64decode(encoded_payload + "=" * (-len(encoded_payload) % 4))
+        envelope = json.loads(payload.decode())
+    except (binascii.Error, TypeError, ValueError, UnicodeDecodeError) as exc:
+        raise InvalidToken from exc
+
+    if not isinstance(envelope, dict):
+        raise InvalidToken
+
+    version = envelope.get("v")
+    algorithm = envelope.get("alg")
+    ciphertext = envelope.get("ct")
+    if (
+        version != ENCRYPTED_FIELD_ENVELOPE_VERSION
+        or algorithm != ENCRYPTED_FIELD_ENVELOPE_ALGORITHM
+        or not isinstance(ciphertext, str)
+        or not ciphertext
+    ):
+        raise InvalidToken
+
+    return EncryptedFieldEnvelope(
+        version=version,
+        algorithm=algorithm,
+        ciphertext=ciphertext,
+    )
+
+
 def encrypt_field(
     data: bytes | str | None, scope: bytes | str | None = None, salt: str | None = None
 ) -> str | None:
@@ -95,6 +161,10 @@ def decrypt_field(
     """
     if data is None:
         return None
+
+    envelope = parse_encrypted_field_envelope(data)
+    if envelope is not None:
+        data = envelope.ciphertext
 
     fernet = get_encryption_key(scope, salt)
     return fernet.decrypt(data.encode()).decode()
