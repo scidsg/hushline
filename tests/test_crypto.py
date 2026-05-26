@@ -96,6 +96,68 @@ def test_encrypted_field_envelope_roundtrips_wrapped_fernet(
     assert crypto.decrypt_field(envelope) == "secret"
 
 
+def test_encrypted_field_aad_is_canonical_and_stable() -> None:
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["NotificationRecipient.email"]
+
+    aad = crypto.build_encrypted_field_aad(
+        contract,
+        {"user_id": 7, "notification_recipient_id": 3},
+    )
+
+    assert json.loads(aad.decode()) == {
+        "alg": crypto.ENCRYPTED_FIELD_AEAD_ENVELOPE_ALGORITHM,
+        "column": "email",
+        "domain": "hushline.encrypted-field.notification_recipients.email",
+        "row": {"notification_recipient_id": 3, "user_id": 7},
+        "schema": crypto.ENCRYPTED_FIELD_AAD_SCHEMA,
+        "table": "notification_recipients",
+        "v": crypto.ENCRYPTED_FIELD_AEAD_ENVELOPE_VERSION,
+    }
+    assert aad == crypto.build_encrypted_field_aad(
+        contract,
+        {"notification_recipient_id": 3, "user_id": 7},
+    )
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        {"username": 1},
+        {"email": 1},
+        {"display_name": 1},
+        {"profile_text": 1},
+        {"message_text": 1},
+    ],
+)
+def test_encrypted_field_aad_rejects_mutable_context(values: dict[str, int]) -> None:
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
+
+    with pytest.raises(ValueError, match="Mutable values are not allowed"):
+        crypto.build_encrypted_field_aad(contract, values)
+
+
+def test_encrypted_field_aead_prototype_requires_expected_domain_and_aad(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    email_contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
+    pgp_key_contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.pgp_key"]
+
+    envelope = crypto.encrypt_field_aead_prototype(
+        "secret",
+        email_contract,
+        {"user_id": 1},
+    )
+
+    assert envelope is not None
+    assert envelope.startswith(crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+    assert crypto.decrypt_field_aead_prototype(envelope, email_contract, {"user_id": 1}) == "secret"
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field_aead_prototype(envelope, pgp_key_contract, {"user_id": 1})
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field_aead_prototype(envelope, email_contract, {"user_id": 2})
+
+
 def test_legacy_fernet_token_has_no_envelope(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
 
