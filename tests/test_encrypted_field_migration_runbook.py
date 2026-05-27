@@ -3,6 +3,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RUNBOOK = REPO_ROOT / "docs" / "ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md"
 REHEARSAL_TEMPLATE = REPO_ROOT / "docs" / "ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md"
+READINESS_REPORT = REPO_ROOT / "docs" / "ENCRYPTED-FIELD-DEPLOYMENT-READINESS.md"
 
 
 def _runbook_text() -> str:
@@ -16,6 +17,8 @@ def test_encrypted_field_migration_runbook_exists_and_is_linked() -> None:
 
     assert RUNBOOK.is_file()
     assert REHEARSAL_TEMPLATE.is_file()
+    assert READINESS_REPORT.is_file()
+    assert "ENCRYPTED-FIELD-DEPLOYMENT-READINESS.md" in docs_index
     assert "ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md" in docs_index
     assert "ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md" in docs_index
     assert "ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md" in _runbook_text()
@@ -122,4 +125,35 @@ def test_encrypted_field_rehearsal_template_forbids_sensitive_values() -> None:
     )
 
     for phrase in forbidden_value_phrases:
+        assert phrase in content
+
+
+def test_encrypted_field_deployment_readiness_report_captures_release_gate() -> None:
+    content = " ".join(READINESS_REPORT.read_text(encoding="utf-8").lower().split())
+
+    required_phrases = (
+        "not ready for production encrypted-field write-format enablement "
+        "or live data migration",
+        "does not enable production envelope writes",
+        "does not start a production migration",
+        "does not close #2013",
+        "a completed restored-backup or staging rehearsal report is reviewed",
+        "flask encrypted-field release-gate",
+        "no pending review comments, requested changes, failing checks, "
+        "or pending required checks",
+        "keep `encrypted_field_write_format` unset or set to `legacy-fernet`",
+        "phase 12",
+        "phase 17",
+        "#2063",
+        "#2076",
+        "downgrade, rollback, preflight, release-gate, dry-run, live-batch",
+        "deployment controls remain current after the final branch merge",
+        "legacy fernet reads remain supported by the deployed dual reader",
+        "does not require a full-table rewrite transaction or planned downtime",
+        "source ciphertext is not overwritten until the candidate replacement decrypts",
+        "rollback preserves the old reader",
+        "coverage-gap, runner-log, or release-gate",
+    )
+
+    for phrase in required_phrases:
         assert phrase in content

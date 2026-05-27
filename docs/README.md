@@ -25,6 +25,7 @@ This directory now includes a GitHub-first mirror of the public Hush Line Librar
 - [Flask-WTF/WTForms modernization strategy](./FLASK-WTF-WTFORMS-MODERNIZATION-STRATEGY.md)
 - [Python 3.13 upgrade readiness](./PYTHON-3.13-UPGRADE-READINESS.md)
 - [Public-record provenance roadmap](./PUBLIC-RECORD-PROVENANCE-ROADMAP.md)
+- [Encrypted-field deployment readiness report](./ENCRYPTED-FIELD-DEPLOYMENT-READINESS.md)
 - [Encrypted-field migration runbook](./ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md)
 - [Encrypted-field rehearsal evidence report template](./ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md)
 - [Encrypted-field AEAD evaluation](./ENCRYPTED-FIELD-AEAD-EVALUATION.md)
