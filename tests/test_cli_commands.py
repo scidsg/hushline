@@ -1,3 +1,4 @@
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -107,7 +108,7 @@ def test_encrypted_field_preflight_reports_ready_without_sensitive_values(
     assert "User.totp_secret (users.totp_secret): ready" in result.output
     assert "User.email (users.email): legacy Fernet: 0; envelope Fernet: 1" in result.output
     assert "User.totp_secret (users.totp_secret): legacy Fernet: 1" in result.output
-    assert "malformed: 0; decryptable: yes" in result.output
+    assert "malformed: 0; decrypt failures: 0; decryptable: yes" in result.output
     assert "Encrypted-field preflight readiness: ready" in result.output
     assert "preflight legacy secret" not in result.output
     assert "preflight envelope secret" not in result.output
@@ -117,6 +118,93 @@ def test_encrypted_field_preflight_reports_ready_without_sensitive_values(
     db.session.refresh(user)
     assert user._totp_secret == legacy_ciphertext
     assert user._email == envelope_ciphertext
+
+
+def test_encrypted_field_preflight_json_reports_deterministic_redacted_artifact(
+    app: Flask, user: User, user2: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    runner = app.test_cli_runner()
+    first_plaintext = "json preflight legacy secret"
+    second_plaintext = "json preflight envelope secret"
+
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.LEGACY_FERNET
+    user._totp_secret = crypto.encrypt_field(first_plaintext)
+    legacy_ciphertext = user._totp_secret
+    assert legacy_ciphertext is not None
+
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_FERNET
+    user2._totp_secret = crypto.encrypt_field(second_plaintext)
+    envelope_ciphertext = user2._totp_secret
+    assert envelope_ciphertext is not None
+    db.session.commit()
+
+    result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "preflight",
+            "--output",
+            "json",
+            "--contract",
+            "User.totp_secret",
+            "--batch-size",
+            "1",
+        ]
+    )
+
+    assert result.exit_code == 0
+    report = json.loads(result.output)
+    assert list(report) == [
+        "alembic_revision",
+        "blocked_reasons",
+        "contract_set",
+        "contracts",
+        "helper_version",
+        "report_type",
+        "scan",
+        "schema_revision",
+        "status",
+        "totals",
+    ]
+    assert report["schema_revision"] == 1
+    assert report["contract_set"] == {
+        "contract_ids": ["User.totp_secret"],
+        "version": "encrypted-field-contracts-v1",
+    }
+    assert report["scan"] == {"batch_size": 1}
+    assert report["status"] == "ready"
+    assert report["blocked_reasons"] == []
+    assert report["totals"] == {
+        "decrypt_failures": 0,
+        "envelope_fernet": 1,
+        "legacy_fernet": 1,
+        "malformed": 0,
+        "null_empty": 0,
+        "rows_scanned": 2,
+        "rows_total": 2,
+    }
+    assert report["contracts"] == [
+        {
+            "capacity": {"detail": "unbounded", "ready": True},
+            "column": "totp_secret",
+            "contract_id": "User.totp_secret",
+            "failures": {"decrypt_failures": 0, "malformed": 0},
+            "rows": {
+                "envelope_fernet": 1,
+                "legacy_fernet": 1,
+                "null_empty": 0,
+                "scanned": 2,
+                "total": 2,
+            },
+            "status": "ready",
+            "table": "users",
+        }
+    ]
+    assert first_plaintext not in result.output
+    assert second_plaintext not in result.output
+    assert legacy_ciphertext not in result.output
+    assert envelope_ciphertext not in result.output
+    assert "User.email" not in result.output
 
 
 def test_encrypted_field_preflight_blocks_malformed_ciphertext(
@@ -131,10 +219,83 @@ def test_encrypted_field_preflight_blocks_malformed_ciphertext(
 
     assert result.exit_code == 1
     assert "User.totp_secret (users.totp_secret): legacy Fernet: 0" in result.output
-    assert "malformed: 1; decryptable: no" in result.output
+    assert "malformed: 1; decrypt failures: 1; decryptable: no" in result.output
     assert "Encrypted-field preflight readiness: blocked" in result.output
     assert "malformed ciphertext values are present" in result.output
     assert "not-a-valid-fernet-token" not in result.output
+
+
+def test_encrypted_field_preflight_json_blocks_malformed_without_sensitive_values(
+    app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    runner = app.test_cli_runner()
+    malformed_ciphertext = "not-a-valid-fernet-token"
+    user._totp_secret = malformed_ciphertext
+    db.session.commit()
+
+    result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "preflight",
+            "--output",
+            "json",
+            "--contract",
+            "User.totp_secret",
+        ]
+    )
+
+    assert result.exit_code == 1
+    report = json.loads(result.output)
+    assert report["status"] == "blocked"
+    assert report["blocked_reasons"] == [
+        {"code": "malformed_ciphertext", "contract_ids": ["User.totp_secret"]},
+        {"code": "decryptability_failure", "contract_ids": ["User.totp_secret"]},
+    ]
+    assert report["totals"]["malformed"] == 1
+    assert report["totals"]["decrypt_failures"] == 1
+    assert report["contracts"][0]["failures"] == {
+        "decrypt_failures": 1,
+        "malformed": 1,
+    }
+    assert malformed_ciphertext not in result.output
+
+
+def test_encrypted_field_preflight_json_blocks_decrypt_failures_without_malformed_count(
+    app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    runner = app.test_cli_runner()
+    undecryptable_envelope = crypto.serialize_encrypted_field_envelope(
+        "gAAAAABnot-a-decryptable-fernet-token"
+    )
+    user._totp_secret = undecryptable_envelope
+    db.session.commit()
+
+    result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "preflight",
+            "--output",
+            "json",
+            "--contract",
+            "User.totp_secret",
+        ]
+    )
+
+    assert result.exit_code == 1
+    report = json.loads(result.output)
+    assert report["status"] == "blocked"
+    assert report["blocked_reasons"] == [
+        {"code": "decryptability_failure", "contract_ids": ["User.totp_secret"]}
+    ]
+    assert report["totals"]["malformed"] == 0
+    assert report["totals"]["decrypt_failures"] == 1
+    assert report["contracts"][0]["failures"] == {
+        "decrypt_failures": 1,
+        "malformed": 0,
+    }
+    assert undecryptable_envelope not in result.output
 
 
 def test_encrypted_field_preflight_blocks_schema_that_is_not_envelope_ready(
@@ -143,7 +304,7 @@ def test_encrypted_field_preflight_blocks_schema_that_is_not_envelope_ready(
     runner = app.test_cli_runner()
     monkeypatch.setattr(
         "hushline.cli_encrypted_field._encrypted_field_column_capacity_reports",
-        lambda: [
+        lambda contracts=None: [
             EncryptedFieldCapacityReport(
                 contract_id="User.email",
                 table="users",
@@ -154,7 +315,7 @@ def test_encrypted_field_preflight_blocks_schema_that_is_not_envelope_ready(
         ],
     )
 
-    result = runner.invoke(args=["encrypted-field", "preflight"])
+    result = runner.invoke(args=["encrypted-field", "preflight", "--contract", "User.email"])
 
     assert result.exit_code == 1
     assert "User.email (users.email): blocked (length 255)" in result.output
@@ -185,6 +346,51 @@ def test_encrypted_field_preflight_blocks_missing_schema_without_crashing(
     assert "User.missing_column (users.missing_column): blocked (missing column)" in (result.output)
     assert "Encrypted-field preflight readiness: blocked" in result.output
     assert "schema is not envelope-ready" in result.output
+
+
+def test_encrypted_field_preflight_json_blocks_missing_schema_without_crashing(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = app.test_cli_runner()
+    monkeypatch.setattr(
+        "hushline.cli_encrypted_field.ENCRYPTED_FIELD_CONTRACTS",
+        (
+            crypto.EncryptedFieldContract(
+                id="User.missing_column",
+                domain="hushline.encrypted-field.users.missing_column",
+                table="users",
+                column="missing_column",
+                aad_fields=("user_id",),
+            ),
+        ),
+    )
+
+    result = runner.invoke(
+        args=["encrypted-field", "preflight", "--output", "json"],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 1
+    report = json.loads(result.output)
+    assert report["status"] == "blocked"
+    assert report["blocked_reasons"] == [
+        {"code": "missing_schema", "contract_ids": ["User.missing_column"]}
+    ]
+    assert report["contracts"][0] == {
+        "capacity": {"detail": "missing column", "ready": False},
+        "column": "missing_column",
+        "contract_id": "User.missing_column",
+        "failures": {"decrypt_failures": 0, "malformed": 0},
+        "rows": {
+            "envelope_fernet": 0,
+            "legacy_fernet": 0,
+            "null_empty": 0,
+            "scanned": 0,
+            "total": 0,
+        },
+        "status": "blocked",
+        "table": "users",
+    }
 
 
 def _next_resume_token(output: str) -> str:
