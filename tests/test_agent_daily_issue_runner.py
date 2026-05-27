@@ -110,6 +110,32 @@ printf '%s\\n' "$CODEX_STATUS_IDLE_CHECK_STATE_FILE"
     assert expected_state_file.parent == tmp_path
 
 
+def test_idle_status_state_file_does_not_wedge_lock_cleanup(tmp_path: Path) -> None:
+    lock_dir = tmp_path / "hushline-lock"
+    expected_state_file = tmp_path / ".hushline-lock.codex-status-last-check"
+
+    shell_script = f"""
+HUSHLINE_DAILY_RUNNER_LOCK_DIR={shlex.quote(str(lock_dir))}
+source {shlex.quote(str(RUNNER_SCRIPT))}
+acquire_runner_lock
+record_codex_idle_status_check_attempt
+release_runner_lock
+acquire_runner_lock
+printf 'held=%s state_exists=%s lock_dir_exists=%s\\n' \\
+  "$RUNNER_LOCK_HELD" \\
+  "$([[ -f {shlex.quote(str(expected_state_file))} ]] && printf yes || printf no)" \\
+  "$([[ -d {shlex.quote(str(lock_dir))} ]] && printf yes || printf no)"
+release_runner_lock
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "held=1 state_exists=yes lock_dir_exists=yes"
+    assert expected_state_file.exists()
+    assert not lock_dir.exists()
+
+
 def test_wait_for_codex_status_credit_window_proceeds_when_5h_has_capacity() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
@@ -307,6 +333,52 @@ test -s "$CODEX_STATUS_IDLE_CHECK_STATE_FILE"
     assert result.returncode == 0, result.stderr
     assert "Hourly idle Codex /status check due" in result.stdout
     assert "Codex /status: primary 300m window 51% used; 49% remaining" in result.stdout
+
+
+def test_record_idle_codex_status_check_attempt_refuses_symlink_state_file(
+    tmp_path: Path,
+) -> None:
+    state_file = tmp_path / "last-check"
+    victim_file = tmp_path / "victim"
+    victim_file.write_text("original\n", encoding="utf-8")
+    state_file.symlink_to(victim_file)
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_IDLE_CHECK_STATE_FILE={shlex.quote(str(state_file))}
+set +e
+record_codex_idle_status_check_attempt
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=1" in result.stdout
+    assert "refusing to write idle Codex status state file at unsafe path" in result.stdout
+    assert victim_file.read_text(encoding="utf-8") == "original\n"
+
+
+def test_idle_codex_status_check_treats_fifo_state_file_as_due(tmp_path: Path) -> None:
+    state_file = tmp_path / "last-check.fifo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_CHECK_ENABLED=1
+CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS=3600
+CODEX_STATUS_IDLE_CHECK_STATE_FILE={shlex.quote(str(state_file))}
+mkfifo "$CODEX_STATUS_IDLE_CHECK_STATE_FILE"
+if codex_idle_status_check_due; then
+  printf 'due\\n'
+else
+  printf 'not-due\\n'
+fi
+"""
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "due"
 
 
 def test_count_open_bot_prs_excluding_heads_fails_closed_when_pr_query_fails() -> None:
@@ -1531,6 +1603,37 @@ coverage_gap_snapshot_from_log {shlex.quote(str(check_log))}
     assert "hushline/email.py" in result.stdout
     assert "hushline/routes/profile.py" in result.stdout
     assert "TOTAL                                            8881     36    99%" in result.stdout
+
+
+def test_coverage_gap_snapshot_from_log_uses_latest_table_when_latest_has_no_misses(
+    tmp_path: Path,
+) -> None:
+    check_log = tmp_path / "check.log"
+    check_log.write_text(
+        """
+older run
+Name                                             Stmts   Miss  Cover
+--------------------------------------------------------------------
+hushline/old.py                                    10      1    90%
+TOTAL                                              10      1    90%
+latest run
+Name                                             Stmts   Miss  Cover
+--------------------------------------------------------------------
+hushline/new.py                                    22      0   100%
+TOTAL                                              22      0   100%
+""",
+        encoding="utf-8",
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+coverage_gap_snapshot_from_log {shlex.quote(str(check_log))}
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == ""
 
 
 def test_open_coverage_gap_issue_after_pr_creates_agent_eligible_issue(

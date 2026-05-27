@@ -331,7 +331,7 @@ codex_idle_status_check_due() {
   fi
 
   now_epoch="$(date +%s)"
-  if [[ -r "$CODEX_STATUS_IDLE_CHECK_STATE_FILE" ]]; then
+  if [[ -f "$CODEX_STATUS_IDLE_CHECK_STATE_FILE" && ! -L "$CODEX_STATUS_IDLE_CHECK_STATE_FILE" && -r "$CODEX_STATUS_IDLE_CHECK_STATE_FILE" ]]; then
     last_epoch="$(tr -cd '0-9' < "$CODEX_STATUS_IDLE_CHECK_STATE_FILE")"
     if [[ -n "$last_epoch" ]] && (( now_epoch - last_epoch < CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS )); then
       return 1
@@ -342,8 +342,22 @@ codex_idle_status_check_due() {
 }
 
 record_codex_idle_status_check_attempt() {
-  mkdir -p "$(dirname "$CODEX_STATUS_IDLE_CHECK_STATE_FILE")"
-  date +%s > "$CODEX_STATUS_IDLE_CHECK_STATE_FILE"
+  local state_dir=""
+  local state_tmp_file=""
+
+  state_dir="$(dirname "$CODEX_STATUS_IDLE_CHECK_STATE_FILE")"
+  mkdir -p "$state_dir"
+  chmod 700 "$state_dir" 2>/dev/null || true
+
+  if [[ -e "$CODEX_STATUS_IDLE_CHECK_STATE_FILE" && ( -L "$CODEX_STATUS_IDLE_CHECK_STATE_FILE" || ! -f "$CODEX_STATUS_IDLE_CHECK_STATE_FILE" ) ]]; then
+    runner_status "Warning: refusing to write idle Codex status state file at unsafe path: $CODEX_STATUS_IDLE_CHECK_STATE_FILE"
+    return 1
+  fi
+
+  state_tmp_file="$(mktemp "${CODEX_STATUS_IDLE_CHECK_STATE_FILE}.tmp.XXXXXX")"
+  chmod 600 "$state_tmp_file"
+  date +%s > "$state_tmp_file"
+  mv -f "$state_tmp_file" "$CODEX_STATUS_IDLE_CHECK_STATE_FILE"
 }
 
 check_codex_status_once_for_idle_run() {
@@ -2842,11 +2856,11 @@ coverage_gap_snapshot_from_log() {
     }
     in_table && /^TOTAL[[:space:]]+/ {
       current_total = $0
+      final_header = current_header
+      final_total = current_total
+      final_count = current_count
+      delete final_rows
       if (current_count > 0) {
-        final_header = current_header
-        final_total = current_total
-        final_count = current_count
-        delete final_rows
         for (i = 1; i <= current_count; i += 1) {
           final_rows[i] = current_rows[i]
         }
