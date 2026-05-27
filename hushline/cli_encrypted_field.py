@@ -34,6 +34,8 @@ from hushline.db import db
 
 ENCRYPTED_FIELD_MIGRATION_HELPER_VERSION = "encrypted-field-migration-v1"
 ENCRYPTED_FIELD_MIGRATION_TARGET_FORMAT = EncryptedFieldWriteFormat.ENVELOPE_FERNET
+ENCRYPTED_FIELD_PREFLIGHT_SCHEMA_REVISION = 1
+ENCRYPTED_FIELD_CONTRACT_SET_VERSION = "encrypted-field-contracts-v1"
 
 
 @dataclass(frozen=True)
@@ -50,6 +52,8 @@ class EncryptedFieldCiphertextReport:
     contract_id: str
     table: str
     column: str
+    row_count: int
+    scanned_rows: int
     legacy_fernet: int
     envelope_fernet: int
     null_empty: int
@@ -59,6 +63,17 @@ class EncryptedFieldCiphertextReport:
     @property
     def decryptable(self) -> bool:
         return self.decrypt_failures == 0
+
+
+@dataclass
+class EncryptedFieldCiphertextCounts:
+    row_count: int = 0
+    scanned_rows: int = 0
+    legacy_fernet: int = 0
+    envelope_fernet: int = 0
+    null_empty: int = 0
+    malformed: int = 0
+    decrypt_failures: int = 0
 
 
 @dataclass(frozen=True)
@@ -118,10 +133,12 @@ def _current_alembic_revision() -> str:
     return ", ".join(heads) if heads else "not stamped"
 
 
-def _encrypted_field_column_capacity_reports() -> list[EncryptedFieldCapacityReport]:
+def _encrypted_field_column_capacity_reports(
+    contracts: tuple[EncryptedFieldContract, ...] | None = None,
+) -> list[EncryptedFieldCapacityReport]:
     inspector = inspect(db.engine)
     reports: list[EncryptedFieldCapacityReport] = []
-    for contract in ENCRYPTED_FIELD_CONTRACTS:
+    for contract in contracts or tuple(ENCRYPTED_FIELD_CONTRACTS):
         try:
             columns = inspector.get_columns(contract.table)
         except NoSuchTableError:
@@ -636,10 +653,56 @@ def _print_migration_reports(  # noqa: PLR0913
         click.echo(f"Next resume token: {_serialize_resume_state(next_resume_state)}")
 
 
-def _classify_encrypted_field_values() -> list[EncryptedFieldCiphertextReport]:
+def _classify_preflight_value(value: Any) -> str:
+    if value is None or value == "":
+        return "null_empty"
+    if not isinstance(value, str):
+        return "malformed"
+
+    is_envelope = value.startswith(ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+    if is_envelope:
+        try:
+            parse_encrypted_field_envelope(value)
+        except InvalidToken:
+            return "malformed"
+
+    try:
+        decrypt_field(value)
+    except InvalidToken:
+        return "decrypt_failure" if is_envelope else "malformed"
+    except (UnicodeDecodeError, ValueError):
+        return "decrypt_failure"
+
+    return "envelope_fernet" if is_envelope else "legacy_fernet"
+
+
+def _record_preflight_classification(
+    counts: EncryptedFieldCiphertextCounts,
+    classification: str,
+) -> None:
+    counts.row_count += 1
+    counts.scanned_rows += 1
+    if classification == "null_empty":
+        counts.null_empty += 1
+    elif classification == "malformed":
+        counts.malformed += 1
+        counts.decrypt_failures += 1
+    elif classification == "decrypt_failure":
+        counts.decrypt_failures += 1
+    elif classification == "envelope_fernet":
+        counts.envelope_fernet += 1
+    else:
+        counts.legacy_fernet += 1
+
+
+def _classify_encrypted_field_values(
+    *,
+    contracts: tuple[EncryptedFieldContract, ...],
+    batch_size: int,
+) -> list[EncryptedFieldCiphertextReport]:
     inspector = inspect(db.engine)
     reports: list[EncryptedFieldCiphertextReport] = []
-    for contract in ENCRYPTED_FIELD_CONTRACTS:
+    for contract in contracts:
         try:
             columns = inspector.get_columns(contract.table)
         except NoSuchTableError:
@@ -651,51 +714,170 @@ def _classify_encrypted_field_values() -> list[EncryptedFieldCiphertextReport]:
         if table is None or contract.column not in table.c:
             continue
         column = table.c[contract.column]
-        legacy_fernet = 0
-        envelope_fernet = 0
-        null_empty = 0
-        malformed = 0
-        decrypt_failures = 0
+        counts = EncryptedFieldCiphertextCounts()
+        last_primary_key = 0
 
-        for value in db.session.execute(db.select(column).select_from(table)).scalars():
-            if value is None or value == "":
-                null_empty += 1
-                continue
+        while True:
+            rows = (
+                db.session.execute(
+                    db.select(table.c.id, column)
+                    .select_from(table)
+                    .where(table.c.id > last_primary_key)
+                    .order_by(table.c.id.asc())
+                    .limit(batch_size)
+                )
+                .mappings()
+                .all()
+            )
+            if not rows:
+                break
 
-            if not isinstance(value, str):
-                malformed += 1
-                decrypt_failures += 1
-                continue
-
-            try:
-                decrypt_field(value)
-            except InvalidToken:
-                malformed += 1
-                decrypt_failures += 1
-                continue
-            except (UnicodeDecodeError, ValueError):
-                decrypt_failures += 1
-                continue
-
-            if value.startswith(ENCRYPTED_FIELD_ENVELOPE_PREFIX):
-                envelope_fernet += 1
-            else:
-                legacy_fernet += 1
+            for row in rows:
+                last_primary_key = row["id"]
+                _record_preflight_classification(
+                    counts,
+                    _classify_preflight_value(row[contract.column]),
+                )
 
         reports.append(
             EncryptedFieldCiphertextReport(
                 contract_id=contract.id,
                 table=contract.table,
                 column=contract.column,
-                legacy_fernet=legacy_fernet,
-                envelope_fernet=envelope_fernet,
-                null_empty=null_empty,
-                malformed=malformed,
-                decrypt_failures=decrypt_failures,
+                row_count=counts.row_count,
+                scanned_rows=counts.scanned_rows,
+                legacy_fernet=counts.legacy_fernet,
+                envelope_fernet=counts.envelope_fernet,
+                null_empty=counts.null_empty,
+                malformed=counts.malformed,
+                decrypt_failures=counts.decrypt_failures,
             )
         )
 
     return reports
+
+
+def _preflight_blocked_reason_data(
+    *,
+    capacity_reports: list[EncryptedFieldCapacityReport],
+    ciphertext_reports: list[EncryptedFieldCiphertextReport],
+) -> list[dict[str, Any]]:
+    reasons: list[dict[str, Any]] = []
+    missing_schema = [
+        report.contract_id for report in capacity_reports if report.detail.startswith("missing ")
+    ]
+    blocked_capacity = [
+        report.contract_id
+        for report in capacity_reports
+        if not report.ready and report.contract_id not in missing_schema
+    ]
+    malformed_reports = [report.contract_id for report in ciphertext_reports if report.malformed]
+    decrypt_failure_reports = [
+        report.contract_id for report in ciphertext_reports if not report.decryptable
+    ]
+    if missing_schema:
+        reasons.append({"code": "missing_schema", "contract_ids": missing_schema})
+    if blocked_capacity:
+        reasons.append({"code": "schema_not_envelope_ready", "contract_ids": blocked_capacity})
+    if malformed_reports:
+        reasons.append({"code": "malformed_ciphertext", "contract_ids": malformed_reports})
+    if decrypt_failure_reports:
+        reasons.append({"code": "decryptability_failure", "contract_ids": decrypt_failure_reports})
+    return reasons
+
+
+def _preflight_human_reason_phrases(reasons: list[dict[str, Any]]) -> list[str]:
+    phrases = []
+    reason_codes = {str(reason["code"]) for reason in reasons}
+    if "missing_schema" in reason_codes or "schema_not_envelope_ready" in reason_codes:
+        phrases.append("schema is not envelope-ready")
+    if "malformed_ciphertext" in reason_codes:
+        phrases.append("malformed ciphertext values are present")
+    if "decryptability_failure" in reason_codes:
+        phrases.append("one or more non-empty values failed decryptability checks")
+    return phrases
+
+
+def _encrypted_field_preflight_report(
+    *,
+    contracts: tuple[EncryptedFieldContract, ...],
+    capacity_reports: list[EncryptedFieldCapacityReport],
+    ciphertext_reports: list[EncryptedFieldCiphertextReport],
+    alembic_revision: str,
+    batch_size: int,
+) -> dict[str, Any]:
+    capacity_by_contract_id = {report.contract_id: report for report in capacity_reports}
+    ciphertext_by_contract_id = {report.contract_id: report for report in ciphertext_reports}
+    blocked_reasons = _preflight_blocked_reason_data(
+        capacity_reports=capacity_reports,
+        ciphertext_reports=ciphertext_reports,
+    )
+    contract_reports = []
+    for contract in contracts:
+        capacity = capacity_by_contract_id[contract.id]
+        ciphertext_report = ciphertext_by_contract_id.get(contract.id)
+        row_counts = {
+            "envelope_fernet": 0,
+            "legacy_fernet": 0,
+            "null_empty": 0,
+            "scanned": 0,
+            "total": 0,
+        }
+        failures = {"decrypt_failures": 0, "malformed": 0}
+        if ciphertext_report is not None:
+            row_counts = {
+                "envelope_fernet": ciphertext_report.envelope_fernet,
+                "legacy_fernet": ciphertext_report.legacy_fernet,
+                "null_empty": ciphertext_report.null_empty,
+                "scanned": ciphertext_report.scanned_rows,
+                "total": ciphertext_report.row_count,
+            }
+            failures = {
+                "decrypt_failures": ciphertext_report.decrypt_failures,
+                "malformed": ciphertext_report.malformed,
+            }
+        contract_ready = (
+            capacity.ready and failures["decrypt_failures"] == 0 and failures["malformed"] == 0
+        )
+        contract_reports.append(
+            {
+                "capacity": {
+                    "detail": capacity.detail,
+                    "ready": capacity.ready,
+                },
+                "column": contract.column,
+                "contract_id": contract.id,
+                "failures": failures,
+                "rows": row_counts,
+                "status": "ready" if contract_ready else "blocked",
+                "table": contract.table,
+            }
+        )
+
+    totals = {
+        "decrypt_failures": sum(report.decrypt_failures for report in ciphertext_reports),
+        "envelope_fernet": sum(report.envelope_fernet for report in ciphertext_reports),
+        "legacy_fernet": sum(report.legacy_fernet for report in ciphertext_reports),
+        "malformed": sum(report.malformed for report in ciphertext_reports),
+        "null_empty": sum(report.null_empty for report in ciphertext_reports),
+        "rows_scanned": sum(report.scanned_rows for report in ciphertext_reports),
+        "rows_total": sum(report.row_count for report in ciphertext_reports),
+    }
+    return {
+        "alembic_revision": alembic_revision,
+        "blocked_reasons": blocked_reasons,
+        "contract_set": {
+            "contract_ids": [contract.id for contract in contracts],
+            "version": ENCRYPTED_FIELD_CONTRACT_SET_VERSION,
+        },
+        "contracts": contract_reports,
+        "helper_version": ENCRYPTED_FIELD_MIGRATION_HELPER_VERSION,
+        "report_type": "encrypted-field-preflight",
+        "scan": {"batch_size": batch_size},
+        "schema_revision": ENCRYPTED_FIELD_PREFLIGHT_SCHEMA_REVISION,
+        "status": "blocked" if blocked_reasons else "ready",
+        "totals": totals,
+    }
 
 
 def register_encrypted_field_commands(app: Flask) -> None:
@@ -705,12 +887,53 @@ def register_encrypted_field_commands(app: Flask) -> None:
     )
 
     @encrypted_field_cli.command("preflight")
-    def preflight() -> None:
+    @click.option(
+        "--output",
+        "output_format",
+        type=click.Choice(("human", "json")),
+        default="human",
+        show_default=True,
+        help="Output format.",
+    )
+    @click.option(
+        "--contract",
+        "contract_ids",
+        multiple=True,
+        help="Limit the run to one encrypted-field contract ID. May be repeated.",
+    )
+    @click.option(
+        "--batch-size",
+        type=click.IntRange(min=1),
+        default=1000,
+        show_default=True,
+        help="Maximum rows to fetch per scan query.",
+    )
+    def preflight(output_format: str, contract_ids: tuple[str, ...], batch_size: int) -> None:
         """Report encrypted-field envelope rollout readiness without mutating data."""
-        capacity_reports = _encrypted_field_column_capacity_reports()
-        ciphertext_reports = _classify_encrypted_field_values()
+        contracts = _selected_contracts(contract_ids)
+        capacity_reports = _encrypted_field_column_capacity_reports(contracts)
+        ciphertext_reports = _classify_encrypted_field_values(
+            contracts=contracts,
+            batch_size=batch_size,
+        )
+        alembic_revision = _current_alembic_revision()
+        preflight_report = _encrypted_field_preflight_report(
+            contracts=contracts,
+            capacity_reports=capacity_reports,
+            ciphertext_reports=ciphertext_reports,
+            alembic_revision=alembic_revision,
+            batch_size=batch_size,
+        )
+        blocked_reasons = preflight_report["blocked_reasons"]
 
-        click.echo(f"Current Alembic revision: {_current_alembic_revision()}")
+        if output_format == "json":
+            click.echo(json.dumps(preflight_report, indent=2, sort_keys=True))
+            if blocked_reasons:
+                raise click.exceptions.Exit(1)
+            return
+
+        click.echo(f"Current Alembic revision: {alembic_revision}")
+        click.echo(f"Scan batch size: {batch_size}")
         click.echo("Storage column capacity:")
         for report in capacity_reports:
             click.echo(
@@ -729,24 +952,12 @@ def register_encrypted_field_commands(app: Flask) -> None:
                 f"envelope Fernet: {ciphertext_report.envelope_fernet}; "
                 f"null/empty: {ciphertext_report.null_empty}; "
                 f"malformed: {ciphertext_report.malformed}; "
+                f"decrypt failures: {ciphertext_report.decrypt_failures}; "
                 f"decryptable: {'yes' if ciphertext_report.decryptable else 'no'}"
             )
 
-        blocked_capacity = [report.contract_id for report in capacity_reports if not report.ready]
-        malformed_reports = [
-            report.contract_id for report in ciphertext_reports if report.malformed
-        ]
-        decrypt_failure_reports = [
-            report.contract_id for report in ciphertext_reports if not report.decryptable
-        ]
-        if blocked_capacity or malformed_reports or decrypt_failure_reports:
-            reasons = []
-            if blocked_capacity:
-                reasons.append("schema is not envelope-ready")
-            if malformed_reports:
-                reasons.append("malformed ciphertext values are present")
-            if decrypt_failure_reports:
-                reasons.append("one or more non-empty values failed decryptability checks")
+        if blocked_reasons:
+            reasons = _preflight_human_reason_phrases(blocked_reasons)
             raise click.ClickException(
                 "Encrypted-field preflight readiness: blocked (" + "; ".join(reasons) + ")"
             )
