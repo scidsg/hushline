@@ -18,6 +18,10 @@ from sqlalchemy import text
 from hushline import crypto
 from hushline.config import ENCRYPTED_FIELD_WRITE_FORMAT, EncryptedFieldWriteFormat
 from hushline.db import db, migrate
+from tests.migrations.revision_b2039e7c0a1d import (
+    ENCRYPTED_COLUMNS,
+    LEGACY_FERNET_KEY,
+)
 
 REVISIONS_ROOT = Path(__file__).parent.parent / "migrations"
 assert REVISIONS_ROOT.exists()
@@ -119,7 +123,15 @@ def test_double_upgrade(revision: str, app: Flask) -> None:
     command.upgrade(cfg, revision)
 
 
-def test_encrypted_column_downgrade_refuses_oversized_ciphertext(app: Flask) -> None:
+@pytest.mark.parametrize(
+    ("table_name", "column_name"),
+    crypto.ENCRYPTED_FIELD_ENVELOPE_READY_COLUMNS,
+)
+def test_encrypted_column_downgrade_refuses_oversized_ciphertext(
+    table_name: str,
+    column_name: str,
+    app: Flask,
+) -> None:
     cfg = typing.cast(alembic.config.Config, migrate.get_config())
     command.upgrade(cfg, "b2039e7c0a1d")
 
@@ -127,11 +139,12 @@ def test_encrypted_column_downgrade_refuses_oversized_ciphertext(app: Flask) -> 
         "tests.migrations.revision_b2039e7c0a1d",
         fromlist=["DowngradeGuardTester"],
     )
-    downgrade_guard_tester = mod.DowngradeGuardTester()
+    downgrade_guard_tester = mod.DowngradeGuardTester(table_name, column_name)
     downgrade_guard_tester.load_data()
     db.session.close()
 
-    with pytest.raises(RuntimeError, match=r"users\.email.*exceed 255 characters"):
+    expected_column = rf"{table_name}\.{column_name}"
+    with pytest.raises(RuntimeError, match=expected_column + r".*exceed 255 characters"):
         command.downgrade(cfg, "-1")
 
     db.session.rollback()
@@ -144,7 +157,40 @@ def test_envelope_schema_readiness_columns_match_widening_migration() -> None:
         fromlist=["ENCRYPTED_SHORT_STRING_COLUMNS"],
     )
 
+    assert ENCRYPTED_COLUMNS == mod.ENCRYPTED_SHORT_STRING_COLUMNS
     assert crypto.ENCRYPTED_FIELD_ENVELOPE_READY_COLUMNS == mod.ENCRYPTED_SHORT_STRING_COLUMNS
+
+
+def test_encrypted_field_preflight_tracks_widening_migration_readiness(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cfg = typing.cast(alembic.config.Config, migrate.get_config())
+    command.upgrade(cfg, "a4c8f2d9e713")
+    monkeypatch.setenv("ENCRYPTION_KEY", LEGACY_FERNET_KEY)
+    runner = app.test_cli_runner()
+
+    pre_migration_result = runner.invoke(args=["encrypted-field", "preflight"])
+
+    assert pre_migration_result.exit_code == 1
+    assert "Current Alembic revision: a4c8f2d9e713" in pre_migration_result.output
+    for table_name, column_name in crypto.ENCRYPTED_FIELD_ENVELOPE_READY_COLUMNS:
+        assert f"({table_name}.{column_name}): blocked (length 255)" in (
+            pre_migration_result.output
+        )
+    assert "Encrypted-field preflight readiness: blocked" in pre_migration_result.output
+    assert "schema is not envelope-ready" in pre_migration_result.output
+
+    db.session.close()
+    command.upgrade(cfg, "b2039e7c0a1d")
+
+    post_migration_result = runner.invoke(args=["encrypted-field", "preflight"])
+
+    assert post_migration_result.exit_code == 0
+    assert "Current Alembic revision: b2039e7c0a1d" in post_migration_result.output
+    for table_name, column_name in crypto.ENCRYPTED_FIELD_ENVELOPE_READY_COLUMNS:
+        assert f"({table_name}.{column_name}): ready (unbounded)" in (post_migration_result.output)
+    assert "Encrypted-field preflight readiness: ready" in post_migration_result.output
 
 
 def test_legacy_encrypted_field_writes_do_not_require_envelope_schema(
@@ -191,3 +237,34 @@ def test_envelope_encrypted_field_writes_accept_widened_schema(
     assert encrypted is not None
     assert encrypted.startswith(crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX)
     assert crypto.decrypt_field(encrypted) == "secret"
+
+
+def test_downgrade_preserves_mixed_ciphertexts_readable_by_dual_reader(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cfg = typing.cast(alembic.config.Config, migrate.get_config())
+    command.upgrade(cfg, "b2039e7c0a1d")
+    monkeypatch.setenv("ENCRYPTION_KEY", LEGACY_FERNET_KEY)
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_FERNET
+
+    mod = __import__(
+        "tests.migrations.revision_b2039e7c0a1d",
+        fromlist=["RollbackReadabilityTester"],
+    )
+    rollback_tester = mod.RollbackReadabilityTester()
+    rollback_tester.load_data()
+    db.session.close()
+
+    command.downgrade(cfg, "-1")
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.LEGACY_FERNET
+
+    for encrypted_value in rollback_tester.encrypted_values():
+        decrypted_value = crypto.decrypt_field(encrypted_value)
+        assert decrypted_value is not None
+        assert decrypted_value.startswith(("legacy", "recipient", "safe", "smtp.legacy"))
+
+    post_rollback_ciphertext = crypto.encrypt_field("post-rollback secret")
+    assert post_rollback_ciphertext is not None
+    assert not post_rollback_ciphertext.startswith(crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+    assert crypto.decrypt_field(post_rollback_ciphertext) == "post-rollback secret"
