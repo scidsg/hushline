@@ -124,8 +124,10 @@ Before production AEAD writes exist, maintainers may approve compatibility-only
 work such as the dual reader, widened storage, preflight checks, rehearsal
 evidence, and transitional `envelope-fernet` writes for newly updated values.
 They may also approve a compatibility rewrite of existing ciphertext only after
-the migration helper and release gates above are complete, but that rewrite must
-remain labeled transitional and must not close the domain-bound encryption goal.
+the migration helper and the checkable production release gate in
+[`ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md`](ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md)
+are complete, but that rewrite must remain labeled transitional and must not
+close the domain-bound encryption goal.
 
 The following remain blocked until a domain-bound AEAD write path is implemented
 and separately approved for production: claims of production AAD guarantees,
@@ -319,3 +321,7 @@ changes.
   The epic Definition of Done must keep compatibility milestones separate from
   production AAD guarantees and require production AEAD before existing
   ciphertext migration is called best-in-class or domain-bound.
+- Epic #2013 production compatibility milestones must link to the
+  [`ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md`](ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md)
+  production release gate before any production write-format configuration
+  change.

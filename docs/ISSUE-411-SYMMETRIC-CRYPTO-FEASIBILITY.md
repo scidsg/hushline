@@ -304,7 +304,9 @@ The operator runbook is drafted in
 [`ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md`](ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md).
 Production enablement is blocked until maintainers review a completed
 [`ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md`](ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md)
-artifact for restored-backup or staging validation.
+artifact for restored-backup or staging validation and the
+[`ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md`](ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md)
+production release gate reports ready.
 
 Migration requirements:
 
@@ -318,6 +320,8 @@ Migration requirements:
 - Backup and restore rehearsal before production.
 - Reviewed rehearsal evidence covering restore, preflight, dry-run, live batch,
   interruption/resume, rollback, and operator signoff.
+- A passing `flask encrypted-field release-gate` result before production
+  write-format configuration changes.
 - Observable migration progress.
 - Clear rollback plan that preserves the old reader.
 

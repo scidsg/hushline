@@ -31,6 +31,7 @@ def test_encrypted_field_modernization_adr_aligns_epic_completion_language() -> 
         "epic #2013 is not complete in the domain-bound encryption sense",
         "compatibility milestones separate from production aad guarantees",
         "require production aead before existing ciphertext migration is called best-in-class",
+        "production release gate before any production write-format configuration change",
     )
 
     for phrase in required_phrases:

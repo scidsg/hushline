@@ -30,6 +30,7 @@ def test_encrypted_field_migration_runbook_covers_required_execution_paths() -> 
         "### Local",
         "### Staging",
         "### Production",
+        "## Production Release Gate",
         "## Preflight Checks",
         "## Dry-Run Behavior",
         "## Small-Batch Execution",
@@ -43,7 +44,9 @@ def test_encrypted_field_migration_runbook_covers_required_execution_paths() -> 
 
     for phrase in (
         "flask encrypted-field preflight --output json",
+        "flask encrypted-field release-gate",
         "JSON release-gate artifact",
+        "production-release-gate.json",
         "--contract CONTRACT_ID",
         "--batch-size N",
     ):
@@ -64,6 +67,10 @@ def test_encrypted_field_migration_runbook_locks_security_guardrails() -> None:
         "compatibility evidence rather than production aad evidence",
         "not cryptographic aad binding",
         "completed rehearsal evidence report is reviewed",
+        "before changing `encrypted_field_write_format` in production",
+        "preflight artifact must cover every encrypted-field contract",
+        "zero planned downtime",
+        "new_writes_can_revert_to_legacy",
         "stop before live mode if any non-empty row cannot be classified or decrypted",
         "dry-run mode must execute the same selection, classification, decryption",
         "skip rows already in the target envelope format after verifying",
@@ -91,6 +98,8 @@ def test_encrypted_field_rehearsal_template_captures_required_evidence() -> None
         "rollback approach rehearsed",
         "operator signoff",
         "production enablement recommendation",
+        "production release-gate manifest location",
+        "maintainer approval reference",
     )
 
     for phrase in required_phrases:
