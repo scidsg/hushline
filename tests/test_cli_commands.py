@@ -187,6 +187,170 @@ def test_encrypted_field_preflight_blocks_missing_schema_without_crashing(
     assert "schema is not envelope-ready" in result.output
 
 
+def _next_resume_token(output: str) -> str:
+    for line in output.splitlines():
+        if line.startswith("Next resume token: "):
+            token = line.removeprefix("Next resume token: ")
+            assert token != "complete"
+            return token
+    raise AssertionError("Missing next resume token")
+
+
+def test_encrypted_field_migrate_dry_run_reports_without_writing(
+    app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    runner = app.test_cli_runner()
+    plaintext = "dry-run migration secret"
+    user._totp_secret = crypto.encrypt_field(plaintext)
+    original_ciphertext = user._totp_secret
+    assert original_ciphertext is not None
+    db.session.commit()
+
+    result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "migrate",
+            "--dry-run",
+            "--contract",
+            "User.totp_secret",
+            "--batch-size",
+            "10",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert "Mode: dry-run" in result.output
+    assert "User.totp_secret (users.totp_secret): status: pending" in result.output
+    assert "examined: 1; eligible: 1" in result.output
+    assert "would migrate: 1; migrated: 0" in result.output
+    assert "remaining rows: 1" in result.output
+    assert plaintext not in result.output
+    assert original_ciphertext not in result.output
+    db.session.refresh(user)
+    assert user._totp_secret == original_ciphertext
+
+
+def test_encrypted_field_migrate_live_rewrites_and_verifies_post_write(
+    app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    runner = app.test_cli_runner()
+    plaintext = "live migration secret"
+    user._totp_secret = crypto.encrypt_field(plaintext)
+    original_ciphertext = user._totp_secret
+    assert original_ciphertext is not None
+    db.session.commit()
+
+    result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "migrate",
+            "--live",
+            "--contract",
+            "User.totp_secret",
+            "--batch-size",
+            "10",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert "Mode: live" in result.output
+    assert "would migrate: 0; migrated: 1" in result.output
+    assert "verification failures: 0; update failures: 0; remaining rows: 0" in result.output
+    assert "Next resume token: complete" in result.output
+    assert plaintext not in result.output
+    assert original_ciphertext not in result.output
+    db.session.refresh(user)
+    assert user._totp_secret is not None
+    assert user._totp_secret.startswith(crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+    assert user.totp_secret == plaintext
+
+
+def test_encrypted_field_migrate_live_resumes_after_interruption(
+    app: Flask, user: User, user2: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    runner = app.test_cli_runner()
+    user._totp_secret = crypto.encrypt_field("first resumable secret")
+    user2._totp_secret = crypto.encrypt_field("second resumable secret")
+    db.session.commit()
+
+    first_result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "migrate",
+            "--live",
+            "--contract",
+            "User.totp_secret",
+            "--batch-size",
+            "1",
+        ]
+    )
+
+    assert first_result.exit_code == 0
+    assert "migrated: 1" in first_result.output
+    assert "remaining rows: 1" in first_result.output
+    resume_token = _next_resume_token(first_result.output)
+    db.session.refresh(user)
+    db.session.refresh(user2)
+    assert user._totp_secret is not None
+    assert user._totp_secret.startswith(crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+    assert user2._totp_secret is not None
+    assert not user2._totp_secret.startswith(crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+
+    second_result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "migrate",
+            "--live",
+            "--contract",
+            "User.totp_secret",
+            "--batch-size",
+            "1",
+            "--resume-token",
+            resume_token,
+        ]
+    )
+
+    assert second_result.exit_code == 0
+    assert "migrated: 1" in second_result.output
+    assert "remaining rows: 0" in second_result.output
+    assert "Next resume token: complete" in second_result.output
+    db.session.refresh(user)
+    db.session.refresh(user2)
+    assert user.totp_secret == "first resumable secret"
+    assert user2.totp_secret == "second resumable secret"
+    assert user2._totp_secret is not None
+    assert user2._totp_secret.startswith(crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+
+
+def test_encrypted_field_migrate_failure_report_omits_sensitive_values(
+    app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    runner = app.test_cli_runner()
+    malformed_ciphertext = "not-a-valid-fernet-token"
+    user._totp_secret = malformed_ciphertext
+    db.session.commit()
+
+    result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "migrate",
+            "--dry-run",
+            "--contract",
+            "User.totp_secret",
+        ]
+    )
+
+    assert result.exit_code == 1
+    assert "Encrypted-field migration failed: contract=User.totp_secret" in result.output
+    assert "phase=decrypt" in result.output
+    assert "source_left_unchanged=yes" in result.output
+    assert malformed_ciphertext not in result.output
+
+
 def test_password_hash_report_outputs_legacy_count_and_removal_gate(
     app: Flask, user: User, user2: User, user_password: str
 ) -> None:

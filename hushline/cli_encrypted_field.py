@@ -1,20 +1,39 @@
+import base64
+import binascii
+import json
+import time
+from contextlib import contextmanager
 from dataclasses import dataclass
+from typing import Any
 
 import click
 from alembic.runtime.migration import MigrationContext
 from cryptography.fernet import InvalidToken
-from flask import Flask
+from flask import Flask, current_app
 from flask.cli import AppGroup
 from sqlalchemy import inspect
 from sqlalchemy.exc import NoSuchTableError
 
+from hushline.config import (
+    ENCRYPTED_FIELD_WRITE_FORMAT,
+    ConfigParseError,
+    EncryptedFieldWriteFormat,
+)
 from hushline.crypto import (
     ENCRYPTED_FIELD_CONTRACTS,
     ENCRYPTED_FIELD_ENVELOPE_PREFIX,
     ENCRYPTED_FIELD_LEGACY_MAX_LENGTH,
+    EncryptedFieldContract,
+    EncryptedFieldSchemaNotReadyError,
+    build_encrypted_field_aad,
     decrypt_field,
+    encrypt_field,
+    parse_encrypted_field_envelope,
 )
 from hushline.db import db
+
+ENCRYPTED_FIELD_MIGRATION_HELPER_VERSION = "encrypted-field-migration-v1"
+ENCRYPTED_FIELD_MIGRATION_TARGET_FORMAT = EncryptedFieldWriteFormat.ENVELOPE_FERNET
 
 
 @dataclass(frozen=True)
@@ -40,6 +59,57 @@ class EncryptedFieldCiphertextReport:
     @property
     def decryptable(self) -> bool:
         return self.decrypt_failures == 0
+
+
+@dataclass(frozen=True)
+class EncryptedFieldMigrationFailure:
+    contract_id: str
+    primary_key: int | None
+    phase: str
+    error_class: str
+    source_left_unchanged: bool = True
+
+    def safe_message(self) -> str:
+        pk = "unknown" if self.primary_key is None else str(self.primary_key)
+        unchanged = "yes" if self.source_left_unchanged else "unknown"
+        return (
+            f"contract={self.contract_id} primary_key={pk} phase={self.phase} "
+            f"error={self.error_class} source_left_unchanged={unchanged}"
+        )
+
+
+@dataclass
+class EncryptedFieldMigrationContractReport:
+    contract_id: str
+    table: str
+    column: str
+    examined_rows: int = 0
+    eligible_rows: int = 0
+    would_migrate_rows: int = 0
+    migrated_rows: int = 0
+    already_migrated_rows: int = 0
+    skipped_rows: int = 0
+    decrypt_failures: int = 0
+    verification_failures: int = 0
+    update_failures: int = 0
+    last_processed_primary_key: int | None = None
+    remaining_rows: int = 0
+
+
+@dataclass(frozen=True)
+class EncryptedFieldMigrationResumeState:
+    helper_version: str
+    target_format: str
+    batch_size: int
+    contract_ids: tuple[str, ...]
+    contract_id: str
+    last_primary_key: int
+
+
+class EncryptedFieldMigrationError(RuntimeError):
+    def __init__(self, failure: EncryptedFieldMigrationFailure) -> None:
+        super().__init__(failure.safe_message())
+        self.failure = failure
 
 
 def _current_alembic_revision() -> str:
@@ -96,6 +166,474 @@ def _encrypted_field_column_capacity_reports() -> list[EncryptedFieldCapacityRep
         )
 
     return reports
+
+
+def _encoded_json(data: dict[str, Any]) -> str:
+    payload = json.dumps(data, separators=(",", ":"), sort_keys=True).encode()
+    return base64.urlsafe_b64encode(payload).decode().rstrip("=")
+
+
+def _decoded_json(token: str) -> dict[str, Any]:
+    try:
+        payload = base64.urlsafe_b64decode(token + "=" * (-len(token) % 4))
+        data = json.loads(payload.decode())
+    except (binascii.Error, ValueError, TypeError, UnicodeDecodeError) as exc:
+        raise click.ClickException("Invalid encrypted-field migration resume token") from exc
+    if not isinstance(data, dict):
+        raise click.ClickException("Invalid encrypted-field migration resume token")
+    return data
+
+
+def _serialize_resume_state(state: EncryptedFieldMigrationResumeState) -> str:
+    return _encoded_json(
+        {
+            "batch_size": state.batch_size,
+            "contract_id": state.contract_id,
+            "contract_ids": list(state.contract_ids),
+            "helper_version": state.helper_version,
+            "last_primary_key": state.last_primary_key,
+            "target_format": state.target_format,
+        }
+    )
+
+
+def _parse_resume_state(
+    token: str,
+    *,
+    batch_size: int,
+    contract_ids: tuple[str, ...],
+    target_format: EncryptedFieldWriteFormat,
+) -> EncryptedFieldMigrationResumeState:
+    data = _decoded_json(token)
+    try:
+        state = EncryptedFieldMigrationResumeState(
+            helper_version=str(data.get("helper_version", "")),
+            target_format=str(data.get("target_format", "")),
+            batch_size=int(data.get("batch_size", 0)),
+            contract_ids=tuple(data.get("contract_ids", ())),
+            contract_id=str(data.get("contract_id", "")),
+            last_primary_key=int(data.get("last_primary_key", 0)),
+        )
+    except (TypeError, ValueError) as exc:
+        raise click.ClickException("Invalid encrypted-field migration resume token") from exc
+    expected_target = target_format.value
+    if state.helper_version != ENCRYPTED_FIELD_MIGRATION_HELPER_VERSION:
+        raise click.ClickException("Resume token helper version does not match this helper")
+    if state.target_format != expected_target:
+        raise click.ClickException("Resume token target format does not match this run")
+    if state.batch_size != batch_size:
+        raise click.ClickException("Resume token batch size does not match this run")
+    if state.contract_ids != contract_ids:
+        raise click.ClickException("Resume token contract set does not match this run")
+    if state.contract_id not in contract_ids:
+        raise click.ClickException("Resume token contract is not in this run")
+    if state.last_primary_key < 1:
+        raise click.ClickException("Resume token last primary key is invalid")
+    return state
+
+
+def _contract_by_id(contract_id: str) -> EncryptedFieldContract:
+    for contract in ENCRYPTED_FIELD_CONTRACTS:
+        if contract.id == contract_id:
+            return contract
+    raise click.ClickException(f"Unknown encrypted-field contract: {contract_id}")
+
+
+def _selected_contracts(contract_ids: tuple[str, ...]) -> tuple[EncryptedFieldContract, ...]:
+    if not contract_ids:
+        return tuple(ENCRYPTED_FIELD_CONTRACTS)
+    return tuple(_contract_by_id(contract_id) for contract_id in contract_ids)
+
+
+def _table_for_contract(contract: EncryptedFieldContract) -> Any:
+    table = db.metadata.tables.get(contract.table)
+    if table is None or "id" not in table.c or contract.column not in table.c:
+        raise EncryptedFieldMigrationError(
+            EncryptedFieldMigrationFailure(
+                contract_id=contract.id,
+                primary_key=None,
+                phase="schema",
+                error_class="ContractMismatch",
+            )
+        )
+    return table
+
+
+def _aad_values_for_row(contract: EncryptedFieldContract, row: Any) -> dict[str, int]:
+    values: dict[str, int] = {}
+    for aad_field in contract.aad_fields:
+        if (
+            aad_field == "user_id"
+            and contract.table == "users"
+            or aad_field == "notification_recipient_id"
+            or aad_field == "field_value_id"
+        ):
+            value = row["id"]
+        elif aad_field in row:
+            value = row[aad_field]
+        else:
+            raise EncryptedFieldMigrationError(
+                EncryptedFieldMigrationFailure(
+                    contract_id=contract.id,
+                    primary_key=row.get("id", None),
+                    phase="contract",
+                    error_class="MissingAADField",
+                )
+            )
+        values[aad_field] = value
+    build_encrypted_field_aad(contract, values)
+    return values
+
+
+def _classify_migration_value(value: Any) -> str:
+    if value is None or value == "":
+        return "null_empty"
+    if not isinstance(value, str):
+        return "malformed"
+    if value.startswith(ENCRYPTED_FIELD_ENVELOPE_PREFIX):
+        parse_encrypted_field_envelope(value)
+        return "envelope_fernet"
+    return "legacy_fernet"
+
+
+@contextmanager
+def _target_write_format(format_: EncryptedFieldWriteFormat) -> Any:
+    previous = current_app.config.get(ENCRYPTED_FIELD_WRITE_FORMAT)
+    current_app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = format_
+    try:
+        yield
+    finally:
+        current_app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = previous
+
+
+def _build_target_ciphertext(
+    plaintext: str,
+    target_format: EncryptedFieldWriteFormat,
+) -> str:
+    with _target_write_format(target_format):
+        ciphertext = encrypt_field(plaintext)
+    if not isinstance(ciphertext, str):
+        raise ValueError("Target encrypted-field writer returned an empty value")
+    return ciphertext
+
+
+def _remaining_legacy_rows(contract: EncryptedFieldContract) -> int:
+    table = _table_for_contract(contract)
+    column = table.c[contract.column]
+    count = db.session.scalar(
+        db.select(db.func.count())
+        .select_from(table)
+        .where(column.is_not(None))
+        .where(column != "")
+        .where(column.not_like(f"{ENCRYPTED_FIELD_ENVELOPE_PREFIX}%"))
+    )
+    return int(count or 0)
+
+
+def _verify_ciphertext_plaintext(
+    *,
+    contract: EncryptedFieldContract,
+    primary_key: int,
+    phase: str,
+    ciphertext: str,
+    expected_plaintext: str,
+) -> None:
+    try:
+        plaintext = decrypt_field(ciphertext)
+    except (InvalidToken, UnicodeDecodeError, ValueError) as exc:
+        raise EncryptedFieldMigrationError(
+            EncryptedFieldMigrationFailure(
+                contract_id=contract.id,
+                primary_key=primary_key,
+                phase=phase,
+                error_class=exc.__class__.__name__,
+            )
+        ) from exc
+    if plaintext != expected_plaintext:
+        raise EncryptedFieldMigrationError(
+            EncryptedFieldMigrationFailure(
+                contract_id=contract.id,
+                primary_key=primary_key,
+                phase=phase,
+                error_class="PlaintextMismatch",
+            )
+        )
+
+
+def _process_migration_row(
+    *,
+    contract: EncryptedFieldContract,
+    row: Any,
+    dry_run: bool,
+    target_format: EncryptedFieldWriteFormat,
+    report: EncryptedFieldMigrationContractReport,
+) -> bool:
+    table = _table_for_contract(contract)
+    column = table.c[contract.column]
+    primary_key = row["id"]
+    value = row[contract.column]
+    report.examined_rows += 1
+    report.last_processed_primary_key = primary_key
+
+    try:
+        classification = _classify_migration_value(value)
+    except InvalidToken as exc:
+        report.decrypt_failures += 1
+        raise EncryptedFieldMigrationError(
+            EncryptedFieldMigrationFailure(
+                contract_id=contract.id,
+                primary_key=primary_key,
+                phase="classify",
+                error_class=exc.__class__.__name__,
+            )
+        ) from exc
+
+    if classification == "null_empty":
+        report.skipped_rows += 1
+        return False
+    if classification == "malformed":
+        report.decrypt_failures += 1
+        raise EncryptedFieldMigrationError(
+            EncryptedFieldMigrationFailure(
+                contract_id=contract.id,
+                primary_key=primary_key,
+                phase="classify",
+                error_class="MalformedCiphertext",
+            )
+        )
+
+    if not isinstance(value, str):
+        raise AssertionError("Encrypted-field value classification allowed a non-string")
+
+    try:
+        plaintext = decrypt_field(value)
+    except (InvalidToken, UnicodeDecodeError, ValueError) as exc:
+        report.decrypt_failures += 1
+        raise EncryptedFieldMigrationError(
+            EncryptedFieldMigrationFailure(
+                contract_id=contract.id,
+                primary_key=primary_key,
+                phase="decrypt",
+                error_class=exc.__class__.__name__,
+            )
+        ) from exc
+
+    if plaintext is None:
+        report.skipped_rows += 1
+        return False
+
+    _aad_values_for_row(contract, row)
+
+    if classification == "envelope_fernet":
+        report.already_migrated_rows += 1
+        _verify_ciphertext_plaintext(
+            contract=contract,
+            primary_key=primary_key,
+            phase="verify-existing-target",
+            ciphertext=value,
+            expected_plaintext=plaintext,
+        )
+        return False
+
+    report.eligible_rows += 1
+    try:
+        replacement = _build_target_ciphertext(plaintext, target_format)
+        if _classify_migration_value(replacement) != "envelope_fernet":
+            raise ValueError("Unexpected target encrypted-field format")
+        _verify_ciphertext_plaintext(
+            contract=contract,
+            primary_key=primary_key,
+            phase="verify-candidate",
+            ciphertext=replacement,
+            expected_plaintext=plaintext,
+        )
+    except (
+        EncryptedFieldMigrationError,
+        EncryptedFieldSchemaNotReadyError,
+        InvalidToken,
+        ValueError,
+    ) as exc:
+        report.verification_failures += 1
+        if isinstance(exc, EncryptedFieldMigrationError):
+            raise
+        raise EncryptedFieldMigrationError(
+            EncryptedFieldMigrationFailure(
+                contract_id=contract.id,
+                primary_key=primary_key,
+                phase="verify-candidate",
+                error_class=exc.__class__.__name__,
+            )
+        ) from exc
+
+    if dry_run:
+        report.would_migrate_rows += 1
+        return True
+
+    result = db.session.execute(
+        db.update(table)
+        .where(table.c.id == primary_key)
+        .where(column == value)
+        .values({contract.column: replacement})
+    )
+    if result.rowcount != 1:
+        report.update_failures += 1
+        raise EncryptedFieldMigrationError(
+            EncryptedFieldMigrationFailure(
+                contract_id=contract.id,
+                primary_key=primary_key,
+                phase="update",
+                error_class="UnexpectedRowCount",
+            )
+        )
+
+    db.session.flush()
+    stored_value = db.session.scalar(db.select(column).where(table.c.id == primary_key))
+    if not isinstance(stored_value, str):
+        report.verification_failures += 1
+        raise EncryptedFieldMigrationError(
+            EncryptedFieldMigrationFailure(
+                contract_id=contract.id,
+                primary_key=primary_key,
+                phase="verify-post-write",
+                error_class="MissingStoredCiphertext",
+            )
+        )
+    _verify_ciphertext_plaintext(
+        contract=contract,
+        primary_key=primary_key,
+        phase="verify-post-write",
+        ciphertext=stored_value,
+        expected_plaintext=plaintext,
+    )
+    report.migrated_rows += 1
+    return True
+
+
+def _run_encrypted_field_migration_batch(  # noqa: PLR0913
+    *,
+    contracts: tuple[EncryptedFieldContract, ...],
+    dry_run: bool,
+    batch_size: int,
+    resume_state: EncryptedFieldMigrationResumeState | None,
+    full_scan: bool,
+    target_format: EncryptedFieldWriteFormat,
+) -> tuple[list[EncryptedFieldMigrationContractReport], EncryptedFieldMigrationResumeState | None]:
+    capacity_reports = _encrypted_field_column_capacity_reports()
+    blocked_capacity = [report for report in capacity_reports if not report.ready]
+    if blocked_capacity:
+        blocked_ids = ", ".join(report.contract_id for report in blocked_capacity)
+        raise click.ClickException(
+            f"Encrypted-field migration blocked: schema not ready ({blocked_ids})"
+        )
+    reports = [
+        EncryptedFieldMigrationContractReport(
+            contract_id=contract.id,
+            table=contract.table,
+            column=contract.column,
+        )
+        for contract in contracts
+    ]
+    report_by_contract_id = {report.contract_id: report for report in reports}
+    processed_rows = 0
+    last_state: EncryptedFieldMigrationResumeState | None = None
+    started = resume_state is None or full_scan
+    contract_ids = tuple(contract.id for contract in contracts)
+
+    for contract in contracts:
+        table = _table_for_contract(contract)
+        if not started:
+            started = contract.id == resume_state.contract_id if resume_state else True
+        if not started:
+            continue
+
+        start_after = 0
+        if not full_scan and resume_state is not None and contract.id == resume_state.contract_id:
+            start_after = resume_state.last_primary_key
+
+        rows = db.session.execute(
+            db.select(table)
+            .where(table.c.id > start_after)
+            .order_by(table.c.id.asc())
+            .limit(batch_size - processed_rows)
+        ).mappings()
+        report = report_by_contract_id[contract.id]
+        for row in rows:
+            if processed_rows >= batch_size:
+                break
+            _process_migration_row(
+                contract=contract,
+                row=row,
+                dry_run=dry_run,
+                target_format=target_format,
+                report=report,
+            )
+            processed_rows += 1
+            last_state = EncryptedFieldMigrationResumeState(
+                helper_version=ENCRYPTED_FIELD_MIGRATION_HELPER_VERSION,
+                target_format=target_format.value,
+                batch_size=batch_size,
+                contract_ids=contract_ids,
+                contract_id=contract.id,
+                last_primary_key=row["id"],
+            )
+        if processed_rows >= batch_size:
+            break
+
+    if dry_run:
+        db.session.rollback()
+    else:
+        db.session.commit()
+
+    for contract in contracts:
+        report_by_contract_id[contract.id].remaining_rows = _remaining_legacy_rows(contract)
+
+    remaining_rows = sum(report.remaining_rows for report in reports)
+    if processed_rows < batch_size or remaining_rows == 0:
+        last_state = None
+    return reports, last_state
+
+
+def _print_migration_reports(  # noqa: PLR0913
+    *,
+    reports: list[EncryptedFieldMigrationContractReport],
+    dry_run: bool,
+    batch_size: int,
+    target_format: EncryptedFieldWriteFormat,
+    next_resume_state: EncryptedFieldMigrationResumeState | None,
+    elapsed_seconds: float,
+) -> None:
+    click.echo(f"Helper version: {ENCRYPTED_FIELD_MIGRATION_HELPER_VERSION}")
+    click.echo(f"Mode: {'dry-run' if dry_run else 'live'}")
+    click.echo(f"Target format: {target_format.value}")
+    click.echo(f"Batch size: {batch_size}")
+    click.echo(f"Elapsed seconds: {elapsed_seconds:.3f}")
+    for report in reports:
+        last_pk = (
+            "none"
+            if report.last_processed_primary_key is None
+            else str(report.last_processed_primary_key)
+        )
+        status = "complete" if report.remaining_rows == 0 else "pending"
+        click.echo(
+            "- "
+            f"{report.contract_id} ({report.table}.{report.column}): "
+            f"status: {status}; "
+            f"examined: {report.examined_rows}; "
+            f"eligible: {report.eligible_rows}; "
+            f"would migrate: {report.would_migrate_rows}; "
+            f"migrated: {report.migrated_rows}; "
+            f"already migrated: {report.already_migrated_rows}; "
+            f"skipped: {report.skipped_rows}; "
+            f"decrypt failures: {report.decrypt_failures}; "
+            f"verification failures: {report.verification_failures}; "
+            f"update failures: {report.update_failures}; "
+            f"remaining rows: {report.remaining_rows}; "
+            f"last processed primary key: {last_pk}"
+        )
+    if next_resume_state is None:
+        click.echo("Next resume token: complete")
+    else:
+        click.echo(f"Next resume token: {_serialize_resume_state(next_resume_state)}")
 
 
 def _classify_encrypted_field_values() -> list[EncryptedFieldCiphertextReport]:
@@ -214,5 +752,102 @@ def register_encrypted_field_commands(app: Flask) -> None:
             )
 
         click.echo("Encrypted-field preflight readiness: ready")
+
+    @encrypted_field_cli.command("migrate")
+    @click.option(
+        "--dry-run",
+        "mode",
+        flag_value="dry-run",
+        default="dry-run",
+        help="Verify and report encrypted-field rewrites without writing.",
+    )
+    @click.option(
+        "--live",
+        "mode",
+        flag_value="live",
+        help="Rewrite verified encrypted-field rows and commit the bounded batch.",
+    )
+    @click.option(
+        "--batch-size",
+        type=click.IntRange(min=1),
+        default=100,
+        show_default=True,
+        help="Maximum rows to examine in this run.",
+    )
+    @click.option(
+        "--contract",
+        "contract_ids",
+        multiple=True,
+        help="Limit the run to one encrypted-field contract ID. May be repeated.",
+    )
+    @click.option(
+        "--resume-token",
+        help="Resume from a prior run's next resume token.",
+    )
+    @click.option(
+        "--full-scan",
+        is_flag=True,
+        help="Ignore the resume token position and scan selected contracts from the start.",
+    )
+    @click.option(
+        "--target-format",
+        default=ENCRYPTED_FIELD_MIGRATION_TARGET_FORMAT.value,
+        show_default=True,
+        help="Target encrypted-field write format.",
+    )
+    def migrate(  # noqa: PLR0913
+        mode: str,
+        batch_size: int,
+        contract_ids: tuple[str, ...],
+        resume_token: str | None,
+        full_scan: bool,
+        target_format: str,
+    ) -> None:
+        """Dry-run or live migrate encrypted fields to the envelope target format."""
+        try:
+            parsed_target_format = EncryptedFieldWriteFormat.parse(target_format)
+        except ConfigParseError as exc:
+            raise click.ClickException(str(exc)) from exc
+        if parsed_target_format != ENCRYPTED_FIELD_MIGRATION_TARGET_FORMAT:
+            raise click.ClickException(
+                "Encrypted-field migration only supports target format "
+                f"{ENCRYPTED_FIELD_MIGRATION_TARGET_FORMAT.value}"
+            )
+
+        contracts = _selected_contracts(contract_ids)
+        selected_contract_ids = tuple(contract.id for contract in contracts)
+        resume_state = None
+        if resume_token:
+            resume_state = _parse_resume_state(
+                resume_token,
+                batch_size=batch_size,
+                contract_ids=selected_contract_ids,
+                target_format=parsed_target_format,
+            )
+
+        started = time.monotonic()
+        try:
+            reports, next_resume_state = _run_encrypted_field_migration_batch(
+                contracts=contracts,
+                dry_run=mode == "dry-run",
+                batch_size=batch_size,
+                resume_state=resume_state,
+                full_scan=full_scan,
+                target_format=parsed_target_format,
+            )
+        except EncryptedFieldMigrationError as exc:
+            db.session.rollback()
+            raise click.ClickException(
+                "Encrypted-field migration failed: " + exc.failure.safe_message()
+            ) from exc
+
+        _print_migration_reports(
+            reports=reports,
+            dry_run=mode == "dry-run",
+            batch_size=batch_size,
+            target_format=parsed_target_format,
+            next_resume_state=next_resume_state,
+            elapsed_seconds=time.monotonic() - started,
+        )
 
     app.cli.add_command(encrypted_field_cli)
