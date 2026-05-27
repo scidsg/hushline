@@ -321,13 +321,22 @@ Migration requirements:
 - Observable migration progress.
 - Clear rollback plan that preserves the old reader.
 
-### Phase 6: Optional Algorithm Change
+### Phase 6: AEAD Evaluation And Production Write Path
 
 After the envelope and migration path are proven, evaluate whether to switch new
-writes from Fernet to an AEAD such as ChaCha20-Poly1305 or AES-GCM.
+writes from Fernet to an AEAD such as ChaCha20-Poly1305 or AES-GCM. Before an
+existing production ciphertext migration can be called domain-bound or
+best-in-class, implement and approve the production AEAD write path.
 
-Status: completed in
-[`ENCRYPTED-FIELD-AEAD-EVALUATION.md`](ENCRYPTED-FIELD-AEAD-EVALUATION.md).
+Status: AEAD evaluation completed in
+[`ENCRYPTED-FIELD-AEAD-EVALUATION.md`](ENCRYPTED-FIELD-AEAD-EVALUATION.md);
+the production AEAD write path remains future implementation work.
+
+The 2026-05-26 maintainer decision makes production AEAD writes required before
+existing production ciphertext migration can be considered complete in the
+domain-bound or best-in-class sense. `envelope-fernet` remains a transitional
+compatibility format and must not satisfy any epic Definition of Done item that
+requires production AAD guarantees.
 
 The evaluation should include:
 
@@ -385,6 +394,9 @@ requirements before merge:
 7. Evaluate AEAD algorithms for future new writes.
 8. Evaluate password hash modernization separately.
 9. Completed: evaluate operational key management separately.
+10. Implement production domain-bound AEAD writes before claiming
+    best-in-class migration completion for existing encrypted-field
+    ciphertext.
 
 ## Recommendation
 

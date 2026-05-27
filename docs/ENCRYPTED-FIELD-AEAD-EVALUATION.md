@@ -16,6 +16,12 @@ remain controlled by `ENCRYPTED_FIELD_WRITE_FORMAT`, whose default is legacy
 Fernet. The AES-GCM helper in `hushline.crypto` remains a prototype for domain
 and AAD behavior, not a production write path.
 
+Maintainers decided on 2026-05-26 that `envelope-fernet` is transitional
+compatibility only. It must not be represented as production domain-bound
+authenticated field encryption, and existing production ciphertext migration is
+not best-in-class complete until production AEAD writes are implemented and
+approved.
+
 ## Recommendation
 
 Defer any production algorithm change and keep Fernet for current encrypted
@@ -175,3 +181,10 @@ If maintainers later approve AEAD writes, implement AES-GCM first using the
 existing `cryptography` dependency, the existing versioned envelope prefix,
 stable AAD from `ENCRYPTED_FIELD_CONTRACTS`, random 96-bit nonces, and a
 test-vector suite before any production write-format rollout.
+
+The implementation path before any best-in-class existing-ciphertext migration
+is: promote the AES-GCM prototype to a production writer, bind the envelope to
+the stable domain and canonical AAD contract, keep legacy Fernet and
+`envelope-fernet` reads during rollout, add the test vectors above, rehearse the
+runbook against staging or restored-backup data, and require maintainer approval
+before enabling AEAD writes.
