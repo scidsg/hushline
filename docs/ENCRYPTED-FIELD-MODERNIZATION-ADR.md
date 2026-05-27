@@ -98,6 +98,41 @@ wrong-domain and wrong-AAD failures. It is not wired into production model
 writes. Production writes default to the legacy Fernet path, with the
 versioned Fernet envelope available through the rollout control below.
 
+## Production Write-Format Decision
+
+Maintainers recorded this decision on 2026-05-26:
+
+- `envelope-fernet` is a transitional compatibility format only.
+- `envelope-fernet` must not be documented or represented as domain-bound
+  authenticated field encryption.
+- Existing production encrypted-field values must not be rewritten until the
+  migration helper, dry-run/live workflow, rollback tests, staging or
+  restored-backup rehearsal evidence, release gates, and this write-format
+  decision documentation are complete.
+- Domain-bound AEAD is required before any best-in-class migration of existing
+  production ciphertext is considered complete.
+
+`envelope-fernet` keeps the existing Fernet confidentiality and authentication
+properties for the wrapped token and adds explicit format versioning for
+dual-read rollout, schema-fit checks, and rollback planning. It does not
+cryptographically bind ciphertext to the encrypted-field contract, stable
+domain, table, column, or immutable row identifiers listed above. Copying an
+`envelope-fernet` value between fields, rows, or deployments therefore is not
+expected to fail closed because of AAD mismatch.
+
+Before production AEAD writes exist, maintainers may approve compatibility-only
+work such as the dual reader, widened storage, preflight checks, rehearsal
+evidence, and transitional `envelope-fernet` writes for newly updated values.
+They may also approve a compatibility rewrite of existing ciphertext only after
+the migration helper and release gates above are complete, but that rewrite must
+remain labeled transitional and must not close the domain-bound encryption goal.
+
+The following remain blocked until a domain-bound AEAD write path is implemented
+and separately approved for production: claims of production AAD guarantees,
+removal of ambiguity in favor of "domain-bound" completion language for
+existing ciphertext, and any best-in-class migration completion claim for
+existing encrypted-field values.
+
 ## Dual-Read, Single-Write Rollout Controls
 
 `ENCRYPTED_FIELD_WRITE_FORMAT` controls the format used for newly written
@@ -105,8 +140,8 @@ encrypted database fields. Supported values are:
 
 - `legacy-fernet`: write the existing unprefixed Fernet token format. This is
   the default.
-- `envelope-fernet`: write the approved `hlfield:` versioned envelope that wraps
-  one Fernet ciphertext.
+- `envelope-fernet`: write the transitional `hlfield:` versioned envelope that
+  wraps one Fernet ciphertext without domain-bound AAD.
 
 Readers support both formats before operators enable envelope writes. Legacy
 Fernet decrypt support remains enabled while envelope writes are tested,
@@ -119,9 +154,9 @@ Operator rollout sequence:
 2. Deploy migration `b2039e7c0a1d` to widen encrypted short-string columns
    before any envelope write is allowed.
 3. Run the schema and ciphertext preflight and confirm it reports readiness.
-4. Set `ENCRYPTED_FIELD_WRITE_FORMAT=envelope-fernet` for new writes only after
-   the widening migration, migration tests, ciphertext fit tests, and preflight
-   verification have all passed.
+4. Set `ENCRYPTED_FIELD_WRITE_FORMAT=envelope-fernet` for transitional new
+   writes only after the widening migration, migration tests, ciphertext fit
+   tests, and preflight verification have all passed.
 5. Verify newly updated settings, notification recipients, and encrypted custom
    field values read back successfully.
 6. Leave legacy Fernet read support deployed until a later migration issue
@@ -279,3 +314,8 @@ changes.
   migration completion and rollback windows are verified.
 - Any new key material must have documented backup, restore, rotation, and loss
   behavior before it is used for production data.
+- Epic #2013 is not complete in the domain-bound encryption sense while
+  production writes use only `legacy-fernet` or transitional `envelope-fernet`.
+  The epic Definition of Done must keep compatibility milestones separate from
+  production AAD guarantees and require production AEAD before existing
+  ciphertext migration is called best-in-class or domain-bound.

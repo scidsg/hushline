@@ -13,6 +13,13 @@ execution, but it does not introduce migration helper code and must not be used
 until maintainers approve the specific helper, target format, and rollout
 configuration.
 
+The current `envelope-fernet` target is a transitional compatibility format. It
+adds versioned envelope handling around Fernet ciphertext, but it does not
+cryptographically bind ciphertext to field, domain, or row AAD. A migration to
+`envelope-fernet` must not be described as domain-bound authenticated field
+encryption, and it does not complete a best-in-class migration of existing
+production ciphertext.
+
 The encrypted-field inventory is the code-owned contract in
 `hushline.crypto.ENCRYPTED_FIELD_CONTRACTS` and the protected-field table in
 [`ENCRYPTED-FIELD-MODERNIZATION-ADR.md`](ENCRYPTED-FIELD-MODERNIZATION-ADR.md).
@@ -31,6 +38,12 @@ migrations.
 - Do not enable envelope writes until the dual reader is deployed, migration
   `b2039e7c0a1d` has widened encrypted short-string columns, the migration and
   ciphertext fit tests have passed, and the executable preflight reports ready.
+- Do not represent `envelope-fernet` release gates as production AAD guarantees;
+  those gates prove compatibility, storage fit, decryptability, and rollback
+  readiness for a transitional format only.
+- Do not call an existing-ciphertext migration complete in the domain-bound or
+  best-in-class sense until a production AEAD writer is implemented, rehearsed,
+  and approved.
 - Do not drop, blank, truncate, or overwrite source ciphertext before the
   replacement value has been decrypted and verified for that row.
 - Do not assume a maintenance window. Run in small batches while normal reads
@@ -98,8 +111,9 @@ size ceiling, and rollback plan proven in staging or restored-backup rehearsal.
    ciphertext values.
 5. Run preflight checks, archive the JSON release-gate artifact, and run
    dry-run mode.
-6. Enable envelope writes only after the schema/ciphertext preflight reports
-   ready.
+6. Enable transitional envelope writes only after the schema/ciphertext
+   preflight reports ready, and label `envelope-fernet` evidence as
+   compatibility evidence rather than production AAD evidence.
 7. Start with a small live batch. Increase batch size only after error-free
    progress and normal application health are observed.
 8. Pause between batches when needed; do not hold long transactions across the
@@ -139,7 +153,7 @@ contract unless maintainers explicitly approve a targeted gate.
 - Confirm `ENCRYPTION_KEY` and any future encrypted-field key material are
   present through the approved secret path for the environment.
 - Confirm the target write format is explicitly configured for the planned
-  migration.
+  migration and whether it is transitional compatibility or domain-bound AEAD.
 - Confirm the database revision is the expected forward-only revision.
 - Count rows for each encrypted-field contract:
   - total rows in the table
@@ -157,9 +171,9 @@ contract unless maintainers explicitly approve a targeted gate.
 Dry-run mode must execute the same selection, classification, decryption,
 reencryption, and verification path as live mode, except for database writes.
 
-Run dry-run mode with:
+Run dry-run mode with the maintainer-approved target format:
 
-`flask encrypted-field migrate --dry-run --target-format envelope-fernet --batch-size 100`
+`flask encrypted-field migrate --dry-run --target-format TARGET-FORMAT --batch-size 100`
 
 Use `--contract CONTRACT_ID` one or more times to limit rehearsal to a specific
 encrypted-field contract. Use the reported `Next resume token` with the same
@@ -186,14 +200,14 @@ small enough to avoid long locks, large transactions, and operational surprise;
 production batch-size increases require operator review of staging timing and
 production health.
 
-Run live mode with:
+Run live mode with the maintainer-approved target format:
 
-`flask encrypted-field migrate --live --target-format envelope-fernet --batch-size 10`
+`flask encrypted-field migrate --live --target-format TARGET-FORMAT --batch-size 10`
 
 Resume an interrupted live run with the exact token reported by the prior run:
 
 ```shell
-flask encrypted-field migrate --live --target-format envelope-fernet \
+flask encrypted-field migrate --live --target-format TARGET-FORMAT \
   --batch-size 10 --resume-token TOKEN
 ```
 
@@ -243,7 +257,9 @@ Verification must prove:
 - The candidate replacement decrypts through the deployed reader.
 - The replacement plaintext exactly matches the source plaintext.
 - The replacement uses the expected contract ID, domain, table, column, and AAD
-  values for the row.
+  values for the row when the approved target format is domain-bound AEAD. For
+  `envelope-fernet`, verification proves the expected transitional envelope
+  format and plaintext round trip, not cryptographic AAD binding.
 - The database update affects exactly one expected row.
 - A post-update read decrypts to the same plaintext before the batch is counted
   as migrated.
