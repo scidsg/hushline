@@ -2,6 +2,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RUNBOOK = REPO_ROOT / "docs" / "ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md"
+REHEARSAL_TEMPLATE = REPO_ROOT / "docs" / "ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md"
 
 
 def _runbook_text() -> str:
@@ -14,8 +15,12 @@ def test_encrypted_field_migration_runbook_exists_and_is_linked() -> None:
     feasibility = feasibility_doc.read_text(encoding="utf-8")
 
     assert RUNBOOK.is_file()
+    assert REHEARSAL_TEMPLATE.is_file()
     assert "ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md" in docs_index
+    assert "ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md" in docs_index
+    assert "ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md" in _runbook_text()
     assert "ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md" in feasibility
+    assert "ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md" in feasibility
 
 
 def test_encrypted_field_migration_runbook_covers_required_execution_paths() -> None:
@@ -46,7 +51,7 @@ def test_encrypted_field_migration_runbook_covers_required_execution_paths() -> 
 
 
 def test_encrypted_field_migration_runbook_locks_security_guardrails() -> None:
-    content = _runbook_text().lower()
+    content = " ".join(_runbook_text().lower().split())
 
     required_phrases = (
         "keep the dual reader deployed",
@@ -54,6 +59,7 @@ def test_encrypted_field_migration_runbook_locks_security_guardrails() -> None:
         "must not edit historical alembic",
         "do not drop, blank, truncate, or overwrite source ciphertext",
         "do not assume a maintenance window",
+        "completed rehearsal evidence report is reviewed",
         "stop before live mode if any non-empty row cannot be classified or decrypted",
         "dry-run mode must execute the same selection, classification, decryption",
         "skip rows already in the target envelope format after verifying",
@@ -64,4 +70,43 @@ def test_encrypted_field_migration_runbook_locks_security_guardrails() -> None:
     )
 
     for phrase in required_phrases:
+        assert phrase in content
+
+
+def test_encrypted_field_rehearsal_template_captures_required_evidence() -> None:
+    content = REHEARSAL_TEMPLATE.read_text(encoding="utf-8").lower()
+
+    required_phrases = (
+        "backup restore timestamp",
+        "schema revision",
+        "preflight artifact location",
+        "dry-run artifact location",
+        "live-batch artifact location",
+        "interruption method",
+        "resume completed at",
+        "rollback approach rehearsed",
+        "operator signoff",
+        "production enablement recommendation",
+    )
+
+    for phrase in required_phrases:
+        assert phrase in content
+
+
+def test_encrypted_field_rehearsal_template_forbids_sensitive_values() -> None:
+    content = REHEARSAL_TEMPLATE.read_text(encoding="utf-8").lower()
+
+    forbidden_value_phrases = (
+        "plaintext disclosures",
+        "message bodies",
+        "secrets",
+        "private keys",
+        "tokens of any kind",
+        "totp secrets",
+        "email passwords",
+        "raw encrypted-field secrets",
+        "full ciphertext values",
+    )
+
+    for phrase in forbidden_value_phrases:
         assert phrase in content

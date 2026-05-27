@@ -302,6 +302,9 @@ Then enable new writes behind a feature flag or explicit config setting:
 Only after phases 0 through 4 should Hush Line migrate existing rows.
 The operator runbook is drafted in
 [`ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md`](ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md).
+Production enablement is blocked until maintainers review a completed
+[`ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md`](ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md)
+artifact for restored-backup or staging validation.
 
 Migration requirements:
 
@@ -313,6 +316,8 @@ Migration requirements:
 - Idempotent resume behavior.
 - Per-row verification after re-encryption.
 - Backup and restore rehearsal before production.
+- Reviewed rehearsal evidence covering restore, preflight, dry-run, live batch,
+  interruption/resume, rollback, and operator signoff.
 - Observable migration progress.
 - Clear rollback plan that preserves the old reader.
 

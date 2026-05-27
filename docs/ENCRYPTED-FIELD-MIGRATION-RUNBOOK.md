@@ -24,6 +24,10 @@ migrations.
 - Keep the dual reader deployed before, during, and after the migration.
 - Keep legacy Fernet read support enabled until migration completion and the
   rollback window are explicitly closed.
+- Do not enable production encrypted-field migration live mode or envelope
+  writes until a completed
+  [`ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md`](ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md)
+  artifact has been reviewed and approved by maintainers.
 - Do not enable envelope writes until the dual reader is deployed, migration
   `b2039e7c0a1d` has widened encrypted short-string columns, the migration and
   ciphertext fit tests have passed, and the executable preflight reports ready.
@@ -77,9 +81,9 @@ production plaintext.
 
 ### Production
 
-Production execution requires maintainer approval after staging evidence is
-reviewed. Use the same helper version, target format, batch size ceiling, and
-rollback plan proven in staging.
+Production execution requires maintainer approval after a completed rehearsal
+evidence report is reviewed. Use the same helper version, target format, batch
+size ceiling, and rollback plan proven in staging or restored-backup rehearsal.
 
 1. Confirm the current release includes the dual reader and that legacy Fernet
    reads are still enabled.
@@ -87,15 +91,20 @@ rollback plan proven in staging.
    and that migration and ciphertext fit tests passed for the release.
 3. Confirm recent backups exist and a restore rehearsal has succeeded for the
    same database version and key material.
-4. Run preflight checks, archive the JSON release-gate artifact, and run
+4. Confirm the reviewed rehearsal evidence report captures the backup restore
+   timestamp, schema revision, preflight output, dry-run output, live-batch
+   rehearsal output, interruption/resume result, rollback rehearsal result, and
+   operator signoff without plaintext, secrets, private keys, tokens, or full
+   ciphertext values.
+5. Run preflight checks, archive the JSON release-gate artifact, and run
    dry-run mode.
-5. Enable envelope writes only after the schema/ciphertext preflight reports
+6. Enable envelope writes only after the schema/ciphertext preflight reports
    ready.
-6. Start with a small live batch. Increase batch size only after error-free
+7. Start with a small live batch. Increase batch size only after error-free
    progress and normal application health are observed.
-7. Pause between batches when needed; do not hold long transactions across the
+8. Pause between batches when needed; do not hold long transactions across the
    full inventory.
-8. Keep the old reader deployed after completion until post-migration
+9. Keep the old reader deployed after completion until post-migration
    verification and rollback criteria have passed.
 
 ## Preflight Checks
@@ -246,7 +255,9 @@ helper code, repair data, restore from backup, or retry.
 ## Backup And Restore Rehearsal
 
 Before production live mode, operators must complete and document a restore
-rehearsal.
+rehearsal in a reviewed
+[`ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md`](ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md)
+artifact.
 
 The rehearsal must confirm:
 
@@ -255,10 +266,19 @@ The rehearsal must confirm:
 - Legacy Fernet rows decrypt after restore.
 - Target envelope rows decrypt after restore.
 - The migration helper can dry-run against the restored database.
+- A small live-batch rehearsal can run without exposing sensitive values in the
+  report.
+- An intentional interruption can resume and skip already migrated rows.
 - Rollback can run on restored data while the old reader remains deployed.
 
 Backups without matching encrypted-field key material are not complete recovery
 artifacts for this migration.
+
+The reviewed report must capture the backup restore timestamp, schema revision,
+preflight output, dry-run output, live-batch rehearsal output,
+interruption/resume result, rollback rehearsal result, and operator signoff.
+It must not include plaintext disclosures, secrets, private keys, tokens, raw
+encrypted-field secrets, or full ciphertext values.
 
 ## Progress And Failure Reporting
 
