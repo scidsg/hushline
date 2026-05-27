@@ -4,6 +4,7 @@ import json
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import click
@@ -36,6 +37,8 @@ ENCRYPTED_FIELD_MIGRATION_HELPER_VERSION = "encrypted-field-migration-v1"
 ENCRYPTED_FIELD_MIGRATION_TARGET_FORMAT = EncryptedFieldWriteFormat.ENVELOPE_FERNET
 ENCRYPTED_FIELD_PREFLIGHT_SCHEMA_REVISION = 1
 ENCRYPTED_FIELD_CONTRACT_SET_VERSION = "encrypted-field-contracts-v1"
+ENCRYPTED_FIELD_PRODUCTION_GATE_MANIFEST_TYPE = "encrypted-field-production-release-gate"
+ENCRYPTED_FIELD_PRODUCTION_GATE_MANIFEST_VERSION = 1
 
 
 @dataclass(frozen=True)
@@ -880,6 +883,186 @@ def _encrypted_field_preflight_report(
     }
 
 
+def _load_json_artifact(path: Path, artifact_name: str) -> dict[str, Any]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise click.ClickException(f"Cannot read {artifact_name} artifact") from exc
+    except json.JSONDecodeError as exc:
+        raise click.ClickException(f"Invalid JSON in {artifact_name} artifact") from exc
+    if not isinstance(data, dict):
+        raise click.ClickException(f"Invalid {artifact_name} artifact")
+    return data
+
+
+def _nested_manifest_value(data: dict[str, Any], path: tuple[str, ...]) -> Any:
+    current: Any = data
+    for key in path:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+    return current
+
+
+def _require_manifest_value(
+    errors: list[str],
+    manifest: dict[str, Any],
+    path: tuple[str, ...],
+    expected: Any,
+) -> None:
+    value = _nested_manifest_value(manifest, path)
+    if value != expected:
+        errors.append(f"{'.'.join(path)} must be {expected!r}")
+
+
+def _require_manifest_string(
+    errors: list[str],
+    manifest: dict[str, Any],
+    path: tuple[str, ...],
+) -> None:
+    value = _nested_manifest_value(manifest, path)
+    if not isinstance(value, str) or not value.strip():
+        errors.append(f"{'.'.join(path)} must be a non-empty string")
+
+
+def _release_gate_preflight_errors(preflight_report: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    expected_contract_ids = sorted(contract.id for contract in ENCRYPTED_FIELD_CONTRACTS)
+    contract_set_value = preflight_report.get("contract_set", {})
+    contract_set = contract_set_value if isinstance(contract_set_value, dict) else {}
+    contract_ids = contract_set.get("contract_ids")
+    totals = preflight_report.get("totals", {})
+
+    if preflight_report.get("report_type") != "encrypted-field-preflight":
+        errors.append("preflight artifact report_type must be encrypted-field-preflight")
+    if preflight_report.get("status") != "ready":
+        errors.append("preflight artifact status must be ready")
+    if preflight_report.get("helper_version") != ENCRYPTED_FIELD_MIGRATION_HELPER_VERSION:
+        errors.append("preflight artifact helper_version does not match this release")
+    if preflight_report.get("schema_revision") != ENCRYPTED_FIELD_PREFLIGHT_SCHEMA_REVISION:
+        errors.append("preflight artifact schema_revision does not match this release")
+    if contract_set.get("version") != ENCRYPTED_FIELD_CONTRACT_SET_VERSION:
+        errors.append("preflight artifact contract_set version does not match this release")
+    if (
+        not isinstance(contract_ids, list)
+        or not all(isinstance(contract_id, str) for contract_id in contract_ids)
+        or sorted(contract_ids) != expected_contract_ids
+    ):
+        errors.append("preflight artifact must cover every encrypted-field contract")
+    if not isinstance(totals, dict):
+        errors.append("preflight artifact totals must be present")
+    else:
+        if totals.get("malformed") != 0:
+            errors.append("preflight artifact must have zero malformed values")
+        if totals.get("decrypt_failures") != 0:
+            errors.append("preflight artifact must have zero decrypt failures")
+        if totals.get("rows_scanned") != totals.get("rows_total"):
+            errors.append("preflight artifact must scan every encrypted-field row")
+
+    contracts = preflight_report.get("contracts", [])
+    if not isinstance(contracts, list) or len(contracts) != len(expected_contract_ids):
+        errors.append(
+            "preflight artifact contract details must cover every encrypted-field contract"
+        )
+    else:
+        blocked_contracts = [
+            str(contract.get("contract_id"))
+            for contract in contracts
+            if not isinstance(contract, dict) or contract.get("status") != "ready"
+        ]
+        if blocked_contracts:
+            errors.append("preflight artifact contains blocked contract results")
+
+    return errors
+
+
+def _release_gate_manifest_errors(manifest: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    expected_true_paths: tuple[tuple[str, ...], ...] = (
+        ("release_checks", "migration_tests_passed"),
+        ("release_checks", "ciphertext_fit_tests_passed"),
+        ("backup_restore_rehearsal", "completed"),
+        ("backup_restore_rehearsal", "matching_key_material_verified"),
+        ("dry_run", "completed"),
+        ("dry_run", "exit_status_zero"),
+        ("dry_run", "artifact_archived"),
+        ("live_batch_rehearsal", "completed"),
+        ("interruption_resume_rehearsal", "completed"),
+        ("interruption_resume_rehearsal", "already_migrated_rows_skipped"),
+        ("interruption_resume_rehearsal", "remaining_rows_continued"),
+        ("rollback_rehearsal", "completed"),
+        ("rollback_rehearsal", "old_reader_preserved"),
+        ("rollback_rehearsal", "legacy_reads_verified"),
+        ("rollback_rehearsal", "target_reads_verified"),
+        ("approval", "maintainer_approved"),
+        ("zero_downtime", "bounded_batches"),
+        ("zero_downtime", "no_full_table_rewrite"),
+        ("emergency_rollback", "dual_reader_remains_deployed"),
+        ("emergency_rollback", "new_writes_can_revert_to_legacy"),
+    )
+    expected_false_paths: tuple[tuple[str, ...], ...] = (
+        ("zero_downtime", "planned_downtime"),
+        ("emergency_rollback", "destructive_down_migration_required"),
+    )
+    required_string_paths: tuple[tuple[str, ...], ...] = (
+        ("preflight_artifact",),
+        ("backup_restore_rehearsal", "artifact"),
+        ("dry_run", "artifact"),
+        ("live_batch_rehearsal", "artifact"),
+        ("interruption_resume_rehearsal", "artifact"),
+        ("rollback_rehearsal", "artifact"),
+        ("approval", "reference"),
+        ("approval", "approved_at"),
+    )
+
+    _require_manifest_value(
+        errors,
+        manifest,
+        ("report_type",),
+        ENCRYPTED_FIELD_PRODUCTION_GATE_MANIFEST_TYPE,
+    )
+    _require_manifest_value(
+        errors,
+        manifest,
+        ("gate_version",),
+        ENCRYPTED_FIELD_PRODUCTION_GATE_MANIFEST_VERSION,
+    )
+    _require_manifest_value(
+        errors,
+        manifest,
+        ("target_format",),
+        ENCRYPTED_FIELD_MIGRATION_TARGET_FORMAT.value,
+    )
+    _require_manifest_value(
+        errors,
+        manifest,
+        ("helper_version",),
+        ENCRYPTED_FIELD_MIGRATION_HELPER_VERSION,
+    )
+    _require_manifest_value(
+        errors,
+        manifest,
+        ("contract_set_version",),
+        ENCRYPTED_FIELD_CONTRACT_SET_VERSION,
+    )
+    for path in expected_true_paths:
+        _require_manifest_value(errors, manifest, path, True)
+    for path in expected_false_paths:
+        _require_manifest_value(errors, manifest, path, False)
+    for path in required_string_paths:
+        _require_manifest_string(errors, manifest, path)
+
+    approved_by = _nested_manifest_value(manifest, ("approval", "approved_by"))
+    if (
+        not isinstance(approved_by, list)
+        or not approved_by
+        or not all(isinstance(name, str) and name.strip() for name in approved_by)
+    ):
+        errors.append("approval.approved_by must list at least one maintainer")
+
+    return errors
+
+
 def register_encrypted_field_commands(app: Flask) -> None:
     encrypted_field_cli = AppGroup(
         "encrypted-field",
@@ -963,6 +1146,40 @@ def register_encrypted_field_commands(app: Flask) -> None:
             )
 
         click.echo("Encrypted-field preflight readiness: ready")
+
+    @encrypted_field_cli.command("release-gate")
+    @click.option(
+        "--preflight-artifact",
+        type=click.Path(exists=True, dir_okay=False, path_type=Path),
+        required=True,
+        help="Redacted JSON artifact produced by encrypted-field preflight --output json.",
+    )
+    @click.option(
+        "--evidence-manifest",
+        type=click.Path(exists=True, dir_okay=False, path_type=Path),
+        required=True,
+        help="Redacted production release-gate evidence manifest.",
+    )
+    def release_gate(preflight_artifact: Path, evidence_manifest: Path) -> None:
+        """Validate production envelope-write evidence before configuration changes."""
+        preflight_report = _load_json_artifact(preflight_artifact, "preflight")
+        manifest = _load_json_artifact(evidence_manifest, "release-gate manifest")
+        errors = _release_gate_preflight_errors(preflight_report)
+        errors.extend(_release_gate_manifest_errors(manifest))
+        if errors:
+            raise click.ClickException(
+                "Encrypted-field production release gate: blocked (" + "; ".join(errors) + ")"
+            )
+
+        click.echo("Encrypted-field production release gate: ready")
+        click.echo(f"Target format: {ENCRYPTED_FIELD_MIGRATION_TARGET_FORMAT.value}")
+        click.echo(f"Preflight artifact: {preflight_artifact}")
+        click.echo(f"Evidence manifest: {evidence_manifest}")
+        click.echo("Downtime plan: zero planned downtime with bounded batches")
+        click.echo(
+            "Rollback safety: dual reader remains deployed; "
+            "new writes can revert to legacy-fernet"
+        )
 
     @encrypted_field_cli.command("migrate")
     @click.option(

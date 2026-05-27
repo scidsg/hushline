@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,6 +13,65 @@ from hushline.db import db
 from hushline.model import InviteCode, OrganizationSetting, Tier, User
 
 TEST_ENCRYPTION_KEY = "jY0gDbATEOQolx2SGj46YnkkbN6HQBB4YCABzwl1H1A="
+
+
+def _valid_encrypted_field_release_gate_manifest() -> dict[str, object]:
+    return {
+        "approval": {
+            "approved_at": "2026-05-27T00:00:00Z",
+            "approved_by": ["Maintainer One"],
+            "maintainer_approved": True,
+            "reference": "reviewed release approval record",
+        },
+        "backup_restore_rehearsal": {
+            "artifact": "redacted backup restore rehearsal artifact",
+            "completed": True,
+            "matching_key_material_verified": True,
+        },
+        "contract_set_version": "encrypted-field-contracts-v1",
+        "dry_run": {
+            "artifact": "redacted dry-run artifact",
+            "artifact_archived": True,
+            "completed": True,
+            "exit_status_zero": True,
+        },
+        "emergency_rollback": {
+            "destructive_down_migration_required": False,
+            "dual_reader_remains_deployed": True,
+            "new_writes_can_revert_to_legacy": True,
+        },
+        "gate_version": 1,
+        "helper_version": "encrypted-field-migration-v1",
+        "interruption_resume_rehearsal": {
+            "already_migrated_rows_skipped": True,
+            "artifact": "redacted interruption and resume artifact",
+            "completed": True,
+            "remaining_rows_continued": True,
+        },
+        "live_batch_rehearsal": {
+            "artifact": "redacted live-batch rehearsal artifact",
+            "completed": True,
+        },
+        "preflight_artifact": "redacted preflight artifact",
+        "release_checks": {
+            "ciphertext_fit_tests_passed": True,
+            "migration_tests_passed": True,
+        },
+        "report_type": "encrypted-field-production-release-gate",
+        "rollback_rehearsal": {
+            "artifact": "redacted rollback rehearsal artifact",
+            "completed": True,
+            "legacy_reads_verified": True,
+            "old_reader_preserved": True,
+            "target_reads_verified": True,
+        },
+        "target_format": "envelope-fernet",
+        "zero_downtime": {
+            "bounded_batches": True,
+            "no_full_table_rewrite": True,
+            "planned_downtime": False,
+        },
+    }
 
 
 def test_reg_settings_command_outputs_current_values(app: Flask) -> None:
@@ -391,6 +451,112 @@ def test_encrypted_field_preflight_json_blocks_missing_schema_without_crashing(
         "status": "blocked",
         "table": "users",
     }
+
+
+def test_encrypted_field_release_gate_accepts_ready_redacted_artifacts(
+    app: Flask, tmp_path: Path
+) -> None:
+    runner = app.test_cli_runner()
+    preflight_result = runner.invoke(args=["encrypted-field", "preflight", "--output", "json"])
+    assert preflight_result.exit_code == 0
+
+    preflight_artifact = tmp_path / "preflight.json"
+    evidence_manifest = tmp_path / "release-gate.json"
+    preflight_artifact.write_text(preflight_result.output, encoding="utf-8")
+    evidence_manifest.write_text(
+        json.dumps(_valid_encrypted_field_release_gate_manifest()),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "release-gate",
+            "--preflight-artifact",
+            str(preflight_artifact),
+            "--evidence-manifest",
+            str(evidence_manifest),
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert "Encrypted-field production release gate: ready" in result.output
+    assert "Target format: envelope-fernet" in result.output
+    assert "zero planned downtime with bounded batches" in result.output
+    assert "dual reader remains deployed; new writes can revert to legacy-fernet" in result.output
+    assert "Maintainer One" not in result.output
+
+
+def test_encrypted_field_release_gate_blocks_targeted_preflight_artifact(
+    app: Flask, tmp_path: Path
+) -> None:
+    runner = app.test_cli_runner()
+    preflight_result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "preflight",
+            "--output",
+            "json",
+            "--contract",
+            "User.totp_secret",
+        ]
+    )
+    assert preflight_result.exit_code == 0
+
+    preflight_artifact = tmp_path / "targeted-preflight.json"
+    evidence_manifest = tmp_path / "release-gate.json"
+    preflight_artifact.write_text(preflight_result.output, encoding="utf-8")
+    evidence_manifest.write_text(
+        json.dumps(_valid_encrypted_field_release_gate_manifest()),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "release-gate",
+            "--preflight-artifact",
+            str(preflight_artifact),
+            "--evidence-manifest",
+            str(evidence_manifest),
+        ]
+    )
+
+    assert result.exit_code == 1
+    assert "Encrypted-field production release gate: blocked" in result.output
+    assert "preflight artifact must cover every encrypted-field contract" in result.output
+
+
+def test_encrypted_field_release_gate_blocks_weakened_rollback_safety(
+    app: Flask, tmp_path: Path
+) -> None:
+    runner = app.test_cli_runner()
+    preflight_result = runner.invoke(args=["encrypted-field", "preflight", "--output", "json"])
+    assert preflight_result.exit_code == 0
+
+    manifest = _valid_encrypted_field_release_gate_manifest()
+    emergency_rollback = manifest["emergency_rollback"]
+    assert isinstance(emergency_rollback, dict)
+    emergency_rollback["new_writes_can_revert_to_legacy"] = False
+    preflight_artifact = tmp_path / "preflight.json"
+    evidence_manifest = tmp_path / "release-gate.json"
+    preflight_artifact.write_text(preflight_result.output, encoding="utf-8")
+    evidence_manifest.write_text(json.dumps(manifest), encoding="utf-8")
+
+    result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "release-gate",
+            "--preflight-artifact",
+            str(preflight_artifact),
+            "--evidence-manifest",
+            str(evidence_manifest),
+        ]
+    )
+
+    assert result.exit_code == 1
+    assert "Encrypted-field production release gate: blocked" in result.output
+    assert "emergency_rollback.new_writes_can_revert_to_legacy must be True" in result.output
 
 
 def _next_resume_token(output: str) -> str:
