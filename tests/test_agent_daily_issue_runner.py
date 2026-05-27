@@ -58,6 +58,41 @@ printf '%s %s %s\\n' \\
     assert result.stdout.strip() == "600 600 3600"
 
 
+def test_runner_lock_defaults_to_repo_git_dir() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+printf '%s\\n' "$RUNNER_LOCK_DIR"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == str(ROOT / ".git" / "hushline-code-agent.lock")
+
+
+def test_main_reports_missing_repo_before_acquiring_git_lock(tmp_path: Path) -> None:
+    missing_repo = tmp_path / "missing-repo"
+
+    shell_script = f"""
+HUSHLINE_REPO_DIR={shlex.quote(str(missing_repo))}
+source {shlex.quote(str(RUNNER_SCRIPT))}
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+acquire_runner_lock() {{
+  printf 'unexpected-lock\\n'
+  return 99
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 1
+    assert f"Repository not found: {missing_repo}" in result.stderr
+    assert "unexpected-lock" not in result.stdout
+
+
 def test_runner_defaults_idle_status_state_file_outside_lock_dir(tmp_path: Path) -> None:
     lock_dir = tmp_path / "hushline-lock"
     expected_state_file = tmp_path / ".hushline-lock.codex-status-last-check"

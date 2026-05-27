@@ -81,7 +81,7 @@ RUN_LOG_RETENTION_COUNT="${HUSHLINE_DAILY_RUN_LOG_RETENTION:-10}"
 VERBOSE_CODEX_OUTPUT="${HUSHLINE_DAILY_VERBOSE_CODEX_OUTPUT:-0}"
 AUDIT_STATUS="ok"
 CLEANUP_REPO_ON_EXIT=0
-RUNNER_LOCK_DIR="${HUSHLINE_DAILY_RUNNER_LOCK_DIR:-${TMPDIR:-/tmp}/hushline-code-agent.lock}"
+RUNNER_LOCK_DIR="${HUSHLINE_DAILY_RUNNER_LOCK_DIR:-$REPO_DIR/.git/hushline-code-agent.lock}"
 RUNNER_LOCK_HELD=0
 AUDIT_NOTE=""
 NODE_FULL_AUDIT_REQUIRED=0
@@ -3921,6 +3921,14 @@ main() {
   parse_args "$@"
   initialize_run_state
   trap cleanup EXIT
+
+  if [[ ! -d "$REPO_DIR/.git" ]]; then
+    echo "Repository not found: $REPO_DIR" >&2
+    exit 1
+  fi
+
+  cd "$REPO_DIR"
+
   acquire_runner_lock
 
   require_cmd git
@@ -3955,13 +3963,6 @@ main() {
   require_non_negative_integer \
     "HUSHLINE_DAILY_CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS" \
     "$CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS"
-
-  if [[ ! -d "$REPO_DIR/.git" ]]; then
-    echo "Repository not found: $REPO_DIR" >&2
-    exit 1
-  fi
-
-  cd "$REPO_DIR"
 
   assert_runner_can_take_checkout
 
