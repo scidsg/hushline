@@ -2856,11 +2856,11 @@ coverage_gap_snapshot_from_log() {
     }
     in_table && /^TOTAL[[:space:]]+/ {
       current_total = $0
+      final_header = current_header
+      final_total = current_total
+      final_count = current_count
+      delete final_rows
       if (current_count > 0) {
-        final_header = current_header
-        final_total = current_total
-        final_count = current_count
-        delete final_rows
         for (i = 1; i <= current_count; i += 1) {
           final_rows[i] = current_rows[i]
         }
