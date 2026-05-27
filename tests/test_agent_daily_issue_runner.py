@@ -274,6 +274,55 @@ test -s "$CODEX_STATUS_IDLE_CHECK_STATE_FILE"
     assert "Codex /status: primary 300m window 51% used; 49% remaining" in result.stdout
 
 
+def test_record_idle_codex_status_check_attempt_refuses_symlink_state_file(
+    tmp_path: Path,
+) -> None:
+    state_file = tmp_path / "last-check"
+    victim_file = tmp_path / "victim"
+    victim_file.write_text("original\n", encoding="utf-8")
+    state_file.symlink_to(victim_file)
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_IDLE_CHECK_STATE_FILE={shlex.quote(str(state_file))}
+set +e
+record_codex_idle_status_check_attempt
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=1" in result.stdout
+    assert (
+        "refusing to write idle Codex status state file at unsafe path"
+        in result.stdout
+    )
+    assert victim_file.read_text(encoding="utf-8") == "original\n"
+
+
+def test_idle_codex_status_check_treats_fifo_state_file_as_due(tmp_path: Path) -> None:
+    state_file = tmp_path / "last-check.fifo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_CHECK_ENABLED=1
+CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS=3600
+CODEX_STATUS_IDLE_CHECK_STATE_FILE={shlex.quote(str(state_file))}
+mkfifo "$CODEX_STATUS_IDLE_CHECK_STATE_FILE"
+if codex_idle_status_check_due; then
+  printf 'due\\n'
+else
+  printf 'not-due\\n'
+fi
+"""
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "due"
+
+
 def test_count_open_bot_prs_excluding_heads_fails_closed_when_pr_query_fails() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
