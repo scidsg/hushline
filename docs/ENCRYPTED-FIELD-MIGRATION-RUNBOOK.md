@@ -65,7 +65,8 @@ production plaintext.
 
 1. Confirm the deployed application reads both legacy Fernet and target envelope
    values.
-2. Capture preflight row counts and decryptability checks.
+2. Capture the JSON preflight artifact with row counts and decryptability
+   checks, and archive it with staging release evidence.
 3. Rehearse backup creation and restore into a separate staging database.
 4. Run dry-run mode and review the progress and failure report.
 5. Run live migration in small batches, including at least one intentional
@@ -86,7 +87,8 @@ rollback plan proven in staging.
    and that migration and ciphertext fit tests passed for the release.
 3. Confirm recent backups exist and a restore rehearsal has succeeded for the
    same database version and key material.
-4. Run preflight checks and dry-run mode.
+4. Run preflight checks, archive the JSON release-gate artifact, and run
+   dry-run mode.
 5. Enable envelope writes only after the schema/ciphertext preflight reports
    ready.
 6. Start with a small live batch. Increase batch size only after error-free
@@ -104,18 +106,24 @@ Run the executable preflight before enabling envelope writes:
 - Local: run `flask encrypted-field preflight` after seeded or synthetic
   encrypted-field records exist and before changing
   `ENCRYPTED_FIELD_WRITE_FORMAT`.
-- Staging: run the same command after deploying the dual-reader release and
-  completing the schema migration; save the output with staging rehearsal
-  evidence.
-- Production: run the same command after confirming backups and schema
-  migration completion, immediately before changing
-  `ENCRYPTED_FIELD_WRITE_FORMAT` to the target envelope format.
+- Staging: run `flask encrypted-field preflight --output json` after deploying
+  the dual-reader release and completing the schema migration; save the JSON
+  artifact with staging rehearsal evidence.
+- Production: run `flask encrypted-field preflight --output json` after
+  confirming backups and schema migration completion, immediately before
+  changing `ENCRYPTED_FIELD_WRITE_FORMAT` to the target envelope format.
 
 The command reports the current Alembic revision, envelope-safe storage
-capacity for each encrypted-field contract, legacy Fernet, envelope Fernet,
-null/empty, and malformed counts, and whether every non-empty value decrypts
-through the deployed reader. It must not print plaintext or raw full
-ciphertext.
+capacity for each encrypted-field contract, schema revision, contract-set
+version, selected contract IDs, batch size, row counts, legacy Fernet, envelope
+Fernet, null/empty, malformed, and decrypt-failure counts, and whether every
+non-empty value decrypts through the deployed reader. It must not print
+plaintext or raw full ciphertext.
+
+Use `--contract CONTRACT_ID` one or more times for targeted checks before a
+full release gate. Use `--batch-size N` to bound each scan query for large
+datasets; the release-gate artifact must still cover every encrypted-field
+contract unless maintainers explicitly approve a targeted gate.
 
 - Confirm the deployed code can read legacy Fernet and the target envelope
   format.

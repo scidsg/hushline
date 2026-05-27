@@ -36,6 +36,14 @@ def test_encrypted_field_migration_runbook_covers_required_execution_paths() -> 
     ):
         assert heading in content
 
+    for phrase in (
+        "flask encrypted-field preflight --output json",
+        "JSON release-gate artifact",
+        "--contract CONTRACT_ID",
+        "--batch-size N",
+    ):
+        assert phrase in content
+
 
 def test_encrypted_field_migration_runbook_locks_security_guardrails() -> None:
     content = _runbook_text().lower()
