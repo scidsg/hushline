@@ -112,6 +112,9 @@ redact sensitive values before pasting it here.
 
 ## Operator Signoff
 
+- Production release-gate manifest location:
+- Production release-gate command status: ready / blocked / not run
+- Maintainer approval reference:
 - Production enablement recommendation: proceed / block
 - Blocking issues:
 - Follow-up issues:

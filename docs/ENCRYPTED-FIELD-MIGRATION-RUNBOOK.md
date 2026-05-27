@@ -109,8 +109,9 @@ size ceiling, and rollback plan proven in staging or restored-backup rehearsal.
    rehearsal output, interruption/resume result, rollback rehearsal result, and
    operator signoff without plaintext, secrets, private keys, tokens, or full
    ciphertext values.
-5. Run preflight checks, archive the JSON release-gate artifact, and run
-   dry-run mode.
+5. Run preflight checks, archive the JSON release-gate artifact, run dry-run
+   mode, prepare the release-gate evidence manifest, and run the production
+   release-gate command.
 6. Enable transitional envelope writes only after the schema/ciphertext
    preflight reports ready, and label `envelope-fernet` evidence as
    compatibility evidence rather than production AAD evidence.
@@ -120,6 +121,91 @@ size ceiling, and rollback plan proven in staging or restored-backup rehearsal.
    full inventory.
 9. Keep the old reader deployed after completion until post-migration
    verification and rollback criteria have passed.
+
+## Production Release Gate
+
+Before changing `ENCRYPTED_FIELD_WRITE_FORMAT` in production, operators must run
+the checkable production release gate:
+
+```shell
+flask encrypted-field release-gate \
+  --preflight-artifact PATH/production-preflight.json \
+  --evidence-manifest PATH/production-release-gate.json
+```
+
+The gate must report `Encrypted-field production release gate: ready` before
+operators enable `envelope-fernet` writes. The command is read-only. The
+preflight artifact must cover every encrypted-field contract, report ready,
+scan every encrypted-field row, and have zero malformed values or decrypt
+failures.
+
+The evidence manifest must be a redacted JSON file with these minimum controls:
+
+```json
+{
+  "report_type": "encrypted-field-production-release-gate",
+  "gate_version": 1,
+  "target_format": "envelope-fernet",
+  "helper_version": "encrypted-field-migration-v1",
+  "contract_set_version": "encrypted-field-contracts-v1",
+  "preflight_artifact": "redacted production preflight artifact reference",
+  "release_checks": {
+    "migration_tests_passed": true,
+    "ciphertext_fit_tests_passed": true
+  },
+  "backup_restore_rehearsal": {
+    "completed": true,
+    "matching_key_material_verified": true,
+    "artifact": "redacted backup restore rehearsal artifact reference"
+  },
+  "dry_run": {
+    "completed": true,
+    "exit_status_zero": true,
+    "artifact_archived": true,
+    "artifact": "redacted dry-run artifact reference"
+  },
+  "live_batch_rehearsal": {
+    "completed": true,
+    "artifact": "redacted live-batch rehearsal artifact reference"
+  },
+  "interruption_resume_rehearsal": {
+    "completed": true,
+    "already_migrated_rows_skipped": true,
+    "remaining_rows_continued": true,
+    "artifact": "redacted interruption/resume artifact reference"
+  },
+  "rollback_rehearsal": {
+    "completed": true,
+    "old_reader_preserved": true,
+    "legacy_reads_verified": true,
+    "target_reads_verified": true,
+    "artifact": "redacted rollback rehearsal artifact reference"
+  },
+  "approval": {
+    "maintainer_approved": true,
+    "approved_by": ["maintainer name"],
+    "approved_at": "UTC timestamp",
+    "reference": "maintainer approval record"
+  },
+  "zero_downtime": {
+    "planned_downtime": false,
+    "bounded_batches": true,
+    "no_full_table_rewrite": true
+  },
+  "emergency_rollback": {
+    "dual_reader_remains_deployed": true,
+    "new_writes_can_revert_to_legacy": true,
+    "destructive_down_migration_required": false
+  }
+}
+```
+
+The manifest must not include plaintext, private keys, tokens, raw encrypted
+values, or full ciphertext. It is a release artifact that points to reviewed
+evidence; it is not a replacement for maintainer review. If the gate blocks,
+do not change production write-format configuration until the missing evidence
+or rollback/zero-downtime control is fixed and reviewed. The gate requires zero
+planned downtime, bounded batches, and no full-table rewrite transaction.
 
 ## Preflight Checks
 
