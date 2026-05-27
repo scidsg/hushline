@@ -44,11 +44,17 @@ Use local execution to prove the helper mechanics against seeded and synthetic
 records before staging data is touched.
 
 1. Run the helper in dry-run mode against local data.
+   `flask encrypted-field migrate --dry-run --batch-size 100` verifies the
+   same row-selection, decryption, target rewrite, and plaintext comparison
+   path used by live mode without writing.
 2. Confirm every inventory entry reports row counts, legacy-format counts,
    target-format counts, and decryptability results.
 3. Run a small live batch against disposable local data.
+   Use `flask encrypted-field migrate --live --batch-size 10` for an initial
+   bounded batch.
 4. Stop the helper mid-run, then resume it with the same target format and batch
-   size.
+   size by passing the previous `Next resume token` value to
+   `flask encrypted-field migrate --live --batch-size 10 --resume-token TOKEN`.
 5. Confirm already migrated rows are skipped and remaining rows continue.
 
 ### Staging
@@ -134,6 +140,14 @@ ciphertext.
 Dry-run mode must execute the same selection, classification, decryption,
 reencryption, and verification path as live mode, except for database writes.
 
+Run dry-run mode with:
+
+`flask encrypted-field migrate --dry-run --target-format envelope-fernet --batch-size 100`
+
+Use `--contract CONTRACT_ID` one or more times to limit rehearsal to a specific
+encrypted-field contract. Use the reported `Next resume token` with the same
+target format, batch size, and contract set to continue a bounded dry run.
+
 For each candidate row, dry-run mode must:
 
 1. Load the row using the same ordering used by live batches.
@@ -154,6 +168,17 @@ Live migration must process bounded batches. The default batch size should be
 small enough to avoid long locks, large transactions, and operational surprise;
 production batch-size increases require operator review of staging timing and
 production health.
+
+Run live mode with:
+
+`flask encrypted-field migrate --live --target-format envelope-fernet --batch-size 10`
+
+Resume an interrupted live run with the exact token reported by the prior run:
+
+```shell
+flask encrypted-field migrate --live --target-format envelope-fernet \
+  --batch-size 10 --resume-token TOKEN
+```
 
 For each batch:
 
@@ -183,6 +208,9 @@ failover, and operator cancellation.
   reported resume position when the operator explicitly requests a full scan.
 - Store or print a resume token containing only contract ID, last processed
   primary key, target format, helper version, and batch size.
+- The executable helper prints this state as `Next resume token`. In live mode,
+  a value of `complete` means no legacy-format rows remain for the selected
+  contract set.
 - Reject resume when the helper version, target format, or encrypted-field
   contract set differs from the dry-run or prior live execution unless
   maintainers approve a new dry run.
