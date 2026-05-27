@@ -3907,6 +3907,14 @@ main() {
   parse_args "$@"
   initialize_run_state
   trap cleanup EXIT
+
+  if [[ ! -d "$REPO_DIR/.git" ]]; then
+    echo "Repository not found: $REPO_DIR" >&2
+    exit 1
+  fi
+
+  cd "$REPO_DIR"
+
   acquire_runner_lock
 
   require_cmd git
@@ -3941,13 +3949,6 @@ main() {
   require_non_negative_integer \
     "HUSHLINE_DAILY_CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS" \
     "$CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS"
-
-  if [[ ! -d "$REPO_DIR/.git" ]]; then
-    echo "Repository not found: $REPO_DIR" >&2
-    exit 1
-  fi
-
-  cd "$REPO_DIR"
 
   assert_runner_can_take_checkout
 
