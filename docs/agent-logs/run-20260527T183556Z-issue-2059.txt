@@ -6916,3 +6916,21 @@ Coverage HTML written to dir /tmp/hushline-htmlcov
 
 
 ========== 1909 passed, 1 deselected, 1 xfailed in 416.36s (0:06:56) ===========
+Pruning old runner logs, keeping newest 10.
+[codex/daily-issue-2059 b95d27d3] chore: agent daily for #2059 (epic #2013)
+ 7 files changed, 7120 insertions(+), 2356 deletions(-)
+ create mode 100644 docs/ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md
+ delete mode 100644 docs/agent-logs/run-20260526T080517Z-issue-2021.txt
+ create mode 100644 docs/agent-logs/run-20260527T183556Z-issue-2059.txt
+Remote branch 'codex/daily-issue-2059' does not exist; creating it with a standard push.
+remote: 
+remote: Create a pull request for 'codex/daily-issue-2059' on GitHub by visiting:        
+remote:      https://github.com/scidsg/hushline/pull/new/codex/daily-issue-2059        
+remote: 
+To github.com:scidsg/hushline.git
+ * [new branch]        codex/daily-issue-2059 -> codex/daily-issue-2059
+branch 'codex/daily-issue-2059' set up to track 'origin/codex/daily-issue-2059'.
+Opened PR: https://github.com/scidsg/hushline/pull/2072
+==> Mark issue #2059 as Ready for Review
+Opened coverage gap issue: https://github.com/scidsg/hushline/issues/2073
+==> Add coverage gap issue #2073 to Agent Eligible
