@@ -26,6 +26,7 @@ This directory now includes a GitHub-first mirror of the public Hush Line Librar
 - [Python 3.13 upgrade readiness](./PYTHON-3.13-UPGRADE-READINESS.md)
 - [Public-record provenance roadmap](./PUBLIC-RECORD-PROVENANCE-ROADMAP.md)
 - [Encrypted-field migration runbook](./ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md)
+- [Encrypted-field rehearsal evidence report template](./ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md)
 - [Encrypted-field AEAD evaluation](./ENCRYPTED-FIELD-AEAD-EVALUATION.md)
 - [Operational key management design](./OPERATIONAL-KEY-MANAGEMENT-DESIGN.md)
 - [Password hash modernization evaluation](./PASSWORD-HASH-MODERNIZATION-EVALUATION.md)
