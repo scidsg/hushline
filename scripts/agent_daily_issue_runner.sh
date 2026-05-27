@@ -230,7 +230,7 @@ if (!primary) {
 const usedPercent = Number(primary.usedPercent);
 const windowDurationMins = Number(primary.windowDurationMins);
 const resetsAt = Number(primary.resetsAt);
-const reachedType = limits.rateLimitReachedType || "";
+const reachedType = limits.rateLimitReachedType || "null";
 if (!Number.isFinite(usedPercent) || !Number.isFinite(windowDurationMins) || !Number.isFinite(resetsAt)) {
   process.exit(2);
 }
@@ -241,6 +241,19 @@ process.stdout.write([
   reachedType,
 ].join("\t"));
 '
+}
+
+codex_status_reached_type_blocks_issue_work() {
+  local reached_type="$1"
+
+  case "$reached_type" in
+    "" | "null" | "primary")
+      return 1
+      ;;
+    *)
+      return 0
+      ;;
+  esac
 }
 
 wait_for_codex_status_credit_window() {
@@ -279,6 +292,11 @@ wait_for_codex_status_credit_window() {
       remaining_percent=0
     fi
     echo "Codex /status: primary ${window_duration_mins}m window ${used_percent}% used; ${remaining_percent}% remaining; resets at ${reset_label}."
+
+    if codex_status_reached_type_blocks_issue_work "$reached_type"; then
+      echo "Blocked: Codex /status reported non-window limit type '${reached_type}'; refusing to start assigned work until Codex access is restored." >&2
+      return 1
+    fi
 
     if (( window_duration_mins == 300 && remaining_percent < CODEX_STATUS_MIN_REMAINING_PERCENT )); then
       now_epoch="$(date +%s)"
@@ -3973,7 +3991,10 @@ main() {
     exit 0
   fi
 
-  wait_for_codex_status_credit_window
+  if ! wait_for_codex_status_credit_window; then
+    runner_status "Skipped: Codex /status reported a blocking access limit; leaving assigned issue #${ISSUE_NUMBER} in ${PROJECT_STATUS_IN_PROGRESS}."
+    exit 0
+  fi
 
   EPIC_ISSUE_NUMBER=""
   EPIC_ISSUE_TITLE=""
