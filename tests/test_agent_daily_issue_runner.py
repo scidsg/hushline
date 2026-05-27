@@ -1498,6 +1498,37 @@ coverage_gap_snapshot_from_log {shlex.quote(str(check_log))}
     assert "TOTAL                                            8881     36    99%" in result.stdout
 
 
+def test_coverage_gap_snapshot_from_log_uses_latest_table_when_latest_has_no_misses(
+    tmp_path: Path,
+) -> None:
+    check_log = tmp_path / "check.log"
+    check_log.write_text(
+        """
+older run
+Name                                             Stmts   Miss  Cover
+--------------------------------------------------------------------
+hushline/old.py                                    10      1    90%
+TOTAL                                              10      1    90%
+latest run
+Name                                             Stmts   Miss  Cover
+--------------------------------------------------------------------
+hushline/new.py                                    22      0   100%
+TOTAL                                              22      0   100%
+""",
+        encoding="utf-8",
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+coverage_gap_snapshot_from_log {shlex.quote(str(check_log))}
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == ""
+
+
 def test_open_coverage_gap_issue_after_pr_creates_agent_eligible_issue(
     tmp_path: Path,
 ) -> None:
