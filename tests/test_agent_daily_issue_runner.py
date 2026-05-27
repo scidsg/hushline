@@ -94,6 +94,58 @@ wait_for_codex_status_credit_window
     assert "unexpected-sleep" not in result.stdout
 
 
+def test_wait_for_codex_status_credit_window_blocks_workspace_credit_depletion() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_CHECK_ENABLED=1
+HUSHLINE_DAILY_CODEX_STATUS_JSON='{{"rateLimits":{{"primary":{{"usedPercent":1,"windowDurationMins":300,"resetsAt":1779683479}},"secondary":null,"rateLimitReachedType":"workspace_member_credits_depleted"}}}}'
+sleep() {{
+  printf 'unexpected-sleep:%s\\n' "$1"
+  return 1
+}}
+set +e
+wait_for_codex_status_credit_window
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Codex /status: primary 300m window 1% used; 99% remaining" in result.stdout
+    assert "rc=1" in result.stdout
+    assert "unexpected-sleep" not in result.stdout
+    assert "non-window limit type 'workspace_member_credits_depleted'" in result.stderr
+    assert "5h window still has capacity; proceeding" not in result.stdout
+
+
+def test_wait_for_codex_status_credit_window_allows_shared_usage_without_credit_balance() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_CHECK_ENABLED=1
+HUSHLINE_DAILY_CODEX_STATUS_JSON='{{"rateLimits":{{"primary":{{"usedPercent":1,"windowDurationMins":300,"resetsAt":1779683479}},"secondary":{{"usedPercent":55,"windowDurationMins":10080,"resetsAt":1780201172}},"credits":{{"hasCredits":false,"unlimited":false,"balance":"0"}},"planType":"plus","rateLimitReachedType":null}}}}'
+sleep() {{
+  printf 'unexpected-sleep:%s\\n' "$1"
+  return 1
+}}
+set +e
+wait_for_codex_status_credit_window
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Codex /status: primary 300m window 1% used; 99% remaining" in result.stdout
+    assert "rc=0" in result.stdout
+    assert "unexpected-sleep" not in result.stdout
+    assert "credits.hasCredits=false" not in result.stderr
+    assert "5h window still has capacity; proceeding" not in result.stdout
+
+
 def test_wait_for_codex_status_credit_window_sleeps_until_low_5h_quota_resets(
     tmp_path: Path,
 ) -> None:
