@@ -29,6 +29,7 @@ from hushline.crypto import (
     build_encrypted_field_aad,
     decrypt_field,
     encrypt_field,
+    parse_encrypted_field_aead_envelope,
     parse_encrypted_field_envelope,
 )
 from hushline.db import db
@@ -59,6 +60,7 @@ class EncryptedFieldCiphertextReport:
     scanned_rows: int
     legacy_fernet: int
     envelope_fernet: int
+    envelope_aes_gcm: int
     null_empty: int
     malformed: int
     decrypt_failures: int
@@ -74,6 +76,7 @@ class EncryptedFieldCiphertextCounts:
     scanned_rows: int = 0
     legacy_fernet: int = 0
     envelope_fernet: int = 0
+    envelope_aes_gcm: int = 0
     null_empty: int = 0
     malformed: int = 0
     decrypt_failures: int = 0
@@ -311,9 +314,20 @@ def _classify_migration_value(value: Any) -> str:
     if not isinstance(value, str):
         return "malformed"
     if value.startswith(ENCRYPTED_FIELD_ENVELOPE_PREFIX):
-        parse_encrypted_field_envelope(value)
-        return "envelope_fernet"
+        return _classify_envelope_value(value)
     return "legacy_fernet"
+
+
+def _classify_envelope_value(value: str) -> str:
+    try:
+        parse_encrypted_field_envelope(value)
+    except InvalidToken as fernet_error:
+        try:
+            parse_encrypted_field_aead_envelope(value)
+        except InvalidToken as aead_error:
+            raise fernet_error from aead_error
+        return "envelope_aes_gcm"
+    return "envelope_fernet"
 
 
 @contextmanager
@@ -380,6 +394,23 @@ def _verify_ciphertext_plaintext(
         )
 
 
+def _preflight_scan_columns(contract: EncryptedFieldContract, table: Any) -> list[Any]:
+    columns = [table.c.id, table.c[contract.column]]
+    selected = {"id", contract.column}
+    for aad_field in contract.aad_fields:
+        if (
+            aad_field == "user_id"
+            and contract.table == "users"
+            or aad_field == "notification_recipient_id"
+            or aad_field == "field_value_id"
+        ):
+            continue
+        if aad_field in table.c and aad_field not in selected:
+            columns.append(table.c[aad_field])
+            selected.add(aad_field)
+    return columns
+
+
 def _process_migration_row(
     *,
     contract: EncryptedFieldContract,
@@ -425,6 +456,23 @@ def _process_migration_row(
     if not isinstance(value, str):
         raise AssertionError("Encrypted-field value classification allowed a non-string")
 
+    aad_values = _aad_values_for_row(contract, row)
+    if classification == "envelope_aes_gcm":
+        try:
+            decrypt_field(value, contract=contract, aad_values=aad_values)
+        except (InvalidToken, UnicodeDecodeError, ValueError) as exc:
+            report.decrypt_failures += 1
+            raise EncryptedFieldMigrationError(
+                EncryptedFieldMigrationFailure(
+                    contract_id=contract.id,
+                    primary_key=primary_key,
+                    phase="decrypt",
+                    error_class=exc.__class__.__name__,
+                )
+            ) from exc
+        report.already_migrated_rows += 1
+        return False
+
     try:
         plaintext = decrypt_field(value)
     except (InvalidToken, UnicodeDecodeError, ValueError) as exc:
@@ -441,8 +489,6 @@ def _process_migration_row(
     if plaintext is None:
         report.skipped_rows += 1
         return False
-
-    _aad_values_for_row(contract, row)
 
     if classification == "envelope_fernet":
         report.already_migrated_rows += 1
@@ -656,18 +702,32 @@ def _print_migration_reports(  # noqa: PLR0913
         click.echo(f"Next resume token: {_serialize_resume_state(next_resume_state)}")
 
 
-def _classify_preflight_value(value: Any) -> str:
+def _classify_preflight_value(
+    value: Any,
+    *,
+    contract: EncryptedFieldContract | None = None,
+    aad_values: dict[str, int] | None = None,
+) -> str:
     if value is None or value == "":
         return "null_empty"
     if not isinstance(value, str):
         return "malformed"
 
     is_envelope = value.startswith(ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+    classification = "legacy_fernet"
     if is_envelope:
         try:
-            parse_encrypted_field_envelope(value)
+            classification = _classify_envelope_value(value)
         except InvalidToken:
             return "malformed"
+        if classification == "envelope_aes_gcm":
+            if contract is None or aad_values is None:
+                return classification
+            try:
+                decrypt_field(value, contract=contract, aad_values=aad_values)
+            except (InvalidToken, UnicodeDecodeError, ValueError):
+                return "decrypt_failure"
+            return classification
 
     try:
         decrypt_field(value)
@@ -676,7 +736,7 @@ def _classify_preflight_value(value: Any) -> str:
     except (UnicodeDecodeError, ValueError):
         return "decrypt_failure"
 
-    return "envelope_fernet" if is_envelope else "legacy_fernet"
+    return classification
 
 
 def _record_preflight_classification(
@@ -694,6 +754,8 @@ def _record_preflight_classification(
         counts.decrypt_failures += 1
     elif classification == "envelope_fernet":
         counts.envelope_fernet += 1
+    elif classification == "envelope_aes_gcm":
+        counts.envelope_aes_gcm += 1
     else:
         counts.legacy_fernet += 1
 
@@ -716,14 +778,13 @@ def _classify_encrypted_field_values(
         table = db.metadata.tables.get(contract.table)
         if table is None or contract.column not in table.c:
             continue
-        column = table.c[contract.column]
         counts = EncryptedFieldCiphertextCounts()
         last_primary_key = 0
 
         while True:
             rows = (
                 db.session.execute(
-                    db.select(table.c.id, column)
+                    db.select(*_preflight_scan_columns(contract, table))
                     .select_from(table)
                     .where(table.c.id > last_primary_key)
                     .order_by(table.c.id.asc())
@@ -737,9 +798,16 @@ def _classify_encrypted_field_values(
 
             for row in rows:
                 last_primary_key = row["id"]
+                classification = _classify_preflight_value(row[contract.column])
+                if classification == "envelope_aes_gcm":
+                    classification = _classify_preflight_value(
+                        row[contract.column],
+                        contract=contract,
+                        aad_values=_aad_values_for_row(contract, row),
+                    )
                 _record_preflight_classification(
                     counts,
-                    _classify_preflight_value(row[contract.column]),
+                    classification,
                 )
 
         reports.append(
@@ -751,6 +819,7 @@ def _classify_encrypted_field_values(
                 scanned_rows=counts.scanned_rows,
                 legacy_fernet=counts.legacy_fernet,
                 envelope_fernet=counts.envelope_fernet,
+                envelope_aes_gcm=counts.envelope_aes_gcm,
                 null_empty=counts.null_empty,
                 malformed=counts.malformed,
                 decrypt_failures=counts.decrypt_failures,
@@ -820,6 +889,7 @@ def _encrypted_field_preflight_report(
         capacity = capacity_by_contract_id[contract.id]
         ciphertext_report = ciphertext_by_contract_id.get(contract.id)
         row_counts = {
+            "envelope_aes_gcm": 0,
             "envelope_fernet": 0,
             "legacy_fernet": 0,
             "null_empty": 0,
@@ -829,6 +899,7 @@ def _encrypted_field_preflight_report(
         failures = {"decrypt_failures": 0, "malformed": 0}
         if ciphertext_report is not None:
             row_counts = {
+                "envelope_aes_gcm": ciphertext_report.envelope_aes_gcm,
                 "envelope_fernet": ciphertext_report.envelope_fernet,
                 "legacy_fernet": ciphertext_report.legacy_fernet,
                 "null_empty": ciphertext_report.null_empty,
@@ -859,6 +930,7 @@ def _encrypted_field_preflight_report(
 
     totals = {
         "decrypt_failures": sum(report.decrypt_failures for report in ciphertext_reports),
+        "envelope_aes_gcm": sum(report.envelope_aes_gcm for report in ciphertext_reports),
         "envelope_fernet": sum(report.envelope_fernet for report in ciphertext_reports),
         "legacy_fernet": sum(report.legacy_fernet for report in ciphertext_reports),
         "malformed": sum(report.malformed for report in ciphertext_reports),
@@ -1133,6 +1205,7 @@ def register_encrypted_field_commands(app: Flask) -> None:
                 f"({ciphertext_report.table}.{ciphertext_report.column}): "
                 f"legacy Fernet: {ciphertext_report.legacy_fernet}; "
                 f"envelope Fernet: {ciphertext_report.envelope_fernet}; "
+                f"envelope AES-GCM: {ciphertext_report.envelope_aes_gcm}; "
                 f"null/empty: {ciphertext_report.null_empty}; "
                 f"malformed: {ciphertext_report.malformed}; "
                 f"decrypt failures: {ciphertext_report.decrypt_failures}; "

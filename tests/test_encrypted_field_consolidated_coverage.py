@@ -199,6 +199,10 @@ def test_preflight_classification_counts_safe_buckets_without_disclosing_values(
     legacy_ciphertext = crypto.encrypt_field("legacy secret")
     assert legacy_ciphertext is not None
     envelope_ciphertext = crypto.serialize_encrypted_field_envelope(legacy_ciphertext)
+    aead_envelope = crypto.serialize_encrypted_field_aead_envelope(
+        b"synthetic-ciphertext",
+        b"0" * crypto.ENCRYPTED_FIELD_AEAD_NONCE_LENGTH,
+    )
     undecryptable_envelope = crypto.serialize_encrypted_field_envelope(
         "gAAAAABnot-a-decryptable-fernet-token"
     )
@@ -220,6 +224,7 @@ def test_preflight_classification_counts_safe_buckets_without_disclosing_values(
         cli._classify_preflight_value(undecodable_legacy),
         cli._classify_preflight_value(legacy_ciphertext),
         cli._classify_preflight_value(envelope_ciphertext),
+        cli._classify_preflight_value(aead_envelope),
     ]
     counts = cli.EncryptedFieldCiphertextCounts()
     for classification in classifications:
@@ -234,14 +239,16 @@ def test_preflight_classification_counts_safe_buckets_without_disclosing_values(
         "decrypt_failure",
         "legacy_fernet",
         "envelope_fernet",
+        "envelope_aes_gcm",
     ]
-    assert counts.row_count == 8
-    assert counts.scanned_rows == 8
+    assert counts.row_count == 9
+    assert counts.scanned_rows == 9
     assert counts.null_empty == 2
     assert counts.malformed == 2
     assert counts.decrypt_failures == 4
     assert counts.legacy_fernet == 1
     assert counts.envelope_fernet == 1
+    assert counts.envelope_aes_gcm == 1
 
 
 def test_preflight_report_marks_capacity_only_missing_schema_as_blocked() -> None:
@@ -273,6 +280,7 @@ def test_preflight_report_marks_capacity_only_missing_schema_as_blocked() -> Non
         {"code": "missing_schema", "contract_ids": ["User.missing_secret"]}
     ]
     assert report["contracts"][0]["rows"] == {
+        "envelope_aes_gcm": 0,
         "envelope_fernet": 0,
         "legacy_fernet": 0,
         "null_empty": 0,
