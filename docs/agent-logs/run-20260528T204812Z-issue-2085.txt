@@ -3166,3 +3166,22 @@ Coverage HTML written to dir /tmp/hushline-htmlcov
 
 
 ========== 1970 passed, 1 deselected, 1 xfailed in 432.39s (0:07:12) ===========
+Pruning old runner logs, keeping newest 10.
+[codex/daily-issue-2085 e1bfdd60] chore: agent daily for #2085 (epic #2092)
+ 6 files changed, 2575 insertions(+), 9628 deletions(-)
+ delete mode 100644 docs/agent-logs/run-20260526T163208Z-issue-2038.txt
+ delete mode 100644 docs/agent-logs/run-20260526T191038Z-issue-2040.txt
+ rename docs/agent-logs/{run-20260526T183627Z-issue-2041.txt => run-20260528T204812Z-issue-2085.txt} (67%)
+ create mode 100644 tests/testdata/crypto-known-answer-vectors.json
+Remote branch 'codex/daily-issue-2085' does not exist; creating it with a standard push.
+remote: 
+remote: Create a pull request for 'codex/daily-issue-2085' on GitHub by visiting:        
+remote:      https://github.com/scidsg/hushline/pull/new/codex/daily-issue-2085        
+remote: 
+To github.com:scidsg/hushline.git
+ * [new branch]        codex/daily-issue-2085 -> codex/daily-issue-2085
+branch 'codex/daily-issue-2085' set up to track 'origin/codex/daily-issue-2085'.
+Opened PR: https://github.com/scidsg/hushline/pull/2094
+==> Mark issue #2085 as Ready for Review
+Opened coverage gap issue: https://github.com/scidsg/hushline/issues/2095
+==> Add coverage gap issue #2095 to Agent Eligible
