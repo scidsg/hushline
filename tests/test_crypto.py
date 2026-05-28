@@ -1,18 +1,92 @@
 import json
 from base64 import urlsafe_b64decode, urlsafe_b64encode
+from pathlib import Path
+from typing import Any
 from unittest.mock import call
 
 import pytest
 from cryptography.fernet import Fernet, InvalidToken
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from flask import Flask
 
 from hushline import crypto
 from hushline.config import ENCRYPTED_FIELD_WRITE_FORMAT, EncryptedFieldWriteFormat
 
+CRYPTO_VECTOR_FIXTURE = json.loads(
+    Path("tests/testdata/crypto-known-answer-vectors.json").read_text()
+)
+
+HUSHLINE_AEAD_NEGATIVE_CASES = [
+    "corrupted ciphertext byte",
+    "corrupted authentication tag byte",
+    "wrong AAD row identifier",
+    "wrong AAD domain",
+    "corrupted nonce byte",
+    "malformed nonce length",
+    "unknown envelope version",
+    "unknown envelope algorithm",
+    "unexpected envelope metadata",
+]
+
 
 def _decode_fernet_token(token: str) -> bytes:
     # Fernet tokens are URL-safe base64 without guaranteed padding.
     return urlsafe_b64decode(token + "=" * (-len(token) % 4))
+
+
+def _decode_unpadded_urlsafe(data: str) -> bytes:
+    return urlsafe_b64decode(data + "=" * (-len(data) % 4))
+
+
+def _encode_unpadded_urlsafe(data: bytes) -> str:
+    return urlsafe_b64encode(data).decode().rstrip("=")
+
+
+def _aead_payload_from_envelope(envelope: str) -> dict[str, Any]:
+    encoded_payload = envelope[len(crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX) :]
+    payload = _decode_unpadded_urlsafe(encoded_payload)
+    return json.loads(payload.decode())
+
+
+def _aead_envelope_from_payload(payload: dict[str, Any]) -> str:
+    encoded_payload = _encode_unpadded_urlsafe(
+        json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
+    )
+    return f"{crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX}{encoded_payload}"
+
+
+def _hushline_aead_vector() -> dict[str, Any]:
+    return CRYPTO_VECTOR_FIXTURE["hushline_encrypted_field_aead_vectors"][0]
+
+
+def test_crypto_known_answer_vector_fixture_documents_source_and_rationale() -> None:
+    assert CRYPTO_VECTOR_FIXTURE["schema"] == "hushline.crypto-known-answer-vectors.v1"
+    assert "NIST SP 800-38D" in CRYPTO_VECTOR_FIXTURE["sources"][0]["name"]
+    assert CRYPTO_VECTOR_FIXTURE["sources"][0]["url"] == (
+        "https://csrc.nist.gov/pubs/sp/800/38/d/final"
+    )
+    assert "synthetic" in CRYPTO_VECTOR_FIXTURE["rationale"]
+    assert _hushline_aead_vector()["negative_cases"] == HUSHLINE_AEAD_NEGATIVE_CASES
+
+
+@pytest.mark.parametrize(
+    "vector",
+    CRYPTO_VECTOR_FIXTURE["aes_gcm_known_answer_vectors"],
+    ids=lambda vector: vector["id"],
+)
+def test_aes_gcm_known_answer_vectors_from_nist(vector: dict[str, str]) -> None:
+    key = bytes.fromhex(vector["key_hex"])
+    nonce = bytes.fromhex(vector["nonce_hex"])
+    aad = bytes.fromhex(vector["aad_hex"])
+    plaintext = bytes.fromhex(vector["plaintext_hex"])
+    expected_ciphertext = bytes.fromhex(vector["ciphertext_hex"])
+    expected_tag = bytes.fromhex(vector["tag_hex"])
+
+    encrypted = AESGCM(key).encrypt(nonce, plaintext, aad)
+
+    assert encrypted[:-16] == expected_ciphertext
+    assert encrypted[-16:] == expected_tag
+    assert AESGCM(key).decrypt(nonce, expected_ciphertext + expected_tag, aad) == plaintext
 
 
 def test_get_encryption_key_requires_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -216,6 +290,136 @@ def test_encrypted_field_aead_prototype_requires_expected_domain_and_aad(
         crypto.decrypt_field_aead_prototype(envelope, pgp_key_contract, {"user_id": 1})
     with pytest.raises(InvalidToken):
         crypto.decrypt_field_aead_prototype(envelope, email_contract, {"user_id": 2})
+
+
+def test_hushline_aead_known_answer_vector_encrypts_and_serializes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    vector = _hushline_aead_vector()
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID[vector["contract_id"]]
+    nonce = bytes.fromhex(vector["nonce_hex"])
+
+    monkeypatch.setenv("ENCRYPTION_KEY", vector["base_encryption_key_base64"])
+
+    def fixed_nonce(length: int) -> bytes:
+        assert length == crypto.ENCRYPTED_FIELD_AEAD_NONCE_LENGTH
+        return nonce
+
+    monkeypatch.setattr(crypto.os, "urandom", fixed_nonce)
+
+    aad = crypto.build_encrypted_field_aad(contract, vector["aad_values"])
+    encrypted = crypto.encrypt_field_aead_prototype(
+        vector["plaintext"],
+        contract,
+        vector["aad_values"],
+    )
+
+    assert crypto._get_encrypted_field_aead_key().hex() == vector["derived_aes_key_hex"]
+    assert aad == bytes.fromhex(vector["aad_hex"])
+    assert aad.decode() == vector["aad_json"]
+    assert encrypted is not None
+    assert encrypted == vector["envelope"]
+    assert _aead_payload_from_envelope(encrypted)["ct"] == _encode_unpadded_urlsafe(
+        bytes.fromhex(vector["ciphertext_and_tag_hex"])
+    )
+    assert (
+        crypto.decrypt_field_aead_prototype(
+            vector["envelope"],
+            contract,
+            vector["aad_values"],
+        )
+        == vector["plaintext"]
+    )
+
+
+def test_hushline_aead_known_answer_vector_parses_stable_envelope() -> None:
+    vector = _hushline_aead_vector()
+
+    envelope = crypto.parse_encrypted_field_aead_envelope(vector["envelope"])
+
+    assert envelope == crypto.EncryptedFieldAEADEnvelope(
+        version=crypto.ENCRYPTED_FIELD_AEAD_ENVELOPE_VERSION,
+        algorithm=crypto.ENCRYPTED_FIELD_AEAD_ENVELOPE_ALGORITHM,
+        nonce=bytes.fromhex(vector["nonce_hex"]),
+        ciphertext=bytes.fromhex(vector["ciphertext_and_tag_hex"]),
+    )
+    assert (
+        crypto.serialize_encrypted_field_aead_envelope(
+            envelope.ciphertext,
+            envelope.nonce,
+        )
+        == vector["envelope"]
+    )
+    assert (
+        json.dumps(
+            _aead_payload_from_envelope(vector["envelope"]),
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        == vector["serialized_payload_json"]
+    )
+
+
+@pytest.mark.parametrize("case", HUSHLINE_AEAD_NEGATIVE_CASES)
+def test_hushline_aead_known_answer_negative_vectors_fail_closed(
+    monkeypatch: pytest.MonkeyPatch,
+    case: str,
+) -> None:
+    vector = _hushline_aead_vector()
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID[vector["contract_id"]]
+    aad_values = dict(vector["aad_values"])
+    envelope = vector["envelope"]
+
+    monkeypatch.setenv("ENCRYPTION_KEY", vector["base_encryption_key_base64"])
+
+    if case == "corrupted ciphertext byte":
+        payload = _aead_payload_from_envelope(envelope)
+        ciphertext = bytearray(bytes.fromhex(vector["ciphertext_and_tag_hex"]))
+        ciphertext[0] ^= 0x01
+        payload["ct"] = _encode_unpadded_urlsafe(bytes(ciphertext))
+        envelope = _aead_envelope_from_payload(payload)
+    elif case == "corrupted authentication tag byte":
+        payload = _aead_payload_from_envelope(envelope)
+        ciphertext = bytearray(bytes.fromhex(vector["ciphertext_and_tag_hex"]))
+        ciphertext[-1] ^= 0x01
+        payload["ct"] = _encode_unpadded_urlsafe(bytes(ciphertext))
+        envelope = _aead_envelope_from_payload(payload)
+    elif case == "wrong AAD row identifier":
+        aad_values["user_id"] += 1
+    elif case == "wrong AAD domain":
+        contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["NotificationRecipient.pgp_key"]
+    elif case == "corrupted nonce byte":
+        payload = _aead_payload_from_envelope(envelope)
+        nonce = bytearray(bytes.fromhex(vector["nonce_hex"]))
+        nonce[0] ^= 0x01
+        payload["n"] = _encode_unpadded_urlsafe(bytes(nonce))
+        envelope = _aead_envelope_from_payload(payload)
+    elif case == "malformed nonce length":
+        payload = _aead_payload_from_envelope(envelope)
+        payload["n"] = _encode_unpadded_urlsafe(bytes.fromhex(vector["nonce_hex"])[:-1])
+        envelope = _aead_envelope_from_payload(payload)
+    elif case == "unknown envelope version":
+        payload = _aead_payload_from_envelope(envelope)
+        payload["v"] = crypto.ENCRYPTED_FIELD_AEAD_ENVELOPE_VERSION + 1
+        envelope = _aead_envelope_from_payload(payload)
+    elif case == "unknown envelope algorithm":
+        payload = _aead_payload_from_envelope(envelope)
+        payload["alg"] = "aes-128-gcm"
+        envelope = _aead_envelope_from_payload(payload)
+    elif case == "unexpected envelope metadata":
+        payload = _aead_payload_from_envelope(envelope)
+        payload["kid"] = "unexpected"
+        envelope = _aead_envelope_from_payload(payload)
+    else:  # pragma: no cover - protects the case list from drift.
+        raise AssertionError(f"Unhandled negative vector case: {case}")
+
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field_aead_prototype(envelope, contract, aad_values)
+
+
+def test_hushline_aead_envelope_rejects_non_96_bit_nonce() -> None:
+    with pytest.raises(ValueError, match="nonce must be 96 bits"):
+        crypto.serialize_encrypted_field_aead_envelope(b"ciphertext-and-tag", b"short")
 
 
 def test_legacy_fernet_token_has_no_envelope(monkeypatch: pytest.MonkeyPatch) -> None:
