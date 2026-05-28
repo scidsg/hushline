@@ -68,9 +68,7 @@ class User(Model):
     _password_hash: Mapped[str] = mapped_column(
         "password_hash", db.String(PASSWORD_HASH_MAX_LENGTH)
     )
-    _totp_secret: Mapped[Optional[str]] = mapped_column(
-        "totp_secret", db.String(TOTP_SECRET_MAX_LENGTH)
-    )
+    _totp_secret: Mapped[Optional[str]] = mapped_column("totp_secret", db.Text)
 
     primary_username: Mapped["Username"] = relationship(
         primaryjoin="and_(Username.user_id == User.id, Username.is_primary)",
@@ -101,17 +99,11 @@ class User(Model):
     email_include_message_content: Mapped[bool] = mapped_column(server_default=text("false"))
     email_encrypt_entire_body: Mapped[bool] = mapped_column(server_default=text("true"))
 
-    _email: Mapped[Optional[str]] = mapped_column("email", db.String(EMAIL_MAX_LENGTH))
-    _smtp_server: Mapped[Optional[str]] = mapped_column(
-        "smtp_server", db.String(SMTP_SERVER_MAX_LENGTH)
-    )
+    _email: Mapped[Optional[str]] = mapped_column("email", db.Text)
+    _smtp_server: Mapped[Optional[str]] = mapped_column("smtp_server", db.Text)
     smtp_port: Mapped[Optional[int]]
-    _smtp_username: Mapped[Optional[str]] = mapped_column(
-        "smtp_username", db.String(SMTP_USERNAME_MAX_LENGTH)
-    )
-    _smtp_password: Mapped[Optional[str]] = mapped_column(
-        "smtp_password", db.String(SMTP_PASSWORD_MAX_LENGTH)
-    )
+    _smtp_username: Mapped[Optional[str]] = mapped_column("smtp_username", db.Text)
+    _smtp_password: Mapped[Optional[str]] = mapped_column("smtp_password", db.Text)
     _pgp_key: Mapped[Optional[str]] = mapped_column("pgp_key", db.Text)
     smtp_encryption: Mapped[SMTPEncryption] = mapped_column(
         db.Enum(SMTPEncryption, native_enum=False), default=SMTPEncryption.StartTLS

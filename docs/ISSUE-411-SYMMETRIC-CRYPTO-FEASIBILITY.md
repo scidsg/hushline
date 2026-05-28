@@ -249,6 +249,9 @@ Write an architecture decision record that defines:
 - Operator recovery expectations if `ENCRYPTION_KEY` or future key material is
   lost.
 
+Status: completed in
+[`ENCRYPTED-FIELD-MODERNIZATION-ADR.md`](ENCRYPTED-FIELD-MODERNIZATION-ADR.md).
+
 ### Phase 1: Inventory And Tests
 
 Add tests that inventory every encrypted field and lock current behavior before
@@ -297,6 +300,13 @@ Then enable new writes behind a feature flag or explicit config setting:
 ### Phase 5: Data Migration Runbook
 
 Only after phases 0 through 4 should Hush Line migrate existing rows.
+The operator runbook is drafted in
+[`ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md`](ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md).
+Production enablement is blocked until maintainers review a completed
+[`ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md`](ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md)
+artifact for restored-backup or staging validation and the
+[`ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md`](ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md)
+production release gate reports ready.
 
 Migration requirements:
 
@@ -308,13 +318,29 @@ Migration requirements:
 - Idempotent resume behavior.
 - Per-row verification after re-encryption.
 - Backup and restore rehearsal before production.
+- Reviewed rehearsal evidence covering restore, preflight, dry-run, live batch,
+  interruption/resume, rollback, and operator signoff.
+- A passing `flask encrypted-field release-gate` result before production
+  write-format configuration changes.
 - Observable migration progress.
 - Clear rollback plan that preserves the old reader.
 
-### Phase 6: Optional Algorithm Change
+### Phase 6: AEAD Evaluation And Production Write Path
 
 After the envelope and migration path are proven, evaluate whether to switch new
-writes from Fernet to an AEAD such as ChaCha20-Poly1305 or AES-GCM.
+writes from Fernet to an AEAD such as ChaCha20-Poly1305 or AES-GCM. Before an
+existing production ciphertext migration can be called domain-bound or
+best-in-class, implement and approve the production AEAD write path.
+
+Status: AEAD evaluation completed in
+[`ENCRYPTED-FIELD-AEAD-EVALUATION.md`](ENCRYPTED-FIELD-AEAD-EVALUATION.md);
+the production AEAD write path remains future implementation work.
+
+The 2026-05-26 maintainer decision makes production AEAD writes required before
+existing production ciphertext migration can be considered complete in the
+domain-bound or best-in-class sense. `envelope-fernet` remains a transitional
+compatibility format and must not satisfy any epic Definition of Done item that
+requires production AAD guarantees.
 
 The evaluation should include:
 
@@ -331,6 +357,18 @@ The evaluation should include:
 If Argon2 remains desirable, open a separate password hashing issue and PR
 series. It should build on `hushline/password_hasher.py` instead of replacing it
 as part of field encryption.
+
+Status: completed in
+[`PASSWORD-HASH-MODERNIZATION-EVALUATION.md`](PASSWORD-HASH-MODERNIZATION-EVALUATION.md).
+
+### Phase 8: Separate Operational Key Management Work
+
+Operational key management should remain separate from encrypted-field envelope
+modernization because it affects deployment, recovery, operator workflows, and
+multi-instance startup behavior.
+
+Status: completed in
+[`OPERATIONAL-KEY-MANAGEMENT-DESIGN.md`](OPERATIONAL-KEY-MANAGEMENT-DESIGN.md).
 
 ## Migration Safety Requirements
 
@@ -351,7 +389,7 @@ requirements before merge:
 
 ## Suggested Follow-Up Issues
 
-1. Write the encrypted-field threat model and ADR.
+1. Completed: write the encrypted-field threat model and ADR.
 2. Add an encrypted-field inventory test suite.
 3. Introduce a versioned encryption envelope that preserves legacy Fernet reads.
 4. Design stable domains and AAD for each encrypted field.
@@ -359,7 +397,10 @@ requirements before merge:
 6. Write and test a resumable encrypted-field migration runbook.
 7. Evaluate AEAD algorithms for future new writes.
 8. Evaluate password hash modernization separately.
-9. Evaluate operational key management separately.
+9. Completed: evaluate operational key management separately.
+10. Implement production domain-bound AEAD writes before claiming
+    best-in-class migration completion for existing encrypted-field
+    ciphertext.
 
 ## Recommendation
 

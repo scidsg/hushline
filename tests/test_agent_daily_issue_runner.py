@@ -922,6 +922,8 @@ resolve_issue_parent_epic() {{ :; }}
 start_runtime_stack_and_seed_dev_data() {{
   printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
 }}
+resume_open_issue_pr_monitor_if_any() {{ return 1; }}
+check_codex_status_once_for_idle_run() {{ :; }}
 count_open_bot_prs() {{
   printf 'count-open-bot-prs\\n' >> {shlex.quote(str(call_log))}
   printf '0\\n'
@@ -1049,6 +1051,8 @@ resolve_issue_parent_epic() {{ :; }}
 start_runtime_stack_and_seed_dev_data() {{
   printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
 }}
+resume_open_issue_pr_monitor_if_any() {{ return 1; }}
+check_codex_status_once_for_idle_run() {{ :; }}
 count_open_bot_prs() {{
   printf 'count-open-bot-prs\\n' >> {shlex.quote(str(call_log))}
   printf '0\\n'
