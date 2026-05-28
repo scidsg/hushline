@@ -181,6 +181,34 @@ printf 'rc=%s\\n' "$rc"
     assert "5h window still has capacity; proceeding" not in result.stdout
 
 
+def test_wait_for_codex_status_credit_window_blocks_auth_failure() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_CHECK_ENABLED=1
+fetch_codex_status_json() {{
+  printf 'Codex /status rate limit check exited before returning status: 1\\n' >&2
+  return 3
+}}
+sleep() {{
+  printf 'unexpected-sleep:%s\\n' "$1"
+  return 1
+}}
+set +e
+wait_for_codex_status_credit_window
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=1" in result.stdout
+    assert "unexpected-sleep" not in result.stdout
+    assert "authentication failure" in result.stderr
+    assert "continuing so the runner can still attempt assigned work" not in result.stderr
+
+
 def test_wait_for_codex_status_credit_window_allows_shared_usage_without_credit_balance() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
@@ -2635,6 +2663,51 @@ printf 'rc=%s unavailable=%s\\n' "$rc" "$CODEX_EXEC_UNAVAILABLE"
     transcript_text = transcript_file.read_text(encoding="utf-8")
     assert "Codex unavailable:" in run_log_text
     assert "usage limit" in transcript_text
+
+
+def test_run_codex_from_prompt_reports_auth_failure_without_retries(
+    tmp_path: Path,
+) -> None:
+    prompt_file = tmp_path / "prompt.txt"
+    output_file = tmp_path / "codex-output.txt"
+    transcript_file = tmp_path / "codex-transcript.txt"
+    run_log_file = tmp_path / "run-log.txt"
+    console_file = tmp_path / "console.txt"
+
+    prompt_file.write_text("issue prompt\n", encoding="utf-8")
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(tmp_path))}
+PROMPT_FILE={shlex.quote(str(prompt_file))}
+CODEX_OUTPUT_FILE={shlex.quote(str(output_file))}
+CODEX_TRANSCRIPT_FILE={shlex.quote(str(transcript_file))}
+CODEX_MODEL=test-model
+CODEX_REASONING_EFFORT=high
+VERBOSE_CODEX_OUTPUT=0
+exec 3>{shlex.quote(str(console_file))}
+codex() {{
+  printf '%s' "ERROR: Your access token could not be refreshed because "
+  printf '%s\\n' "your refresh token was already used. Please log out and sign in again."
+  return 1
+}}
+if run_codex_from_prompt > {shlex.quote(str(run_log_file))} 2>&1; then
+  rc=0
+else
+  rc=$?
+fi
+printf 'rc=%s unavailable=%s\\n' "$rc" "$CODEX_EXEC_UNAVAILABLE"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "rc=1 unavailable=1"
+    run_log_text = run_log_file.read_text(encoding="utf-8")
+    transcript_text = transcript_file.read_text(encoding="utf-8")
+    assert "Codex unavailable: authentication failed" in run_log_text
+    assert "access token could not be refreshed" in transcript_text
+    assert "log out and sign in again" in transcript_text
 
 
 def test_write_pr_narrative_lead_adds_plain_language_summary() -> None:

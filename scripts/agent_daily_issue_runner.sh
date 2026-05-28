@@ -149,6 +149,11 @@ const child = spawn("codex", ["app-server", "--listen", "stdio://"], {
 });
 let completed = false;
 let stdoutBuffer = "";
+let stderrBuffer = "";
+
+function isAuthFailure(text) {
+  return /token[_ -]?(invalidated|reused)|refresh token|access token|unauthorized|sign in again|log out and sign in again/i.test(text || "");
+}
 
 function finish(code) {
   if (completed) return;
@@ -178,23 +183,29 @@ child.stdout.on("data", (chunk) => {
     }
     if (message.id === 2) {
       if (message.error) {
-        console.error(`Codex /status rate limit check failed: ${message.error.message || "unknown error"}`);
-        finish(2);
+        const errorMessage = message.error.message || "unknown error";
+        console.error(`Codex /status rate limit check failed: ${errorMessage}`);
+        finish(isAuthFailure(errorMessage) ? 3 : 2);
       }
       process.stdout.write(`${JSON.stringify(message.result || {})}\n`);
       finish(0);
     }
   }
 });
-child.stderr.on("data", () => {});
+child.stderr.on("data", (chunk) => {
+  stderrBuffer += chunk.toString();
+  if (stderrBuffer.length > 12000) {
+    stderrBuffer = stderrBuffer.slice(-12000);
+  }
+});
 child.on("error", (error) => {
   console.error(`Codex /status rate limit check failed: ${error.message}`);
-  finish(2);
+  finish(isAuthFailure(error.message) ? 3 : 2);
 });
 child.on("exit", (code) => {
   if (!completed) {
     console.error(`Codex /status rate limit check exited before returning status: ${code}`);
-    finish(2);
+    finish(isAuthFailure(stderrBuffer) ? 3 : 2);
   }
 });
 
@@ -258,6 +269,7 @@ codex_status_reached_type_blocks_issue_work() {
 
 wait_for_codex_status_credit_window() {
   local status_json=""
+  local status_rc=0
   local parsed_status=""
   local used_percent=""
   local window_duration_mins=""
@@ -275,7 +287,14 @@ wait_for_codex_status_credit_window() {
 
   while :; do
     echo "==> Check Codex /status usage limits"
-    if ! status_json="$(fetch_codex_status_json)"; then
+    if status_json="$(fetch_codex_status_json)"; then
+      status_rc=0
+    else
+      status_rc=$?
+      if (( status_rc == 3 )); then
+        echo "Blocked: Codex /status reported an authentication failure; sign in again for CODEX_HOME before running assigned work." >&2
+        return 1
+      fi
       echo "Warning: Codex /status preflight failed; continuing so the runner can still attempt assigned work." >&2
       return 0
     fi
@@ -3390,6 +3409,14 @@ codex_transcript_has_rate_quota_or_credit_failure() {
   grep -Eiq "$access_failure_pattern" "$transcript_file"
 }
 
+codex_transcript_has_auth_failure() {
+  local transcript_file="$1"
+  local auth_failure_pattern
+
+  auth_failure_pattern='(^|[^[:alnum:]_])((token[ _-]*(invalidated|reused))|refresh[ _-]*token|access[ _-]*token|unauthorized|sign[ _-]*in[ _-]*again|log[ _-]*out[ _-]*and[ _-]*sign[ _-]*in[ _-]*again)([^[:alnum:]_]|$)'
+  grep -Eiq "$auth_failure_pattern" "$transcript_file"
+}
+
 run_codex_from_prompt() {
   local rc=0
   CODEX_EXEC_UNAVAILABLE=0
@@ -3407,7 +3434,6 @@ run_codex_from_prompt() {
   codex exec \
     --model "$CODEX_MODEL" \
     -c "model_reasoning_effort=\"$CODEX_REASONING_EFFORT\"" \
-    --full-auto \
     --sandbox workspace-write \
     -C "$REPO_DIR" \
     -o "$CODEX_OUTPUT_FILE" \
@@ -3426,6 +3452,9 @@ run_codex_from_prompt() {
     if grep -Eq '"has_credits"[[:space:]]*:[[:space:]]*false' "$CODEX_TRANSCRIPT_FILE"; then
       CODEX_EXEC_UNAVAILABLE=1
       echo "Codex unavailable: account has no credits; self-heal cannot proceed until credits are restored."
+    elif codex_transcript_has_auth_failure "$CODEX_TRANSCRIPT_FILE"; then
+      CODEX_EXEC_UNAVAILABLE=1
+      echo "Codex unavailable: authentication failed; sign in again for CODEX_HOME before retrying assigned work."
     elif codex_transcript_has_rate_quota_or_credit_failure "$CODEX_TRANSCRIPT_FILE"; then
       CODEX_EXEC_UNAVAILABLE=1
       echo "Codex unavailable: transcript indicates a rate limit, quota, or credit failure; self-heal cannot proceed until access is restored."
