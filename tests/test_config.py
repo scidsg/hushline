@@ -153,7 +153,7 @@ def test_password_hash_rehash_on_auth_flag_defaults_false_and_parses_true() -> N
     assert cfg[PASSWORD_HASH_REHASH_ON_AUTH_ENABLED] is True
 
 
-def test_encrypted_field_write_format_defaults_legacy_and_parses_envelope() -> None:
+def test_encrypted_field_write_format_defaults_legacy_and_parses_envelopes() -> None:
     env = dict(**os.environ)
     env.pop(ENCRYPTED_FIELD_WRITE_FORMAT, None)
 
@@ -163,6 +163,10 @@ def test_encrypted_field_write_format_defaults_legacy_and_parses_envelope() -> N
     env[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_FERNET.value
     cfg = load_config(env)
     assert cfg[ENCRYPTED_FIELD_WRITE_FORMAT] == EncryptedFieldWriteFormat.ENVELOPE_FERNET
+
+    env[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM.value
+    cfg = load_config(env)
+    assert cfg[ENCRYPTED_FIELD_WRITE_FORMAT] == EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
 
 
 def test_encrypted_field_write_format_rejects_unknown_value() -> None:
