@@ -38,6 +38,8 @@
       "public-record-count",
     );
     const newsroomCountBadge = document.getElementById("newsroom-count");
+    const securedropCountBadge = document.getElementById("securedrop-count");
+    const globaleaksCountBadge = document.getElementById("globaleaks-count");
     const allFiltersToggleShell = document.getElementById(
       "all-filters-toggle-shell",
     );
@@ -88,8 +90,8 @@
       "newsroom-region-filter",
     );
     const initialMarkup = new Map();
-    let userData = [];
-    let allTabUserData = [];
+    const tabDataCache = new Map();
+    const tabDataRequests = new Map();
     let hasRenderedSearch = false;
     let directoryDataRequestController = null;
     let directoryDataLoadingController = null;
@@ -130,8 +132,48 @@
       );
     }
 
+    function sharedDirectorySearch(search) {
+      return removeSearchParams(search, [
+        "all_country",
+        "all_region",
+        "all_listing_type",
+      ]);
+    }
+
+    function allTabDirectorySearch(search) {
+      return removeSearchParams(search, [
+        "country",
+        "region",
+        "newsroom_country",
+        "newsroom_region",
+      ]);
+    }
+
+    function tabScopedSearch(tab, search) {
+      return tab === "all"
+        ? allTabDirectorySearch(search)
+        : sharedDirectorySearch(search);
+    }
+
+    function tabDataSearch(tab, search) {
+      const params = new URLSearchParams(tabScopedSearch(tab, search));
+      params.set("tab", tab);
+      const nextSearch = params.toString();
+      return nextSearch ? `?${nextSearch}` : "";
+    }
+
+    function tabDataCacheKey(tab, search = window.location.search) {
+      return `${tab}\n${tabScopedSearch(tab, search)}`;
+    }
+
+    function hasTabData(tab, search = window.location.search) {
+      return tabDataCache.has(tabDataCacheKey(tab, search));
+    }
+
     function usersForTab(tab = activeTabName()) {
-      return tab === "all" ? allTabUserData : userData;
+      return (
+        tabDataCache.get(tabDataCacheKey(tab, loadedDirectorySearch)) || []
+      );
     }
 
     function updateTabScrollControls() {
@@ -215,25 +257,24 @@
       searchInput.placeholder = "Search directory...";
     }
 
-    function scopeLabel() {
-      const activeTab = activeTabName();
-      if (activeTab === "verified") {
+    function scopeLabel(tab = activeTabName()) {
+      if (tab === "verified") {
         return "verified users";
       }
 
-      if (activeTab === "public-records") {
+      if (tab === "public-records") {
         return "attorneys";
       }
 
-      if (activeTab === "newsrooms") {
+      if (tab === "newsrooms") {
         return "journalists and newsrooms";
       }
 
-      if (activeTab === "globaleaks") {
+      if (tab === "globaleaks") {
         return "GlobaLeaks instances";
       }
 
-      if (activeTab === "securedrop") {
+      if (tab === "securedrop") {
         return "SecureDrop instances";
       }
 
@@ -639,17 +680,19 @@
       return panel.innerHTML;
     }
 
-    function refreshInitialMarkup() {
-      ["public-records", "newsrooms", "all"].forEach((panelId) => {
-        if (document.getElementById(panelId)) {
-          initialMarkup.set(panelId, buildDefaultPanelMarkup(panelId));
-        }
-      });
+    function refreshInitialMarkup(tab = activeTabName()) {
+      if (
+        document.getElementById(tab) &&
+        hasTabData(tab, loadedDirectorySearch)
+      ) {
+        initialMarkup.set(tab, buildDefaultPanelMarkup(tab));
+      }
     }
 
     function handleSearchInput() {
       const query = searchInput.value.trim();
       const panel = activePanel();
+      const tab = activeTabName();
       const currentScopeLabel = scopeLabel();
       const hasQuery = query.length > 0;
 
@@ -657,6 +700,11 @@
         clearIcon.style.visibility = hasQuery ? "visible" : "hidden";
         clearIcon.hidden = !hasQuery;
         clearIcon.setAttribute("aria-hidden", hasQuery ? "false" : "true");
+      }
+
+      if (!hasTabData(tab, loadedDirectorySearch)) {
+        void ensureTabData(tab, window.location.search, { showLoading: false });
+        return;
       }
 
       if (query.length === 0) {
@@ -687,23 +735,6 @@
       });
       const nextSearch = params.toString();
       return nextSearch ? `?${nextSearch}` : "";
-    }
-
-    function sharedDirectorySearch(search) {
-      return removeSearchParams(search, [
-        "all_country",
-        "all_region",
-        "all_listing_type",
-      ]);
-    }
-
-    function allTabDirectorySearch(search) {
-      return removeSearchParams(search, [
-        "country",
-        "region",
-        "newsroom_country",
-        "newsroom_region",
-      ]);
     }
 
     function createLocationFilterController(config) {
@@ -1410,8 +1441,24 @@
 
     function updateLocationFilterCountBadges() {
       locationFilterControllers.forEach((controller) => {
-        controller.updateCountBadge();
+        if (hasTabData(controller.tabName, loadedDirectorySearch)) {
+          controller.updateCountBadge();
+        }
       });
+      if (
+        securedropCountBadge &&
+        hasTabData("securedrop", loadedDirectorySearch)
+      ) {
+        securedropCountBadge.textContent =
+          usersForTab("securedrop").length.toString();
+      }
+      if (
+        globaleaksCountBadge &&
+        hasTabData("globaleaks", loadedDirectorySearch)
+      ) {
+        globaleaksCountBadge.textContent =
+          usersForTab("globaleaks").length.toString();
+      }
     }
 
     function refreshLocationFilterMetadata(search = window.location.search) {
@@ -1419,6 +1466,14 @@
         locationFilterControllers.map((controller) =>
           controller.ensureMetadata(search),
         ),
+      );
+    }
+
+    function locationFilterControllerForTab(tab) {
+      return (
+        locationFilterControllers.find(
+          (controller) => controller.tabName === tab,
+        ) || null
       );
     }
 
@@ -1430,33 +1485,66 @@
       );
     }
 
-    function loadData(search = window.location.search, options = {}) {
+    function setPanelBusy(tab, isBusy) {
+      const panel = document.getElementById(tab);
+      if (panel) {
+        panel.setAttribute("aria-busy", isBusy ? "true" : "false");
+      }
+    }
+
+    function renderTabLoading(tab) {
+      const panel = document.getElementById(tab);
+      if (!panel) {
+        return;
+      }
+
+      panel.innerHTML = `${panelIntroMarkup(tab)}
+      <p class="empty-message" role="status">Loading ${scopeLabel(tab)}...</p>`;
+      setPanelBusy(tab, true);
+    }
+
+    function renderTabError(tab) {
+      const panel = document.getElementById(tab);
+      if (!panel) {
+        return;
+      }
+
+      panel.innerHTML = `${panelIntroMarkup(tab)}
+      <p class="empty-message" role="alert">Unable to load ${scopeLabel(tab)}. Please try again.</p>`;
+      setPanelBusy(tab, false);
+    }
+
+    function loadData(tab, search = window.location.search, options = {}) {
       const requestOptions = {};
       if (options.signal) {
         requestOptions.signal = options.signal;
       }
 
-      const fetchUsers = (search) =>
-        fetch(`${directoryPath}/users.json${search}`, requestOptions).then(
-          (response) => {
-            if (!response.ok) {
-              throw new Error("Network response was not ok");
-            }
-            return response.json();
-          },
-        );
+      const fetchUsers = (tab, search) =>
+        fetch(
+          `${directoryPath}/users.json${tabDataSearch(tab, search)}`,
+          requestOptions,
+        ).then((response) => {
+          if (!response.ok) {
+            throw new Error("Network response was not ok");
+          }
+          return response.json();
+        });
 
       return Promise.all([
-        fetchUsers(sharedDirectorySearch(search)),
-        fetchUsers(allTabDirectorySearch(search)),
-        refreshLocationFilterMetadata(search),
-      ]).then(([directoryData, nextAllTabUserData]) => {
-        userData = directoryData;
-        allTabUserData = nextAllTabUserData;
+        fetchUsers(tab, search),
+        locationFilterControllerForTab(tab)?.ensureMetadata(search) ||
+          Promise.resolve(null),
+      ]).then(([directoryData]) => {
+        tabDataCache.set(tabDataCacheKey(tab, search), directoryData);
         loadedDirectorySearch = search;
         updateLocationFilterCountBadges();
-        refreshInitialMarkup();
-        handleSearchInput();
+        refreshInitialMarkup(tab);
+        if (activeTabName() === tab) {
+          handleSearchInput();
+        }
+        setPanelBusy(tab, false);
+        return directoryData;
       });
     }
 
@@ -1464,7 +1552,7 @@
       search = window.location.search,
       options = {},
     ) {
-      const { loadingController = null } = options;
+      const { loadingController = null, tabName = activeTabName() } = options;
 
       if (directoryDataRequestController) {
         directoryDataRequestController.abort();
@@ -1485,17 +1573,67 @@
         loadingController.setLoadingState(true);
       }
 
-      return loadData(search, { signal: controller.signal }).finally(() => {
-        if (directoryDataRequestController === controller) {
-          directoryDataRequestController = null;
-          if (directoryDataLoadingController === loadingController) {
-            if (loadingController) {
-              loadingController.setLoadingState(false);
+      return loadData(tabName, search, { signal: controller.signal }).finally(
+        () => {
+          if (directoryDataRequestController === controller) {
+            directoryDataRequestController = null;
+            if (directoryDataLoadingController === loadingController) {
+              if (loadingController) {
+                loadingController.setLoadingState(false);
+              }
+              directoryDataLoadingController = null;
             }
-            directoryDataLoadingController = null;
           }
-        }
-      });
+        },
+      );
+    }
+
+    function ensureTabData(tab, search = window.location.search, options = {}) {
+      if (hasTabData(tab, search)) {
+        loadedDirectorySearch = search;
+        refreshInitialMarkup(tab);
+        handleSearchInput();
+        return Promise.resolve(tabDataCache.get(tabDataCacheKey(tab, search)));
+      }
+
+      const requestKey = tabDataCacheKey(tab, search);
+      if (tabDataRequests.has(requestKey)) {
+        return tabDataRequests.get(requestKey);
+      }
+
+      if (options.showLoading !== false) {
+        renderTabLoading(tab);
+      } else {
+        setPanelBusy(tab, true);
+      }
+      setSearchStatus(`Loading ${scopeLabel(tab)}.`);
+      const request = requestDirectoryData(search, { tabName: tab })
+        .then((users) => {
+          tabDataRequests.delete(requestKey);
+          if (!searchInput.value.trim() && activeTabName() === tab) {
+            setSearchStatus(`Showing all ${scopeLabel(tab)}.`);
+          }
+          return users;
+        })
+        .catch((error) => {
+          tabDataRequests.delete(requestKey);
+          if (error.name === "AbortError") {
+            setPanelBusy(tab, false);
+            return [];
+          }
+
+          if (options.showLoading !== false) {
+            renderTabError(tab);
+          } else {
+            setPanelBusy(tab, false);
+          }
+          setSearchStatus(`Unable to load ${scopeLabel(tab)}.`);
+          console.error(`Failed to load ${scopeLabel(tab)}:`, error);
+          return [];
+        });
+
+      tabDataRequests.set(requestKey, request);
+      return request;
     }
 
     if (searchInput) {
@@ -1548,7 +1686,21 @@
 
       updateLocationFilterVisibility();
       updatePlaceholder();
-      handleSearchInput();
+      if (
+        hasTabData(selectedTab.getAttribute("data-tab"), window.location.search)
+      ) {
+        handleSearchInput();
+      } else {
+        void ensureTabData(
+          selectedTab.getAttribute("data-tab"),
+          window.location.search,
+          {
+            showLoading: Boolean(
+              targetPanel.querySelector("[data-directory-lazy-placeholder]"),
+            ),
+          },
+        );
+      }
       requestAnimationFrame(updateTabScrollControls);
     };
 
@@ -1658,16 +1810,6 @@
     }
 
     updatePlaceholder();
-    locationFilterControllers.forEach((controller) => {
-      void controller.ensureMetadata();
-    });
-    requestDirectoryData().catch((error) => {
-      if (error.name === "AbortError") {
-        return;
-      }
-
-      console.error("Failed to load user data:", error);
-    });
   });
 
   /******/

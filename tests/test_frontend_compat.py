@@ -200,6 +200,8 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert 'id="directory-search-status"' in directory_template
     assert 'id="public-record-count"' in directory_template
     assert 'id="newsroom-count"' in directory_template
+    assert 'id="securedrop-count"' in directory_template
+    assert 'id="globaleaks-count"' in directory_template
     assert 'id="all-filters-toggle"' in directory_template
     assert 'id="all-filters-panel"' in directory_template
     assert 'id="attorney-filters-toggle"' in directory_template
@@ -270,10 +272,23 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert "controller.activeFilterCount = function () {" in directory_verified_js
     assert "controller.updateCountBadge = function () {" in directory_verified_js
     assert "updateLocationFilterCountBadges();" in directory_verified_js
+    assert "hasTabData(controller.tabName, loadedDirectorySearch)" in directory_verified_js
+    assert "hasTabData(controller.tabName, loadedDirectorySearch)" in directory_verified_static_js
     assert 'const directoryPath = window.location.pathname.replace(/\\/$/, "");' in (
         directory_verified_js
     )
-    assert "fetch(`${directoryPath}/users.json${search}`, requestOptions)" in directory_verified_js
+    assert "tabDataCache" in directory_verified_js
+    assert 'params.set("tab", tab);' in directory_verified_js
+    assert "void ensureTabData(tab, window.location.search, { showLoading: false });" in (
+        directory_verified_js
+    )
+    assert "void ensureTabData(tab, window.location.search, { showLoading: false });" in (
+        directory_verified_static_js
+    )
+    assert 'role="status">Loading ${scopeLabel(tab)}...' in directory_verified_js
+    assert "fetch(`${directoryPath}/users.json${tabDataSearch(tab, search)}`" in (
+        directory_verified_js
+    )
     assert 'metadataPath: "all-filters.json"' in directory_verified_js
     assert 'metadataPath: "attorney-filters.json"' in directory_verified_js
     assert 'metadataPath: "newsroom-filters.json"' in directory_verified_js
@@ -373,6 +388,8 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert "user.subdivision," in directory_verified_js
     assert "Array.isArray(user.countries)" in directory_verified_js
     assert "users.json" in directory_verified_static_js
+    assert "tabDataCache" in directory_verified_static_js
+    assert 'params.set("tab", tab);' in directory_verified_static_js
     assert "all-filters.json" in directory_verified_static_js
     assert "attorney-filters.json" in directory_verified_static_js
     assert "fetch(`${directoryPath}/${controller.metadataPath}${search}`)" in (

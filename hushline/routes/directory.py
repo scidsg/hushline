@@ -731,6 +731,68 @@ def register_directory_routes(app: Flask) -> None:
     def directory() -> Response | str:
         logged_in = "user_id" in session
         usernames = list(get_directory_usernames())
+        pgp_usernames = [username for username in usernames if _user_message_capable(username.user)]
+        info_usernames = [
+            username for username in usernames if not _user_message_capable(username.user)
+        ]
+        verified_pgp_usernames = [username for username in pgp_usernames if username.is_verified]
+        verified_info_usernames = [username for username in info_usernames if username.is_verified]
+        if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"] and not request.args:
+            attorney_usernames = [
+                username for username in usernames if _is_self_reported_attorney(username)
+            ]
+            journalism_usernames = [
+                username for username in usernames if _is_self_reported_journalism_account(username)
+            ]
+            public_record_listings = list(get_public_record_listings())
+            newsroom_listings = list(get_newsroom_directory_listings())
+            globaleaks_listings = list(get_globaleaks_directory_listings())
+            securedrop_listings = list(get_securedrop_directory_listings())
+            return render_template(
+                "directory.html",
+                intro_text=OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO_TEXT),
+                pgp_usernames=pgp_usernames,
+                info_usernames=info_usernames,
+                verified_pgp_usernames=verified_pgp_usernames,
+                verified_info_usernames=verified_info_usernames,
+                attorney_usernames=[],
+                public_record_all_listings=[],
+                public_record_listings=[],
+                legacy_public_record_listings=[],
+                public_record_total_count=len(attorney_usernames) + len(public_record_listings),
+                attorney_filter_metadata={"countries": [], "regions": {}},
+                attorney_filter_state={"country": None, "region": None, "region_code": None},
+                attorney_filter_clear_url=_directory_filter_clear_url("country", "region"),
+                globaleaks_listings=[],
+                globaleaks_total_count=len(globaleaks_listings),
+                journalism_usernames=[],
+                newsroom_listings=[],
+                newsroom_automated_sources=[],
+                newsroom_total_count=len(journalism_usernames) + len(newsroom_listings),
+                newsroom_filter_metadata={"countries": [], "regions": {}},
+                newsroom_filter_state={"country": None, "region": None, "region_code": None},
+                newsroom_filter_clear_url=_directory_filter_clear_url(
+                    "newsroom_country", "newsroom_region"
+                ),
+                all_filter_metadata=_empty_all_filter_metadata(),
+                all_filter_state={
+                    "country": None,
+                    "region": None,
+                    "region_code": None,
+                    "listing_type": None,
+                },
+                all_filter_clear_url=_directory_filter_clear_url(
+                    "all_country", "all_region", "all_listing_type"
+                ),
+                securedrop_listings=[],
+                securedrop_total_count=len(securedrop_listings),
+                all_directory_entries=[],
+                truncate_directory_bio=_directory_card_bio,
+                user_message_capable=_user_message_capable,
+                lazy_directory_tabs=True,
+                logged_in=logged_in,
+            )
+
         attorney_usernames = [
             username for username in usernames if _is_self_reported_attorney(username)
         ]
@@ -796,12 +858,6 @@ def register_directory_routes(app: Flask) -> None:
             filtered_journalism_usernames = journalism_usernames
             all_newsroom_listings = []
             newsroom_listings = []
-        pgp_usernames = [username for username in usernames if _user_message_capable(username.user)]
-        info_usernames = [
-            username for username in usernames if not _user_message_capable(username.user)
-        ]
-        verified_pgp_usernames = [username for username in pgp_usernames if username.is_verified]
-        verified_info_usernames = [username for username in info_usernames if username.is_verified]
         all_directory_entries = _build_all_directory_entries(
             usernames,
             all_public_record_listings,
@@ -881,6 +937,7 @@ def register_directory_routes(app: Flask) -> None:
             all_directory_entries=filtered_all_directory_entries,
             truncate_directory_bio=_directory_card_bio,
             user_message_capable=_user_message_capable,
+            lazy_directory_tabs=False,
             logged_in=logged_in,
         )
 
@@ -1006,6 +1063,102 @@ def register_directory_routes(app: Flask) -> None:
 
     @app.route("/directory/users.json")
     def directory_users() -> list[dict[str, object | None]]:
+        requested_tab = request.args.get("tab")
+
+        def with_client_sort_fields(
+            entries: Sequence[dict[str, object | None]],
+        ) -> list[dict[str, object | None]]:
+            return [
+                {
+                    **entry,
+                    **_all_directory_entry_client_sort_fields(entry),
+                }
+                for entry in entries
+            ]
+
+        if requested_tab == "verified":
+            return with_client_sort_fields(
+                [
+                    _directory_user_row(username)
+                    for username in get_directory_usernames()
+                    if username.is_verified
+                ]
+            )
+
+        if requested_tab == "public-records":
+            if not app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]:
+                return []
+
+            directory_usernames = list(get_directory_usernames())
+            public_record_listings = list(get_public_record_listings())
+            attorney_usernames = tuple(
+                username for username in directory_usernames if _is_self_reported_attorney(username)
+            )
+            attorney_filter_state = _attorney_filter_state(
+                _attorney_filter_metadata(public_record_listings, attorney_usernames)
+            )
+            return with_client_sort_fields(
+                [
+                    *[
+                        _directory_user_row(username)
+                        for username in attorney_usernames
+                        if _username_matches_attorney_filters(username, attorney_filter_state)
+                    ],
+                    *[
+                        _public_record_row(listing)
+                        for listing in _filter_public_record_listings(
+                            public_record_listings, attorney_filter_state
+                        )
+                    ],
+                ]
+            )
+
+        if requested_tab == "newsrooms":
+            if not app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]:
+                return []
+
+            directory_usernames = list(get_directory_usernames())
+            newsroom_listings = list(get_newsroom_directory_listings())
+            journalism_usernames = tuple(
+                username
+                for username in directory_usernames
+                if _is_self_reported_journalism_account(username)
+            )
+            newsroom_filter_state = _newsroom_filter_state(
+                _newsroom_filter_metadata(newsroom_listings, journalism_usernames)
+            )
+            return with_client_sort_fields(
+                [
+                    *[
+                        _directory_user_row(username)
+                        for username in journalism_usernames
+                        if _username_matches_newsroom_filters(username, newsroom_filter_state)
+                    ],
+                    *[
+                        _newsroom_row(listing)
+                        for listing in _filter_newsroom_listings(
+                            newsroom_listings, newsroom_filter_state
+                        )
+                    ],
+                ]
+            )
+
+        if requested_tab == "globaleaks":
+            if not app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]:
+                return []
+
+            return with_client_sort_fields(
+                [_globaleaks_row(listing) for listing in get_globaleaks_directory_listings()]
+            )
+
+        if requested_tab == "securedrop":
+            if not app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]:
+                return []
+
+            return with_client_sort_fields(
+                [_securedrop_row(listing) for listing in get_securedrop_directory_listings()]
+            )
+
         directory_usernames = list(get_directory_usernames())
         public_record_listings = (
             list(get_public_record_listings())
@@ -1106,10 +1259,4 @@ def register_directory_routes(app: Flask) -> None:
                 *securedrop_rows,
             ]
         )
-        return [
-            {
-                **entry,
-                **_all_directory_entry_client_sort_fields(entry),
-            }
-            for entry in entries
-        ]
+        return with_client_sort_fields(entries)
