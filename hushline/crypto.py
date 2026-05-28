@@ -45,6 +45,7 @@ ENCRYPTED_FIELD_ENVELOPE_READY_COLUMNS = (
 )
 ENCRYPTED_FIELD_AEAD_ENVELOPE_VERSION = 2
 ENCRYPTED_FIELD_AEAD_ENVELOPE_ALGORITHM = "aes-256-gcm"
+ENCRYPTED_FIELD_AEAD_NONCE_LENGTH = 12
 ENCRYPTED_FIELD_AAD_SCHEMA = "hushline.encrypted-field.aad.v1"
 ENCRYPTED_FIELD_AEAD_KEY_INFO = b"hushline:encrypted-field:aes-256-gcm:v2"
 ENCRYPTED_FIELD_MUTABLE_AAD_NAMES = frozenset(
@@ -371,8 +372,8 @@ def parse_encrypted_field_envelope(data: str) -> EncryptedFieldEnvelope | None:
 def serialize_encrypted_field_aead_envelope(ciphertext: bytes, nonce: bytes) -> str:
     if not ciphertext:
         raise ValueError("Encrypted field envelope ciphertext is required")
-    if not nonce:
-        raise ValueError("Encrypted field envelope nonce is required")
+    if len(nonce) != ENCRYPTED_FIELD_AEAD_NONCE_LENGTH:
+        raise ValueError("Encrypted field envelope nonce must be 96 bits")
 
     payload = json.dumps(
         {
@@ -407,9 +408,10 @@ def parse_encrypted_field_aead_envelope(data: str) -> EncryptedFieldAEADEnvelope
     version = envelope.get("v")
     algorithm = envelope.get("alg")
     if (
-        version != ENCRYPTED_FIELD_AEAD_ENVELOPE_VERSION
+        set(envelope) != {"alg", "ct", "n", "v"}
+        or version != ENCRYPTED_FIELD_AEAD_ENVELOPE_VERSION
         or algorithm != ENCRYPTED_FIELD_AEAD_ENVELOPE_ALGORITHM
-        or not nonce
+        or len(nonce) != ENCRYPTED_FIELD_AEAD_NONCE_LENGTH
         or not ciphertext
     ):
         raise InvalidToken
@@ -433,7 +435,7 @@ def encrypt_field_aead_prototype(
         data = data.encode()
 
     aad = build_encrypted_field_aad(contract, aad_values)
-    nonce = os.urandom(12)
+    nonce = os.urandom(ENCRYPTED_FIELD_AEAD_NONCE_LENGTH)
     ciphertext = AESGCM(_get_encrypted_field_aead_key()).encrypt(nonce, data, aad)
     return serialize_encrypted_field_aead_envelope(ciphertext, nonce)
 
