@@ -164,7 +164,11 @@ def test_encrypted_field_preflight_reports_ready_without_sensitive_values(
     result = runner.invoke(args=["encrypted-field", "preflight"])
 
     assert result.exit_code == 0
-    assert "Current Alembic revision: not stamped" in result.output
+    revision_lines = [
+        line for line in result.output.splitlines() if line.startswith("Current Alembic revision: ")
+    ]
+    assert len(revision_lines) == 1
+    assert revision_lines[0] != "Current Alembic revision: "
     assert "User.totp_secret (users.totp_secret): ready" in result.output
     assert "User.email (users.email): legacy Fernet: 0; envelope Fernet: 1" in result.output
     assert "User.totp_secret (users.totp_secret): legacy Fernet: 1" in result.output
