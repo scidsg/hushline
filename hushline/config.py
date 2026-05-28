@@ -54,6 +54,7 @@ class FieldsMode(Enum):
 class EncryptedFieldWriteFormat(Enum):
     LEGACY_FERNET = "legacy-fernet"
     ENVELOPE_FERNET = "envelope-fernet"
+    ENVELOPE_AES_GCM = "envelope-aes-gcm"
 
     @classmethod
     def parse(cls, string: str) -> Self:

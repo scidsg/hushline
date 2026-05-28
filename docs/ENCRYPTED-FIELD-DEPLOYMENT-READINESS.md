@@ -84,7 +84,8 @@ when the release gate is satisfied:
 - Legacy Fernet reads remain supported by the deployed dual reader until
   migration completion and the rollback window are explicitly closed.
 - New writes remain `legacy-fernet` by default unless maintainers approve
-  `ENCRYPTED_FIELD_WRITE_FORMAT=envelope-fernet` after the release gate passes.
+  `ENCRYPTED_FIELD_WRITE_FORMAT=envelope-fernet` or
+  `ENCRYPTED_FIELD_WRITE_FORMAT=envelope-aes-gcm` after the release gate passes.
 - The migration helper uses dry-run mode, bounded live batches, stable ordering,
   resumable tokens, and per-row verification; it does not require a full-table
   rewrite transaction or planned downtime.

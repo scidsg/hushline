@@ -292,6 +292,42 @@ def test_encrypted_field_aead_prototype_requires_expected_domain_and_aad(
         crypto.decrypt_field_aead_prototype(envelope, email_contract, {"user_id": 2})
 
 
+def test_encrypt_field_can_write_production_aes_gcm_envelope(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
+    aad_values = {"user_id": 1}
+
+    encrypted = crypto.encrypt_field("secret", contract=contract, aad_values=aad_values)
+
+    assert encrypted is not None
+    parsed = crypto.parse_encrypted_field_aead_envelope(encrypted)
+    assert parsed.algorithm == crypto.ENCRYPTED_FIELD_AEAD_ENVELOPE_ALGORITHM
+    assert crypto.decrypt_field(encrypted, contract=contract, aad_values=aad_values) == "secret"
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field(encrypted, contract=contract, aad_values={"user_id": 2})
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field(
+            encrypted,
+            contract=crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.pgp_key"],
+            aad_values=aad_values,
+        )
+
+
+def test_aes_gcm_write_format_requires_contract_and_aad(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+
+    with pytest.raises(ValueError, match="contract and AAD values"):
+        crypto.encrypt_field("secret")
+
+
 def test_hushline_aead_known_answer_vector_encrypts_and_serializes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
