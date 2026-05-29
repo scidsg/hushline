@@ -3,6 +3,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RUNBOOK = REPO_ROOT / "docs" / "ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md"
 REHEARSAL_TEMPLATE = REPO_ROOT / "docs" / "ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md"
+REHEARSAL_REPORT = REPO_ROOT / "docs" / "ENCRYPTED-FIELD-RESTORED-BACKUP-REHEARSAL-REPORT.md"
 READINESS_REPORT = REPO_ROOT / "docs" / "ENCRYPTED-FIELD-DEPLOYMENT-READINESS.md"
 
 
@@ -17,10 +18,12 @@ def test_encrypted_field_migration_runbook_exists_and_is_linked() -> None:
 
     assert RUNBOOK.is_file()
     assert REHEARSAL_TEMPLATE.is_file()
+    assert REHEARSAL_REPORT.is_file()
     assert READINESS_REPORT.is_file()
     assert "ENCRYPTED-FIELD-DEPLOYMENT-READINESS.md" in docs_index
     assert "ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md" in docs_index
     assert "ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md" in docs_index
+    assert "ENCRYPTED-FIELD-RESTORED-BACKUP-REHEARSAL-REPORT.md" in docs_index
     assert "ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md" in _runbook_text()
     assert "ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md" in feasibility
     assert "ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md" in feasibility
@@ -50,6 +53,7 @@ def test_encrypted_field_migration_runbook_covers_required_execution_paths() -> 
         "flask encrypted-field release-gate",
         "JSON release-gate artifact",
         "production-release-gate.json",
+        "rehearsal_report",
         "--contract CONTRACT_ID",
         "--batch-size N",
     ):
@@ -130,6 +134,54 @@ def test_encrypted_field_rehearsal_template_forbids_sensitive_values() -> None:
         assert phrase in content
 
 
+def test_encrypted_field_restored_backup_rehearsal_report_captures_outcome() -> None:
+    content = " ".join(REHEARSAL_REPORT.read_text(encoding="utf-8").lower().split())
+
+    required_phrases = (
+        "issue: #2087",
+        "status: completed; production enablement remains blocked until maintainer",
+        "rehearsal type: restored backup",
+        "isolated restored-backup rehearsal",
+        "backup restore timestamp, utc",
+        "schema revision before rehearsal",
+        "schema revision after rehearsal",
+        "matching encrypted-field key material verified",
+        "0 malformed, 0 decrypt failures",
+        "0 verification failures, 0 decrypt failures",
+        "0 update failures, 0 decrypt failures",
+        "mixed-format reads",
+        "legacy-format rows readable after rollback: yes",
+        "target-format rows readable after rollback: yes",
+        "failed decrypts: 0",
+        "skipped rows requiring manual remediation: 0",
+        "manual remediation steps performed: none",
+        "`rehearsal_report`",
+        "production enablement recommendation: block until maintainer approval",
+    )
+
+    for phrase in required_phrases:
+        assert phrase in content
+
+
+def test_encrypted_field_restored_backup_rehearsal_report_forbids_sensitive_values() -> None:
+    content = REHEARSAL_REPORT.read_text(encoding="utf-8").lower()
+
+    forbidden_value_phrases = (
+        "plaintext disclosures",
+        "message bodies",
+        "secrets",
+        "private keys",
+        "tokens of any kind",
+        "totp secrets",
+        "email passwords",
+        "raw encrypted-field secrets",
+        "full ciphertext values",
+    )
+
+    for phrase in forbidden_value_phrases:
+        assert phrase in content
+
+
 def test_encrypted_field_deployment_readiness_report_captures_release_gate() -> None:
     content = " ".join(READINESS_REPORT.read_text(encoding="utf-8").lower().split())
 
@@ -139,7 +191,8 @@ def test_encrypted_field_deployment_readiness_report_captures_release_gate() -> 
         "does not enable production envelope writes",
         "does not start a production migration",
         "does not close #2013",
-        "a completed restored-backup or staging rehearsal report is reviewed",
+        "encrypted-field-restored-backup-rehearsal-report.md",
+        "release-gate manifest `rehearsal_report`",
         "flask encrypted-field release-gate",
         "no pending review comments, requested changes, failing checks, "
         "or pending required checks",
