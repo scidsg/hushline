@@ -29,6 +29,7 @@ from hushline.crypto import (
     build_encrypted_field_aad,
     decrypt_field,
     encrypt_field,
+    is_encrypted_field_aead_envelope,
     parse_encrypted_field_aead_envelope,
     parse_encrypted_field_envelope,
 )
@@ -319,6 +320,10 @@ def _classify_migration_value(value: Any) -> str:
 
 
 def _classify_envelope_value(value: str) -> str:
+    if is_encrypted_field_aead_envelope(value):
+        parse_encrypted_field_aead_envelope(value)
+        return "envelope_aes_gcm"
+
     try:
         parse_encrypted_field_envelope(value)
     except InvalidToken as fernet_error:
