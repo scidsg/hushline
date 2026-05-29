@@ -94,9 +94,12 @@ ciphertext or introduce a new explicit domain with dual-read compatibility,
 rollback guidance, and decryptability tests for both formats.
 
 Production AES-256-GCM envelopes use the AAD contract above for new writes when
-`ENCRYPTED_FIELD_WRITE_FORMAT=envelope-aes-gcm` is configured. Production
-writes still default to the legacy Fernet path, with the versioned Fernet
-envelope retained as a compatibility format through the rollout control below.
+`ENCRYPTED_FIELD_WRITE_FORMAT=envelope-aes-gcm`,
+`ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED=true`, and a non-empty
+`ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL` maintainer approval reference are
+configured. Production writes still default to the legacy Fernet path, with the
+versioned Fernet envelope retained as a compatibility format through the
+rollout control below.
 
 ## Production Write-Format Decision
 
@@ -120,20 +123,22 @@ domain, table, column, or immutable row identifiers listed above. Copying an
 `envelope-fernet` value between fields, rows, or deployments therefore is not
 expected to fail closed because of AAD mismatch.
 
-Before production AEAD writes exist, maintainers may approve compatibility-only
-work such as the dual reader, widened storage, preflight checks, rehearsal
-evidence, and transitional `envelope-fernet` writes for newly updated values.
-They may also approve a compatibility rewrite of existing ciphertext only after
-the migration helper and the checkable production release gate in
+Before production AEAD writes are separately approved for a deployment,
+maintainers may approve compatibility-only work such as the dual reader,
+widened storage, preflight checks, rehearsal evidence, and transitional
+`envelope-fernet` writes for newly updated values. They may also approve a
+compatibility rewrite of existing ciphertext only after the migration helper and
+the checkable production release gate in
 [`ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md`](ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md)
 are complete, but that rewrite must remain labeled transitional and must not
 close the domain-bound encryption goal.
 
-The following remain blocked until a domain-bound AEAD write path is implemented
-and separately approved for production: claims of production AAD guarantees,
-removal of ambiguity in favor of "domain-bound" completion language for
-existing ciphertext, and any best-in-class migration completion claim for
-existing encrypted-field values.
+The following remain blocked until the domain-bound AEAD write path is
+separately approved for production and existing ciphertext has migration
+evidence: claims of production AAD guarantees for existing rows, removal of
+ambiguity in favor of "domain-bound" completion language for existing
+ciphertext, and any best-in-class migration completion claim for existing
+encrypted-field values.
 
 ## Dual-Read, Single-Write Rollout Controls
 
@@ -161,9 +166,11 @@ Operator rollout sequence:
    before any envelope write is allowed.
 3. Run the schema and ciphertext preflight and confirm it reports readiness.
 4. Set `ENCRYPTED_FIELD_WRITE_FORMAT=envelope-fernet` for transitional new
-   writes, or `ENCRYPTED_FIELD_WRITE_FORMAT=envelope-aes-gcm` for new
-   domain-bound AEAD writes, only after the widening migration, migration
-   tests, ciphertext fit tests, and preflight verification have all passed.
+   writes, or set `ENCRYPTED_FIELD_WRITE_FORMAT=envelope-aes-gcm`,
+   `ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED=true`, and
+   `ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL` for new domain-bound AEAD writes,
+   only after the widening migration, migration tests, ciphertext fit tests,
+   preflight verification, and maintainer approval have all passed.
 5. Verify newly updated settings, notification recipients, and encrypted custom
    field values read back successfully.
 6. Leave legacy Fernet read support deployed until a later migration issue

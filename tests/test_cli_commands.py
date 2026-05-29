@@ -8,11 +8,23 @@ from werkzeug.security import generate_password_hash
 
 from hushline import crypto
 from hushline.cli_encrypted_field import EncryptedFieldCapacityReport
-from hushline.config import ENCRYPTED_FIELD_WRITE_FORMAT, EncryptedFieldWriteFormat
+from hushline.config import (
+    ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL,
+    ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED,
+    ENCRYPTED_FIELD_WRITE_FORMAT,
+    EncryptedFieldWriteFormat,
+)
 from hushline.db import db
 from hushline.model import InviteCode, OrganizationSetting, Tier, User
 
 TEST_ENCRYPTION_KEY = "jY0gDbATEOQolx2SGj46YnkkbN6HQBB4YCABzwl1H1A="
+TEST_AES_GCM_WRITE_APPROVAL = "test maintainer approval for AES-GCM encrypted-field writes"
+
+
+def _enable_aes_gcm_writes(app: Flask) -> None:
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    app.config[ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED] = True
+    app.config[ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL] = TEST_AES_GCM_WRITE_APPROVAL
 
 
 def _valid_encrypted_field_release_gate_manifest() -> dict[str, object]:
@@ -193,7 +205,7 @@ def test_encrypted_field_preflight_accepts_aes_gcm_envelopes_with_aad(
     contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
     assert user.id is not None
 
-    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    _enable_aes_gcm_writes(app)
     user._email = crypto.encrypt_field(
         plaintext,
         contract=contract,
@@ -649,7 +661,7 @@ def test_encrypted_field_migrate_skips_existing_aes_gcm_envelopes(
     contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
     assert user.id is not None
 
-    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    _enable_aes_gcm_writes(app)
     user._email = crypto.encrypt_field(
         plaintext,
         contract=contract,

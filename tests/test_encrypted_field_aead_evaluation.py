@@ -52,12 +52,15 @@ def test_encrypted_field_aead_evaluation_locks_recommendation_and_guardrails() -
         "`envelope-fernet` is transitional compatibility only",
         "not best-in-class complete until production aead writes are enabled",
         "`encrypted_field_write_format=envelope-aes-gcm`",
+        "`encrypted_field_aes_gcm_writes_enabled=true`",
+        "`encrypted_field_aes_gcm_write_approval` is a non-empty maintainer approval",
         "random 96-bit nonce",
         "wrong domain",
         "wrong row aad",
         "unknown version",
         "unknown algorithm",
         "legacy fernet values and versioned fernet envelopes remain readable",
+        "maintainer approval must be recorded before changing the project default",
         "must not contain production secrets",
     )
 

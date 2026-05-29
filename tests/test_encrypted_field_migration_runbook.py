@@ -68,6 +68,8 @@ def test_encrypted_field_migration_runbook_locks_security_guardrails() -> None:
         "transitional compatibility format",
         "must not be described as domain-bound authenticated field encryption",
         "compatibility evidence rather than production aad evidence",
+        "`encrypted_field_aes_gcm_writes_enabled=true`",
+        "`encrypted_field_aes_gcm_write_approval` contains that approval reference",
         "not cryptographic aad binding",
         "completed rehearsal evidence report is reviewed",
         "before changing `encrypted_field_write_format` in production",

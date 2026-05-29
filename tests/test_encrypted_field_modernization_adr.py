@@ -20,6 +20,8 @@ def test_encrypted_field_modernization_adr_records_write_format_decision() -> No
         "does not cryptographically bind ciphertext to the encrypted-field contract",
         "`envelope-aes-gcm`: write the `hlfield:` aes-256-gcm envelope",
         "authenticate canonical aad containing the algorithm, envelope version",
+        "`encrypted_field_aes_gcm_writes_enabled=true`",
+        "`encrypted_field_aes_gcm_write_approval` maintainer approval reference",
     )
 
     for phrase in required_phrases:

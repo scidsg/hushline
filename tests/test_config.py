@@ -6,6 +6,8 @@ import pytest
 from hushline.config import (
     _JSON_CFG_PREFIX,
     _STRING_CFG_PREFIX,
+    ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL,
+    ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED,
     ENCRYPTED_FIELD_WRITE_FORMAT,
     PASSWORD_HASH_REHASH_ON_AUTH_ENABLED,
     PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT,
@@ -165,8 +167,26 @@ def test_encrypted_field_write_format_defaults_legacy_and_parses_envelopes() -> 
     assert cfg[ENCRYPTED_FIELD_WRITE_FORMAT] == EncryptedFieldWriteFormat.ENVELOPE_FERNET
 
     env[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM.value
+    env[ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED] = "true"
+    env[ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL] = "maintainer approval record"
     cfg = load_config(env)
     assert cfg[ENCRYPTED_FIELD_WRITE_FORMAT] == EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    assert cfg[ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED] is True
+    assert cfg[ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL] == "maintainer approval record"
+
+
+def test_encrypted_field_aes_gcm_write_format_requires_production_gate() -> None:
+    env = dict(**os.environ)
+    env[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM.value
+    env.pop(ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED, None)
+    env.pop(ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL, None)
+
+    with pytest.raises(ConfigParseError, match="WRITES_ENABLED"):
+        load_config(env)
+
+    env[ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED] = "true"
+    with pytest.raises(ConfigParseError, match="WRITE_APPROVAL"):
+        load_config(env)
 
 
 def test_encrypted_field_write_format_rejects_unknown_value() -> None:

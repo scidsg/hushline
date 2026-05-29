@@ -10,7 +10,12 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from flask import Flask
 
 from hushline import crypto
-from hushline.config import ENCRYPTED_FIELD_WRITE_FORMAT, EncryptedFieldWriteFormat
+from hushline.config import (
+    ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL,
+    ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED,
+    ENCRYPTED_FIELD_WRITE_FORMAT,
+    EncryptedFieldWriteFormat,
+)
 
 CRYPTO_VECTOR_FIXTURE = json.loads(
     Path("tests/testdata/crypto-known-answer-vectors.json").read_text()
@@ -27,6 +32,19 @@ HUSHLINE_AEAD_NEGATIVE_CASES = [
     "unknown envelope algorithm",
     "unexpected envelope metadata",
 ]
+
+TEST_AES_GCM_WRITE_APPROVAL = "test maintainer approval for AES-GCM encrypted-field writes"
+
+
+def _enable_aes_gcm_writes(app: Flask) -> None:
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    app.config[ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED] = True
+    app.config[ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL] = TEST_AES_GCM_WRITE_APPROVAL
+
+
+def _enable_aes_gcm_write_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED, "true")
+    monkeypatch.setenv(ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL, TEST_AES_GCM_WRITE_APPROVAL)
 
 
 def _decode_fernet_token(token: str) -> bytes:
@@ -193,6 +211,36 @@ def test_encrypt_field_transition_reads_legacy_and_envelope_formats(
     assert crypto.decrypt_field(envelope_ciphertext) == "envelope"
 
 
+def test_aes_gcm_rollout_reads_legacy_and_transitional_envelope_formats(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.LEGACY_FERNET
+    legacy_ciphertext = crypto.encrypt_field("legacy")
+
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_FERNET
+    envelope_ciphertext = crypto.encrypt_field("envelope")
+
+    _enable_aes_gcm_writes(app)
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
+    aad_values = {"user_id": 1}
+    aead_ciphertext = crypto.encrypt_field(
+        "aead",
+        contract=contract,
+        aad_values=aad_values,
+    )
+
+    assert legacy_ciphertext is not None
+    assert envelope_ciphertext is not None
+    assert aead_ciphertext is not None
+    assert crypto.decrypt_field(legacy_ciphertext) == "legacy"
+    assert crypto.decrypt_field(envelope_ciphertext) == "envelope"
+    assert crypto.decrypt_field(aead_ciphertext, contract=contract, aad_values=aad_values) == (
+        "aead"
+    )
+
+
 def test_encrypted_field_rotation_reads_old_fernet_key_and_writes_new_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -351,6 +399,7 @@ def test_encrypted_field_aead_prototype_requires_expected_domain_and_aad(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    _enable_aes_gcm_write_env(monkeypatch)
     email_contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
     pgp_key_contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.pgp_key"]
 
@@ -374,7 +423,7 @@ def test_encrypt_field_can_write_production_aes_gcm_envelope(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
-    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    _enable_aes_gcm_writes(app)
     contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
     aad_values = {"user_id": 1}
 
@@ -402,7 +451,7 @@ def test_encrypted_field_rotation_reads_old_aes_gcm_key_and_writes_new_key(
     new_key = Fernet.generate_key().decode()
     contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
     aad_values = {"user_id": 1}
-    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    _enable_aes_gcm_writes(app)
 
     monkeypatch.setenv("ENCRYPTION_KEY", old_key)
     old_envelope = crypto.encrypt_field("old secret", contract=contract, aad_values=aad_values)
@@ -431,10 +480,50 @@ def test_aes_gcm_write_format_requires_contract_and_aad(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
-    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    _enable_aes_gcm_writes(app)
 
     with pytest.raises(ValueError, match="contract and AAD values"):
         crypto.encrypt_field("secret")
+
+
+def test_aes_gcm_write_format_requires_explicit_enablement(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    app.config[ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL] = TEST_AES_GCM_WRITE_APPROVAL
+
+    with pytest.raises(crypto.EncryptedFieldWriteConfigError, match="WRITES_ENABLED"):
+        crypto.encrypt_field("secret")
+
+
+def test_aes_gcm_write_format_requires_approval_record(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    app.config[ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED] = True
+
+    with pytest.raises(crypto.EncryptedFieldWriteConfigError, match="WRITE_APPROVAL"):
+        crypto.encrypt_field("secret")
+
+
+def test_aes_gcm_write_format_requires_valid_key_material(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("ENCRYPTION_KEY", raising=False)
+    _enable_aes_gcm_writes(app)
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
+
+    with pytest.raises(ValueError, match="Encryption key not found"):
+        crypto.encrypt_field("secret", contract=contract, aad_values={"user_id": 1})
+
+    monkeypatch.setenv("ENCRYPTION_KEY", "not-a-fernet-key")
+    with pytest.raises(ValueError, match="Fernet key"):
+        crypto.encrypt_field("secret", contract=contract, aad_values={"user_id": 1})
 
 
 def test_hushline_aead_known_answer_vector_encrypts_and_serializes(
@@ -445,6 +534,7 @@ def test_hushline_aead_known_answer_vector_encrypts_and_serializes(
     nonce = bytes.fromhex(vector["nonce_hex"])
 
     monkeypatch.setenv("ENCRYPTION_KEY", vector["base_encryption_key_base64"])
+    _enable_aes_gcm_write_env(monkeypatch)
 
     def fixed_nonce(length: int) -> bytes:
         assert length == crypto.ENCRYPTED_FIELD_AEAD_NONCE_LENGTH

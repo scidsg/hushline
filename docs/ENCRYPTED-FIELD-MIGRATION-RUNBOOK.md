@@ -44,6 +44,12 @@ migrations.
 - Do not call an existing-ciphertext migration complete in the domain-bound or
   best-in-class sense until a production AEAD writer is implemented, rehearsed,
   and approved.
+- Enable AES-GCM production writes only by setting
+  `ENCRYPTED_FIELD_WRITE_FORMAT=envelope-aes-gcm`,
+  `ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED=true`, and a non-empty
+  `ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL` maintainer approval reference after
+  the schema, preflight, and release-gate evidence for the target deployment is
+  reviewed.
 - Do not drop, blank, truncate, or overwrite source ciphertext before the
   replacement value has been decrypted and verified for that row.
 - Do not assume a maintenance window. Run in small batches while normal reads
@@ -138,6 +144,15 @@ operators enable `envelope-fernet` writes. The command is read-only. The
 preflight artifact must cover every encrypted-field contract, report ready,
 scan every encrypted-field row, and have zero malformed values or decrypt
 failures.
+
+For AES-GCM new-write enablement, the same production evidence and maintainer
+approval record must exist before operators configure
+`ENCRYPTED_FIELD_WRITE_FORMAT=envelope-aes-gcm`. The application will fail
+closed unless `ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED=true` and
+`ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL` contains that approval reference.
+Legacy unprefixed Fernet ciphertext and versioned Fernet envelopes remain
+readable during this rollout; only new encrypted-field writes use AES-GCM after
+the explicit gate is configured.
 
 The evidence manifest must be a redacted JSON file with these minimum controls:
 

@@ -10,7 +10,12 @@ from cryptography.fernet import Fernet, InvalidToken
 from pytest_mock import MockFixture
 from sqlalchemy import select
 
-from hushline.config import ENCRYPTED_FIELD_WRITE_FORMAT, EncryptedFieldWriteFormat
+from hushline.config import (
+    ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL,
+    ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED,
+    ENCRYPTED_FIELD_WRITE_FORMAT,
+    EncryptedFieldWriteFormat,
+)
 from hushline.crypto import (
     ENCRYPTED_FIELD_CONTRACT_BY_ID,
     ENCRYPTED_FIELD_CONTRACTS,
@@ -42,6 +47,13 @@ LONG_PGP_BLOCK = (
     "-----BEGIN PGP PUBLIC KEY BLOCK-----\n\n" f"{'a' * 512}\n" "-----END PGP PUBLIC KEY BLOCK-----"
 )
 LONG_PGP_CIPHERTEXT = "-----BEGIN PGP MESSAGE-----\n\n" f"{'b' * 512}\n" "-----END PGP MESSAGE-----"
+TEST_AES_GCM_WRITE_APPROVAL = "test maintainer approval for AES-GCM encrypted-field writes"
+
+
+def _enable_aes_gcm_writes(app: Any) -> None:
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    app.config[ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED] = True
+    app.config[ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL] = TEST_AES_GCM_WRITE_APPROVAL
 
 
 @pytest.fixture()
@@ -422,7 +434,7 @@ def test_envelope_write_round_trips_long_values_that_exceed_legacy_capacity(
 def test_configured_aes_gcm_write_format_stores_aad_bound_envelopes(
     app: Any, user: User, field: EncryptedField
 ) -> None:
-    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    _enable_aes_gcm_writes(app)
     plaintext = _plaintext_for_field(field)
     obj = _object_for_field(field, user)
 
@@ -446,7 +458,7 @@ def test_configured_aes_gcm_write_format_stores_aad_bound_envelopes(
 def test_aes_gcm_ciphertext_copy_to_wrong_row_fails_closed(
     app: Any, user: User, user2: User, field: EncryptedField
 ) -> None:
-    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    _enable_aes_gcm_writes(app)
     plaintext = _plaintext_for_field(field)
     obj = _object_for_field(field, user)
     other = _object_for_field(field, user2)
@@ -459,7 +471,7 @@ def test_aes_gcm_ciphertext_copy_to_wrong_row_fails_closed(
 
 
 def test_aes_gcm_ciphertext_copy_to_wrong_field_fails_closed(app: Any, user: User) -> None:
-    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    _enable_aes_gcm_writes(app)
 
     user.email = "wrong-field@example.com"
     user._pgp_key = user._email
