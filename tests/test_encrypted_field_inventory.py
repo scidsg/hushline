@@ -3,6 +3,7 @@ import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -449,6 +450,48 @@ def test_configured_aes_gcm_write_format_stores_aad_bound_envelopes(
         _aead_aad_values(field, obj)
     )
     assert getattr(obj, field.property_name) == plaintext
+
+
+def test_aes_gcm_user_setter_persists_transient_user_before_binding_aad(
+    app: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", LEGACY_FERNET_KEY)
+    _enable_aes_gcm_writes(app)
+    transient_user = User(password="correct horse battery staple")  # noqa: S106
+
+    transient_user.totp_secret = "transient totp secret"
+
+    assert transient_user.id is not None
+    assert transient_user._totp_secret is not None
+    parsed = parse_encrypted_field_aead_envelope(transient_user._totp_secret)
+    assert parsed.algorithm == "aes-256-gcm"
+    assert transient_user.totp_secret == "transient totp secret"
+
+
+def test_user_totp_secret_clear_removes_stored_ciphertext(user: User) -> None:
+    user.totp_secret = "temporary totp secret"
+    assert user._totp_secret is not None
+
+    user.totp_secret = None  # type: ignore[assignment]
+
+    assert user._totp_secret is None
+    assert user.totp_secret is None
+
+
+def test_encrypted_field_aad_helpers_fail_closed_without_required_row_ids(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(ENCRYPTED_FIELD_WRITE_FORMAT, EncryptedFieldWriteFormat.LEGACY_FERNET.value)
+    recipient = NotificationRecipient()
+
+    with pytest.raises(ValueError, match="Notification recipient encrypted-field AAD"):
+        recipient._encrypted_field_aad_values()
+
+    field_value = SimpleNamespace(id=None, field_definition_id=1, message_id=1)
+    assert FieldValue._decrypt_encrypted_field(field_value, None) is None  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="Field value encrypted-field AAD"):
+        FieldValue._encrypted_field_aad_values(field_value)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(
