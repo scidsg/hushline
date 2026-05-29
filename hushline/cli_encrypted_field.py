@@ -670,12 +670,14 @@ def _print_migration_reports(  # noqa: PLR0913
     dry_run: bool,
     batch_size: int,
     target_format: EncryptedFieldWriteFormat,
+    environment_name: str,
     next_resume_state: EncryptedFieldMigrationResumeState | None,
     elapsed_seconds: float,
 ) -> None:
     click.echo(f"Helper version: {ENCRYPTED_FIELD_MIGRATION_HELPER_VERSION}")
     click.echo(f"Mode: {'dry-run' if dry_run else 'live'}")
     click.echo(f"Target format: {target_format.value}")
+    click.echo(f"Environment: {environment_name}")
     click.echo(f"Batch size: {batch_size}")
     click.echo(f"Elapsed seconds: {elapsed_seconds:.3f}")
     for report in reports:
@@ -1141,6 +1143,21 @@ def _release_gate_manifest_errors(manifest: dict[str, Any]) -> list[str]:
     return errors
 
 
+def _validate_production_migration_gate(
+    *,
+    preflight_artifact: Path,
+    evidence_manifest: Path,
+) -> None:
+    preflight_report = _load_json_artifact(preflight_artifact, "preflight")
+    manifest = _load_json_artifact(evidence_manifest, "release-gate manifest")
+    errors = _release_gate_preflight_errors(preflight_report)
+    errors.extend(_release_gate_manifest_errors(manifest))
+    if errors:
+        raise click.ClickException(
+            "Encrypted-field production migration gate: blocked (" + "; ".join(errors) + ")"
+        )
+
+
 def register_encrypted_field_commands(app: Flask) -> None:
     encrypted_field_cli = AppGroup(
         "encrypted-field",
@@ -1241,14 +1258,19 @@ def register_encrypted_field_commands(app: Flask) -> None:
     )
     def release_gate(preflight_artifact: Path, evidence_manifest: Path) -> None:
         """Validate production envelope-write evidence before configuration changes."""
-        preflight_report = _load_json_artifact(preflight_artifact, "preflight")
-        manifest = _load_json_artifact(evidence_manifest, "release-gate manifest")
-        errors = _release_gate_preflight_errors(preflight_report)
-        errors.extend(_release_gate_manifest_errors(manifest))
-        if errors:
-            raise click.ClickException(
-                "Encrypted-field production release gate: blocked (" + "; ".join(errors) + ")"
+        try:
+            _validate_production_migration_gate(
+                preflight_artifact=preflight_artifact,
+                evidence_manifest=evidence_manifest,
             )
+        except click.ClickException as exc:
+            message = str(exc)
+            message = message.replace(
+                "Encrypted-field production migration gate",
+                "Encrypted-field production release gate",
+                1,
+            )
+            raise click.ClickException(message) from exc
 
         click.echo("Encrypted-field production release gate: ready")
         click.echo(f"Target format: {ENCRYPTED_FIELD_MIGRATION_TARGET_FORMAT.value}")
@@ -1282,6 +1304,12 @@ def register_encrypted_field_commands(app: Flask) -> None:
         help="Maximum rows to examine in this run.",
     )
     @click.option(
+        "--environment-name",
+        default="unspecified",
+        show_default=True,
+        help="Non-sensitive environment label for migration progress output.",
+    )
+    @click.option(
         "--contract",
         "contract_ids",
         multiple=True,
@@ -1290,6 +1318,30 @@ def register_encrypted_field_commands(app: Flask) -> None:
     @click.option(
         "--resume-token",
         help="Resume from a prior run's next resume token.",
+    )
+    @click.option(
+        "--production",
+        is_flag=True,
+        help=(
+            "Require production release-gate evidence before live writes. "
+            "Use only for approved production execution."
+        ),
+    )
+    @click.option(
+        "--preflight-artifact",
+        type=click.Path(exists=True, dir_okay=False, path_type=Path),
+        help=(
+            "Redacted JSON artifact produced by encrypted-field preflight --output json. "
+            "Required with --production --live."
+        ),
+    )
+    @click.option(
+        "--evidence-manifest",
+        type=click.Path(exists=True, dir_okay=False, path_type=Path),
+        help=(
+            "Redacted production release-gate evidence manifest. "
+            "Required with --production --live."
+        ),
     )
     @click.option(
         "--full-scan",
@@ -1305,8 +1357,12 @@ def register_encrypted_field_commands(app: Flask) -> None:
     def migrate(  # noqa: PLR0913
         mode: str,
         batch_size: int,
+        environment_name: str,
         contract_ids: tuple[str, ...],
         resume_token: str | None,
+        production: bool,
+        preflight_artifact: Path | None,
+        evidence_manifest: Path | None,
         full_scan: bool,
         target_format: str,
     ) -> None:
@@ -1319,6 +1375,24 @@ def register_encrypted_field_commands(app: Flask) -> None:
             raise click.ClickException(
                 "Encrypted-field migration only supports target format "
                 f"{ENCRYPTED_FIELD_MIGRATION_TARGET_FORMAT.value}"
+            )
+        if (preflight_artifact is not None or evidence_manifest is not None) and not production:
+            raise click.ClickException(
+                "Production gate artifacts are only accepted with --production"
+            )
+        if production and mode == "dry-run":
+            raise click.ClickException(
+                "Production mode is only valid for --live after rehearsal and release-gate approval"
+            )
+        if production:
+            if preflight_artifact is None or evidence_manifest is None:
+                raise click.ClickException(
+                    "Production live migration requires --preflight-artifact and "
+                    "--evidence-manifest"
+                )
+            _validate_production_migration_gate(
+                preflight_artifact=preflight_artifact,
+                evidence_manifest=evidence_manifest,
             )
 
         contracts = _selected_contracts(contract_ids)
@@ -1353,6 +1427,7 @@ def register_encrypted_field_commands(app: Flask) -> None:
             dry_run=mode == "dry-run",
             batch_size=batch_size,
             target_format=parsed_target_format,
+            environment_name=environment_name,
             next_resume_state=next_resume_state,
             elapsed_seconds=time.monotonic() - started,
         )

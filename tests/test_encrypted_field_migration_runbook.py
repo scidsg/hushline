@@ -56,6 +56,9 @@ def test_encrypted_field_migration_runbook_covers_required_execution_paths() -> 
         "rehearsal_report",
         "--contract CONTRACT_ID",
         "--batch-size N",
+        "flask encrypted-field migrate --live --production",
+        "--preflight-artifact PATH/production-preflight.json",
+        "--evidence-manifest PATH/production-release-gate.json",
     ):
         assert phrase in content
 
@@ -77,9 +80,11 @@ def test_encrypted_field_migration_runbook_locks_security_guardrails() -> None:
         "not cryptographic aad binding",
         "completed rehearsal evidence report is reviewed",
         "before changing `encrypted_field_write_format` in production",
+        "or running live production encrypted-field migration",
         "preflight artifact must cover every encrypted-field contract",
         "zero planned downtime",
         "new_writes_can_revert_to_legacy",
+        "the helper refuses `--production --live` unless both release-gate artifacts are present",
         "stop before live mode if any non-empty row cannot be classified or decrypted",
         "dry-run mode must execute the same selection, classification, decryption",
         "skip rows already in the target envelope format after verifying",

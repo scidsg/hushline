@@ -130,8 +130,9 @@ size ceiling, and rollback plan proven in staging or restored-backup rehearsal.
 
 ## Production Release Gate
 
-Before changing `ENCRYPTED_FIELD_WRITE_FORMAT` in production, operators must run
-the checkable production release gate:
+Before changing `ENCRYPTED_FIELD_WRITE_FORMAT` in production or running live
+production encrypted-field migration, operators must run the checkable
+production release gate:
 
 ```shell
 flask encrypted-field release-gate \
@@ -140,8 +141,9 @@ flask encrypted-field release-gate \
 ```
 
 The gate must report `Encrypted-field production release gate: ready` before
-operators enable `envelope-fernet` writes. The command is read-only. The
-preflight artifact must cover every encrypted-field contract, report ready,
+operators enable `envelope-fernet` writes or run
+`flask encrypted-field migrate --live --production`. The command is read-only.
+The preflight artifact must cover every encrypted-field contract, report ready,
 scan every encrypted-field row, and have zero malformed values or decrypt
 failures.
 
@@ -219,10 +221,11 @@ The evidence manifest must be a redacted JSON file with these minimum controls:
 The manifest must not include plaintext, private keys, tokens, raw encrypted
 values, or full ciphertext. It is a release artifact that points to reviewed
 evidence, including the restored-backup or staging rehearsal report; it is not
-a replacement for maintainer review. If the gate blocks, do not change
-production write-format configuration until the missing evidence or
-rollback/zero-downtime control is fixed and reviewed. The gate requires zero
-planned downtime, bounded batches, and no full-table rewrite transaction.
+a replacement for maintainer review. If the gate blocks,
+do not change production write-format configuration or run live production
+migration until the missing evidence or rollback/zero-downtime control is fixed
+and reviewed. The gate requires zero planned downtime, bounded batches, and no
+full-table rewrite transaction.
 
 ## Preflight Checks
 
@@ -303,14 +306,36 @@ small enough to avoid long locks, large transactions, and operational surprise;
 production batch-size increases require operator review of staging timing and
 production health.
 
-Run live mode with the maintainer-approved target format:
+Run local or staging live mode with the maintainer-approved target format:
 
 `flask encrypted-field migrate --live --target-format TARGET-FORMAT --batch-size 10`
+
+Production live mode must include `--production`, a non-sensitive
+`--environment-name`, and the exact release-gate artifacts reviewed by
+maintainers:
+
+```shell
+flask encrypted-field migrate --live --production \
+  --environment-name production \
+  --preflight-artifact PATH/production-preflight.json \
+  --evidence-manifest PATH/production-release-gate.json \
+  --target-format TARGET-FORMAT \
+  --batch-size 10
+```
+
+The helper refuses `--production --live` unless both release-gate artifacts are
+present and pass the same checks as `flask encrypted-field release-gate`.
+Production gate artifacts are not accepted without `--production`, so rehearsal
+runs cannot accidentally imply production approval.
 
 Resume an interrupted live run with the exact token reported by the prior run:
 
 ```shell
-flask encrypted-field migrate --live --target-format TARGET-FORMAT \
+flask encrypted-field migrate --live --production \
+  --environment-name production \
+  --preflight-artifact PATH/production-preflight.json \
+  --evidence-manifest PATH/production-release-gate.json \
+  --target-format TARGET-FORMAT \
   --batch-size 10 --resume-token TOKEN
 ```
 
