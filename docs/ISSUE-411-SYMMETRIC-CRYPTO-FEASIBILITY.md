@@ -334,7 +334,11 @@ best-in-class, implement and approve the production AEAD write path.
 
 Status: AEAD evaluation completed in
 [`ENCRYPTED-FIELD-AEAD-EVALUATION.md`](ENCRYPTED-FIELD-AEAD-EVALUATION.md);
-the production AEAD write path remains future implementation work.
+the production AEAD write path is implemented for new encrypted-field writes
+behind the explicit AES-GCM write gate:
+`ENCRYPTED_FIELD_WRITE_FORMAT=envelope-aes-gcm`,
+`ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED=true`, and a non-empty
+`ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL` maintainer approval reference.
 
 The 2026-05-26 maintainer decision makes production AEAD writes required before
 existing production ciphertext migration can be considered complete in the

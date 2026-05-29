@@ -29,6 +29,8 @@ from hushline.crypto import (
     build_encrypted_field_aad,
     decrypt_field,
     encrypt_field,
+    is_encrypted_field_aead_envelope,
+    parse_encrypted_field_aead_envelope,
     parse_encrypted_field_envelope,
 )
 from hushline.db import db
@@ -59,6 +61,7 @@ class EncryptedFieldCiphertextReport:
     scanned_rows: int
     legacy_fernet: int
     envelope_fernet: int
+    envelope_aes_gcm: int
     null_empty: int
     malformed: int
     decrypt_failures: int
@@ -74,6 +77,7 @@ class EncryptedFieldCiphertextCounts:
     scanned_rows: int = 0
     legacy_fernet: int = 0
     envelope_fernet: int = 0
+    envelope_aes_gcm: int = 0
     null_empty: int = 0
     malformed: int = 0
     decrypt_failures: int = 0
@@ -311,9 +315,24 @@ def _classify_migration_value(value: Any) -> str:
     if not isinstance(value, str):
         return "malformed"
     if value.startswith(ENCRYPTED_FIELD_ENVELOPE_PREFIX):
-        parse_encrypted_field_envelope(value)
-        return "envelope_fernet"
+        return _classify_envelope_value(value)
     return "legacy_fernet"
+
+
+def _classify_envelope_value(value: str) -> str:
+    if is_encrypted_field_aead_envelope(value):
+        parse_encrypted_field_aead_envelope(value)
+        return "envelope_aes_gcm"
+
+    try:
+        parse_encrypted_field_envelope(value)
+    except InvalidToken as fernet_error:
+        try:
+            parse_encrypted_field_aead_envelope(value)
+        except InvalidToken as aead_error:
+            raise fernet_error from aead_error
+        return "envelope_aes_gcm"
+    return "envelope_fernet"
 
 
 @contextmanager
@@ -380,6 +399,23 @@ def _verify_ciphertext_plaintext(
         )
 
 
+def _preflight_scan_columns(contract: EncryptedFieldContract, table: Any) -> list[Any]:
+    columns = [table.c.id, table.c[contract.column]]
+    selected = {"id", contract.column}
+    for aad_field in contract.aad_fields:
+        if (
+            aad_field == "user_id"
+            and contract.table == "users"
+            or aad_field == "notification_recipient_id"
+            or aad_field == "field_value_id"
+        ):
+            continue
+        if aad_field in table.c and aad_field not in selected:
+            columns.append(table.c[aad_field])
+            selected.add(aad_field)
+    return columns
+
+
 def _process_migration_row(
     *,
     contract: EncryptedFieldContract,
@@ -425,6 +461,23 @@ def _process_migration_row(
     if not isinstance(value, str):
         raise AssertionError("Encrypted-field value classification allowed a non-string")
 
+    aad_values = _aad_values_for_row(contract, row)
+    if classification == "envelope_aes_gcm":
+        try:
+            decrypt_field(value, contract=contract, aad_values=aad_values)
+        except (InvalidToken, UnicodeDecodeError, ValueError) as exc:
+            report.decrypt_failures += 1
+            raise EncryptedFieldMigrationError(
+                EncryptedFieldMigrationFailure(
+                    contract_id=contract.id,
+                    primary_key=primary_key,
+                    phase="decrypt",
+                    error_class=exc.__class__.__name__,
+                )
+            ) from exc
+        report.already_migrated_rows += 1
+        return False
+
     try:
         plaintext = decrypt_field(value)
     except (InvalidToken, UnicodeDecodeError, ValueError) as exc:
@@ -441,8 +494,6 @@ def _process_migration_row(
     if plaintext is None:
         report.skipped_rows += 1
         return False
-
-    _aad_values_for_row(contract, row)
 
     if classification == "envelope_fernet":
         report.already_migrated_rows += 1
@@ -619,12 +670,14 @@ def _print_migration_reports(  # noqa: PLR0913
     dry_run: bool,
     batch_size: int,
     target_format: EncryptedFieldWriteFormat,
+    environment_name: str,
     next_resume_state: EncryptedFieldMigrationResumeState | None,
     elapsed_seconds: float,
 ) -> None:
     click.echo(f"Helper version: {ENCRYPTED_FIELD_MIGRATION_HELPER_VERSION}")
     click.echo(f"Mode: {'dry-run' if dry_run else 'live'}")
     click.echo(f"Target format: {target_format.value}")
+    click.echo(f"Environment: {environment_name}")
     click.echo(f"Batch size: {batch_size}")
     click.echo(f"Elapsed seconds: {elapsed_seconds:.3f}")
     for report in reports:
@@ -656,18 +709,32 @@ def _print_migration_reports(  # noqa: PLR0913
         click.echo(f"Next resume token: {_serialize_resume_state(next_resume_state)}")
 
 
-def _classify_preflight_value(value: Any) -> str:
+def _classify_preflight_value(
+    value: Any,
+    *,
+    contract: EncryptedFieldContract | None = None,
+    aad_values: dict[str, int] | None = None,
+) -> str:
     if value is None or value == "":
         return "null_empty"
     if not isinstance(value, str):
         return "malformed"
 
     is_envelope = value.startswith(ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+    classification = "legacy_fernet"
     if is_envelope:
         try:
-            parse_encrypted_field_envelope(value)
+            classification = _classify_envelope_value(value)
         except InvalidToken:
             return "malformed"
+        if classification == "envelope_aes_gcm":
+            if contract is None or aad_values is None:
+                return classification
+            try:
+                decrypt_field(value, contract=contract, aad_values=aad_values)
+            except (InvalidToken, UnicodeDecodeError, ValueError):
+                return "decrypt_failure"
+            return classification
 
     try:
         decrypt_field(value)
@@ -676,7 +743,7 @@ def _classify_preflight_value(value: Any) -> str:
     except (UnicodeDecodeError, ValueError):
         return "decrypt_failure"
 
-    return "envelope_fernet" if is_envelope else "legacy_fernet"
+    return classification
 
 
 def _record_preflight_classification(
@@ -694,6 +761,8 @@ def _record_preflight_classification(
         counts.decrypt_failures += 1
     elif classification == "envelope_fernet":
         counts.envelope_fernet += 1
+    elif classification == "envelope_aes_gcm":
+        counts.envelope_aes_gcm += 1
     else:
         counts.legacy_fernet += 1
 
@@ -716,14 +785,13 @@ def _classify_encrypted_field_values(
         table = db.metadata.tables.get(contract.table)
         if table is None or contract.column not in table.c:
             continue
-        column = table.c[contract.column]
         counts = EncryptedFieldCiphertextCounts()
         last_primary_key = 0
 
         while True:
             rows = (
                 db.session.execute(
-                    db.select(table.c.id, column)
+                    db.select(*_preflight_scan_columns(contract, table))
                     .select_from(table)
                     .where(table.c.id > last_primary_key)
                     .order_by(table.c.id.asc())
@@ -737,9 +805,16 @@ def _classify_encrypted_field_values(
 
             for row in rows:
                 last_primary_key = row["id"]
+                classification = _classify_preflight_value(row[contract.column])
+                if classification == "envelope_aes_gcm":
+                    classification = _classify_preflight_value(
+                        row[contract.column],
+                        contract=contract,
+                        aad_values=_aad_values_for_row(contract, row),
+                    )
                 _record_preflight_classification(
                     counts,
-                    _classify_preflight_value(row[contract.column]),
+                    classification,
                 )
 
         reports.append(
@@ -751,6 +826,7 @@ def _classify_encrypted_field_values(
                 scanned_rows=counts.scanned_rows,
                 legacy_fernet=counts.legacy_fernet,
                 envelope_fernet=counts.envelope_fernet,
+                envelope_aes_gcm=counts.envelope_aes_gcm,
                 null_empty=counts.null_empty,
                 malformed=counts.malformed,
                 decrypt_failures=counts.decrypt_failures,
@@ -764,6 +840,7 @@ def _preflight_blocked_reason_data(
     *,
     capacity_reports: list[EncryptedFieldCapacityReport],
     ciphertext_reports: list[EncryptedFieldCiphertextReport],
+    require_no_legacy: bool,
 ) -> list[dict[str, Any]]:
     reasons: list[dict[str, Any]] = []
     missing_schema = [
@@ -778,6 +855,9 @@ def _preflight_blocked_reason_data(
     decrypt_failure_reports = [
         report.contract_id for report in ciphertext_reports if not report.decryptable
     ]
+    legacy_fernet_reports = [
+        report.contract_id for report in ciphertext_reports if report.legacy_fernet
+    ]
     if missing_schema:
         reasons.append({"code": "missing_schema", "contract_ids": missing_schema})
     if blocked_capacity:
@@ -786,6 +866,8 @@ def _preflight_blocked_reason_data(
         reasons.append({"code": "malformed_ciphertext", "contract_ids": malformed_reports})
     if decrypt_failure_reports:
         reasons.append({"code": "decryptability_failure", "contract_ids": decrypt_failure_reports})
+    if require_no_legacy and legacy_fernet_reports:
+        reasons.append({"code": "legacy_fernet_present", "contract_ids": legacy_fernet_reports})
     return reasons
 
 
@@ -798,28 +880,33 @@ def _preflight_human_reason_phrases(reasons: list[dict[str, Any]]) -> list[str]:
         phrases.append("malformed ciphertext values are present")
     if "decryptability_failure" in reason_codes:
         phrases.append("one or more non-empty values failed decryptability checks")
+    if "legacy_fernet_present" in reason_codes:
+        phrases.append("legacy Fernet ciphertext values are present")
     return phrases
 
 
-def _encrypted_field_preflight_report(
+def _encrypted_field_preflight_report(  # noqa: PLR0913
     *,
     contracts: tuple[EncryptedFieldContract, ...],
     capacity_reports: list[EncryptedFieldCapacityReport],
     ciphertext_reports: list[EncryptedFieldCiphertextReport],
     alembic_revision: str,
     batch_size: int,
+    require_no_legacy: bool = False,
 ) -> dict[str, Any]:
     capacity_by_contract_id = {report.contract_id: report for report in capacity_reports}
     ciphertext_by_contract_id = {report.contract_id: report for report in ciphertext_reports}
     blocked_reasons = _preflight_blocked_reason_data(
         capacity_reports=capacity_reports,
         ciphertext_reports=ciphertext_reports,
+        require_no_legacy=require_no_legacy,
     )
     contract_reports = []
     for contract in contracts:
         capacity = capacity_by_contract_id[contract.id]
         ciphertext_report = ciphertext_by_contract_id.get(contract.id)
         row_counts = {
+            "envelope_aes_gcm": 0,
             "envelope_fernet": 0,
             "legacy_fernet": 0,
             "null_empty": 0,
@@ -829,6 +916,7 @@ def _encrypted_field_preflight_report(
         failures = {"decrypt_failures": 0, "malformed": 0}
         if ciphertext_report is not None:
             row_counts = {
+                "envelope_aes_gcm": ciphertext_report.envelope_aes_gcm,
                 "envelope_fernet": ciphertext_report.envelope_fernet,
                 "legacy_fernet": ciphertext_report.legacy_fernet,
                 "null_empty": ciphertext_report.null_empty,
@@ -842,6 +930,8 @@ def _encrypted_field_preflight_report(
         contract_ready = (
             capacity.ready and failures["decrypt_failures"] == 0 and failures["malformed"] == 0
         )
+        if require_no_legacy and row_counts["legacy_fernet"] != 0:
+            contract_ready = False
         contract_reports.append(
             {
                 "capacity": {
@@ -859,6 +949,7 @@ def _encrypted_field_preflight_report(
 
     totals = {
         "decrypt_failures": sum(report.decrypt_failures for report in ciphertext_reports),
+        "envelope_aes_gcm": sum(report.envelope_aes_gcm for report in ciphertext_reports),
         "envelope_fernet": sum(report.envelope_fernet for report in ciphertext_reports),
         "legacy_fernet": sum(report.legacy_fernet for report in ciphertext_reports),
         "malformed": sum(report.malformed for report in ciphertext_reports),
@@ -866,6 +957,10 @@ def _encrypted_field_preflight_report(
         "rows_scanned": sum(report.scanned_rows for report in ciphertext_reports),
         "rows_total": sum(report.row_count for report in ciphertext_reports),
     }
+    scan = {"batch_size": batch_size}
+    if require_no_legacy:
+        scan["require_no_legacy"] = True
+
     return {
         "alembic_revision": alembic_revision,
         "blocked_reasons": blocked_reasons,
@@ -876,7 +971,7 @@ def _encrypted_field_preflight_report(
         "contracts": contract_reports,
         "helper_version": ENCRYPTED_FIELD_MIGRATION_HELPER_VERSION,
         "report_type": "encrypted-field-preflight",
-        "scan": {"batch_size": batch_size},
+        "scan": scan,
         "schema_revision": ENCRYPTED_FIELD_PREFLIGHT_SCHEMA_REVISION,
         "status": "blocked" if blocked_reasons else "ready",
         "totals": totals,
@@ -1006,6 +1101,7 @@ def _release_gate_manifest_errors(manifest: dict[str, Any]) -> list[str]:
     )
     required_string_paths: tuple[tuple[str, ...], ...] = (
         ("preflight_artifact",),
+        ("rehearsal_report",),
         ("backup_restore_rehearsal", "artifact"),
         ("dry_run", "artifact"),
         ("live_batch_rehearsal", "artifact"),
@@ -1063,6 +1159,21 @@ def _release_gate_manifest_errors(manifest: dict[str, Any]) -> list[str]:
     return errors
 
 
+def _validate_production_migration_gate(
+    *,
+    preflight_artifact: Path,
+    evidence_manifest: Path,
+) -> None:
+    preflight_report = _load_json_artifact(preflight_artifact, "preflight")
+    manifest = _load_json_artifact(evidence_manifest, "release-gate manifest")
+    errors = _release_gate_preflight_errors(preflight_report)
+    errors.extend(_release_gate_manifest_errors(manifest))
+    if errors:
+        raise click.ClickException(
+            "Encrypted-field production migration gate: blocked (" + "; ".join(errors) + ")"
+        )
+
+
 def register_encrypted_field_commands(app: Flask) -> None:
     encrypted_field_cli = AppGroup(
         "encrypted-field",
@@ -1091,7 +1202,17 @@ def register_encrypted_field_commands(app: Flask) -> None:
         show_default=True,
         help="Maximum rows to fetch per scan query.",
     )
-    def preflight(output_format: str, contract_ids: tuple[str, ...], batch_size: int) -> None:
+    @click.option(
+        "--require-no-legacy",
+        is_flag=True,
+        help="Fail unless selected encrypted-field values contain no legacy Fernet ciphertext.",
+    )
+    def preflight(
+        output_format: str,
+        contract_ids: tuple[str, ...],
+        batch_size: int,
+        require_no_legacy: bool,
+    ) -> None:
         """Report encrypted-field envelope rollout readiness without mutating data."""
         contracts = _selected_contracts(contract_ids)
         capacity_reports = _encrypted_field_column_capacity_reports(contracts)
@@ -1106,6 +1227,7 @@ def register_encrypted_field_commands(app: Flask) -> None:
             ciphertext_reports=ciphertext_reports,
             alembic_revision=alembic_revision,
             batch_size=batch_size,
+            require_no_legacy=require_no_legacy,
         )
         blocked_reasons = preflight_report["blocked_reasons"]
 
@@ -1117,6 +1239,8 @@ def register_encrypted_field_commands(app: Flask) -> None:
 
         click.echo(f"Current Alembic revision: {alembic_revision}")
         click.echo(f"Scan batch size: {batch_size}")
+        if require_no_legacy:
+            click.echo("Legacy read retirement check: require zero legacy Fernet rows")
         click.echo("Storage column capacity:")
         for report in capacity_reports:
             click.echo(
@@ -1133,6 +1257,7 @@ def register_encrypted_field_commands(app: Flask) -> None:
                 f"({ciphertext_report.table}.{ciphertext_report.column}): "
                 f"legacy Fernet: {ciphertext_report.legacy_fernet}; "
                 f"envelope Fernet: {ciphertext_report.envelope_fernet}; "
+                f"envelope AES-GCM: {ciphertext_report.envelope_aes_gcm}; "
                 f"null/empty: {ciphertext_report.null_empty}; "
                 f"malformed: {ciphertext_report.malformed}; "
                 f"decrypt failures: {ciphertext_report.decrypt_failures}; "
@@ -1146,6 +1271,8 @@ def register_encrypted_field_commands(app: Flask) -> None:
             )
 
         click.echo("Encrypted-field preflight readiness: ready")
+        if require_no_legacy:
+            click.echo("Legacy read retirement check: ready")
 
     @encrypted_field_cli.command("release-gate")
     @click.option(
@@ -1162,14 +1289,19 @@ def register_encrypted_field_commands(app: Flask) -> None:
     )
     def release_gate(preflight_artifact: Path, evidence_manifest: Path) -> None:
         """Validate production envelope-write evidence before configuration changes."""
-        preflight_report = _load_json_artifact(preflight_artifact, "preflight")
-        manifest = _load_json_artifact(evidence_manifest, "release-gate manifest")
-        errors = _release_gate_preflight_errors(preflight_report)
-        errors.extend(_release_gate_manifest_errors(manifest))
-        if errors:
-            raise click.ClickException(
-                "Encrypted-field production release gate: blocked (" + "; ".join(errors) + ")"
+        try:
+            _validate_production_migration_gate(
+                preflight_artifact=preflight_artifact,
+                evidence_manifest=evidence_manifest,
             )
+        except click.ClickException as exc:
+            message = str(exc)
+            message = message.replace(
+                "Encrypted-field production migration gate",
+                "Encrypted-field production release gate",
+                1,
+            )
+            raise click.ClickException(message) from exc
 
         click.echo("Encrypted-field production release gate: ready")
         click.echo(f"Target format: {ENCRYPTED_FIELD_MIGRATION_TARGET_FORMAT.value}")
@@ -1203,6 +1335,12 @@ def register_encrypted_field_commands(app: Flask) -> None:
         help="Maximum rows to examine in this run.",
     )
     @click.option(
+        "--environment-name",
+        default="unspecified",
+        show_default=True,
+        help="Non-sensitive environment label for migration progress output.",
+    )
+    @click.option(
         "--contract",
         "contract_ids",
         multiple=True,
@@ -1211,6 +1349,30 @@ def register_encrypted_field_commands(app: Flask) -> None:
     @click.option(
         "--resume-token",
         help="Resume from a prior run's next resume token.",
+    )
+    @click.option(
+        "--production",
+        is_flag=True,
+        help=(
+            "Require production release-gate evidence before live writes. "
+            "Use only for approved production execution."
+        ),
+    )
+    @click.option(
+        "--preflight-artifact",
+        type=click.Path(exists=True, dir_okay=False, path_type=Path),
+        help=(
+            "Redacted JSON artifact produced by encrypted-field preflight --output json. "
+            "Required with --production --live."
+        ),
+    )
+    @click.option(
+        "--evidence-manifest",
+        type=click.Path(exists=True, dir_okay=False, path_type=Path),
+        help=(
+            "Redacted production release-gate evidence manifest. "
+            "Required with --production --live."
+        ),
     )
     @click.option(
         "--full-scan",
@@ -1226,8 +1388,12 @@ def register_encrypted_field_commands(app: Flask) -> None:
     def migrate(  # noqa: PLR0913
         mode: str,
         batch_size: int,
+        environment_name: str,
         contract_ids: tuple[str, ...],
         resume_token: str | None,
+        production: bool,
+        preflight_artifact: Path | None,
+        evidence_manifest: Path | None,
         full_scan: bool,
         target_format: str,
     ) -> None:
@@ -1240,6 +1406,24 @@ def register_encrypted_field_commands(app: Flask) -> None:
             raise click.ClickException(
                 "Encrypted-field migration only supports target format "
                 f"{ENCRYPTED_FIELD_MIGRATION_TARGET_FORMAT.value}"
+            )
+        if (preflight_artifact is not None or evidence_manifest is not None) and not production:
+            raise click.ClickException(
+                "Production gate artifacts are only accepted with --production"
+            )
+        if production and mode == "dry-run":
+            raise click.ClickException(
+                "Production mode is only valid for --live after rehearsal and release-gate approval"
+            )
+        if production:
+            if preflight_artifact is None or evidence_manifest is None:
+                raise click.ClickException(
+                    "Production live migration requires --preflight-artifact and "
+                    "--evidence-manifest"
+                )
+            _validate_production_migration_gate(
+                preflight_artifact=preflight_artifact,
+                evidence_manifest=evidence_manifest,
             )
 
         contracts = _selected_contracts(contract_ids)
@@ -1274,6 +1458,7 @@ def register_encrypted_field_commands(app: Flask) -> None:
             dry_run=mode == "dry-run",
             batch_size=batch_size,
             target_format=parsed_target_format,
+            environment_name=environment_name,
             next_resume_state=next_resume_state,
             elapsed_seconds=time.monotonic() - started,
         )

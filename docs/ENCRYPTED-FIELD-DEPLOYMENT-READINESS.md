@@ -18,8 +18,9 @@ does not start a production migration, and does not close #2013.
 Production write-format or live migration changes remain blocked until all of
 these conditions are true:
 
-- A completed restored-backup or staging rehearsal report is reviewed and
-  linked from the release record.
+- The completed
+  [`ENCRYPTED-FIELD-RESTORED-BACKUP-REHEARSAL-REPORT.md`](ENCRYPTED-FIELD-RESTORED-BACKUP-REHEARSAL-REPORT.md)
+  is reviewed and linked from the release record.
 - The production JSON preflight artifact reports `ready` for every
   encrypted-field contract with zero malformed values and zero decrypt failures.
 - Dry-run, live-batch rehearsal, interruption/resume proof, rollback proof, and
@@ -63,15 +64,16 @@ deployment controls remain current after the final branch merge.
 The production runbook and evidence template contain the required placeholders
 for release approval:
 
-| Evidence                             | Required record                                                                                                                                                            |
-| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Restored-backup or staging rehearsal | [`ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md`](ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md) `Restore And Schema Evidence` and `Operator Signoff`                        |
-| Preflight output                     | [`ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md`](ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md) `Production Release Gate` and `Preflight Checks`                                            |
-| Dry-run output                       | [`ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md`](ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md) `Dry-Run Behavior`                                                                          |
-| Live-batch proof                     | [`ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md`](ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md) `Small-Batch Execution`                                                                     |
-| Interruption/resume proof            | [`ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md`](ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md) `Idempotent Resume`                                                                         |
-| Rollback proof                       | [`ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md`](ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md) `Rollback`                                                                                  |
-| Maintainer signoff                   | [`ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md`](ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md) `Operator Signoff` and release-gate manifest `approval.maintainer_approved` |
+| Evidence                         | Required record                                                                                                                                                            |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Restored-backup rehearsal        | [`ENCRYPTED-FIELD-RESTORED-BACKUP-REHEARSAL-REPORT.md`](ENCRYPTED-FIELD-RESTORED-BACKUP-REHEARSAL-REPORT.md) and release-gate manifest `rehearsal_report`                  |
+| Future rehearsal report template | [`ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md`](ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md) `Restore And Schema Evidence` and `Operator Signoff`                        |
+| Preflight output                 | [`ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md`](ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md) `Production Release Gate` and `Preflight Checks`                                            |
+| Dry-run output                   | [`ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md`](ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md) `Dry-Run Behavior`                                                                          |
+| Live-batch proof                 | [`ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md`](ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md) `Small-Batch Execution`                                                                     |
+| Interruption/resume proof        | [`ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md`](ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md) `Idempotent Resume`                                                                         |
+| Rollback proof                   | [`ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md`](ENCRYPTED-FIELD-MIGRATION-RUNBOOK.md) `Rollback`                                                                                  |
+| Maintainer signoff               | [`ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md`](ENCRYPTED-FIELD-REHEARSAL-REPORT-TEMPLATE.md) `Operator Signoff` and release-gate manifest `approval.maintainer_approved` |
 
 Actual production artifact links are environment-specific and must be attached
 to the release record before production write-format or live migration changes.
@@ -84,7 +86,8 @@ when the release gate is satisfied:
 - Legacy Fernet reads remain supported by the deployed dual reader until
   migration completion and the rollback window are explicitly closed.
 - New writes remain `legacy-fernet` by default unless maintainers approve
-  `ENCRYPTED_FIELD_WRITE_FORMAT=envelope-fernet` after the release gate passes.
+  `ENCRYPTED_FIELD_WRITE_FORMAT=envelope-fernet` or
+  `ENCRYPTED_FIELD_WRITE_FORMAT=envelope-aes-gcm` after the release gate passes.
 - The migration helper uses dry-run mode, bounded live batches, stable ordering,
   resumable tokens, and per-row verification; it does not require a full-table
   rewrite transaction or planned downtime.

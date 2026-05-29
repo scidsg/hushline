@@ -18,6 +18,10 @@ def test_encrypted_field_modernization_adr_records_write_format_decision() -> No
         "existing production encrypted-field values must not be rewritten",
         "domain-bound aead is required before any best-in-class migration",
         "does not cryptographically bind ciphertext to the encrypted-field contract",
+        "`envelope-aes-gcm`: write the `hlfield:` aes-256-gcm envelope",
+        "authenticate canonical aad containing the algorithm, envelope version",
+        "`encrypted_field_aes_gcm_writes_enabled=true`",
+        "`encrypted_field_aes_gcm_write_approval` maintainer approval reference",
     )
 
     for phrase in required_phrases:
@@ -28,9 +32,9 @@ def test_encrypted_field_modernization_adr_aligns_epic_completion_language() -> 
     content = " ".join(_adr_text().lower().split())
 
     required_phrases = (
-        "epic #2013 is not complete in the domain-bound encryption sense",
-        "compatibility milestones separate from production aad guarantees",
-        "require production aead before existing ciphertext migration is called best-in-class",
+        "epic #2013 is not complete in the existing-ciphertext migration sense",
+        "compatibility milestones separate from new-write aad guarantees",
+        "require production aead plus migration evidence before existing ciphertext migration",
         "production release gate before any production write-format configuration change",
     )
 

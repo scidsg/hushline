@@ -8,11 +8,23 @@ from werkzeug.security import generate_password_hash
 
 from hushline import crypto
 from hushline.cli_encrypted_field import EncryptedFieldCapacityReport
-from hushline.config import ENCRYPTED_FIELD_WRITE_FORMAT, EncryptedFieldWriteFormat
+from hushline.config import (
+    ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL,
+    ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED,
+    ENCRYPTED_FIELD_WRITE_FORMAT,
+    EncryptedFieldWriteFormat,
+)
 from hushline.db import db
 from hushline.model import InviteCode, OrganizationSetting, Tier, User
 
 TEST_ENCRYPTION_KEY = "jY0gDbATEOQolx2SGj46YnkkbN6HQBB4YCABzwl1H1A="
+TEST_AES_GCM_WRITE_APPROVAL = "test maintainer approval for AES-GCM encrypted-field writes"
+
+
+def _enable_aes_gcm_writes(app: Flask) -> None:
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    app.config[ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED] = True
+    app.config[ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL] = TEST_AES_GCM_WRITE_APPROVAL
 
 
 def _valid_encrypted_field_release_gate_manifest() -> dict[str, object]:
@@ -53,6 +65,7 @@ def _valid_encrypted_field_release_gate_manifest() -> dict[str, object]:
             "completed": True,
         },
         "preflight_artifact": "redacted preflight artifact",
+        "rehearsal_report": "docs/ENCRYPTED-FIELD-RESTORED-BACKUP-REHEARSAL-REPORT.md",
         "release_checks": {
             "ciphertext_fit_tests_passed": True,
             "migration_tests_passed": True,
@@ -184,6 +197,36 @@ def test_encrypted_field_preflight_reports_ready_without_sensitive_values(
     assert user._email == envelope_ciphertext
 
 
+def test_encrypted_field_preflight_accepts_aes_gcm_envelopes_with_aad(
+    app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    runner = app.test_cli_runner()
+    plaintext = "preflight AES-GCM secret"
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
+    assert user.id is not None
+
+    _enable_aes_gcm_writes(app)
+    user._email = crypto.encrypt_field(
+        plaintext,
+        contract=contract,
+        aad_values={"user_id": user.id},
+    )
+    aead_ciphertext = user._email
+    assert aead_ciphertext is not None
+    db.session.commit()
+
+    result = runner.invoke(args=["encrypted-field", "preflight", "--contract", "User.email"])
+
+    assert result.exit_code == 0
+    assert "User.email (users.email): legacy Fernet: 0; envelope Fernet: 0" in result.output
+    assert "envelope AES-GCM: 1" in result.output
+    assert "malformed: 0; decrypt failures: 0; decryptable: yes" in result.output
+    assert "Encrypted-field preflight readiness: ready" in result.output
+    assert plaintext not in result.output
+    assert aead_ciphertext not in result.output
+
+
 def test_encrypted_field_preflight_json_reports_deterministic_redacted_artifact(
     app: Flask, user: User, user2: User, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -240,6 +283,7 @@ def test_encrypted_field_preflight_json_reports_deterministic_redacted_artifact(
     assert report["blocked_reasons"] == []
     assert report["totals"] == {
         "decrypt_failures": 0,
+        "envelope_aes_gcm": 0,
         "envelope_fernet": 1,
         "legacy_fernet": 1,
         "malformed": 0,
@@ -254,6 +298,7 @@ def test_encrypted_field_preflight_json_reports_deterministic_redacted_artifact(
             "contract_id": "User.totp_secret",
             "failures": {"decrypt_failures": 0, "malformed": 0},
             "rows": {
+                "envelope_aes_gcm": 0,
                 "envelope_fernet": 1,
                 "legacy_fernet": 1,
                 "null_empty": 0,
@@ -269,6 +314,75 @@ def test_encrypted_field_preflight_json_reports_deterministic_redacted_artifact(
     assert legacy_ciphertext not in result.output
     assert envelope_ciphertext not in result.output
     assert "User.email" not in result.output
+
+
+def test_encrypted_field_preflight_require_no_legacy_blocks_legacy_rows(
+    app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    runner = app.test_cli_runner()
+    plaintext = "legacy retirement secret"
+
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.LEGACY_FERNET
+    user._totp_secret = crypto.encrypt_field(plaintext)
+    legacy_ciphertext = user._totp_secret
+    assert legacy_ciphertext is not None
+    db.session.commit()
+
+    result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "preflight",
+            "--output",
+            "json",
+            "--contract",
+            "User.totp_secret",
+            "--require-no-legacy",
+        ]
+    )
+
+    assert result.exit_code == 1
+    report = json.loads(result.output)
+    assert report["status"] == "blocked"
+    assert report["blocked_reasons"] == [
+        {"code": "legacy_fernet_present", "contract_ids": ["User.totp_secret"]}
+    ]
+    assert report["scan"] == {"batch_size": 1000, "require_no_legacy": True}
+    assert report["totals"]["legacy_fernet"] == 1
+    assert report["contracts"][0]["status"] == "blocked"
+    assert plaintext not in result.output
+    assert legacy_ciphertext not in result.output
+
+
+def test_encrypted_field_preflight_require_no_legacy_accepts_envelopes(
+    app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    runner = app.test_cli_runner()
+    plaintext = "retired legacy read secret"
+
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_FERNET
+    user._totp_secret = crypto.encrypt_field(plaintext)
+    envelope_ciphertext = user._totp_secret
+    assert envelope_ciphertext is not None
+    db.session.commit()
+
+    result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "preflight",
+            "--contract",
+            "User.totp_secret",
+            "--require-no-legacy",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert "Legacy read retirement check: require zero legacy Fernet rows" in result.output
+    assert "User.totp_secret (users.totp_secret): legacy Fernet: 0" in result.output
+    assert "Legacy read retirement check: ready" in result.output
+    assert plaintext not in result.output
+    assert envelope_ciphertext not in result.output
 
 
 def test_encrypted_field_preflight_blocks_malformed_ciphertext(
@@ -446,6 +560,7 @@ def test_encrypted_field_preflight_json_blocks_missing_schema_without_crashing(
         "contract_id": "User.missing_column",
         "failures": {"decrypt_failures": 0, "malformed": 0},
         "rows": {
+            "envelope_aes_gcm": 0,
             "envelope_fernet": 0,
             "legacy_fernet": 0,
             "null_empty": 0,
@@ -563,6 +678,54 @@ def test_encrypted_field_release_gate_blocks_weakened_rollback_safety(
     assert "emergency_rollback.new_writes_can_revert_to_legacy must be True" in result.output
 
 
+def test_encrypted_field_release_gate_requires_rehearsal_report_reference(
+    app: Flask, tmp_path: Path
+) -> None:
+    runner = app.test_cli_runner()
+    preflight_result = runner.invoke(args=["encrypted-field", "preflight", "--output", "json"])
+    assert preflight_result.exit_code == 0
+
+    manifest = _valid_encrypted_field_release_gate_manifest()
+    del manifest["rehearsal_report"]
+    preflight_artifact = tmp_path / "preflight.json"
+    evidence_manifest = tmp_path / "release-gate.json"
+    preflight_artifact.write_text(preflight_result.output, encoding="utf-8")
+    evidence_manifest.write_text(json.dumps(manifest), encoding="utf-8")
+
+    result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "release-gate",
+            "--preflight-artifact",
+            str(preflight_artifact),
+            "--evidence-manifest",
+            str(evidence_manifest),
+        ]
+    )
+
+    assert result.exit_code == 1
+    assert "Encrypted-field production release gate: blocked" in result.output
+    assert "rehearsal_report must be a non-empty string" in result.output
+
+
+def _write_valid_encrypted_field_release_gate_artifacts(
+    app: Flask,
+    tmp_path: Path,
+) -> tuple[Path, Path]:
+    runner = app.test_cli_runner()
+    preflight_result = runner.invoke(args=["encrypted-field", "preflight", "--output", "json"])
+    assert preflight_result.exit_code == 0
+
+    preflight_artifact = tmp_path / "preflight.json"
+    evidence_manifest = tmp_path / "release-gate.json"
+    preflight_artifact.write_text(preflight_result.output, encoding="utf-8")
+    evidence_manifest.write_text(
+        json.dumps(_valid_encrypted_field_release_gate_manifest()),
+        encoding="utf-8",
+    )
+    return preflight_artifact, evidence_manifest
+
+
 def _next_resume_token(output: str) -> str:
     for line in output.splitlines():
         if line.startswith("Next resume token: "):
@@ -607,6 +770,48 @@ def test_encrypted_field_migrate_dry_run_reports_without_writing(
     assert user._totp_secret == original_ciphertext
 
 
+def test_encrypted_field_migrate_skips_existing_aes_gcm_envelopes(
+    app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    runner = app.test_cli_runner()
+    plaintext = "already AES-GCM migration secret"
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
+    assert user.id is not None
+
+    _enable_aes_gcm_writes(app)
+    user._email = crypto.encrypt_field(
+        plaintext,
+        contract=contract,
+        aad_values={"user_id": user.id},
+    )
+    original_ciphertext = user._email
+    assert original_ciphertext is not None
+    db.session.commit()
+
+    result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "migrate",
+            "--dry-run",
+            "--contract",
+            "User.email",
+            "--batch-size",
+            "10",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert "examined: 1; eligible: 0" in result.output
+    assert "already migrated: 1" in result.output
+    assert "decrypt failures: 0" in result.output
+    assert "remaining rows: 0" in result.output
+    assert plaintext not in result.output
+    assert original_ciphertext not in result.output
+    db.session.refresh(user)
+    assert user._email == original_ciphertext
+
+
 def test_encrypted_field_migrate_live_rewrites_and_verifies_post_write(
     app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -635,6 +840,84 @@ def test_encrypted_field_migrate_live_rewrites_and_verifies_post_write(
     assert "would migrate: 0; migrated: 1" in result.output
     assert "verification failures: 0; update failures: 0; remaining rows: 0" in result.output
     assert "Next resume token: complete" in result.output
+    assert plaintext not in result.output
+    assert original_ciphertext not in result.output
+    db.session.refresh(user)
+    assert user._totp_secret is not None
+    assert user._totp_secret.startswith(crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+    assert user.totp_secret == plaintext
+
+
+def test_encrypted_field_migrate_production_live_requires_release_gate_artifacts(
+    app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    runner = app.test_cli_runner()
+    plaintext = "ungated production migration secret"
+    user._totp_secret = crypto.encrypt_field(plaintext)
+    original_ciphertext = user._totp_secret
+    assert original_ciphertext is not None
+    db.session.commit()
+
+    result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "migrate",
+            "--live",
+            "--production",
+            "--contract",
+            "User.totp_secret",
+        ]
+    )
+
+    assert result.exit_code == 1
+    assert "Production live migration requires --preflight-artifact" in result.output
+    db.session.refresh(user)
+    assert user._totp_secret == original_ciphertext
+    assert user.totp_secret == plaintext
+
+
+def test_encrypted_field_migrate_production_live_accepts_valid_release_gate(
+    app: Flask,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    runner = app.test_cli_runner()
+    plaintext = "gated production migration secret"
+    user._totp_secret = crypto.encrypt_field(plaintext)
+    original_ciphertext = user._totp_secret
+    assert original_ciphertext is not None
+    db.session.commit()
+    preflight_artifact, evidence_manifest = _write_valid_encrypted_field_release_gate_artifacts(
+        app,
+        tmp_path,
+    )
+
+    result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "migrate",
+            "--live",
+            "--production",
+            "--environment-name",
+            "production",
+            "--preflight-artifact",
+            str(preflight_artifact),
+            "--evidence-manifest",
+            str(evidence_manifest),
+            "--contract",
+            "User.totp_secret",
+            "--batch-size",
+            "10",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert "Mode: live" in result.output
+    assert "Environment: production" in result.output
+    assert "migrated: 1" in result.output
     assert plaintext not in result.output
     assert original_ciphertext not in result.output
     db.session.refresh(user)

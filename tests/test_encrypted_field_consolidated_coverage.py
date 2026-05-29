@@ -15,6 +15,7 @@ cli: Any = pytest.importorskip("hushline.cli_encrypted_field")
 
 
 TEST_ENCRYPTION_KEY = "jY0gDbATEOQolx2SGj46YnkkbN6HQBB4YCABzwl1H1A="
+TEST_AES_GCM_WRITE_APPROVAL = "test maintainer approval for AES-GCM encrypted-field writes"
 
 
 pytestmark = pytest.mark.skipif(
@@ -82,6 +83,8 @@ def test_aead_prototype_roundtrips_bytes_and_none_without_plaintext_leakage(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    monkeypatch.setenv("ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED", "true")
+    monkeypatch.setenv("ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL", TEST_AES_GCM_WRITE_APPROVAL)
     contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
 
     assert crypto.encrypt_field_aead_prototype(None, contract, {"user_id": 1}) is None
@@ -199,6 +202,10 @@ def test_preflight_classification_counts_safe_buckets_without_disclosing_values(
     legacy_ciphertext = crypto.encrypt_field("legacy secret")
     assert legacy_ciphertext is not None
     envelope_ciphertext = crypto.serialize_encrypted_field_envelope(legacy_ciphertext)
+    aead_envelope = crypto.serialize_encrypted_field_aead_envelope(
+        b"synthetic-ciphertext",
+        b"0" * crypto.ENCRYPTED_FIELD_AEAD_NONCE_LENGTH,
+    )
     undecryptable_envelope = crypto.serialize_encrypted_field_envelope(
         "gAAAAABnot-a-decryptable-fernet-token"
     )
@@ -220,6 +227,7 @@ def test_preflight_classification_counts_safe_buckets_without_disclosing_values(
         cli._classify_preflight_value(undecodable_legacy),
         cli._classify_preflight_value(legacy_ciphertext),
         cli._classify_preflight_value(envelope_ciphertext),
+        cli._classify_preflight_value(aead_envelope),
     ]
     counts = cli.EncryptedFieldCiphertextCounts()
     for classification in classifications:
@@ -234,14 +242,33 @@ def test_preflight_classification_counts_safe_buckets_without_disclosing_values(
         "decrypt_failure",
         "legacy_fernet",
         "envelope_fernet",
+        "envelope_aes_gcm",
     ]
-    assert counts.row_count == 8
-    assert counts.scanned_rows == 8
+    assert counts.row_count == 9
+    assert counts.scanned_rows == 9
     assert counts.null_empty == 2
     assert counts.malformed == 2
     assert counts.decrypt_failures == 4
     assert counts.legacy_fernet == 1
     assert counts.envelope_fernet == 1
+    assert counts.envelope_aes_gcm == 1
+
+
+def test_rollout_classifier_recognizes_aes_gcm_without_fernet_probe(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    aead_envelope = crypto.serialize_encrypted_field_aead_envelope(
+        b"synthetic-ciphertext",
+        b"0" * crypto.ENCRYPTED_FIELD_AEAD_NONCE_LENGTH,
+    )
+
+    def fail_fernet_probe(value: str) -> None:
+        raise AssertionError(f"unexpected Fernet envelope parse for {value!r}")
+
+    monkeypatch.setattr(cli, "parse_encrypted_field_envelope", fail_fernet_probe)
+
+    assert cli._classify_envelope_value(aead_envelope) == "envelope_aes_gcm"
+    assert cli._classify_preflight_value(aead_envelope) == "envelope_aes_gcm"
 
 
 def test_preflight_report_marks_capacity_only_missing_schema_as_blocked() -> None:
@@ -266,6 +293,7 @@ def test_preflight_report_marks_capacity_only_missing_schema_as_blocked() -> Non
         ciphertext_reports=[],
         alembic_revision="test-revision",
         batch_size=25,
+        require_no_legacy=False,
     )
 
     assert report["status"] == "blocked"
@@ -273,6 +301,7 @@ def test_preflight_report_marks_capacity_only_missing_schema_as_blocked() -> Non
         {"code": "missing_schema", "contract_ids": ["User.missing_secret"]}
     ]
     assert report["contracts"][0]["rows"] == {
+        "envelope_aes_gcm": 0,
         "envelope_fernet": 0,
         "legacy_fernet": 0,
         "null_empty": 0,

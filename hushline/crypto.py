@@ -18,7 +18,14 @@ from pysequoia import Cert, encrypt
 from sqlalchemy import inspect
 from sqlalchemy.exc import NoSuchTableError
 
-from hushline.config import ENCRYPTED_FIELD_WRITE_FORMAT, EncryptedFieldWriteFormat
+from hushline.config import (
+    ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL,
+    ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED,
+    ENCRYPTED_FIELD_LEGACY_READS_ENABLED,
+    ENCRYPTED_FIELD_WRITE_FORMAT,
+    EncryptedFieldWriteFormat,
+)
+from hushline.utils import parse_bool
 
 with open(Path(__file__).parent / "files" / "diceware.txt") as f:
     DICEWARE_WORDS = [x.strip() for x in f]
@@ -45,8 +52,10 @@ ENCRYPTED_FIELD_ENVELOPE_READY_COLUMNS = (
 )
 ENCRYPTED_FIELD_AEAD_ENVELOPE_VERSION = 2
 ENCRYPTED_FIELD_AEAD_ENVELOPE_ALGORITHM = "aes-256-gcm"
+ENCRYPTED_FIELD_AEAD_NONCE_LENGTH = 12
 ENCRYPTED_FIELD_AAD_SCHEMA = "hushline.encrypted-field.aad.v1"
 ENCRYPTED_FIELD_AEAD_KEY_INFO = b"hushline:encrypted-field:aes-256-gcm:v2"
+ENCRYPTION_KEY_FALLBACKS = "ENCRYPTION_KEY_FALLBACKS"
 ENCRYPTED_FIELD_MUTABLE_AAD_NAMES = frozenset(
     {
         "bio",
@@ -90,6 +99,10 @@ class EncryptedFieldAEADEnvelope:
 
 
 class EncryptedFieldSchemaNotReadyError(RuntimeError):
+    pass
+
+
+class EncryptedFieldWriteConfigError(RuntimeError):
     pass
 
 
@@ -168,14 +181,29 @@ def generate_salt() -> str:
     return urlsafe_b64encode(os.urandom(32)).decode()
 
 
-def get_encryption_key(scope: bytes | str | None = None, salt: str | None = None) -> Fernet:
-    """
-    Return the default Fernet encryption key. If a scope and salt are provided, a unique encryption
-    key will be derived based on the scope and salt.
-    """
+def _configured_encryption_key_materials() -> tuple[str, ...]:
     if not (encryption_key := os.environ.get("ENCRYPTION_KEY", None)):
         raise ValueError("Encryption key not found via env var ENCRYPTION_KEY")
 
+    keys = [encryption_key]
+    fallback_keys = os.environ.get(ENCRYPTION_KEY_FALLBACKS)
+    if fallback_keys is not None:
+        for key in fallback_keys.split(","):
+            stripped_key = key.strip()
+            if not stripped_key:
+                raise ValueError(f"{ENCRYPTION_KEY_FALLBACKS} must not contain empty keys")
+            keys.append(stripped_key)
+
+    for key in keys:
+        Fernet(key)
+    return tuple(keys)
+
+
+def _derive_fernet_key_material(
+    encryption_key: str,
+    scope: bytes | str | None = None,
+    salt: str | None = None,
+) -> str:
     # If a scope is provided, we will use it to derive a unique encryption key
     if scope is not None and salt is not None:
         # Convert the scope to bytes if it is a string
@@ -200,7 +228,27 @@ def get_encryption_key(scope: bytes | str | None = None, salt: str | None = None
         new_encryption_key_bytes = kdf.derive(result)
         encryption_key = urlsafe_b64encode(new_encryption_key_bytes).decode()
 
+    return encryption_key
+
+
+def get_encryption_key(scope: bytes | str | None = None, salt: str | None = None) -> Fernet:
+    """
+    Return the active Fernet write key. If a scope and salt are provided, a unique encryption
+    key will be derived based on the scope and salt.
+    """
+    encryption_key = _configured_encryption_key_materials()[0]
+    encryption_key = _derive_fernet_key_material(encryption_key, scope, salt)
     return Fernet(encryption_key)
+
+
+def _get_encryption_key_readers(
+    scope: bytes | str | None = None,
+    salt: str | None = None,
+) -> tuple[Fernet, ...]:
+    return tuple(
+        Fernet(_derive_fernet_key_material(encryption_key, scope, salt))
+        for encryption_key in _configured_encryption_key_materials()
+    )
 
 
 def encrypted_field_write_format() -> EncryptedFieldWriteFormat:
@@ -215,15 +263,63 @@ def encrypted_field_write_format() -> EncryptedFieldWriteFormat:
         )
 
     if isinstance(configured, EncryptedFieldWriteFormat):
-        return configured
+        write_format = configured
+    else:
+        write_format = EncryptedFieldWriteFormat.parse(configured)
 
-    return EncryptedFieldWriteFormat.parse(configured)
+    if write_format == EncryptedFieldWriteFormat.ENVELOPE_AES_GCM:
+        assert_encrypted_field_aes_gcm_write_config_ready()
+
+    return write_format
+
+
+def _encrypted_field_config_value(name: str) -> object:
+    if has_app_context() and name in current_app.config:
+        return current_app.config[name]
+    return os.environ.get(name)
+
+
+def _encrypted_field_aes_gcm_writes_enabled() -> bool:
+    configured = _encrypted_field_config_value(ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED)
+    if configured is None:
+        return False
+    if isinstance(configured, bool):
+        return configured
+    if isinstance(configured, str):
+        return parse_bool(configured)
+    return False
+
+
+def _encrypted_field_legacy_reads_enabled() -> bool:
+    configured = _encrypted_field_config_value(ENCRYPTED_FIELD_LEGACY_READS_ENABLED)
+    if configured is None:
+        return True
+    if isinstance(configured, bool):
+        return configured
+    if isinstance(configured, str):
+        return parse_bool(configured)
+    return True
+
+
+def assert_encrypted_field_aes_gcm_write_config_ready() -> None:
+    if not _encrypted_field_aes_gcm_writes_enabled():
+        raise EncryptedFieldWriteConfigError(
+            "AES-GCM encrypted-field writes require " "ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED=true"
+        )
+
+    approval = _encrypted_field_config_value(ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL)
+    if not isinstance(approval, str) or not approval.strip():
+        raise EncryptedFieldWriteConfigError(
+            "AES-GCM encrypted-field writes require a non-empty "
+            "ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL"
+        )
 
 
 def assert_encrypted_field_envelope_schema_ready() -> None:
+    write_format = encrypted_field_write_format()
     if not has_app_context():
         raise EncryptedFieldSchemaNotReadyError(
-            "ENCRYPTED_FIELD_WRITE_FORMAT=envelope-fernet requires "
+            f"ENCRYPTED_FIELD_WRITE_FORMAT={write_format.value} requires "
             "envelope-ready database schema, but the database schema cannot be "
             "checked outside a Flask application context."
         )
@@ -256,7 +352,7 @@ def assert_encrypted_field_envelope_schema_ready() -> None:
         if missing_columns:
             details.append("missing: " + ", ".join(missing_columns))
         raise EncryptedFieldSchemaNotReadyError(
-            "ENCRYPTED_FIELD_WRITE_FORMAT=envelope-fernet requires "
+            f"ENCRYPTED_FIELD_WRITE_FORMAT={write_format.value} requires "
             "envelope-ready database schema. Run migration b2039e7c0a1d before "
             "enabling envelope writes; " + "; ".join(details) + "."
         )
@@ -294,10 +390,7 @@ def build_encrypted_field_aad(contract: EncryptedFieldContract, values: Mapping[
     ).encode()
 
 
-def _get_encrypted_field_aead_key() -> bytes:
-    if not (encryption_key := os.environ.get("ENCRYPTION_KEY", None)):
-        raise ValueError("Encryption key not found via env var ENCRYPTION_KEY")
-
+def _derive_encrypted_field_aead_key(encryption_key: str) -> bytes:
     encryption_key_bytes = urlsafe_b64decode(encryption_key)
     return HKDF(
         algorithm=hashes.SHA256(),
@@ -305,6 +398,17 @@ def _get_encrypted_field_aead_key() -> bytes:
         salt=None,
         info=ENCRYPTED_FIELD_AEAD_KEY_INFO,
     ).derive(encryption_key_bytes)
+
+
+def _get_encrypted_field_aead_key() -> bytes:
+    return _derive_encrypted_field_aead_key(_configured_encryption_key_materials()[0])
+
+
+def _get_encrypted_field_aead_read_keys() -> tuple[bytes, ...]:
+    return tuple(
+        _derive_encrypted_field_aead_key(encryption_key)
+        for encryption_key in _configured_encryption_key_materials()
+    )
 
 
 def _encode_unpadded_urlsafe(data: bytes) -> str:
@@ -371,8 +475,8 @@ def parse_encrypted_field_envelope(data: str) -> EncryptedFieldEnvelope | None:
 def serialize_encrypted_field_aead_envelope(ciphertext: bytes, nonce: bytes) -> str:
     if not ciphertext:
         raise ValueError("Encrypted field envelope ciphertext is required")
-    if not nonce:
-        raise ValueError("Encrypted field envelope nonce is required")
+    if len(nonce) != ENCRYPTED_FIELD_AEAD_NONCE_LENGTH:
+        raise ValueError("Encrypted field envelope nonce must be 96 bits")
 
     payload = json.dumps(
         {
@@ -407,9 +511,10 @@ def parse_encrypted_field_aead_envelope(data: str) -> EncryptedFieldAEADEnvelope
     version = envelope.get("v")
     algorithm = envelope.get("alg")
     if (
-        version != ENCRYPTED_FIELD_AEAD_ENVELOPE_VERSION
+        set(envelope) != {"alg", "ct", "n", "v"}
+        or version != ENCRYPTED_FIELD_AEAD_ENVELOPE_VERSION
         or algorithm != ENCRYPTED_FIELD_AEAD_ENVELOPE_ALGORITHM
-        or not nonce
+        or len(nonce) != ENCRYPTED_FIELD_AEAD_NONCE_LENGTH
         or not ciphertext
     ):
         raise InvalidToken
@@ -422,7 +527,24 @@ def parse_encrypted_field_aead_envelope(data: str) -> EncryptedFieldAEADEnvelope
     )
 
 
-def encrypt_field_aead_prototype(
+def is_encrypted_field_aead_envelope(data: str | None) -> bool:
+    if data is None or not data.startswith(ENCRYPTED_FIELD_ENVELOPE_PREFIX):
+        return False
+
+    encoded_payload = data[len(ENCRYPTED_FIELD_ENVELOPE_PREFIX) :]
+    try:
+        payload = _decode_unpadded_urlsafe(encoded_payload)
+        envelope = json.loads(payload.decode())
+    except (binascii.Error, TypeError, ValueError, UnicodeDecodeError):
+        return False
+
+    return (
+        isinstance(envelope, dict)
+        and envelope.get("alg") == ENCRYPTED_FIELD_AEAD_ENVELOPE_ALGORITHM
+    )
+
+
+def _encrypt_field_aead(
     data: bytes | str | None,
     contract: EncryptedFieldContract,
     aad_values: Mapping[str, int],
@@ -433,12 +555,21 @@ def encrypt_field_aead_prototype(
         data = data.encode()
 
     aad = build_encrypted_field_aad(contract, aad_values)
-    nonce = os.urandom(12)
+    nonce = os.urandom(ENCRYPTED_FIELD_AEAD_NONCE_LENGTH)
     ciphertext = AESGCM(_get_encrypted_field_aead_key()).encrypt(nonce, data, aad)
     return serialize_encrypted_field_aead_envelope(ciphertext, nonce)
 
 
-def decrypt_field_aead_prototype(
+def encrypt_field_aead(
+    data: bytes | str | None,
+    contract: EncryptedFieldContract,
+    aad_values: Mapping[str, int],
+) -> str | None:
+    assert_encrypted_field_aes_gcm_write_config_ready()
+    return _encrypt_field_aead(data, contract, aad_values)
+
+
+def decrypt_field_aead(
     data: str | None,
     contract: EncryptedFieldContract,
     aad_values: Mapping[str, int],
@@ -448,19 +579,41 @@ def decrypt_field_aead_prototype(
 
     envelope = parse_encrypted_field_aead_envelope(data)
     aad = build_encrypted_field_aad(contract, aad_values)
-    try:
-        plaintext = AESGCM(_get_encrypted_field_aead_key()).decrypt(
-            envelope.nonce,
-            envelope.ciphertext,
-            aad,
-        )
-    except InvalidTag as exc:
-        raise InvalidToken from exc
-    return plaintext.decode()
+    for encryption_key in _get_encrypted_field_aead_read_keys():
+        try:
+            plaintext = AESGCM(encryption_key).decrypt(
+                envelope.nonce,
+                envelope.ciphertext,
+                aad,
+            )
+        except InvalidTag:
+            continue
+        return plaintext.decode()
+    raise InvalidToken
+
+
+def encrypt_field_aead_prototype(
+    data: bytes | str | None,
+    contract: EncryptedFieldContract,
+    aad_values: Mapping[str, int],
+) -> str | None:
+    return _encrypt_field_aead(data, contract, aad_values)
+
+
+def decrypt_field_aead_prototype(
+    data: str | None,
+    contract: EncryptedFieldContract,
+    aad_values: Mapping[str, int],
+) -> str | None:
+    return decrypt_field_aead(data, contract, aad_values)
 
 
 def encrypt_field(
-    data: bytes | str | None, scope: bytes | str | None = None, salt: str | None = None
+    data: bytes | str | None,
+    scope: bytes | str | None = None,
+    salt: str | None = None,
+    contract: EncryptedFieldContract | None = None,
+    aad_values: Mapping[str, int] | None = None,
 ) -> str | None:
     """
     Encrypts the data with the default encryption key. If both scope and salt are provided,
@@ -470,8 +623,16 @@ def encrypt_field(
         return None
 
     write_format = encrypted_field_write_format()
-    if write_format == EncryptedFieldWriteFormat.ENVELOPE_FERNET:
+    if write_format in {
+        EncryptedFieldWriteFormat.ENVELOPE_FERNET,
+        EncryptedFieldWriteFormat.ENVELOPE_AES_GCM,
+    }:
         assert_encrypted_field_envelope_schema_ready()
+
+    if write_format == EncryptedFieldWriteFormat.ENVELOPE_AES_GCM:
+        if contract is None or aad_values is None:
+            raise ValueError("AES-GCM encrypted-field writes require a contract and AAD values")
+        return encrypt_field_aead(data, contract, aad_values)
 
     fernet = get_encryption_key(scope, salt)
 
@@ -491,7 +652,11 @@ def encrypt_field(
 
 
 def decrypt_field(
-    data: str | None, scope: bytes | str | None = None, salt: str | None = None
+    data: str | None,
+    scope: bytes | str | None = None,
+    salt: str | None = None,
+    contract: EncryptedFieldContract | None = None,
+    aad_values: Mapping[str, int] | None = None,
 ) -> str | None:
     """
     Decrypts the data with the default encryption key. If both scope and salt are provided,
@@ -500,12 +665,26 @@ def decrypt_field(
     if data is None:
         return None
 
-    envelope = parse_encrypted_field_envelope(data)
-    if envelope is not None:
-        data = envelope.ciphertext
+    is_legacy_fernet = not data.startswith(ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+    if is_legacy_fernet and not _encrypted_field_legacy_reads_enabled():
+        raise InvalidToken
 
-    fernet = get_encryption_key(scope, salt)
-    return fernet.decrypt(data.encode()).decode()
+    if data.startswith(ENCRYPTED_FIELD_ENVELOPE_PREFIX):
+        try:
+            envelope = parse_encrypted_field_envelope(data)
+        except InvalidToken:
+            if contract is None or aad_values is None:
+                raise
+            return decrypt_field_aead(data, contract, aad_values)
+        if envelope is not None:
+            data = envelope.ciphertext
+
+    for fernet in _get_encryption_key_readers(scope, salt):
+        try:
+            return fernet.decrypt(data.encode()).decode()
+        except InvalidToken:
+            continue
+    raise InvalidToken
 
 
 def is_valid_pgp_key(key: str) -> bool:

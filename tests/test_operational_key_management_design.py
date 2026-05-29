@@ -36,6 +36,7 @@ def test_operational_key_management_design_covers_required_topics() -> None:
 
     for secret_name in (
         "ENCRYPTION_KEY",
+        "ENCRYPTION_KEY_FALLBACKS",
         "SESSION_FERNET_KEY",
         "SECRET_KEY",
     ):
@@ -46,19 +47,25 @@ def test_operational_key_management_design_locks_recommendation_and_guardrails()
     content = " ".join(_design_text().lower().split())
 
     required_phrases = (
-        "does not change production key loading behavior",
+        "read-only fallback keys for server-side encrypted database fields",
+        "new encrypted-field writes always use `encryption_key`",
         "must not be bundled into encrypted-field envelope work",
         "database backup without the matching encrypted-field key material is not a "
         "complete recovery artifact",
         "`encryption_key` is lost and no valid copy exists",
         "unrecoverable through hush line",
-        "current hush line encrypted-field storage does not include key identifiers or "
-        "a multi-key production reader",
-        "rolling deploys must not mix encrypted-field keys across instances",
+        "current hush line encrypted-field storage does not include key identifiers",
+        "missing key identifiers are handled by ordered trial decryption",
+        "rolling deploys must not mix encrypted-field write keys or fallback-key order",
+        "ordered multi-key readers rather than key identifiers",
+        "it does not affect recipient pgp keys",
+        "rollback behavior",
+        "malformed fallback configuration blocks encrypted-field operations",
         "app boot must not create secret rows, mutate schema, generate replacement "
         "production secrets, or opportunistically rewrite encrypted fields",
         "startup-time schema mutation or implicit secret-row creation is explicitly rejected",
-        "keep the current environment-based operational key model for now",
+        "keep the environment-based operational key model and add explicit read-only "
+        "encrypted-field fallback keys",
         "defer external key service and sealed local secret implementation",
         "do not change flask session secret derivation",
     )

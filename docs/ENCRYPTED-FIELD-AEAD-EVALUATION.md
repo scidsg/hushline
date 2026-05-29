@@ -2,37 +2,46 @@
 
 Date: 2026-05-26
 
-Status: Recommendation for future encrypted-field writes
+Status: AES-GCM production writer implemented for new encrypted-field writes
 
 ## Scope
 
-This memo evaluates whether future encrypted database-field writes should stay
-on Fernet or move to an AEAD after Hush Line has already introduced versioned
-envelopes, stable domains, associated data, dual-read rollout controls, and a
-tested migration runbook.
+This memo evaluates the choice to support AES-GCM encrypted database-field
+writes after Hush Line has already introduced versioned envelopes, stable
+domains, associated data, dual-read rollout controls, and a tested migration
+runbook.
 
-It does not change production encryption behavior. Current production writes
+It does not change default production encryption behavior. Production writes
 remain controlled by `ENCRYPTED_FIELD_WRITE_FORMAT`, whose default is legacy
-Fernet. The AES-GCM helper in `hushline.crypto` remains a prototype for domain
-and AAD behavior, not a production write path.
+Fernet. AES-GCM writes are enabled only when all of these are true:
+
+- `ENCRYPTED_FIELD_WRITE_FORMAT=envelope-aes-gcm`
+- `ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED=true`
+- `ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL` is a non-empty maintainer approval
+  reference for the target deployment
+- the encrypted-field envelope schema readiness check passes
+- each write supplies the code-owned encrypted-field contract and required AAD
+
+That configuration path promotes the AES-GCM helper in `hushline.crypto` to a
+production write path for new values.
 
 Maintainers decided on 2026-05-26 that `envelope-fernet` is transitional
 compatibility only. It must not be represented as production domain-bound
 authenticated field encryption, and existing production ciphertext migration is
-not best-in-class complete until production AEAD writes are implemented and
-approved.
+not best-in-class complete until production AEAD writes are enabled through an
+approved rollout and existing ciphertext has migration evidence.
 
 ## Recommendation
 
-Defer any production algorithm change and keep Fernet for current encrypted
-database-field writes.
+Keep legacy Fernet as the default encrypted database-field write format until
+maintainers approve an AES-GCM rollout for a deployment.
 
-AES-GCM is the preferred future AEAD candidate if maintainers later approve an
-algorithm change, because it is already available through the existing
-`cryptography` dependency, has broad deployment and compliance support, and
-fits Hush Line's planned domain and AAD envelope design. ChaCha20-Poly1305 is a
-reasonable non-FIPS alternative, but it does not offer enough Hush Line-specific
-benefit to replace AES-GCM as the first production AEAD target.
+AES-GCM is the implemented AEAD candidate because it is already available
+through the existing `cryptography` dependency, has broad deployment and
+compliance support, and fits Hush Line's domain and AAD envelope design.
+ChaCha20-Poly1305 is a reasonable non-FIPS alternative, but it does not offer
+enough Hush Line-specific benefit to replace AES-GCM as the first production
+AEAD target.
 
 Do not add a new crypto dependency for this work. Revisit the decision only
 after the following are complete:
@@ -41,15 +50,16 @@ after the following are complete:
 - the migration runbook has completed staging rehearsal
 - operator key backup and restore procedures are documented for the target
   format
-- maintainers have explicitly approved changing the write algorithm
+- maintainers have explicitly approved changing the write algorithm for the
+  target deployment
 
 ## Options Compared
 
-| Option              | Fit for encrypted fields                                                 | Primary benefit                                                                    | Primary risk                                                                                                  | Recommendation                    |
-| ------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| Fernet continuation | Strong compatibility fit for current text columns and rollback needs     | Existing deployed format; timestamp is already pinned to zero by Hush Line writes  | No AAD or field/domain binding without an outer envelope; larger ciphertext than AEAD for many values         | Keep for now                      |
-| ChaCha20-Poly1305   | Good AEAD fit when deployments do not require FIPS-oriented choices      | Fast software AEAD with simple 96-bit nonce interface                              | Catastrophic nonce-reuse failure; weaker FIPS fit; no decisive advantage for current server-side field writes | Defer                             |
-| AES-GCM             | Best future AEAD fit for Hush Line's envelope and deployment constraints | Existing dependency, common operational support, efficient ciphertext, AAD support | Catastrophic nonce-reuse failure; requires careful nonce generation and test vectors                          | Preferred future AEAD if changing |
+| Option              | Fit for encrypted fields                                             | Primary benefit                                                                    | Primary risk                                                                                                  | Recommendation                    |
+| ------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| Fernet continuation | Strong compatibility fit for current text columns and rollback needs | Existing deployed format; timestamp is already pinned to zero by Hush Line writes  | No AAD or field/domain binding without an outer envelope; larger ciphertext than AEAD for many values         | Keep for now                      |
+| ChaCha20-Poly1305   | Good AEAD fit when deployments do not require FIPS-oriented choices  | Fast software AEAD with simple 96-bit nonce interface                              | Catastrophic nonce-reuse failure; weaker FIPS fit; no decisive advantage for current server-side field writes | Defer                             |
+| AES-GCM             | Best AEAD fit for Hush Line's envelope and deployment constraints    | Existing dependency, common operational support, efficient ciphertext, AAD support | Catastrophic nonce-reuse failure; requires careful nonce generation and test vectors                          | Implemented explicit write option |
 
 ## Evaluation Criteria
 
@@ -61,9 +71,10 @@ already expect text ciphertext. The versioned Fernet envelope also preserves
 dual-read behavior without changing schemas or default writes.
 
 ChaCha20-Poly1305 and AES-GCM both require a versioned envelope for algorithm
-identification, nonce storage, AAD schema identification, and rollback. They
-must not be written to production fields until legacy Fernet reads are proven
-and migration tooling can verify every rewritten row.
+identification, nonce storage, AAD schema identification, and rollback. AES-GCM
+new writes require the widened envelope-ready schema and canonical AAD; existing
+ciphertext must not be rewritten until legacy Fernet reads are proven and
+migration tooling can verify every rewritten row.
 
 ### Nonce Generation And Misuse Resistance
 
@@ -71,7 +82,7 @@ AES-GCM and ChaCha20-Poly1305 both require a unique nonce for every encryption
 under the same key. Reusing a nonce with the same key is a severe failure mode
 for both candidates and can compromise confidentiality and integrity.
 
-For Hush Line encrypted fields, a future AEAD writer must:
+For Hush Line encrypted fields, the AEAD writer must:
 
 - use a 96-bit random nonce from the operating system CSPRNG for every write
 - store the nonce in the authenticated versioned envelope
@@ -150,7 +161,7 @@ maintainer-approved rollout note.
 
 ## Test-Vector Strategy
 
-If AES-GCM is promoted from prototype to production writes, tests must include:
+AES-GCM production-write tests must include:
 
 - official AES-GCM known-answer vectors for encryption and authentication
 - Hush Line envelope vectors with fixed key, nonce, plaintext, domain, and AAD
@@ -172,19 +183,21 @@ content, real notification addresses, or real user data.
 
 ## Decision Record
 
-Hush Line should keep Fernet for current production encrypted-field writes and
-defer an algorithm change. The next production security value comes from
+Hush Line keeps Fernet as the default production encrypted-field write format
+and supports AES-GCM as an explicit production write-format option for new
+values. Legacy unprefixed Fernet values and versioned Fernet envelopes remain
+readable while AES-GCM writes are enabled; the AES-GCM writer changes only new
+encrypted-field writes after the explicit gate above is configured. Maintainer
+approval must be recorded before changing the project default away from legacy
+Fernet in any future release. The next production security value comes from
 compatibility, domain separation, AAD contracts, and migration safety rather
-than from replacing Fernet immediately.
+than from rewriting existing Fernet ciphertext immediately.
 
-If maintainers later approve AEAD writes, implement AES-GCM first using the
-existing `cryptography` dependency, the existing versioned envelope prefix,
-stable AAD from `ENCRYPTED_FIELD_CONTRACTS`, random 96-bit nonces, and a
-test-vector suite before any production write-format rollout.
+The AES-GCM writer uses the existing `cryptography` dependency, the existing
+versioned envelope prefix, stable AAD from `ENCRYPTED_FIELD_CONTRACTS`, random
+96-bit nonces, and a test-vector suite before production write-format rollout.
 
 The implementation path before any best-in-class existing-ciphertext migration
-is: promote the AES-GCM prototype to a production writer, bind the envelope to
-the stable domain and canonical AAD contract, keep legacy Fernet and
-`envelope-fernet` reads during rollout, add the test vectors above, rehearse the
+is: keep legacy Fernet and `envelope-fernet` reads during rollout, rehearse the
 runbook against staging or restored-backup data, and require maintainer approval
-before enabling AEAD writes.
+before enabling AEAD writes for a deployment or rewriting existing ciphertext.

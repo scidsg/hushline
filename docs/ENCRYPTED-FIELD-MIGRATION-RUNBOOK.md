@@ -44,6 +44,12 @@ migrations.
 - Do not call an existing-ciphertext migration complete in the domain-bound or
   best-in-class sense until a production AEAD writer is implemented, rehearsed,
   and approved.
+- Enable AES-GCM production writes only by setting
+  `ENCRYPTED_FIELD_WRITE_FORMAT=envelope-aes-gcm`,
+  `ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED=true`, and a non-empty
+  `ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL` maintainer approval reference after
+  the schema, preflight, and release-gate evidence for the target deployment is
+  reviewed.
 - Do not drop, blank, truncate, or overwrite source ciphertext before the
   replacement value has been decrypted and verified for that row.
 - Do not assume a maintenance window. Run in small batches while normal reads
@@ -124,8 +130,9 @@ size ceiling, and rollback plan proven in staging or restored-backup rehearsal.
 
 ## Production Release Gate
 
-Before changing `ENCRYPTED_FIELD_WRITE_FORMAT` in production, operators must run
-the checkable production release gate:
+Before changing `ENCRYPTED_FIELD_WRITE_FORMAT` in production or running live
+production encrypted-field migration, operators must run the checkable
+production release gate:
 
 ```shell
 flask encrypted-field release-gate \
@@ -134,10 +141,20 @@ flask encrypted-field release-gate \
 ```
 
 The gate must report `Encrypted-field production release gate: ready` before
-operators enable `envelope-fernet` writes. The command is read-only. The
-preflight artifact must cover every encrypted-field contract, report ready,
+operators enable `envelope-fernet` writes or run
+`flask encrypted-field migrate --live --production`. The command is read-only.
+The preflight artifact must cover every encrypted-field contract, report ready,
 scan every encrypted-field row, and have zero malformed values or decrypt
 failures.
+
+For AES-GCM new-write enablement, the same production evidence and maintainer
+approval record must exist before operators configure
+`ENCRYPTED_FIELD_WRITE_FORMAT=envelope-aes-gcm`. The application will fail
+closed unless `ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED=true` and
+`ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL` contains that approval reference.
+Legacy unprefixed Fernet ciphertext and versioned Fernet envelopes remain
+readable during this rollout; only new encrypted-field writes use AES-GCM after
+the explicit gate is configured.
 
 The evidence manifest must be a redacted JSON file with these minimum controls:
 
@@ -149,6 +166,7 @@ The evidence manifest must be a redacted JSON file with these minimum controls:
   "helper_version": "encrypted-field-migration-v1",
   "contract_set_version": "encrypted-field-contracts-v1",
   "preflight_artifact": "redacted production preflight artifact reference",
+  "rehearsal_report": "redacted reviewed rehearsal report reference",
   "release_checks": {
     "migration_tests_passed": true,
     "ciphertext_fit_tests_passed": true
@@ -202,10 +220,12 @@ The evidence manifest must be a redacted JSON file with these minimum controls:
 
 The manifest must not include plaintext, private keys, tokens, raw encrypted
 values, or full ciphertext. It is a release artifact that points to reviewed
-evidence; it is not a replacement for maintainer review. If the gate blocks,
-do not change production write-format configuration until the missing evidence
-or rollback/zero-downtime control is fixed and reviewed. The gate requires zero
-planned downtime, bounded batches, and no full-table rewrite transaction.
+evidence, including the restored-backup or staging rehearsal report; it is not
+a replacement for maintainer review. If the gate blocks,
+do not change production write-format configuration or run live production
+migration until the missing evidence or rollback/zero-downtime control is fixed
+and reviewed. The gate requires zero planned downtime, bounded batches, and no
+full-table rewrite transaction.
 
 ## Preflight Checks
 
@@ -225,8 +245,8 @@ Run the executable preflight before enabling envelope writes:
 The command reports the current Alembic revision, envelope-safe storage
 capacity for each encrypted-field contract, schema revision, contract-set
 version, selected contract IDs, batch size, row counts, legacy Fernet, envelope
-Fernet, null/empty, malformed, and decrypt-failure counts, and whether every
-non-empty value decrypts through the deployed reader. It must not print
+Fernet, envelope AES-GCM, null/empty, malformed, and decrypt-failure counts,
+and whether every non-empty value decrypts through the deployed reader. It must not print
 plaintext or raw full ciphertext.
 
 Use `--contract CONTRACT_ID` one or more times for targeted checks before a
@@ -236,8 +256,8 @@ contract unless maintainers explicitly approve a targeted gate.
 
 - Confirm the deployed code can read legacy Fernet and the target envelope
   format.
-- Confirm `ENCRYPTION_KEY` and any future encrypted-field key material are
-  present through the approved secret path for the environment.
+- Confirm `ENCRYPTION_KEY` and any required `ENCRYPTION_KEY_FALLBACKS` entries
+  are present through the approved secret path for the environment.
 - Confirm the target write format is explicitly configured for the planned
   migration and whether it is transitional compatibility or domain-bound AEAD.
 - Confirm the database revision is the expected forward-only revision.
@@ -286,14 +306,36 @@ small enough to avoid long locks, large transactions, and operational surprise;
 production batch-size increases require operator review of staging timing and
 production health.
 
-Run live mode with the maintainer-approved target format:
+Run local or staging live mode with the maintainer-approved target format:
 
 `flask encrypted-field migrate --live --target-format TARGET-FORMAT --batch-size 10`
+
+Production live mode must include `--production`, a non-sensitive
+`--environment-name`, and the exact release-gate artifacts reviewed by
+maintainers:
+
+```shell
+flask encrypted-field migrate --live --production \
+  --environment-name production \
+  --preflight-artifact PATH/production-preflight.json \
+  --evidence-manifest PATH/production-release-gate.json \
+  --target-format TARGET-FORMAT \
+  --batch-size 10
+```
+
+The helper refuses `--production --live` unless both release-gate artifacts are
+present and pass the same checks as `flask encrypted-field release-gate`.
+Production gate artifacts are not accepted without `--production`, so rehearsal
+runs cannot accidentally imply production approval.
 
 Resume an interrupted live run with the exact token reported by the prior run:
 
 ```shell
-flask encrypted-field migrate --live --target-format TARGET-FORMAT \
+flask encrypted-field migrate --live --production \
+  --environment-name production \
+  --preflight-artifact PATH/production-preflight.json \
+  --evidence-manifest PATH/production-release-gate.json \
+  --target-format TARGET-FORMAT \
   --batch-size 10 --resume-token TOKEN
 ```
 
@@ -451,3 +493,24 @@ The migration can be considered complete only after:
 
 Legacy Fernet read support may be removed only in a later issue after the
 rollback window is closed and a separate removal plan is approved.
+
+## Legacy Fernet Read Retirement
+
+Legacy read retirement must be treated as a separate production gate after the
+data migration and rollback window are complete. Maintainers must approve the
+end of the rollback window, and operators must archive a redacted
+`flask encrypted-field preflight --output json --require-no-legacy` report that
+covers every encrypted-field contract and shows zero legacy Fernet rows, zero
+malformed values, zero decrypt failures, and all rows scanned.
+
+Disable `ENCRYPTED_FIELD_LEGACY_READS_ENABLED` only after that approval and
+report are attached to the release record. Until maintainers approve full code
+removal, recovery remains a configuration rollback: re-enable
+`ENCRYPTED_FIELD_LEGACY_READS_ENABLED`, redeploy a reader that still supports
+legacy Fernet, and restore only from backups with matching encrypted-field key
+material.
+
+After legacy reads are disabled, the minimum supported encrypted-field formats
+are versioned Fernet envelopes (`hlfield:` version 1) and versioned AES-GCM
+envelopes (`hlfield:` version 2). Bare, unprefixed legacy Fernet encrypted-field
+values are no longer supported by normal application reads after retirement.

@@ -2,7 +2,7 @@
 
 Date: 2026-05-26
 
-Status: Recommendation to keep the current operational model
+Status: Recommendation to keep environment-managed encrypted-field key rotation
 
 ## Scope
 
@@ -13,9 +13,9 @@ lost or rotated key material; deployment constraints for multi-instance
 operation; and whether Hush Line should introduce a separate external key
 service or sealed local secret store now.
 
-It does not change production key loading behavior, encrypted-field write
-format, Flask session secret derivation, migrations, models, password hashing,
-client-side OpenPGP behavior, or application startup behavior.
+It does not change encrypted-field write format, Flask session secret
+derivation, migrations, models, password hashing, client-side OpenPGP behavior,
+or application startup behavior.
 
 ## Current Secret Expectations
 
@@ -26,11 +26,23 @@ create secret records in the database.
 `ENCRYPTION_KEY`:
 
 - Current source: environment variable read directly by `hushline.crypto`.
-- Current use: Fernet key for server-side encrypted database fields. Future
-  prototype AEAD helpers also derive from it.
-- Operational expectation: same value on every app instance that reads or writes
-  encrypted fields; backed up with disaster-recovery material; not generated at
-  app boot.
+- Current use: Fernet key for server-side encrypted database fields. AES-GCM
+  encrypted-field helpers also derive from it.
+- Operational expectation: active write key for encrypted database fields; same
+  value on every app instance that writes encrypted fields; backed up with
+  disaster-recovery material; not generated at app boot.
+
+`ENCRYPTION_KEY_FALLBACKS`:
+
+- Current source: optional comma-separated environment variable read directly by
+  `hushline.crypto`.
+- Current use: ordered read-only fallback keys for server-side encrypted
+  database fields. Hush Line tries `ENCRYPTION_KEY` first, then each fallback in
+  order. New encrypted-field writes always use `ENCRYPTION_KEY`.
+- Operational expectation: only old encrypted-field keys still needed to read
+  existing ciphertext belong here. Fallback entries must be valid Fernet keys,
+  must not be empty, and must be present on every app instance until the data
+  written under those keys is migrated or intentionally retired.
 
 `SESSION_FERNET_KEY`:
 
@@ -89,13 +101,14 @@ If Flask `SECRET_KEY` is lost or intentionally rotated:
 - Changing `SECRET_KEY` must not change `ENCRYPTION_KEY` or
   `SESSION_FERNET_KEY`.
 
-If any long-lived key is rotated while old protected data remains in service,
-operators need an approved migration plan that keeps old key material available
-until every dependent ciphertext, token, or HMAC use is either migrated,
-expired, or intentionally retired. Current Hush Line encrypted-field storage
-does not include key identifiers or a multi-key production reader, so
-`ENCRYPTION_KEY` rotation is a future migration project, not a single deploy
-step.
+If `ENCRYPTION_KEY` is rotated while old protected database-field ciphertext
+remains in service, operators must keep the previous encrypted-field key in
+`ENCRYPTION_KEY_FALLBACKS` on every app instance. Current Hush Line
+encrypted-field storage does not include key identifiers; missing key
+identifiers are handled by ordered trial decryption. If none of the configured
+keys decrypts a value, the read fails closed. If the fallback list is malformed,
+encrypted-field reads and writes fail rather than silently ignoring the bad
+configuration.
 
 ## Options Evaluated
 
@@ -145,11 +158,15 @@ Required constraints:
 
 - All instances must use the same `ENCRYPTION_KEY` before reading or writing
   encrypted database fields.
+- During encrypted-field key rotation, all instances must use the same active
+  `ENCRYPTION_KEY` and the same ordered `ENCRYPTION_KEY_FALLBACKS` before
+  reading or writing encrypted database fields.
 - All web instances should use the same `SESSION_FERNET_KEY` before serving
   authenticated sessions.
 - Flask `SECRET_KEY` should be consistent across instances that share reset,
   embed, and rate-limit workflows.
-- Rolling deploys must not mix encrypted-field keys across instances.
+- Rolling deploys must not mix encrypted-field write keys or fallback-key order
+  across instances.
 - Session-key rotation may intentionally log users out, but it should be a
   planned operator action rather than an accidental per-instance mismatch.
 - Schema migrations and data migrations must run as explicit deploy steps, not
@@ -162,19 +179,64 @@ rejected. It can race across instances, surprise operators during deploys,
 break rollback expectations, and make disaster recovery depend on hidden app
 side effects.
 
+## ENCRYPTION_KEY Rotation Procedure
+
+Hush Line uses ordered multi-key readers rather than key identifiers for
+encrypted database fields. This applies only to server-side encrypted-field
+storage. It does not affect recipient PGP keys, client-side E2EE payloads,
+browser session secrets, Flask `SECRET_KEY`, password hashes, or application
+tokens.
+
+Rotation procedure:
+
+1. Generate and back up a new Fernet key outside Hush Line.
+2. Deploy every app instance with the new value in `ENCRYPTION_KEY` and the
+   immediately previous encrypted-field key in `ENCRYPTION_KEY_FALLBACKS`.
+   Include older fallback keys only while ciphertext written under those keys
+   still exists.
+3. Confirm normal encrypted-field reads and settings updates work before
+   retiring any old key material.
+4. Use the encrypted-field migration helper, with maintainer-approved release
+   evidence, to rewrite existing rows under the active key when the operation is
+   ready.
+5. Remove retired fallback keys only after migration evidence proves no
+   remaining encrypted-field rows require them and a rollback window has closed.
+
+Rollback behavior:
+
+- If a deployment must roll back before existing rows are rewritten, restore the
+  previous `ENCRYPTION_KEY` and place the briefly active new key in
+  `ENCRYPTION_KEY_FALLBACKS` so any new ciphertext written during the attempted
+  rotation remains readable.
+- If fallback keys are removed too early, rows written under retired keys become
+  unreadable until the matching key is restored.
+- If key material is lost, Hush Line cannot recover the affected plaintext.
+
+Operational risks:
+
+- More fallback keys increase the amount of key material that must be protected,
+  backed up, and removed after retirement.
+- Trial decryption is intentionally silent about which key succeeded and must
+  not log key material, plaintext field values, or raw encrypted-field
+  contents.
+- Malformed fallback configuration blocks encrypted-field operations and should
+  be treated as a deploy failure.
+- This mechanism is for encrypted database fields only; it must not be used to
+  rotate recipient PGP keys or session secrets.
+
 ## Decision Record
 
-Keep the current environment-based operational key model for now.
+Keep the environment-based operational key model and add explicit read-only
+encrypted-field fallback keys for graceful `ENCRYPTION_KEY` rotation.
 
-Proceed with encrypted-field envelope modernization only within the existing
-operator-provided `ENCRYPTION_KEY` model. Defer external key service and sealed
-local secret implementation until maintainers approve a separate operational
-key-management project with provider choices, recovery drills, rotation
-semantics, and multi-instance rollout tests.
+Proceed with encrypted-field envelope modernization only within
+operator-provided encrypted-field key material. Defer external key service and
+sealed local secret implementation until maintainers approve a separate
+operational key-management project with provider choices, recovery drills,
+rotation semantics, and multi-instance rollout tests.
 
 Future work may revisit key management when Hush Line needs managed-provider
-audit controls, key identifiers, multi-key readers, personal-server sealed
-secret tooling, or documented `ENCRYPTION_KEY` rotation. Until then, do not
-change production key loading behavior, do not change Flask session secret
-derivation, and do not add startup-time schema mutation or implicit secret-row
-creation.
+audit controls, key identifiers, personal-server sealed secret tooling, or
+automated encrypted-field rewrap workflows. Until then, do not change Flask
+session secret derivation, and do not add startup-time schema mutation or
+implicit secret-row creation.

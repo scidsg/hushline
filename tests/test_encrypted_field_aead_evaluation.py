@@ -44,20 +44,23 @@ def test_encrypted_field_aead_evaluation_locks_recommendation_and_guardrails() -
     content = " ".join(_evaluation_text().lower().split())
 
     required_phrases = (
-        "defer any production algorithm change and keep fernet",
-        "aes-gcm is the preferred future aead candidate",
+        "keep legacy fernet as the default",
+        "aes-gcm is the implemented aead candidate",
         "do not add a new crypto dependency",
         "keeping `cryptography` current",
-        "does not change production encryption behavior",
+        "does not change default production encryption behavior",
         "`envelope-fernet` is transitional compatibility only",
-        "not best-in-class complete until production aead writes are implemented",
-        "promote the aes-gcm prototype to a production writer",
+        "not best-in-class complete until production aead writes are enabled",
+        "`encrypted_field_write_format=envelope-aes-gcm`",
+        "`encrypted_field_aes_gcm_writes_enabled=true`",
+        "`encrypted_field_aes_gcm_write_approval` is a non-empty maintainer approval",
         "random 96-bit nonce",
         "wrong domain",
         "wrong row aad",
         "unknown version",
         "unknown algorithm",
         "legacy fernet values and versioned fernet envelopes remain readable",
+        "maintainer approval must be recorded before changing the project default",
         "must not contain production secrets",
     )
 

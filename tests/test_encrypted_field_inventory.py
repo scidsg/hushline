@@ -10,13 +10,19 @@ from cryptography.fernet import Fernet, InvalidToken
 from pytest_mock import MockFixture
 from sqlalchemy import select
 
-from hushline.config import ENCRYPTED_FIELD_WRITE_FORMAT, EncryptedFieldWriteFormat
+from hushline.config import (
+    ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL,
+    ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED,
+    ENCRYPTED_FIELD_WRITE_FORMAT,
+    EncryptedFieldWriteFormat,
+)
 from hushline.crypto import (
     ENCRYPTED_FIELD_CONTRACT_BY_ID,
     ENCRYPTED_FIELD_CONTRACTS,
     ENCRYPTED_FIELD_ENVELOPE_PREFIX,
     ENCRYPTED_FIELD_LEGACY_MAX_LENGTH,
     ENCRYPTED_FIELD_MUTABLE_AAD_NAMES,
+    parse_encrypted_field_aead_envelope,
     parse_encrypted_field_envelope,
     serialize_encrypted_field_envelope,
 )
@@ -41,6 +47,13 @@ LONG_PGP_BLOCK = (
     "-----BEGIN PGP PUBLIC KEY BLOCK-----\n\n" f"{'a' * 512}\n" "-----END PGP PUBLIC KEY BLOCK-----"
 )
 LONG_PGP_CIPHERTEXT = "-----BEGIN PGP MESSAGE-----\n\n" f"{'b' * 512}\n" "-----END PGP MESSAGE-----"
+TEST_AES_GCM_WRITE_APPROVAL = "test maintainer approval for AES-GCM encrypted-field writes"
+
+
+def _enable_aes_gcm_writes(app: Any) -> None:
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    app.config[ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED] = True
+    app.config[ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL] = TEST_AES_GCM_WRITE_APPROVAL
 
 
 @pytest.fixture()
@@ -132,13 +145,14 @@ def _decrypt_fernet_token(ciphertext: str) -> str:
     return Fernet(LEGACY_FERNET_KEY.encode()).decrypt(ciphertext.encode()).decode()
 
 
-def _property_calls_decrypt_field(node: ast.FunctionDef) -> bool:
+def _property_calls_encrypted_field_decryptor(node: ast.FunctionDef) -> bool:
+    encrypted_field_decryptors = {"decrypt_field", "_decrypt_encrypted_field"}
     for child in ast.walk(node):
         if not isinstance(child, ast.Call):
             continue
-        if isinstance(child.func, ast.Name) and child.func.id == "decrypt_field":
+        if isinstance(child.func, ast.Name) and child.func.id in encrypted_field_decryptors:
             return True
-        if isinstance(child.func, ast.Attribute) and child.func.attr == "decrypt_field":
+        if isinstance(child.func, ast.Attribute) and child.func.attr in encrypted_field_decryptors:
             return True
     return False
 
@@ -165,7 +179,7 @@ def _model_properties_calling_decrypt_field() -> set[tuple[str, str]]:
                     _decorator_name(decorator) == "property"
                     for decorator in method_node.decorator_list
                 )
-                if is_property and _property_calls_decrypt_field(method_node):
+                if is_property and _property_calls_encrypted_field_decryptor(method_node):
                     encrypted_properties.add((class_node.name, method_node.name))
 
     return encrypted_properties
@@ -196,7 +210,8 @@ def _object_for_field(field: EncryptedField, user: User) -> Any:
     if field.model is User:
         return user
     if field.model is NotificationRecipient:
-        return NotificationRecipient(user=user)
+        assert user.id is not None
+        return NotificationRecipient(user_id=user.id)
     if field.model is FieldValue:
         return _make_encrypted_field_value(user)
     raise AssertionError(f"Unhandled encrypted field inventory entry: {field.id}")
@@ -229,6 +244,20 @@ def _stored_ciphertext(field: EncryptedField, row_id: int) -> str:
     )
     assert isinstance(ciphertext, str)
     return ciphertext
+
+
+def _aead_aad_values(field: EncryptedField, obj: Any) -> dict[str, int]:
+    if field.model is User:
+        return {"user_id": obj.id}
+    if field.model is NotificationRecipient:
+        return {"notification_recipient_id": obj.id, "user_id": obj.user_id}
+    if field.model is FieldValue:
+        return {
+            "field_definition_id": obj.field_definition_id,
+            "field_value_id": obj.id,
+            "message_id": obj.message_id,
+        }
+    raise AssertionError(f"Unhandled encrypted field inventory entry: {field.id}")
 
 
 def _encrypted_field_id(field: EncryptedField) -> str:
@@ -396,6 +425,60 @@ def test_envelope_write_round_trips_long_values_that_exceed_legacy_capacity(
     reloaded = db.session.get(field.model, row_id)
     assert reloaded is not None
     assert getattr(reloaded, field.property_name) == plaintext
+
+
+@pytest.mark.parametrize(
+    "field",
+    ENCRYPTED_FIELD_INVENTORY,
+    ids=_encrypted_field_id,
+)
+def test_configured_aes_gcm_write_format_stores_aad_bound_envelopes(
+    app: Any, user: User, field: EncryptedField
+) -> None:
+    _enable_aes_gcm_writes(app)
+    plaintext = _plaintext_for_field(field)
+    obj = _object_for_field(field, user)
+
+    setattr(obj, field.property_name, plaintext)
+
+    ciphertext = getattr(obj, field.raw_attr)
+    assert ciphertext.startswith(ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+    parsed = parse_encrypted_field_aead_envelope(ciphertext)
+    assert parsed.algorithm == "aes-256-gcm"
+    assert ENCRYPTED_FIELD_CONTRACT_BY_ID[field.id].aad_fields == tuple(
+        _aead_aad_values(field, obj)
+    )
+    assert getattr(obj, field.property_name) == plaintext
+
+
+@pytest.mark.parametrize(
+    "field",
+    ENCRYPTED_FIELD_INVENTORY,
+    ids=_encrypted_field_id,
+)
+def test_aes_gcm_ciphertext_copy_to_wrong_row_fails_closed(
+    app: Any, user: User, user2: User, field: EncryptedField
+) -> None:
+    _enable_aes_gcm_writes(app)
+    plaintext = _plaintext_for_field(field)
+    obj = _object_for_field(field, user)
+    other = _object_for_field(field, user2)
+
+    setattr(obj, field.property_name, plaintext)
+    setattr(other, field.raw_attr, getattr(obj, field.raw_attr))
+
+    with pytest.raises(InvalidToken):
+        getattr(other, field.property_name)
+
+
+def test_aes_gcm_ciphertext_copy_to_wrong_field_fails_closed(app: Any, user: User) -> None:
+    _enable_aes_gcm_writes(app)
+
+    user.email = "wrong-field@example.com"
+    user._pgp_key = user._email
+
+    with pytest.raises(InvalidToken):
+        user.pgp_key
 
 
 @pytest.mark.parametrize(

@@ -1,18 +1,111 @@
 import json
 from base64 import urlsafe_b64decode, urlsafe_b64encode
+from pathlib import Path
+from typing import Any
 from unittest.mock import call
 
 import pytest
 from cryptography.fernet import Fernet, InvalidToken
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from flask import Flask
 
 from hushline import crypto
-from hushline.config import ENCRYPTED_FIELD_WRITE_FORMAT, EncryptedFieldWriteFormat
+from hushline.config import (
+    ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL,
+    ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED,
+    ENCRYPTED_FIELD_LEGACY_READS_ENABLED,
+    ENCRYPTED_FIELD_WRITE_FORMAT,
+    EncryptedFieldWriteFormat,
+)
+
+CRYPTO_VECTOR_FIXTURE = json.loads(
+    Path("tests/testdata/crypto-known-answer-vectors.json").read_text()
+)
+
+HUSHLINE_AEAD_NEGATIVE_CASES = [
+    "corrupted ciphertext byte",
+    "corrupted authentication tag byte",
+    "wrong AAD row identifier",
+    "wrong AAD domain",
+    "corrupted nonce byte",
+    "malformed nonce length",
+    "unknown envelope version",
+    "unknown envelope algorithm",
+    "unexpected envelope metadata",
+]
+
+TEST_AES_GCM_WRITE_APPROVAL = "test maintainer approval for AES-GCM encrypted-field writes"
+
+
+def _enable_aes_gcm_writes(app: Flask) -> None:
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    app.config[ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED] = True
+    app.config[ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL] = TEST_AES_GCM_WRITE_APPROVAL
+
+
+def _enable_aes_gcm_write_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED, "true")
+    monkeypatch.setenv(ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL, TEST_AES_GCM_WRITE_APPROVAL)
 
 
 def _decode_fernet_token(token: str) -> bytes:
     # Fernet tokens are URL-safe base64 without guaranteed padding.
     return urlsafe_b64decode(token + "=" * (-len(token) % 4))
+
+
+def _decode_unpadded_urlsafe(data: str) -> bytes:
+    return urlsafe_b64decode(data + "=" * (-len(data) % 4))
+
+
+def _encode_unpadded_urlsafe(data: bytes) -> str:
+    return urlsafe_b64encode(data).decode().rstrip("=")
+
+
+def _aead_payload_from_envelope(envelope: str) -> dict[str, Any]:
+    encoded_payload = envelope[len(crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX) :]
+    payload = _decode_unpadded_urlsafe(encoded_payload)
+    return json.loads(payload.decode())
+
+
+def _aead_envelope_from_payload(payload: dict[str, Any]) -> str:
+    encoded_payload = _encode_unpadded_urlsafe(
+        json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
+    )
+    return f"{crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX}{encoded_payload}"
+
+
+def _hushline_aead_vector() -> dict[str, Any]:
+    return CRYPTO_VECTOR_FIXTURE["hushline_encrypted_field_aead_vectors"][0]
+
+
+def test_crypto_known_answer_vector_fixture_documents_source_and_rationale() -> None:
+    assert CRYPTO_VECTOR_FIXTURE["schema"] == "hushline.crypto-known-answer-vectors.v1"
+    assert "NIST SP 800-38D" in CRYPTO_VECTOR_FIXTURE["sources"][0]["name"]
+    assert CRYPTO_VECTOR_FIXTURE["sources"][0]["url"] == (
+        "https://csrc.nist.gov/pubs/sp/800/38/d/final"
+    )
+    assert "synthetic" in CRYPTO_VECTOR_FIXTURE["rationale"]
+    assert _hushline_aead_vector()["negative_cases"] == HUSHLINE_AEAD_NEGATIVE_CASES
+
+
+@pytest.mark.parametrize(
+    "vector",
+    CRYPTO_VECTOR_FIXTURE["aes_gcm_known_answer_vectors"],
+    ids=lambda vector: vector["id"],
+)
+def test_aes_gcm_known_answer_vectors_from_nist(vector: dict[str, str]) -> None:
+    key = bytes.fromhex(vector["key_hex"])
+    nonce = bytes.fromhex(vector["nonce_hex"])
+    aad = bytes.fromhex(vector["aad_hex"])
+    plaintext = bytes.fromhex(vector["plaintext_hex"])
+    expected_ciphertext = bytes.fromhex(vector["ciphertext_hex"])
+    expected_tag = bytes.fromhex(vector["tag_hex"])
+
+    encrypted = AESGCM(key).encrypt(nonce, plaintext, aad)
+
+    assert encrypted[:-16] == expected_ciphertext
+    assert encrypted[-16:] == expected_tag
+    assert AESGCM(key).decrypt(nonce, expected_ciphertext + expected_tag, aad) == plaintext
 
 
 def test_get_encryption_key_requires_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -119,6 +212,113 @@ def test_encrypt_field_transition_reads_legacy_and_envelope_formats(
     assert crypto.decrypt_field(envelope_ciphertext) == "envelope"
 
 
+def test_aes_gcm_rollout_reads_legacy_and_transitional_envelope_formats(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.LEGACY_FERNET
+    legacy_ciphertext = crypto.encrypt_field("legacy")
+
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_FERNET
+    envelope_ciphertext = crypto.encrypt_field("envelope")
+
+    _enable_aes_gcm_writes(app)
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
+    aad_values = {"user_id": 1}
+    aead_ciphertext = crypto.encrypt_field(
+        "aead",
+        contract=contract,
+        aad_values=aad_values,
+    )
+
+    assert legacy_ciphertext is not None
+    assert envelope_ciphertext is not None
+    assert aead_ciphertext is not None
+    assert crypto.decrypt_field(legacy_ciphertext) == "legacy"
+    assert crypto.decrypt_field(envelope_ciphertext) == "envelope"
+    assert crypto.decrypt_field(aead_ciphertext, contract=contract, aad_values=aad_values) == (
+        "aead"
+    )
+
+
+def test_encrypted_field_rotation_reads_old_fernet_key_and_writes_new_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old_key = Fernet.generate_key().decode()
+    new_key = Fernet.generate_key().decode()
+    monkeypatch.setenv("ENCRYPTION_KEY", old_key)
+    old_ciphertext = crypto.encrypt_field("old secret")
+    assert old_ciphertext is not None
+
+    monkeypatch.setenv("ENCRYPTION_KEY", new_key)
+    monkeypatch.setenv(crypto.ENCRYPTION_KEY_FALLBACKS, old_key)
+    new_ciphertext = crypto.encrypt_field("new secret")
+
+    assert new_ciphertext is not None
+    assert crypto.decrypt_field(old_ciphertext) == "old secret"
+    assert crypto.decrypt_field(new_ciphertext) == "new secret"
+
+    monkeypatch.setenv("ENCRYPTION_KEY", old_key)
+    monkeypatch.delenv(crypto.ENCRYPTION_KEY_FALLBACKS, raising=False)
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field(new_ciphertext)
+
+
+def test_encrypted_field_rotation_reads_missing_key_identifier_envelope(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old_key = Fernet.generate_key().decode()
+    new_key = Fernet.generate_key().decode()
+    monkeypatch.setenv("ENCRYPTION_KEY", old_key)
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_FERNET
+    old_envelope = crypto.encrypt_field("old envelope")
+    assert old_envelope is not None
+
+    payload = _aead_payload_from_envelope(old_envelope)
+    assert "kid" not in payload
+
+    monkeypatch.setenv("ENCRYPTION_KEY", new_key)
+    monkeypatch.setenv(crypto.ENCRYPTION_KEY_FALLBACKS, old_key)
+
+    assert crypto.decrypt_field(old_envelope) == "old envelope"
+
+
+def test_encrypted_field_rotation_wrong_fernet_key_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old_key = Fernet.generate_key().decode()
+    wrong_key = Fernet.generate_key().decode()
+    monkeypatch.setenv("ENCRYPTION_KEY", old_key)
+    ciphertext = crypto.encrypt_field("old secret")
+    assert ciphertext is not None
+
+    monkeypatch.setenv("ENCRYPTION_KEY", wrong_key)
+    monkeypatch.delenv(crypto.ENCRYPTION_KEY_FALLBACKS, raising=False)
+
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field(ciphertext)
+
+
+def test_encrypted_field_rotation_rejects_malformed_fallbacks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    ciphertext = crypto.encrypt_field("secret")
+    assert ciphertext is not None
+
+    monkeypatch.setenv(crypto.ENCRYPTION_KEY_FALLBACKS, "not-a-fernet-key")
+    with pytest.raises(ValueError, match="Fernet key"):
+        crypto.decrypt_field(ciphertext)
+    with pytest.raises(ValueError, match="Fernet key"):
+        crypto.encrypt_field("new secret")
+
+    monkeypatch.setenv(crypto.ENCRYPTION_KEY_FALLBACKS, ",")
+    with pytest.raises(ValueError, match="must not contain empty keys"):
+        crypto.decrypt_field(ciphertext)
+
+
 def test_encrypt_field_uses_app_configured_write_format(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
@@ -154,6 +354,22 @@ def test_encrypted_field_envelope_roundtrips_wrapped_fernet(
         ciphertext=encrypted,
     )
     assert crypto.decrypt_field(envelope) == "secret"
+
+
+def test_legacy_fernet_reads_can_be_disabled_after_retirement_gate(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    legacy_ciphertext = crypto.encrypt_field("legacy")
+    assert legacy_ciphertext is not None
+    envelope_ciphertext = crypto.serialize_encrypted_field_envelope(legacy_ciphertext)
+
+    app.config[ENCRYPTED_FIELD_LEGACY_READS_ENABLED] = False
+
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field(legacy_ciphertext)
+    assert crypto.decrypt_field(envelope_ciphertext) == "legacy"
 
 
 def test_encrypted_field_aad_is_canonical_and_stable() -> None:
@@ -200,6 +416,7 @@ def test_encrypted_field_aead_prototype_requires_expected_domain_and_aad(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    _enable_aes_gcm_write_env(monkeypatch)
     email_contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
     pgp_key_contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.pgp_key"]
 
@@ -216,6 +433,245 @@ def test_encrypted_field_aead_prototype_requires_expected_domain_and_aad(
         crypto.decrypt_field_aead_prototype(envelope, pgp_key_contract, {"user_id": 1})
     with pytest.raises(InvalidToken):
         crypto.decrypt_field_aead_prototype(envelope, email_contract, {"user_id": 2})
+
+
+def test_encrypt_field_can_write_production_aes_gcm_envelope(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    _enable_aes_gcm_writes(app)
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
+    aad_values = {"user_id": 1}
+
+    encrypted = crypto.encrypt_field("secret", contract=contract, aad_values=aad_values)
+
+    assert encrypted is not None
+    parsed = crypto.parse_encrypted_field_aead_envelope(encrypted)
+    assert parsed.algorithm == crypto.ENCRYPTED_FIELD_AEAD_ENVELOPE_ALGORITHM
+    assert crypto.decrypt_field(encrypted, contract=contract, aad_values=aad_values) == "secret"
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field(encrypted, contract=contract, aad_values={"user_id": 2})
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field(
+            encrypted,
+            contract=crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.pgp_key"],
+            aad_values=aad_values,
+        )
+
+
+def test_encrypted_field_rotation_reads_old_aes_gcm_key_and_writes_new_key(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old_key = Fernet.generate_key().decode()
+    new_key = Fernet.generate_key().decode()
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
+    aad_values = {"user_id": 1}
+    _enable_aes_gcm_writes(app)
+
+    monkeypatch.setenv("ENCRYPTION_KEY", old_key)
+    old_envelope = crypto.encrypt_field("old secret", contract=contract, aad_values=aad_values)
+    assert old_envelope is not None
+
+    monkeypatch.setenv("ENCRYPTION_KEY", new_key)
+    monkeypatch.setenv(crypto.ENCRYPTION_KEY_FALLBACKS, old_key)
+    new_envelope = crypto.encrypt_field("new secret", contract=contract, aad_values=aad_values)
+
+    assert new_envelope is not None
+    assert crypto.decrypt_field(old_envelope, contract=contract, aad_values=aad_values) == (
+        "old secret"
+    )
+    assert crypto.decrypt_field(new_envelope, contract=contract, aad_values=aad_values) == (
+        "new secret"
+    )
+
+    monkeypatch.setenv("ENCRYPTION_KEY", old_key)
+    monkeypatch.delenv(crypto.ENCRYPTION_KEY_FALLBACKS, raising=False)
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field(new_envelope, contract=contract, aad_values=aad_values)
+
+
+def test_aes_gcm_write_format_requires_contract_and_aad(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    _enable_aes_gcm_writes(app)
+
+    with pytest.raises(ValueError, match="contract and AAD values"):
+        crypto.encrypt_field("secret")
+
+
+def test_aes_gcm_write_format_requires_explicit_enablement(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    app.config[ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL] = TEST_AES_GCM_WRITE_APPROVAL
+
+    with pytest.raises(crypto.EncryptedFieldWriteConfigError, match="WRITES_ENABLED"):
+        crypto.encrypt_field("secret")
+
+
+def test_aes_gcm_write_format_requires_approval_record(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    app.config[ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED] = True
+
+    with pytest.raises(crypto.EncryptedFieldWriteConfigError, match="WRITE_APPROVAL"):
+        crypto.encrypt_field("secret")
+
+
+def test_aes_gcm_write_format_requires_valid_key_material(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("ENCRYPTION_KEY", raising=False)
+    _enable_aes_gcm_writes(app)
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
+
+    with pytest.raises(ValueError, match="Encryption key not found"):
+        crypto.encrypt_field("secret", contract=contract, aad_values={"user_id": 1})
+
+    monkeypatch.setenv("ENCRYPTION_KEY", "not-a-fernet-key")
+    with pytest.raises(ValueError, match="Fernet key"):
+        crypto.encrypt_field("secret", contract=contract, aad_values={"user_id": 1})
+
+
+def test_hushline_aead_known_answer_vector_encrypts_and_serializes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    vector = _hushline_aead_vector()
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID[vector["contract_id"]]
+    nonce = bytes.fromhex(vector["nonce_hex"])
+
+    monkeypatch.setenv("ENCRYPTION_KEY", vector["base_encryption_key_base64"])
+    _enable_aes_gcm_write_env(monkeypatch)
+
+    def fixed_nonce(length: int) -> bytes:
+        assert length == crypto.ENCRYPTED_FIELD_AEAD_NONCE_LENGTH
+        return nonce
+
+    monkeypatch.setattr(crypto.os, "urandom", fixed_nonce)
+
+    aad = crypto.build_encrypted_field_aad(contract, vector["aad_values"])
+    encrypted = crypto.encrypt_field_aead_prototype(
+        vector["plaintext"],
+        contract,
+        vector["aad_values"],
+    )
+
+    assert crypto._get_encrypted_field_aead_key().hex() == vector["derived_aes_key_hex"]
+    assert aad == bytes.fromhex(vector["aad_hex"])
+    assert aad.decode() == vector["aad_json"]
+    assert encrypted is not None
+    assert encrypted == vector["envelope"]
+    assert _aead_payload_from_envelope(encrypted)["ct"] == _encode_unpadded_urlsafe(
+        bytes.fromhex(vector["ciphertext_and_tag_hex"])
+    )
+    assert (
+        crypto.decrypt_field_aead_prototype(
+            vector["envelope"],
+            contract,
+            vector["aad_values"],
+        )
+        == vector["plaintext"]
+    )
+
+
+def test_hushline_aead_known_answer_vector_parses_stable_envelope() -> None:
+    vector = _hushline_aead_vector()
+
+    envelope = crypto.parse_encrypted_field_aead_envelope(vector["envelope"])
+
+    assert envelope == crypto.EncryptedFieldAEADEnvelope(
+        version=crypto.ENCRYPTED_FIELD_AEAD_ENVELOPE_VERSION,
+        algorithm=crypto.ENCRYPTED_FIELD_AEAD_ENVELOPE_ALGORITHM,
+        nonce=bytes.fromhex(vector["nonce_hex"]),
+        ciphertext=bytes.fromhex(vector["ciphertext_and_tag_hex"]),
+    )
+    assert (
+        crypto.serialize_encrypted_field_aead_envelope(
+            envelope.ciphertext,
+            envelope.nonce,
+        )
+        == vector["envelope"]
+    )
+    assert (
+        json.dumps(
+            _aead_payload_from_envelope(vector["envelope"]),
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        == vector["serialized_payload_json"]
+    )
+
+
+@pytest.mark.parametrize("case", HUSHLINE_AEAD_NEGATIVE_CASES)
+def test_hushline_aead_known_answer_negative_vectors_fail_closed(
+    monkeypatch: pytest.MonkeyPatch,
+    case: str,
+) -> None:
+    vector = _hushline_aead_vector()
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID[vector["contract_id"]]
+    aad_values = dict(vector["aad_values"])
+    envelope = vector["envelope"]
+
+    monkeypatch.setenv("ENCRYPTION_KEY", vector["base_encryption_key_base64"])
+
+    if case == "corrupted ciphertext byte":
+        payload = _aead_payload_from_envelope(envelope)
+        ciphertext = bytearray(bytes.fromhex(vector["ciphertext_and_tag_hex"]))
+        ciphertext[0] ^= 0x01
+        payload["ct"] = _encode_unpadded_urlsafe(bytes(ciphertext))
+        envelope = _aead_envelope_from_payload(payload)
+    elif case == "corrupted authentication tag byte":
+        payload = _aead_payload_from_envelope(envelope)
+        ciphertext = bytearray(bytes.fromhex(vector["ciphertext_and_tag_hex"]))
+        ciphertext[-1] ^= 0x01
+        payload["ct"] = _encode_unpadded_urlsafe(bytes(ciphertext))
+        envelope = _aead_envelope_from_payload(payload)
+    elif case == "wrong AAD row identifier":
+        aad_values["user_id"] += 1
+    elif case == "wrong AAD domain":
+        contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["NotificationRecipient.pgp_key"]
+    elif case == "corrupted nonce byte":
+        payload = _aead_payload_from_envelope(envelope)
+        nonce = bytearray(bytes.fromhex(vector["nonce_hex"]))
+        nonce[0] ^= 0x01
+        payload["n"] = _encode_unpadded_urlsafe(bytes(nonce))
+        envelope = _aead_envelope_from_payload(payload)
+    elif case == "malformed nonce length":
+        payload = _aead_payload_from_envelope(envelope)
+        payload["n"] = _encode_unpadded_urlsafe(bytes.fromhex(vector["nonce_hex"])[:-1])
+        envelope = _aead_envelope_from_payload(payload)
+    elif case == "unknown envelope version":
+        payload = _aead_payload_from_envelope(envelope)
+        payload["v"] = crypto.ENCRYPTED_FIELD_AEAD_ENVELOPE_VERSION + 1
+        envelope = _aead_envelope_from_payload(payload)
+    elif case == "unknown envelope algorithm":
+        payload = _aead_payload_from_envelope(envelope)
+        payload["alg"] = "aes-128-gcm"
+        envelope = _aead_envelope_from_payload(payload)
+    elif case == "unexpected envelope metadata":
+        payload = _aead_payload_from_envelope(envelope)
+        payload["kid"] = "unexpected"
+        envelope = _aead_envelope_from_payload(payload)
+    else:  # pragma: no cover - protects the case list from drift.
+        raise AssertionError(f"Unhandled negative vector case: {case}")
+
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field_aead_prototype(envelope, contract, aad_values)
+
+
+def test_hushline_aead_envelope_rejects_non_96_bit_nonce() -> None:
+    with pytest.raises(ValueError, match="nonce must be 96 bits"):
+        crypto.serialize_encrypted_field_aead_envelope(b"ciphertext-and-tag", b"short")
 
 
 def test_legacy_fernet_token_has_no_envelope(monkeypatch: pytest.MonkeyPatch) -> None:

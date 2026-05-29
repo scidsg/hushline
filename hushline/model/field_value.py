@@ -3,7 +3,16 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from hushline.crypto import DICEWARE_WORDS, decrypt_field, encrypt_field, encrypt_message
+from hushline.config import EncryptedFieldWriteFormat
+from hushline.crypto import (
+    DICEWARE_WORDS,
+    ENCRYPTED_FIELD_CONTRACT_BY_ID,
+    decrypt_field,
+    encrypt_field,
+    encrypt_message,
+    encrypted_field_write_format,
+    is_encrypted_field_aead_envelope,
+)
 from hushline.db import db
 
 if TYPE_CHECKING:
@@ -58,8 +67,52 @@ class FieldValue(Model):
         self.field_definition = field_definition
         self.message = message
         self.encrypted = encrypted
+        if encrypted_field_write_format() == EncryptedFieldWriteFormat.ENVELOPE_AES_GCM:
+            self._value = ""
+            db.session.add(self)
+            db.session.flush()
         # set the value AFTER setting the encrypted flag
         self.value = value
+
+    def _encrypted_field_aad_values(self) -> dict[str, int]:
+        if (
+            self.id is None
+            and encrypted_field_write_format() == EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+        ):
+            self._value = self._value or ""
+            db.session.add(self)
+            db.session.flush()
+        if self.id is None or self.field_definition_id is None or self.message_id is None:
+            raise ValueError("Field value encrypted-field AAD requires persisted row ids")
+        return {
+            "field_definition_id": self.field_definition_id,
+            "field_value_id": self.id,
+            "message_id": self.message_id,
+        }
+
+    def _encrypt_encrypted_field(self, value: str | None) -> str | None:
+        if encrypted_field_write_format() != EncryptedFieldWriteFormat.ENVELOPE_AES_GCM:
+            return encrypt_field(value)
+
+        contract = ENCRYPTED_FIELD_CONTRACT_BY_ID["FieldValue.value"]
+        return encrypt_field(
+            value,
+            contract=contract,
+            aad_values=self._encrypted_field_aad_values(),
+        )
+
+    def _decrypt_encrypted_field(self, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if not is_encrypted_field_aead_envelope(value):
+            return decrypt_field(value)
+
+        contract = ENCRYPTED_FIELD_CONTRACT_BY_ID["FieldValue.value"]
+        return decrypt_field(
+            value,
+            contract=contract,
+            aad_values=self._encrypted_field_aad_values(),
+        )
 
     @property
     def value(self) -> str | None:
@@ -67,7 +120,7 @@ class FieldValue(Model):
         This value is either a string with the actual value, PGP-encrypted data. If it's
         PGP-encrypted, the plaintext is padded with spaces at the end.
         """
-        return decrypt_field(self._value)
+        return self._decrypt_encrypted_field(self._value)
 
     @value.setter
     def value(self, value: str | list[str]) -> None:
@@ -92,7 +145,7 @@ class FieldValue(Model):
             val_to_save = value
 
         # Encrypt the field
-        val = encrypt_field(val_to_save)
+        val = self._encrypt_encrypted_field(val_to_save)
         if val is not None:
             self._value = val
         else:
