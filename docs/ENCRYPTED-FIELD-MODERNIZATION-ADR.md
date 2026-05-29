@@ -283,10 +283,11 @@ If `ENCRYPTION_KEY` is lost and no valid backup exists:
   inaccessible to the application if the outer database-field encryption wrapper
   cannot be decrypted.
 
-Future key rotation or envelope work must document how old key material remains
-available until all ciphertext written under it is migrated or intentionally
-retired. A migration plan must include backup, restore, rollback, and
-decryptability verification steps before production rollout.
+Encrypted-field key rotation uses `ENCRYPTION_KEY_FALLBACKS` to keep old key
+material available until all ciphertext written under it is migrated or
+intentionally retired. Rotation and envelope migration plans must include
+backup, restore, rollback, and decryptability verification steps before
+production rollout.
 
 ## Why #411 Should Not Be Retrofitted Directly
 

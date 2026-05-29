@@ -236,8 +236,8 @@ contract unless maintainers explicitly approve a targeted gate.
 
 - Confirm the deployed code can read legacy Fernet and the target envelope
   format.
-- Confirm `ENCRYPTION_KEY` and any future encrypted-field key material are
-  present through the approved secret path for the environment.
+- Confirm `ENCRYPTION_KEY` and any required `ENCRYPTION_KEY_FALLBACKS` entries
+  are present through the approved secret path for the environment.
 - Confirm the target write format is explicitly configured for the planned
   migration and whether it is transitional compatibility or domain-bound AEAD.
 - Confirm the database revision is the expected forward-only revision.
