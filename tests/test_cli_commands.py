@@ -639,6 +639,24 @@ def test_encrypted_field_release_gate_requires_rehearsal_report_reference(
     assert "rehearsal_report must be a non-empty string" in result.output
 
 
+def _write_valid_encrypted_field_release_gate_artifacts(
+    app: Flask,
+    tmp_path: Path,
+) -> tuple[Path, Path]:
+    runner = app.test_cli_runner()
+    preflight_result = runner.invoke(args=["encrypted-field", "preflight", "--output", "json"])
+    assert preflight_result.exit_code == 0
+
+    preflight_artifact = tmp_path / "preflight.json"
+    evidence_manifest = tmp_path / "release-gate.json"
+    preflight_artifact.write_text(preflight_result.output, encoding="utf-8")
+    evidence_manifest.write_text(
+        json.dumps(_valid_encrypted_field_release_gate_manifest()),
+        encoding="utf-8",
+    )
+    return preflight_artifact, evidence_manifest
+
+
 def _next_resume_token(output: str) -> str:
     for line in output.splitlines():
         if line.startswith("Next resume token: "):
@@ -753,6 +771,84 @@ def test_encrypted_field_migrate_live_rewrites_and_verifies_post_write(
     assert "would migrate: 0; migrated: 1" in result.output
     assert "verification failures: 0; update failures: 0; remaining rows: 0" in result.output
     assert "Next resume token: complete" in result.output
+    assert plaintext not in result.output
+    assert original_ciphertext not in result.output
+    db.session.refresh(user)
+    assert user._totp_secret is not None
+    assert user._totp_secret.startswith(crypto.ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+    assert user.totp_secret == plaintext
+
+
+def test_encrypted_field_migrate_production_live_requires_release_gate_artifacts(
+    app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    runner = app.test_cli_runner()
+    plaintext = "ungated production migration secret"
+    user._totp_secret = crypto.encrypt_field(plaintext)
+    original_ciphertext = user._totp_secret
+    assert original_ciphertext is not None
+    db.session.commit()
+
+    result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "migrate",
+            "--live",
+            "--production",
+            "--contract",
+            "User.totp_secret",
+        ]
+    )
+
+    assert result.exit_code == 1
+    assert "Production live migration requires --preflight-artifact" in result.output
+    db.session.refresh(user)
+    assert user._totp_secret == original_ciphertext
+    assert user.totp_secret == plaintext
+
+
+def test_encrypted_field_migrate_production_live_accepts_valid_release_gate(
+    app: Flask,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    runner = app.test_cli_runner()
+    plaintext = "gated production migration secret"
+    user._totp_secret = crypto.encrypt_field(plaintext)
+    original_ciphertext = user._totp_secret
+    assert original_ciphertext is not None
+    db.session.commit()
+    preflight_artifact, evidence_manifest = _write_valid_encrypted_field_release_gate_artifacts(
+        app,
+        tmp_path,
+    )
+
+    result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "migrate",
+            "--live",
+            "--production",
+            "--environment-name",
+            "production",
+            "--preflight-artifact",
+            str(preflight_artifact),
+            "--evidence-manifest",
+            str(evidence_manifest),
+            "--contract",
+            "User.totp_secret",
+            "--batch-size",
+            "10",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert "Mode: live" in result.output
+    assert "Environment: production" in result.output
+    assert "migrated: 1" in result.output
     assert plaintext not in result.output
     assert original_ciphertext not in result.output
     db.session.refresh(user)
