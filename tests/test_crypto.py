@@ -543,6 +543,51 @@ def test_aes_gcm_write_format_requires_valid_key_material(
         crypto.encrypt_field("secret", contract=contract, aad_values={"user_id": 1})
 
 
+def test_aes_gcm_write_format_can_be_enabled_from_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(
+        ENCRYPTED_FIELD_WRITE_FORMAT,
+        EncryptedFieldWriteFormat.ENVELOPE_AES_GCM.value,
+    )
+    _enable_aes_gcm_write_env(monkeypatch)
+
+    assert crypto.encrypted_field_write_format() == EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+
+
+def test_legacy_read_retirement_env_rejects_raw_fernet_rows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    monkeypatch.setenv(
+        ENCRYPTED_FIELD_WRITE_FORMAT,
+        EncryptedFieldWriteFormat.LEGACY_FERNET.value,
+    )
+    legacy_ciphertext = crypto.encrypt_field("legacy secret")
+    assert legacy_ciphertext is not None
+    monkeypatch.setenv(ENCRYPTED_FIELD_LEGACY_READS_ENABLED, "false")
+
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field(legacy_ciphertext)
+
+
+def test_aes_gcm_helpers_preserve_none_and_require_aad_for_envelopes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    _enable_aes_gcm_write_env(monkeypatch)
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
+    aad_values = {"user_id": 1}
+
+    assert crypto.encrypt_field_aead(None, contract, aad_values) is None
+    assert crypto.decrypt_field_aead(None, contract, aad_values) is None
+
+    envelope = crypto.encrypt_field_aead("secret", contract, aad_values)
+    assert envelope is not None
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field(envelope)
+
+
 def test_hushline_aead_known_answer_vector_encrypts_and_serializes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -7,6 +7,7 @@ import click
 import pytest
 from cryptography.fernet import Fernet, InvalidToken
 from flask import Flask
+from sqlalchemy.exc import NoSuchTableError
 
 from hushline import crypto as crypto_module
 
@@ -383,4 +384,229 @@ def test_build_target_ciphertext_fails_closed_when_writer_returns_empty_value(
 
     assert (
         app.config[cli.ENCRYPTED_FIELD_WRITE_FORMAT] == cli.EncryptedFieldWriteFormat.LEGACY_FERNET
+    )
+
+
+def test_capacity_report_handles_missing_table_without_schema_details(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _ = app
+    contract = crypto.EncryptedFieldContract(
+        id="Missing.secret",
+        domain="hushline.encrypted-field.missing.secret",
+        table="missing_table",
+        column="secret",
+        aad_fields=("user_id",),
+    )
+
+    class MissingTableInspector:
+        def get_columns(self, table_name: str) -> list[dict[str, object]]:
+            _ = self
+            assert table_name == "missing_table"
+            raise NoSuchTableError(table_name)
+
+    monkeypatch.setattr(cli, "inspect", lambda _engine: MissingTableInspector())
+
+    assert cli._encrypted_field_column_capacity_reports((contract,)) == [
+        cli.EncryptedFieldCapacityReport(
+            contract_id="Missing.secret",
+            table="missing_table",
+            column="secret",
+            ready=False,
+            detail="missing table",
+        )
+    ]
+
+
+def test_contract_lookup_and_resume_parse_fail_closed() -> None:
+    malformed_state = cli._encoded_json(
+        {
+            "helper_version": cli.ENCRYPTED_FIELD_MIGRATION_HELPER_VERSION,
+            "target_format": cli.EncryptedFieldWriteFormat.ENVELOPE_FERNET.value,
+            "batch_size": "not-an-int",
+            "contract_ids": ["User.email"],
+            "contract_id": "User.email",
+            "last_primary_key": 1,
+        }
+    )
+
+    with pytest.raises(click.ClickException, match="Unknown encrypted-field contract"):
+        cli._contract_by_id("Nope.secret")
+    with pytest.raises(
+        click.ClickException,
+        match="Invalid encrypted-field migration resume token",
+    ):
+        cli._parse_resume_state(
+            malformed_state,
+            batch_size=10,
+            contract_ids=("User.email",),
+            target_format=cli.EncryptedFieldWriteFormat.ENVELOPE_FERNET,
+        )
+
+
+def test_migration_row_contract_and_ciphertext_failures_are_redacted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    monkeypatch.setenv(
+        cli.ENCRYPTED_FIELD_WRITE_FORMAT,
+        cli.EncryptedFieldWriteFormat.LEGACY_FERNET.value,
+    )
+    missing_aad_contract = crypto.EncryptedFieldContract(
+        id="User.email.synthetic",
+        domain="hushline.encrypted-field.users.email.synthetic",
+        table="users",
+        column="email",
+        aad_fields=("missing_id",),
+    )
+
+    with pytest.raises(cli.EncryptedFieldMigrationError) as missing_aad:
+        cli._aad_values_for_row(missing_aad_contract, {"id": 7, "email": "ciphertext"})
+
+    assert missing_aad.value.failure.safe_message() == (
+        "contract=User.email.synthetic primary_key=7 phase=contract "
+        "error=MissingAADField source_left_unchanged=yes"
+    )
+
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
+    with pytest.raises(cli.EncryptedFieldMigrationError) as decrypt_failure:
+        cli._verify_ciphertext_plaintext(
+            contract=contract,
+            primary_key=3,
+            phase="verify-existing-target",
+            ciphertext="not-a-valid-fernet-token",
+            expected_plaintext="secret",
+        )
+
+    message = decrypt_failure.value.failure.safe_message()
+    assert "contract=User.email primary_key=3 phase=verify-existing-target" in message
+    assert "not-a-valid-fernet-token" not in message
+
+    valid_ciphertext = crypto_module.encrypt_field("different secret")
+    assert valid_ciphertext is not None
+    with pytest.raises(cli.EncryptedFieldMigrationError) as mismatch:
+        cli._verify_ciphertext_plaintext(
+            contract=contract,
+            primary_key=4,
+            phase="verify-candidate",
+            ciphertext=valid_ciphertext,
+            expected_plaintext="secret",
+        )
+
+    assert "PlaintextMismatch" in mismatch.value.failure.safe_message()
+
+
+def test_migration_row_skips_null_empty_malformed_and_target_envelope_values(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _ = app
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    monkeypatch.setenv(
+        cli.ENCRYPTED_FIELD_WRITE_FORMAT,
+        cli.EncryptedFieldWriteFormat.LEGACY_FERNET.value,
+    )
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
+    null_report = cli.EncryptedFieldMigrationContractReport(
+        contract_id=contract.id,
+        table=contract.table,
+        column=contract.column,
+    )
+
+    assert (
+        cli._process_migration_row(
+            contract=contract,
+            row={"id": 1, "email": None},
+            dry_run=True,
+            target_format=cli.EncryptedFieldWriteFormat.ENVELOPE_FERNET,
+            report=null_report,
+        )
+        is False
+    )
+    assert null_report.skipped_rows == 1
+
+    envelope = crypto.serialize_encrypted_field_envelope(
+        crypto_module.encrypt_field("already wrapped") or ""
+    )
+    envelope_report = cli.EncryptedFieldMigrationContractReport(
+        contract_id=contract.id,
+        table=contract.table,
+        column=contract.column,
+    )
+
+    assert (
+        cli._process_migration_row(
+            contract=contract,
+            row={"id": 2, "email": envelope},
+            dry_run=True,
+            target_format=cli.EncryptedFieldWriteFormat.ENVELOPE_FERNET,
+            report=envelope_report,
+        )
+        is False
+    )
+    assert envelope_report.already_migrated_rows == 1
+
+    malformed_report = cli.EncryptedFieldMigrationContractReport(
+        contract_id=contract.id,
+        table=contract.table,
+        column=contract.column,
+    )
+    with pytest.raises(cli.EncryptedFieldMigrationError, match="MalformedCiphertext"):
+        cli._process_migration_row(
+            contract=contract,
+            row={"id": 3, "email": 123},
+            dry_run=True,
+            target_format=cli.EncryptedFieldWriteFormat.ENVELOPE_FERNET,
+            report=malformed_report,
+        )
+    assert malformed_report.decrypt_failures == 1
+
+
+def test_preflight_classifier_handles_aes_gcm_decrypt_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    monkeypatch.setenv("ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED", "true")
+    monkeypatch.setenv("ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL", TEST_AES_GCM_WRITE_APPROVAL)
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
+    envelope = crypto.encrypt_field_aead_prototype("bound secret", contract, {"user_id": 1})
+    assert envelope is not None
+
+    assert (
+        cli._classify_preflight_value(envelope, contract=contract, aad_values={"user_id": 2})
+        == "decrypt_failure"
+    )
+
+
+def test_release_gate_preflight_errors_cover_malformed_artifacts() -> None:
+    errors = cli._release_gate_preflight_errors(
+        {
+            "contract_set": "not-a-dict",
+            "contracts": [{"contract_id": "User.email", "status": "blocked"}],
+            "helper_version": "wrong-helper",
+            "report_type": "wrong-report",
+            "schema_revision": 0,
+            "status": "blocked",
+            "totals": "not-a-dict",
+        }
+    )
+
+    assert errors == [
+        "preflight artifact report_type must be encrypted-field-preflight",
+        "preflight artifact status must be ready",
+        "preflight artifact helper_version does not match this release",
+        "preflight artifact schema_revision does not match this release",
+        "preflight artifact contract_set version does not match this release",
+        "preflight artifact must cover every encrypted-field contract",
+        "preflight artifact totals must be present",
+        "preflight artifact contract details must cover every encrypted-field contract",
+    ]
+
+
+def test_release_gate_manifest_requires_maintainer_approver() -> None:
+    manifest: dict[str, Any] = {"approval": {"approved_by": []}}
+
+    assert "approval.approved_by must list at least one maintainer" in (
+        cli._release_gate_manifest_errors(manifest)
     )
