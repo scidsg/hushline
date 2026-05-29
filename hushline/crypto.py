@@ -48,6 +48,7 @@ ENCRYPTED_FIELD_AEAD_ENVELOPE_ALGORITHM = "aes-256-gcm"
 ENCRYPTED_FIELD_AEAD_NONCE_LENGTH = 12
 ENCRYPTED_FIELD_AAD_SCHEMA = "hushline.encrypted-field.aad.v1"
 ENCRYPTED_FIELD_AEAD_KEY_INFO = b"hushline:encrypted-field:aes-256-gcm:v2"
+ENCRYPTION_KEY_FALLBACKS = "ENCRYPTION_KEY_FALLBACKS"
 ENCRYPTED_FIELD_MUTABLE_AAD_NAMES = frozenset(
     {
         "bio",
@@ -169,14 +170,31 @@ def generate_salt() -> str:
     return urlsafe_b64encode(os.urandom(32)).decode()
 
 
-def get_encryption_key(scope: bytes | str | None = None, salt: str | None = None) -> Fernet:
-    """
-    Return the default Fernet encryption key. If a scope and salt are provided, a unique encryption
-    key will be derived based on the scope and salt.
-    """
+def _configured_encryption_key_materials() -> tuple[str, ...]:
     if not (encryption_key := os.environ.get("ENCRYPTION_KEY", None)):
         raise ValueError("Encryption key not found via env var ENCRYPTION_KEY")
 
+    fallback_keys = os.environ.get(ENCRYPTION_KEY_FALLBACKS)
+    if fallback_keys is None:
+        return (encryption_key,)
+
+    keys = [encryption_key]
+    for key in fallback_keys.split(","):
+        stripped_key = key.strip()
+        if not stripped_key:
+            raise ValueError(f"{ENCRYPTION_KEY_FALLBACKS} must not contain empty keys")
+        keys.append(stripped_key)
+
+    for key in keys:
+        Fernet(key)
+    return tuple(keys)
+
+
+def _derive_fernet_key_material(
+    encryption_key: str,
+    scope: bytes | str | None = None,
+    salt: str | None = None,
+) -> str:
     # If a scope is provided, we will use it to derive a unique encryption key
     if scope is not None and salt is not None:
         # Convert the scope to bytes if it is a string
@@ -201,7 +219,27 @@ def get_encryption_key(scope: bytes | str | None = None, salt: str | None = None
         new_encryption_key_bytes = kdf.derive(result)
         encryption_key = urlsafe_b64encode(new_encryption_key_bytes).decode()
 
+    return encryption_key
+
+
+def get_encryption_key(scope: bytes | str | None = None, salt: str | None = None) -> Fernet:
+    """
+    Return the active Fernet write key. If a scope and salt are provided, a unique encryption
+    key will be derived based on the scope and salt.
+    """
+    encryption_key = _configured_encryption_key_materials()[0]
+    encryption_key = _derive_fernet_key_material(encryption_key, scope, salt)
     return Fernet(encryption_key)
+
+
+def _get_encryption_key_readers(
+    scope: bytes | str | None = None,
+    salt: str | None = None,
+) -> tuple[Fernet, ...]:
+    return tuple(
+        Fernet(_derive_fernet_key_material(encryption_key, scope, salt))
+        for encryption_key in _configured_encryption_key_materials()
+    )
 
 
 def encrypted_field_write_format() -> EncryptedFieldWriteFormat:
@@ -296,10 +334,7 @@ def build_encrypted_field_aad(contract: EncryptedFieldContract, values: Mapping[
     ).encode()
 
 
-def _get_encrypted_field_aead_key() -> bytes:
-    if not (encryption_key := os.environ.get("ENCRYPTION_KEY", None)):
-        raise ValueError("Encryption key not found via env var ENCRYPTION_KEY")
-
+def _derive_encrypted_field_aead_key(encryption_key: str) -> bytes:
     encryption_key_bytes = urlsafe_b64decode(encryption_key)
     return HKDF(
         algorithm=hashes.SHA256(),
@@ -307,6 +342,17 @@ def _get_encrypted_field_aead_key() -> bytes:
         salt=None,
         info=ENCRYPTED_FIELD_AEAD_KEY_INFO,
     ).derive(encryption_key_bytes)
+
+
+def _get_encrypted_field_aead_key() -> bytes:
+    return _derive_encrypted_field_aead_key(_configured_encryption_key_materials()[0])
+
+
+def _get_encrypted_field_aead_read_keys() -> tuple[bytes, ...]:
+    return tuple(
+        _derive_encrypted_field_aead_key(encryption_key)
+        for encryption_key in _configured_encryption_key_materials()
+    )
 
 
 def _encode_unpadded_urlsafe(data: bytes) -> str:
@@ -468,15 +514,17 @@ def decrypt_field_aead(
 
     envelope = parse_encrypted_field_aead_envelope(data)
     aad = build_encrypted_field_aad(contract, aad_values)
-    try:
-        plaintext = AESGCM(_get_encrypted_field_aead_key()).decrypt(
-            envelope.nonce,
-            envelope.ciphertext,
-            aad,
-        )
-    except InvalidTag as exc:
-        raise InvalidToken from exc
-    return plaintext.decode()
+    for encryption_key in _get_encrypted_field_aead_read_keys():
+        try:
+            plaintext = AESGCM(encryption_key).decrypt(
+                envelope.nonce,
+                envelope.ciphertext,
+                aad,
+            )
+        except InvalidTag:
+            continue
+        return plaintext.decode()
+    raise InvalidToken
 
 
 def encrypt_field_aead_prototype(
@@ -562,8 +610,12 @@ def decrypt_field(
         if envelope is not None:
             data = envelope.ciphertext
 
-    fernet = get_encryption_key(scope, salt)
-    return fernet.decrypt(data.encode()).decode()
+    for fernet in _get_encryption_key_readers(scope, salt):
+        try:
+            return fernet.decrypt(data.encode()).decode()
+        except InvalidToken:
+            continue
+    raise InvalidToken
 
 
 def is_valid_pgp_key(key: str) -> bool:

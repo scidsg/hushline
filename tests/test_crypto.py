@@ -193,6 +193,83 @@ def test_encrypt_field_transition_reads_legacy_and_envelope_formats(
     assert crypto.decrypt_field(envelope_ciphertext) == "envelope"
 
 
+def test_encrypted_field_rotation_reads_old_fernet_key_and_writes_new_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old_key = Fernet.generate_key().decode()
+    new_key = Fernet.generate_key().decode()
+    monkeypatch.setenv("ENCRYPTION_KEY", old_key)
+    old_ciphertext = crypto.encrypt_field("old secret")
+    assert old_ciphertext is not None
+
+    monkeypatch.setenv("ENCRYPTION_KEY", new_key)
+    monkeypatch.setenv(crypto.ENCRYPTION_KEY_FALLBACKS, old_key)
+    new_ciphertext = crypto.encrypt_field("new secret")
+
+    assert new_ciphertext is not None
+    assert crypto.decrypt_field(old_ciphertext) == "old secret"
+    assert crypto.decrypt_field(new_ciphertext) == "new secret"
+
+    monkeypatch.setenv("ENCRYPTION_KEY", old_key)
+    monkeypatch.delenv(crypto.ENCRYPTION_KEY_FALLBACKS, raising=False)
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field(new_ciphertext)
+
+
+def test_encrypted_field_rotation_reads_missing_key_identifier_envelope(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old_key = Fernet.generate_key().decode()
+    new_key = Fernet.generate_key().decode()
+    monkeypatch.setenv("ENCRYPTION_KEY", old_key)
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_FERNET
+    old_envelope = crypto.encrypt_field("old envelope")
+    assert old_envelope is not None
+
+    payload = _aead_payload_from_envelope(old_envelope)
+    assert "kid" not in payload
+
+    monkeypatch.setenv("ENCRYPTION_KEY", new_key)
+    monkeypatch.setenv(crypto.ENCRYPTION_KEY_FALLBACKS, old_key)
+
+    assert crypto.decrypt_field(old_envelope) == "old envelope"
+
+
+def test_encrypted_field_rotation_wrong_fernet_key_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old_key = Fernet.generate_key().decode()
+    wrong_key = Fernet.generate_key().decode()
+    monkeypatch.setenv("ENCRYPTION_KEY", old_key)
+    ciphertext = crypto.encrypt_field("old secret")
+    assert ciphertext is not None
+
+    monkeypatch.setenv("ENCRYPTION_KEY", wrong_key)
+    monkeypatch.delenv(crypto.ENCRYPTION_KEY_FALLBACKS, raising=False)
+
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field(ciphertext)
+
+
+def test_encrypted_field_rotation_rejects_malformed_fallbacks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    ciphertext = crypto.encrypt_field("secret")
+    assert ciphertext is not None
+
+    monkeypatch.setenv(crypto.ENCRYPTION_KEY_FALLBACKS, "not-a-fernet-key")
+    with pytest.raises(ValueError, match="Fernet key"):
+        crypto.decrypt_field(ciphertext)
+    with pytest.raises(ValueError, match="Fernet key"):
+        crypto.encrypt_field("new secret")
+
+    monkeypatch.setenv(crypto.ENCRYPTION_KEY_FALLBACKS, ",")
+    with pytest.raises(ValueError, match="must not contain empty keys"):
+        crypto.decrypt_field(ciphertext)
+
+
 def test_encrypt_field_uses_app_configured_write_format(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
@@ -315,6 +392,38 @@ def test_encrypt_field_can_write_production_aes_gcm_envelope(
             contract=crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.pgp_key"],
             aad_values=aad_values,
         )
+
+
+def test_encrypted_field_rotation_reads_old_aes_gcm_key_and_writes_new_key(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old_key = Fernet.generate_key().decode()
+    new_key = Fernet.generate_key().decode()
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
+    aad_values = {"user_id": 1}
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+
+    monkeypatch.setenv("ENCRYPTION_KEY", old_key)
+    old_envelope = crypto.encrypt_field("old secret", contract=contract, aad_values=aad_values)
+    assert old_envelope is not None
+
+    monkeypatch.setenv("ENCRYPTION_KEY", new_key)
+    monkeypatch.setenv(crypto.ENCRYPTION_KEY_FALLBACKS, old_key)
+    new_envelope = crypto.encrypt_field("new secret", contract=contract, aad_values=aad_values)
+
+    assert new_envelope is not None
+    assert crypto.decrypt_field(old_envelope, contract=contract, aad_values=aad_values) == (
+        "old secret"
+    )
+    assert crypto.decrypt_field(new_envelope, contract=contract, aad_values=aad_values) == (
+        "new secret"
+    )
+
+    monkeypatch.setenv("ENCRYPTION_KEY", old_key)
+    monkeypatch.delenv(crypto.ENCRYPTION_KEY_FALLBACKS, raising=False)
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field(new_envelope, contract=contract, aad_values=aad_values)
 
 
 def test_aes_gcm_write_format_requires_contract_and_aad(
