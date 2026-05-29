@@ -184,6 +184,36 @@ def test_encrypted_field_preflight_reports_ready_without_sensitive_values(
     assert user._email == envelope_ciphertext
 
 
+def test_encrypted_field_preflight_accepts_aes_gcm_envelopes_with_aad(
+    app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    runner = app.test_cli_runner()
+    plaintext = "preflight AES-GCM secret"
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
+    assert user.id is not None
+
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    user._email = crypto.encrypt_field(
+        plaintext,
+        contract=contract,
+        aad_values={"user_id": user.id},
+    )
+    aead_ciphertext = user._email
+    assert aead_ciphertext is not None
+    db.session.commit()
+
+    result = runner.invoke(args=["encrypted-field", "preflight", "--contract", "User.email"])
+
+    assert result.exit_code == 0
+    assert "User.email (users.email): legacy Fernet: 0; envelope Fernet: 0" in result.output
+    assert "envelope AES-GCM: 1" in result.output
+    assert "malformed: 0; decrypt failures: 0; decryptable: yes" in result.output
+    assert "Encrypted-field preflight readiness: ready" in result.output
+    assert plaintext not in result.output
+    assert aead_ciphertext not in result.output
+
+
 def test_encrypted_field_preflight_json_reports_deterministic_redacted_artifact(
     app: Flask, user: User, user2: User, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -240,6 +270,7 @@ def test_encrypted_field_preflight_json_reports_deterministic_redacted_artifact(
     assert report["blocked_reasons"] == []
     assert report["totals"] == {
         "decrypt_failures": 0,
+        "envelope_aes_gcm": 0,
         "envelope_fernet": 1,
         "legacy_fernet": 1,
         "malformed": 0,
@@ -254,6 +285,7 @@ def test_encrypted_field_preflight_json_reports_deterministic_redacted_artifact(
             "contract_id": "User.totp_secret",
             "failures": {"decrypt_failures": 0, "malformed": 0},
             "rows": {
+                "envelope_aes_gcm": 0,
                 "envelope_fernet": 1,
                 "legacy_fernet": 1,
                 "null_empty": 0,
@@ -446,6 +478,7 @@ def test_encrypted_field_preflight_json_blocks_missing_schema_without_crashing(
         "contract_id": "User.missing_column",
         "failures": {"decrypt_failures": 0, "malformed": 0},
         "rows": {
+            "envelope_aes_gcm": 0,
             "envelope_fernet": 0,
             "legacy_fernet": 0,
             "null_empty": 0,
@@ -605,6 +638,48 @@ def test_encrypted_field_migrate_dry_run_reports_without_writing(
     assert original_ciphertext not in result.output
     db.session.refresh(user)
     assert user._totp_secret == original_ciphertext
+
+
+def test_encrypted_field_migrate_skips_existing_aes_gcm_envelopes(
+    app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    runner = app.test_cli_runner()
+    plaintext = "already AES-GCM migration secret"
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
+    assert user.id is not None
+
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+    user._email = crypto.encrypt_field(
+        plaintext,
+        contract=contract,
+        aad_values={"user_id": user.id},
+    )
+    original_ciphertext = user._email
+    assert original_ciphertext is not None
+    db.session.commit()
+
+    result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "migrate",
+            "--dry-run",
+            "--contract",
+            "User.email",
+            "--batch-size",
+            "10",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert "examined: 1; eligible: 0" in result.output
+    assert "already migrated: 1" in result.output
+    assert "decrypt failures: 0" in result.output
+    assert "remaining rows: 0" in result.output
+    assert plaintext not in result.output
+    assert original_ciphertext not in result.output
+    db.session.refresh(user)
+    assert user._email == original_ciphertext
 
 
 def test_encrypted_field_migrate_live_rewrites_and_verifies_post_write(

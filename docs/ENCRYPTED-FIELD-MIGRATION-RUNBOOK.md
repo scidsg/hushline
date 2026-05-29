@@ -225,8 +225,8 @@ Run the executable preflight before enabling envelope writes:
 The command reports the current Alembic revision, envelope-safe storage
 capacity for each encrypted-field contract, schema revision, contract-set
 version, selected contract IDs, batch size, row counts, legacy Fernet, envelope
-Fernet, null/empty, malformed, and decrypt-failure counts, and whether every
-non-empty value decrypts through the deployed reader. It must not print
+Fernet, envelope AES-GCM, null/empty, malformed, and decrypt-failure counts,
+and whether every non-empty value decrypts through the deployed reader. It must not print
 plaintext or raw full ciphertext.
 
 Use `--contract CONTRACT_ID` one or more times for targeted checks before a
