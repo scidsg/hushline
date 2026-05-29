@@ -15,6 +15,7 @@ cli: Any = pytest.importorskip("hushline.cli_encrypted_field")
 
 
 TEST_ENCRYPTION_KEY = "jY0gDbATEOQolx2SGj46YnkkbN6HQBB4YCABzwl1H1A="
+TEST_AES_GCM_WRITE_APPROVAL = "test maintainer approval for AES-GCM encrypted-field writes"
 
 
 pytestmark = pytest.mark.skipif(
@@ -82,6 +83,8 @@ def test_aead_prototype_roundtrips_bytes_and_none_without_plaintext_leakage(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    monkeypatch.setenv("ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED", "true")
+    monkeypatch.setenv("ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL", TEST_AES_GCM_WRITE_APPROVAL)
     contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
 
     assert crypto.encrypt_field_aead_prototype(None, contract, {"user_id": 1}) is None

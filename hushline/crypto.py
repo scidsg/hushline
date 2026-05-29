@@ -18,7 +18,13 @@ from pysequoia import Cert, encrypt
 from sqlalchemy import inspect
 from sqlalchemy.exc import NoSuchTableError
 
-from hushline.config import ENCRYPTED_FIELD_WRITE_FORMAT, EncryptedFieldWriteFormat
+from hushline.config import (
+    ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL,
+    ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED,
+    ENCRYPTED_FIELD_WRITE_FORMAT,
+    EncryptedFieldWriteFormat,
+)
+from hushline.utils import parse_bool
 
 with open(Path(__file__).parent / "files" / "diceware.txt") as f:
     DICEWARE_WORDS = [x.strip() for x in f]
@@ -92,6 +98,10 @@ class EncryptedFieldAEADEnvelope:
 
 
 class EncryptedFieldSchemaNotReadyError(RuntimeError):
+    pass
+
+
+class EncryptedFieldWriteConfigError(RuntimeError):
     pass
 
 
@@ -174,16 +184,14 @@ def _configured_encryption_key_materials() -> tuple[str, ...]:
     if not (encryption_key := os.environ.get("ENCRYPTION_KEY", None)):
         raise ValueError("Encryption key not found via env var ENCRYPTION_KEY")
 
-    fallback_keys = os.environ.get(ENCRYPTION_KEY_FALLBACKS)
-    if fallback_keys is None:
-        return (encryption_key,)
-
     keys = [encryption_key]
-    for key in fallback_keys.split(","):
-        stripped_key = key.strip()
-        if not stripped_key:
-            raise ValueError(f"{ENCRYPTION_KEY_FALLBACKS} must not contain empty keys")
-        keys.append(stripped_key)
+    fallback_keys = os.environ.get(ENCRYPTION_KEY_FALLBACKS)
+    if fallback_keys is not None:
+        for key in fallback_keys.split(","):
+            stripped_key = key.strip()
+            if not stripped_key:
+                raise ValueError(f"{ENCRYPTION_KEY_FALLBACKS} must not contain empty keys")
+            keys.append(stripped_key)
 
     for key in keys:
         Fernet(key)
@@ -254,9 +262,45 @@ def encrypted_field_write_format() -> EncryptedFieldWriteFormat:
         )
 
     if isinstance(configured, EncryptedFieldWriteFormat):
-        return configured
+        write_format = configured
+    else:
+        write_format = EncryptedFieldWriteFormat.parse(configured)
 
-    return EncryptedFieldWriteFormat.parse(configured)
+    if write_format == EncryptedFieldWriteFormat.ENVELOPE_AES_GCM:
+        assert_encrypted_field_aes_gcm_write_config_ready()
+
+    return write_format
+
+
+def _encrypted_field_config_value(name: str) -> object:
+    if has_app_context() and name in current_app.config:
+        return current_app.config[name]
+    return os.environ.get(name)
+
+
+def _encrypted_field_aes_gcm_writes_enabled() -> bool:
+    configured = _encrypted_field_config_value(ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED)
+    if configured is None:
+        return False
+    if isinstance(configured, bool):
+        return configured
+    if isinstance(configured, str):
+        return parse_bool(configured)
+    return False
+
+
+def assert_encrypted_field_aes_gcm_write_config_ready() -> None:
+    if not _encrypted_field_aes_gcm_writes_enabled():
+        raise EncryptedFieldWriteConfigError(
+            "AES-GCM encrypted-field writes require " "ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED=true"
+        )
+
+    approval = _encrypted_field_config_value(ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL)
+    if not isinstance(approval, str) or not approval.strip():
+        raise EncryptedFieldWriteConfigError(
+            "AES-GCM encrypted-field writes require a non-empty "
+            "ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL"
+        )
 
 
 def assert_encrypted_field_envelope_schema_ready() -> None:
@@ -488,7 +532,7 @@ def is_encrypted_field_aead_envelope(data: str | None) -> bool:
     )
 
 
-def encrypt_field_aead(
+def _encrypt_field_aead(
     data: bytes | str | None,
     contract: EncryptedFieldContract,
     aad_values: Mapping[str, int],
@@ -502,6 +546,15 @@ def encrypt_field_aead(
     nonce = os.urandom(ENCRYPTED_FIELD_AEAD_NONCE_LENGTH)
     ciphertext = AESGCM(_get_encrypted_field_aead_key()).encrypt(nonce, data, aad)
     return serialize_encrypted_field_aead_envelope(ciphertext, nonce)
+
+
+def encrypt_field_aead(
+    data: bytes | str | None,
+    contract: EncryptedFieldContract,
+    aad_values: Mapping[str, int],
+) -> str | None:
+    assert_encrypted_field_aes_gcm_write_config_ready()
+    return _encrypt_field_aead(data, contract, aad_values)
 
 
 def decrypt_field_aead(
@@ -532,7 +585,7 @@ def encrypt_field_aead_prototype(
     contract: EncryptedFieldContract,
     aad_values: Mapping[str, int],
 ) -> str | None:
-    return encrypt_field_aead(data, contract, aad_values)
+    return _encrypt_field_aead(data, contract, aad_values)
 
 
 def decrypt_field_aead_prototype(

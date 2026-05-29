@@ -13,8 +13,17 @@ runbook.
 
 It does not change default production encryption behavior. Production writes
 remain controlled by `ENCRYPTED_FIELD_WRITE_FORMAT`, whose default is legacy
-Fernet. `ENCRYPTED_FIELD_WRITE_FORMAT=envelope-aes-gcm` promotes the AES-GCM
-helper in `hushline.crypto` to a production write path for new values.
+Fernet. AES-GCM writes are enabled only when all of these are true:
+
+- `ENCRYPTED_FIELD_WRITE_FORMAT=envelope-aes-gcm`
+- `ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED=true`
+- `ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL` is a non-empty maintainer approval
+  reference for the target deployment
+- the encrypted-field envelope schema readiness check passes
+- each write supplies the code-owned encrypted-field contract and required AAD
+
+That configuration path promotes the AES-GCM helper in `hushline.crypto` to a
+production write path for new values.
 
 Maintainers decided on 2026-05-26 that `envelope-fernet` is transitional
 compatibility only. It must not be represented as production domain-bound
@@ -176,9 +185,13 @@ content, real notification addresses, or real user data.
 
 Hush Line keeps Fernet as the default production encrypted-field write format
 and supports AES-GCM as an explicit production write-format option for new
-values. The next production security value comes from compatibility, domain
-separation, AAD contracts, and migration safety rather than from rewriting
-existing Fernet ciphertext immediately.
+values. Legacy unprefixed Fernet values and versioned Fernet envelopes remain
+readable while AES-GCM writes are enabled; the AES-GCM writer changes only new
+encrypted-field writes after the explicit gate above is configured. Maintainer
+approval must be recorded before changing the project default away from legacy
+Fernet in any future release. The next production security value comes from
+compatibility, domain separation, AAD contracts, and migration safety rather
+than from rewriting existing Fernet ciphertext immediately.
 
 The AES-GCM writer uses the existing `cryptography` dependency, the existing
 versioned envelope prefix, stable AAD from `ENCRYPTED_FIELD_CONTRACTS`, random
