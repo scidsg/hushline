@@ -316,6 +316,75 @@ def test_encrypted_field_preflight_json_reports_deterministic_redacted_artifact(
     assert "User.email" not in result.output
 
 
+def test_encrypted_field_preflight_require_no_legacy_blocks_legacy_rows(
+    app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    runner = app.test_cli_runner()
+    plaintext = "legacy retirement secret"
+
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.LEGACY_FERNET
+    user._totp_secret = crypto.encrypt_field(plaintext)
+    legacy_ciphertext = user._totp_secret
+    assert legacy_ciphertext is not None
+    db.session.commit()
+
+    result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "preflight",
+            "--output",
+            "json",
+            "--contract",
+            "User.totp_secret",
+            "--require-no-legacy",
+        ]
+    )
+
+    assert result.exit_code == 1
+    report = json.loads(result.output)
+    assert report["status"] == "blocked"
+    assert report["blocked_reasons"] == [
+        {"code": "legacy_fernet_present", "contract_ids": ["User.totp_secret"]}
+    ]
+    assert report["scan"] == {"batch_size": 1000, "require_no_legacy": True}
+    assert report["totals"]["legacy_fernet"] == 1
+    assert report["contracts"][0]["status"] == "blocked"
+    assert plaintext not in result.output
+    assert legacy_ciphertext not in result.output
+
+
+def test_encrypted_field_preflight_require_no_legacy_accepts_envelopes(
+    app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", TEST_ENCRYPTION_KEY)
+    runner = app.test_cli_runner()
+    plaintext = "retired legacy read secret"
+
+    app.config[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.ENVELOPE_FERNET
+    user._totp_secret = crypto.encrypt_field(plaintext)
+    envelope_ciphertext = user._totp_secret
+    assert envelope_ciphertext is not None
+    db.session.commit()
+
+    result = runner.invoke(
+        args=[
+            "encrypted-field",
+            "preflight",
+            "--contract",
+            "User.totp_secret",
+            "--require-no-legacy",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert "Legacy read retirement check: require zero legacy Fernet rows" in result.output
+    assert "User.totp_secret (users.totp_secret): legacy Fernet: 0" in result.output
+    assert "Legacy read retirement check: ready" in result.output
+    assert plaintext not in result.output
+    assert envelope_ciphertext not in result.output
+
+
 def test_encrypted_field_preflight_blocks_malformed_ciphertext(
     app: Flask, user: User, monkeypatch: pytest.MonkeyPatch
 ) -> None:

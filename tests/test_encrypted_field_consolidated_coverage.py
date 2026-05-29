@@ -293,6 +293,7 @@ def test_preflight_report_marks_capacity_only_missing_schema_as_blocked() -> Non
         ciphertext_reports=[],
         alembic_revision="test-revision",
         batch_size=25,
+        require_no_legacy=False,
     )
 
     assert report["status"] == "blocked"

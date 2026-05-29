@@ -840,6 +840,7 @@ def _preflight_blocked_reason_data(
     *,
     capacity_reports: list[EncryptedFieldCapacityReport],
     ciphertext_reports: list[EncryptedFieldCiphertextReport],
+    require_no_legacy: bool,
 ) -> list[dict[str, Any]]:
     reasons: list[dict[str, Any]] = []
     missing_schema = [
@@ -854,6 +855,9 @@ def _preflight_blocked_reason_data(
     decrypt_failure_reports = [
         report.contract_id for report in ciphertext_reports if not report.decryptable
     ]
+    legacy_fernet_reports = [
+        report.contract_id for report in ciphertext_reports if report.legacy_fernet
+    ]
     if missing_schema:
         reasons.append({"code": "missing_schema", "contract_ids": missing_schema})
     if blocked_capacity:
@@ -862,6 +866,8 @@ def _preflight_blocked_reason_data(
         reasons.append({"code": "malformed_ciphertext", "contract_ids": malformed_reports})
     if decrypt_failure_reports:
         reasons.append({"code": "decryptability_failure", "contract_ids": decrypt_failure_reports})
+    if require_no_legacy and legacy_fernet_reports:
+        reasons.append({"code": "legacy_fernet_present", "contract_ids": legacy_fernet_reports})
     return reasons
 
 
@@ -874,22 +880,26 @@ def _preflight_human_reason_phrases(reasons: list[dict[str, Any]]) -> list[str]:
         phrases.append("malformed ciphertext values are present")
     if "decryptability_failure" in reason_codes:
         phrases.append("one or more non-empty values failed decryptability checks")
+    if "legacy_fernet_present" in reason_codes:
+        phrases.append("legacy Fernet ciphertext values are present")
     return phrases
 
 
-def _encrypted_field_preflight_report(
+def _encrypted_field_preflight_report(  # noqa: PLR0913
     *,
     contracts: tuple[EncryptedFieldContract, ...],
     capacity_reports: list[EncryptedFieldCapacityReport],
     ciphertext_reports: list[EncryptedFieldCiphertextReport],
     alembic_revision: str,
     batch_size: int,
+    require_no_legacy: bool = False,
 ) -> dict[str, Any]:
     capacity_by_contract_id = {report.contract_id: report for report in capacity_reports}
     ciphertext_by_contract_id = {report.contract_id: report for report in ciphertext_reports}
     blocked_reasons = _preflight_blocked_reason_data(
         capacity_reports=capacity_reports,
         ciphertext_reports=ciphertext_reports,
+        require_no_legacy=require_no_legacy,
     )
     contract_reports = []
     for contract in contracts:
@@ -920,6 +930,8 @@ def _encrypted_field_preflight_report(
         contract_ready = (
             capacity.ready and failures["decrypt_failures"] == 0 and failures["malformed"] == 0
         )
+        if require_no_legacy and row_counts["legacy_fernet"] != 0:
+            contract_ready = False
         contract_reports.append(
             {
                 "capacity": {
@@ -945,6 +957,10 @@ def _encrypted_field_preflight_report(
         "rows_scanned": sum(report.scanned_rows for report in ciphertext_reports),
         "rows_total": sum(report.row_count for report in ciphertext_reports),
     }
+    scan = {"batch_size": batch_size}
+    if require_no_legacy:
+        scan["require_no_legacy"] = True
+
     return {
         "alembic_revision": alembic_revision,
         "blocked_reasons": blocked_reasons,
@@ -955,7 +971,7 @@ def _encrypted_field_preflight_report(
         "contracts": contract_reports,
         "helper_version": ENCRYPTED_FIELD_MIGRATION_HELPER_VERSION,
         "report_type": "encrypted-field-preflight",
-        "scan": {"batch_size": batch_size},
+        "scan": scan,
         "schema_revision": ENCRYPTED_FIELD_PREFLIGHT_SCHEMA_REVISION,
         "status": "blocked" if blocked_reasons else "ready",
         "totals": totals,
@@ -1186,7 +1202,17 @@ def register_encrypted_field_commands(app: Flask) -> None:
         show_default=True,
         help="Maximum rows to fetch per scan query.",
     )
-    def preflight(output_format: str, contract_ids: tuple[str, ...], batch_size: int) -> None:
+    @click.option(
+        "--require-no-legacy",
+        is_flag=True,
+        help="Fail unless selected encrypted-field values contain no legacy Fernet ciphertext.",
+    )
+    def preflight(
+        output_format: str,
+        contract_ids: tuple[str, ...],
+        batch_size: int,
+        require_no_legacy: bool,
+    ) -> None:
         """Report encrypted-field envelope rollout readiness without mutating data."""
         contracts = _selected_contracts(contract_ids)
         capacity_reports = _encrypted_field_column_capacity_reports(contracts)
@@ -1201,6 +1227,7 @@ def register_encrypted_field_commands(app: Flask) -> None:
             ciphertext_reports=ciphertext_reports,
             alembic_revision=alembic_revision,
             batch_size=batch_size,
+            require_no_legacy=require_no_legacy,
         )
         blocked_reasons = preflight_report["blocked_reasons"]
 
@@ -1212,6 +1239,8 @@ def register_encrypted_field_commands(app: Flask) -> None:
 
         click.echo(f"Current Alembic revision: {alembic_revision}")
         click.echo(f"Scan batch size: {batch_size}")
+        if require_no_legacy:
+            click.echo("Legacy read retirement check: require zero legacy Fernet rows")
         click.echo("Storage column capacity:")
         for report in capacity_reports:
             click.echo(
@@ -1242,6 +1271,8 @@ def register_encrypted_field_commands(app: Flask) -> None:
             )
 
         click.echo("Encrypted-field preflight readiness: ready")
+        if require_no_legacy:
+            click.echo("Legacy read retirement check: ready")
 
     @encrypted_field_cli.command("release-gate")
     @click.option(

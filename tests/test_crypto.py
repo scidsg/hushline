@@ -13,6 +13,7 @@ from hushline import crypto
 from hushline.config import (
     ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL,
     ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED,
+    ENCRYPTED_FIELD_LEGACY_READS_ENABLED,
     ENCRYPTED_FIELD_WRITE_FORMAT,
     EncryptedFieldWriteFormat,
 )
@@ -353,6 +354,22 @@ def test_encrypted_field_envelope_roundtrips_wrapped_fernet(
         ciphertext=encrypted,
     )
     assert crypto.decrypt_field(envelope) == "secret"
+
+
+def test_legacy_fernet_reads_can_be_disabled_after_retirement_gate(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    legacy_ciphertext = crypto.encrypt_field("legacy")
+    assert legacy_ciphertext is not None
+    envelope_ciphertext = crypto.serialize_encrypted_field_envelope(legacy_ciphertext)
+
+    app.config[ENCRYPTED_FIELD_LEGACY_READS_ENABLED] = False
+
+    with pytest.raises(InvalidToken):
+        crypto.decrypt_field(legacy_ciphertext)
+    assert crypto.decrypt_field(envelope_ciphertext) == "legacy"
 
 
 def test_encrypted_field_aad_is_canonical_and_stable() -> None:
