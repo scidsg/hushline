@@ -251,6 +251,23 @@ def test_preflight_classification_counts_safe_buckets_without_disclosing_values(
     assert counts.envelope_aes_gcm == 1
 
 
+def test_rollout_classifier_recognizes_aes_gcm_without_fernet_probe(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    aead_envelope = crypto.serialize_encrypted_field_aead_envelope(
+        b"synthetic-ciphertext",
+        b"0" * crypto.ENCRYPTED_FIELD_AEAD_NONCE_LENGTH,
+    )
+
+    def fail_fernet_probe(value: str) -> None:
+        raise AssertionError(f"unexpected Fernet envelope parse for {value!r}")
+
+    monkeypatch.setattr(cli, "parse_encrypted_field_envelope", fail_fernet_probe)
+
+    assert cli._classify_envelope_value(aead_envelope) == "envelope_aes_gcm"
+    assert cli._classify_preflight_value(aead_envelope) == "envelope_aes_gcm"
+
+
 def test_preflight_report_marks_capacity_only_missing_schema_as_blocked() -> None:
     contract = crypto.EncryptedFieldContract(
         id="User.missing_secret",
