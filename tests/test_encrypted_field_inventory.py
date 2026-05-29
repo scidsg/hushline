@@ -210,7 +210,8 @@ def _object_for_field(field: EncryptedField, user: User) -> Any:
     if field.model is User:
         return user
     if field.model is NotificationRecipient:
-        return NotificationRecipient(user=user)
+        assert user.id is not None
+        return NotificationRecipient(user_id=user.id)
     if field.model is FieldValue:
         return _make_encrypted_field_value(user)
     raise AssertionError(f"Unhandled encrypted field inventory entry: {field.id}")
