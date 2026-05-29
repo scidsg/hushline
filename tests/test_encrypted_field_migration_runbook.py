@@ -92,6 +92,9 @@ def test_encrypted_field_migration_runbook_locks_security_guardrails() -> None:
         "backups without matching encrypted-field key material are not complete",
         "must not include plaintext or full ciphertext",
         "rollback must preserve the old reader",
+        "legacy read retirement must be treated as a separate production gate",
+        "disable `encrypted_field_legacy_reads_enabled` only after",
+        "minimum supported encrypted-field formats are versioned fernet envelopes",
     )
 
     for phrase in required_phrases:

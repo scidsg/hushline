@@ -8,6 +8,7 @@ from hushline.config import (
     _STRING_CFG_PREFIX,
     ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL,
     ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED,
+    ENCRYPTED_FIELD_LEGACY_READS_ENABLED,
     ENCRYPTED_FIELD_WRITE_FORMAT,
     PASSWORD_HASH_REHASH_ON_AUTH_ENABLED,
     PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT,
@@ -173,6 +174,18 @@ def test_encrypted_field_write_format_defaults_legacy_and_parses_envelopes() -> 
     assert cfg[ENCRYPTED_FIELD_WRITE_FORMAT] == EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
     assert cfg[ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED] is True
     assert cfg[ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL] == "maintainer approval record"
+
+
+def test_encrypted_field_legacy_reads_default_enabled_and_parse_false() -> None:
+    env = dict(**os.environ)
+    env.pop(ENCRYPTED_FIELD_LEGACY_READS_ENABLED, None)
+
+    cfg = load_config(env)
+    assert cfg[ENCRYPTED_FIELD_LEGACY_READS_ENABLED] is True
+
+    env[ENCRYPTED_FIELD_LEGACY_READS_ENABLED] = "false"
+    cfg = load_config(env)
+    assert cfg[ENCRYPTED_FIELD_LEGACY_READS_ENABLED] is False
 
 
 def test_encrypted_field_aes_gcm_write_format_requires_production_gate() -> None:

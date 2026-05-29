@@ -493,3 +493,24 @@ The migration can be considered complete only after:
 
 Legacy Fernet read support may be removed only in a later issue after the
 rollback window is closed and a separate removal plan is approved.
+
+## Legacy Fernet Read Retirement
+
+Legacy read retirement must be treated as a separate production gate after the
+data migration and rollback window are complete. Maintainers must approve the
+end of the rollback window, and operators must archive a redacted
+`flask encrypted-field preflight --output json --require-no-legacy` report that
+covers every encrypted-field contract and shows zero legacy Fernet rows, zero
+malformed values, zero decrypt failures, and all rows scanned.
+
+Disable `ENCRYPTED_FIELD_LEGACY_READS_ENABLED` only after that approval and
+report are attached to the release record. Until maintainers approve full code
+removal, recovery remains a configuration rollback: re-enable
+`ENCRYPTED_FIELD_LEGACY_READS_ENABLED`, redeploy a reader that still supports
+legacy Fernet, and restore only from backups with matching encrypted-field key
+material.
+
+After legacy reads are disabled, the minimum supported encrypted-field formats
+are versioned Fernet envelopes (`hlfield:` version 1) and versioned AES-GCM
+envelopes (`hlfield:` version 2). Bare, unprefixed legacy Fernet encrypted-field
+values are no longer supported by normal application reads after retirement.

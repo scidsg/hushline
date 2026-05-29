@@ -21,6 +21,7 @@ from sqlalchemy.exc import NoSuchTableError
 from hushline.config import (
     ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL,
     ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED,
+    ENCRYPTED_FIELD_LEGACY_READS_ENABLED,
     ENCRYPTED_FIELD_WRITE_FORMAT,
     EncryptedFieldWriteFormat,
 )
@@ -287,6 +288,17 @@ def _encrypted_field_aes_gcm_writes_enabled() -> bool:
     if isinstance(configured, str):
         return parse_bool(configured)
     return False
+
+
+def _encrypted_field_legacy_reads_enabled() -> bool:
+    configured = _encrypted_field_config_value(ENCRYPTED_FIELD_LEGACY_READS_ENABLED)
+    if configured is None:
+        return True
+    if isinstance(configured, bool):
+        return configured
+    if isinstance(configured, str):
+        return parse_bool(configured)
+    return True
 
 
 def assert_encrypted_field_aes_gcm_write_config_ready() -> None:
@@ -652,6 +664,10 @@ def decrypt_field(
     """
     if data is None:
         return None
+
+    is_legacy_fernet = not data.startswith(ENCRYPTED_FIELD_ENVELOPE_PREFIX)
+    if is_legacy_fernet and not _encrypted_field_legacy_reads_enabled():
+        raise InvalidToken
 
     if data.startswith(ENCRYPTED_FIELD_ENVELOPE_PREFIX):
         try:
