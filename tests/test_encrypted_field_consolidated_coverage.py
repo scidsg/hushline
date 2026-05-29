@@ -198,6 +198,30 @@ def test_encrypted_field_write_format_reads_environment_without_app_context(
     assert crypto.encrypted_field_write_format() == cli.EncryptedFieldWriteFormat.ENVELOPE_FERNET
 
 
+def test_aes_gcm_write_gate_defaults_closed_and_rejects_non_object_aead_envelopes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED", raising=False)
+    assert crypto._encrypted_field_aes_gcm_writes_enabled() is False
+
+    class EnvelopeLike:
+        def __getitem__(self, key: str) -> str:
+            if key == "n":
+                return _encoded_payload("0" * crypto.ENCRYPTED_FIELD_AEAD_NONCE_LENGTH)
+            if key == "ct":
+                return _encoded_payload("ciphertext")
+            raise KeyError(key)
+
+    monkeypatch.setattr(crypto.json, "loads", lambda _payload: EnvelopeLike())
+    valid_payload = crypto.serialize_encrypted_field_aead_envelope(
+        b"ciphertext",
+        b"0" * crypto.ENCRYPTED_FIELD_AEAD_NONCE_LENGTH,
+    )
+
+    with pytest.raises(InvalidToken):
+        crypto.parse_encrypted_field_aead_envelope(valid_payload)
+
+
 def test_migration_resume_state_roundtrips_without_plaintext() -> None:
     state = cli.EncryptedFieldMigrationResumeState(
         helper_version=cli.ENCRYPTED_FIELD_MIGRATION_HELPER_VERSION,
@@ -546,6 +570,29 @@ def test_migration_contract_helpers_fail_closed_and_bind_expected_aad(
     monkeypatch.setattr(cli, "parse_encrypted_field_aead_envelope", lambda _value: object())
 
     assert cli._classify_envelope_value("hlfield:synthetic") == "envelope_aes_gcm"
+
+
+def test_migration_row_fails_closed_if_classification_allows_non_string(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _ = app
+    contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
+    report = cli.EncryptedFieldMigrationContractReport(
+        contract_id=contract.id,
+        table=contract.table,
+        column=contract.column,
+    )
+    monkeypatch.setattr(cli, "_classify_migration_value", lambda _value: "legacy_fernet")
+
+    with pytest.raises(AssertionError, match="non-string"):
+        cli._process_migration_row(
+            contract=contract,
+            row={"id": 1, "email": object()},
+            dry_run=True,
+            target_format=cli.EncryptedFieldWriteFormat.ENVELOPE_FERNET,
+            report=report,
+        )
 
 
 def test_migration_row_contract_and_ciphertext_failures_are_redacted(
@@ -901,6 +948,8 @@ def test_migration_batch_and_preflight_scans_skip_missing_schema(
             _ = self
             if table_name == "missing_table":
                 raise NoSuchTableError(table_name)
+            if table_name == "metadata_missing_table":
+                return [{"name": "secret", "type": String(length=512)}]
             return [{"name": "id", "type": String(length=512)}]
 
     monkeypatch.setattr(cli, "inspect", lambda _engine: SparseInspector())
@@ -918,13 +967,98 @@ def test_migration_batch_and_preflight_scans_skip_missing_schema(
         column="missing_secret",
         aad_fields=("user_id",),
     )
+    metadata_missing_contract = crypto.EncryptedFieldContract(
+        id="MissingMetadata.secret",
+        domain="hushline.encrypted-field.missing-metadata.secret",
+        table="metadata_missing_table",
+        column="secret",
+        aad_fields=("user_id",),
+    )
 
     assert (
         cli._classify_encrypted_field_values(
-            contracts=(missing_table_contract, missing_column_contract),
+            contracts=(missing_table_contract, missing_column_contract, metadata_missing_contract),
             batch_size=1,
         )
         == []
+    )
+
+
+def test_migration_batch_resume_skips_prior_contracts_and_stops_at_batch_size(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _ = app
+    first_contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.totp_secret"]
+    second_contract = crypto.ENCRYPTED_FIELD_CONTRACT_BY_ID["User.email"]
+    contract_ids = (first_contract.id, second_contract.id)
+    processed_rows: list[tuple[str, int]] = []
+
+    monkeypatch.setattr(
+        cli,
+        "_encrypted_field_column_capacity_reports",
+        lambda: [
+            cli.EncryptedFieldCapacityReport(
+                contract_id=contract_id,
+                table="users",
+                column="encrypted",
+                ready=True,
+                detail="unbounded",
+            )
+            for contract_id in contract_ids
+        ],
+    )
+
+    class ExtraRows:
+        def mappings(self) -> list[dict[str, object]]:
+            return [
+                {"id": 10, "email": "ciphertext"},
+                {"id": 11, "email": "ciphertext"},
+            ]
+
+    def record_row(**kwargs: object) -> None:
+        contract = kwargs["contract"]
+        row = kwargs["row"]
+        report = kwargs["report"]
+        assert isinstance(contract, crypto.EncryptedFieldContract)
+        assert isinstance(row, dict)
+        assert isinstance(report, cli.EncryptedFieldMigrationContractReport)
+        processed_rows.append((contract.id, int(row["id"])))
+        report.examined_rows += 1
+        report.last_processed_primary_key = int(row["id"])
+
+    monkeypatch.setattr(cli.db.session, "execute", lambda _statement: ExtraRows())
+    monkeypatch.setattr(cli.db.session, "rollback", lambda: None)
+    monkeypatch.setattr(cli, "_process_migration_row", record_row)
+    monkeypatch.setattr(cli, "_remaining_legacy_rows", lambda _contract: 1)
+    resume_state = cli.EncryptedFieldMigrationResumeState(
+        helper_version=cli.ENCRYPTED_FIELD_MIGRATION_HELPER_VERSION,
+        target_format=cli.EncryptedFieldWriteFormat.ENVELOPE_FERNET.value,
+        batch_size=1,
+        contract_ids=contract_ids,
+        contract_id=second_contract.id,
+        last_primary_key=9,
+    )
+
+    reports, next_resume_state = cli._run_encrypted_field_migration_batch(
+        contracts=(first_contract, second_contract),
+        dry_run=True,
+        batch_size=1,
+        resume_state=resume_state,
+        full_scan=False,
+        target_format=cli.EncryptedFieldWriteFormat.ENVELOPE_FERNET,
+    )
+
+    assert processed_rows == [(second_contract.id, 10)]
+    assert reports[0].examined_rows == 0
+    assert reports[1].last_processed_primary_key == 10
+    assert next_resume_state == cli.EncryptedFieldMigrationResumeState(
+        helper_version=cli.ENCRYPTED_FIELD_MIGRATION_HELPER_VERSION,
+        target_format=cli.EncryptedFieldWriteFormat.ENVELOPE_FERNET.value,
+        batch_size=1,
+        contract_ids=contract_ids,
+        contract_id=second_contract.id,
+        last_primary_key=10,
     )
 
 
