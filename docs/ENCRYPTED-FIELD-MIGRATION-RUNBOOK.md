@@ -164,6 +164,7 @@ The evidence manifest must be a redacted JSON file with these minimum controls:
   "helper_version": "encrypted-field-migration-v1",
   "contract_set_version": "encrypted-field-contracts-v1",
   "preflight_artifact": "redacted production preflight artifact reference",
+  "rehearsal_report": "redacted reviewed rehearsal report reference",
   "release_checks": {
     "migration_tests_passed": true,
     "ciphertext_fit_tests_passed": true
@@ -217,9 +218,10 @@ The evidence manifest must be a redacted JSON file with these minimum controls:
 
 The manifest must not include plaintext, private keys, tokens, raw encrypted
 values, or full ciphertext. It is a release artifact that points to reviewed
-evidence; it is not a replacement for maintainer review. If the gate blocks,
-do not change production write-format configuration until the missing evidence
-or rollback/zero-downtime control is fixed and reviewed. The gate requires zero
+evidence, including the restored-backup or staging rehearsal report; it is not
+a replacement for maintainer review. If the gate blocks, do not change
+production write-format configuration until the missing evidence or
+rollback/zero-downtime control is fixed and reviewed. The gate requires zero
 planned downtime, bounded batches, and no full-table rewrite transaction.
 
 ## Preflight Checks

@@ -1083,6 +1083,7 @@ def _release_gate_manifest_errors(manifest: dict[str, Any]) -> list[str]:
     )
     required_string_paths: tuple[tuple[str, ...], ...] = (
         ("preflight_artifact",),
+        ("rehearsal_report",),
         ("backup_restore_rehearsal", "artifact"),
         ("dry_run", "artifact"),
         ("live_batch_rehearsal", "artifact"),
