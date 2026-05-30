@@ -1637,6 +1637,42 @@ coverage_gap_snapshot_from_log {shlex.quote(str(check_log))}
     assert "TOTAL                                            8881     36    99%" in result.stdout
 
 
+def test_coverage_gap_snapshot_from_log_preserves_missing_line_ranges(
+    tmp_path: Path,
+) -> None:
+    check_log = tmp_path / "check.log"
+    check_log.write_text(
+        """
+Name                                             Stmts   Miss  Cover   Missing
+------------------------------------------------------------------------------
+hushline/admin.py                                  187      2    99%   155, 159
+hushline/email.py                                  109      0   100%
+hushline/routes/profile.py                        272     20    93%   105-106, 573
+TOTAL                                             8881     22    99%
+""",
+        encoding="utf-8",
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+coverage_gap_snapshot_from_log {shlex.quote(str(check_log))}
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        "Name                                             Stmts   Miss  Cover   Missing"
+        in result.stdout
+    )
+    assert "hushline/admin.py" in result.stdout
+    assert "155, 159" in result.stdout
+    assert "hushline/email.py" not in result.stdout
+    assert "hushline/routes/profile.py" in result.stdout
+    assert "105-106, 573" in result.stdout
+    assert "TOTAL                                             8881     22    99%" in result.stdout
+
+
 def test_coverage_gap_snapshot_from_log_uses_latest_table_when_latest_has_no_misses(
     tmp_path: Path,
 ) -> None:
@@ -1737,6 +1773,10 @@ open_coverage_gap_issue_after_pr \\
     body = body_copy.read_text(encoding="utf-8")
     assert "PR: https://github.com/scidsg/hushline/pull/2000" in body
     assert "Source issue: #1558 Fill coverage gaps" in body
+    assert "This issue is complete only when the full suite returns to 100% coverage" in body
+    assert "Do not open a partial coverage PR" in body
+    assert "`make lint`" in body
+    assert "`make test`" in body
     assert "hushline/email.py" in body
     assert "hushline/routes/profile.py" in body
 
@@ -3382,7 +3422,7 @@ $'  File "/app/hushline/settings/common.py", line 358, in handle_embed_settings_
 $'    username.set_embed_allowed_origins(form.normalized_origins)\\n'\
 $'AttributeError: EmbedSettingsForm has no attribute normalized_origins\\n'
 for i in $(seq 1 180); do
-  failure_text+=$'hushline/module_'$i$'.py                         100      1    99%\\n'
+  failure_text+=$'hushline/module_'$i$'.py                         100      1    99%   42\\n'
 done
 failure_text+=$'FAILED tests/test_embeddable_forms_settings.py::test_origin - assert 500 == 400\\n'
 recent_failure_block_from_text "$failure_text"
