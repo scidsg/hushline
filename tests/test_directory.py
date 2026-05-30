@@ -246,6 +246,31 @@ def _find_directory_card(panel: BeautifulSoup | Tag | None, display_name: str) -
     raise AssertionError(f"Could not find directory card for {display_name}")
 
 
+def _directory_user_rows(
+    client: FlaskClient, params: str = "tab=all"
+) -> list[dict[str, object | None]]:
+    response = client.get(f"{url_for('directory_users')}?{params}")
+    assert response.status_code == 200
+    rows = response.json or []
+    assert isinstance(rows, list)
+    return cast(list[dict[str, object | None]], rows)
+
+
+def _client_sorted_all_display_names(rows: list[dict[str, object | None]]) -> list[str]:
+    return [
+        str(row["display_name"])
+        for row in sorted(
+            rows,
+            key=lambda row: (
+                not bool(row["is_admin"]),
+                bool(row["show_caution_badge"]),
+                str(row["all_tab_sort_transliterated"]),
+                str(row["all_tab_sort_normalized"]),
+            ),
+        )
+    ]
+
+
 def test_directory_accessible(client: FlaskClient) -> None:
     response = client.get(url_for("directory"))
     assert response.status_code == 200
@@ -255,7 +280,15 @@ def test_directory_accessible(client: FlaskClient) -> None:
     assert "GlobaLeaks" in response.text
     assert "SecureDrop" in response.text
     assert "🤖 Automated" in response.text
-    assert "⚖️ Attorney" in response.text
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    verified_panel = soup.find(id="verified")
+    all_panel = soup.find(id="all")
+    assert verified_panel is not None
+    assert all_panel is not None
+    assert "tab-content active" in " ".join(verified_panel.get("class", []))
+    assert all_panel.get("data-lazy-directory-panel") == "true"
+    assert not all_panel.select("article.user")
 
 
 def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> None:
@@ -430,11 +463,22 @@ def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient
 
 
 def test_directory_users_json_excludes_public_records_when_verified_tabs_disabled(
-    client: FlaskClient,
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    def fail_source_loader() -> tuple[object, ...]:
+        raise AssertionError("disabled verified-tab source loader should not run")
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_globaleaks_directory_listings",
+        fail_source_loader,
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_securedrop_directory_listings",
+        fail_source_loader,
+    )
     client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
     try:
-        response = client.get(url_for("directory_users"))
+        response = client.get(f"{url_for('directory_users')}?tab=all")
     finally:
         client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = True
 
@@ -448,13 +492,13 @@ def test_directory_users_json_excludes_public_records_when_verified_tabs_disable
 def test_directory_lists_only_opted_in_users(client: FlaskClient, user: User) -> None:
     user.primary_username.show_in_directory = True
     db.session.commit()
-    response = client.get(url_for("directory"))
-    assert user.primary_username.username in response.text, response.text
+    rows = _directory_user_rows(client)
+    assert any(row["primary_username"] == user.primary_username.username for row in rows)
 
     user.primary_username.show_in_directory = False
     db.session.commit()
-    response = client.get(url_for("directory"))
-    assert user.primary_username.username not in response.text
+    rows = _directory_user_rows(client)
+    assert all(row["primary_username"] != user.primary_username.username for row in rows)
 
 
 def test_directory_session_user_json_defaults_to_logged_out(client: FlaskClient) -> None:
@@ -834,26 +878,25 @@ def test_directory_filters_newsrooms_by_country_and_region_query_params(
 
     soup = BeautifulSoup(response.text, "html.parser")
     newsroom_panel = soup.find(id="newsrooms")
-    all_panel = soup.find(id="all")
     newsroom_count = soup.find(id="newsroom-count")
 
     assert newsroom_panel is not None
-    assert all_panel is not None
     assert newsroom_count is not None
 
     newsroom_text = newsroom_panel.get_text(" ", strip=True)
-    all_text = all_panel.get_text(" ", strip=True)
+    all_rows = _directory_user_rows(client, "newsroom_country=US&newsroom_region=IL&tab=all")
+    all_names = {row["display_name"] for row in all_rows}
 
     assert "Illinois Newsroom User" in newsroom_text
     assert "Illinois Newsroom Listing" in newsroom_text
     assert "California Newsroom User" not in newsroom_text
     assert "California Newsroom Listing" not in newsroom_text
 
-    assert "Illinois Newsroom User" in all_text
-    assert "Illinois Newsroom Listing" in all_text
-    assert "California Newsroom User" not in all_text
-    assert "California Newsroom Listing" not in all_text
-    assert "California Attorney" in all_text
+    assert "Illinois Newsroom User" in all_names
+    assert "Illinois Newsroom Listing" in all_names
+    assert "California Newsroom User" not in all_names
+    assert "California Newsroom Listing" not in all_names
+    assert "California Attorney" in all_names
     assert newsroom_count.get_text(" ", strip=True) == "2"
 
 
@@ -926,20 +969,21 @@ def test_directory_public_records_render_only_in_public_records_and_all(
     verified_panel = soup.find(id="verified")
     public_records_panel = soup.find(id="public-records")
     all_panel = soup.find(id="all")
+    all_rows = _directory_user_rows(client)
+    all_row = next(row for row in all_rows if row["display_name"] == listing.name)
 
     assert public_records_panel is not None
     assert all_panel is not None
     assert listing.name in public_records_panel.text
-    assert listing.name in all_panel.text
     assert listing.description in public_records_panel.text
-    assert listing.description in all_panel.text
     assert listing.website not in public_records_panel.text
-    assert listing.website not in all_panel.text
     assert f"Source: {listing.source_label}" not in public_records_panel.text
-    assert f"Source: {listing.source_label}" not in all_panel.text
     assert public_records_panel.select_one('span.badge[aria-label="Attorney listing"]') is None
     assert "🤖 Automated" in public_records_panel.text
-    assert all_panel.select_one('span.badge[aria-label="Attorney listing"]') is not None
+    assert not all_panel.select("article.user")
+    assert all_row["is_public_record"] is True
+    assert all_row["bio"] == listing.description
+    assert all_row["profile_url"] == url_for("public_record_listing", slug=listing.slug)
     assert "Public Record Attorneys (Legacy)" not in public_records_panel.text
     assert verified_panel is not None
     assert listing.name not in verified_panel.text
@@ -1010,6 +1054,80 @@ def test_directory_all_filters_json_returns_empty_metadata_when_verified_tabs_di
 
     assert response.status_code == 200
     assert response.json == {"countries": [], "regions": {}, "listing_types": []}
+
+
+@pytest.mark.parametrize(
+    ("tab", "expected_names"),
+    [
+        ("verified", ["Verified User"]),
+        ("public-records", ["Attorney User", "Public Record Attorney"]),
+        ("newsrooms", ["Journalist User", "Sample Nonprofit Newsroom"]),
+        ("globaleaks", ["Sample GlobaLeaks Newsroom"]),
+        ("securedrop", ["Sample SecureDrop"]),
+    ],
+)
+def test_directory_users_json_returns_tab_scoped_rows(
+    client: FlaskClient,
+    monkeypatch: pytest.MonkeyPatch,
+    tab: str,
+    expected_names: list[str],
+) -> None:
+    verified_user = _directory_username(
+        username="verified-user",
+        display_name="Verified User",
+        is_verified=True,
+    )
+    attorney_user = _directory_username(
+        username="attorney-user",
+        display_name="Attorney User",
+        account_category=AccountCategory.LAWYER.value,
+    )
+    journalist_user = _directory_username(
+        username="journalist-user",
+        display_name="Journalist User",
+        account_category=AccountCategory.JOURNALIST.value,
+    )
+    public_record_listing = PublicRecordListing(
+        id="public-record-attorney",
+        slug="public-record~attorney",
+        name="Public Record Attorney",
+        website="https://attorney.example",
+        description="Public record attorney listing.",
+        city="Chicago",
+        state="IL",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+    securedrop_listing = _securedrop_listing_with_country(
+        suffix="sample",
+        name="Sample SecureDrop",
+        country="United States",
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames",
+        lambda: (verified_user, attorney_user, journalist_user),
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (public_record_listing,),
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (_sample_newsroom_listing(),),
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_globaleaks_directory_listings",
+        lambda: (_sample_globaleaks_listing(),),
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_securedrop_directory_listings",
+        lambda: (securedrop_listing,),
+    )
+
+    rows = _directory_user_rows(client, f"tab={tab}")
+
+    assert [row["display_name"] for row in rows] == expected_names
 
 
 def test_directory_users_json_excludes_verified_tab_sources_when_disabled(
@@ -1130,16 +1248,16 @@ def test_directory_public_record_cards_truncate_long_automated_listing_bios(
 
     soup = BeautifulSoup(response.text, "html.parser")
     public_records_panel = soup.find(id="public-records")
-    all_panel = soup.find(id="all")
+    all_row = next(
+        row for row in _directory_user_rows(client) if row["display_name"] == listing.name
+    )
 
     public_record_card = _find_directory_card(public_records_panel, listing.name)
-    all_card = _find_directory_card(all_panel, listing.name)
 
     assert expected_bio is not None
     assert public_record_card.get_text(" ", strip=True).count(expected_bio) == 1
-    assert all_card.get_text(" ", strip=True).count(expected_bio) == 1
     assert long_description not in public_record_card.get_text(" ", strip=True)
-    assert long_description not in all_card.get_text(" ", strip=True)
+    assert all_row["bio"] == expected_bio
 
 
 def test_directory_public_record_cards_do_not_show_location(client: FlaskClient) -> None:
@@ -1150,13 +1268,14 @@ def test_directory_public_record_cards_do_not_show_location(client: FlaskClient)
 
     soup = BeautifulSoup(response.text, "html.parser")
     public_records_panel = soup.find(id="public-records")
-    all_panel = soup.find(id="all")
+    all_row = next(
+        row for row in _directory_user_rows(client) if row["display_name"] == listing.name
+    )
 
     public_record_card = _find_directory_card(public_records_panel, listing.name)
-    all_card = _find_directory_card(all_panel, listing.name)
 
     assert listing.location not in public_record_card.get_text(" ", strip=True)
-    assert listing.location not in all_card.get_text(" ", strip=True)
+    assert "location" not in all_row
 
 
 def test_directory_users_json_includes_legacy_public_record_rows(client: FlaskClient) -> None:
@@ -1230,21 +1349,21 @@ def test_directory_filters_public_records_by_country_and_region_query_params(
 
     soup = BeautifulSoup(response.text, "html.parser")
     public_records_panel = soup.find(id="public-records")
-    all_panel = soup.find(id="all")
     public_record_count = soup.find(id="public-record-count")
 
     assert public_records_panel is not None
-    assert all_panel is not None
     assert public_record_count is not None
     public_records_text = public_records_panel.get_text(" ", strip=True)
-    all_text = all_panel.get_text(" ", strip=True)
+    all_names = {
+        row["display_name"] for row in _directory_user_rows(client, "country=US&region=CA&tab=all")
+    }
 
     assert "California Attorney" in public_records_text
     assert "New York Attorney" not in public_records_text
     assert "Australia Attorney" not in public_records_text
-    assert "California Attorney" in all_text
-    assert "New York Attorney" not in all_text
-    assert "Australia Attorney" not in all_text
+    assert "California Attorney" in all_names
+    assert "New York Attorney" not in all_names
+    assert "Australia Attorney" not in all_names
     assert public_record_count.get_text(" ", strip=True) == "1"
 
 
@@ -1524,31 +1643,18 @@ def test_directory_all_filter_panel_hidden_by_default(
     assert region_select is not None
     assert region_label is not None
     assert region_label.get_text(" ", strip=True) == "State / Province / Region"
-    assert not region_select.has_attr("disabled")
+    assert region_select.has_attr("disabled")
     assert region_select.find("option", value="").get_text(" ", strip=True) == "All"
-    assert [optgroup.get("label") for optgroup in region_select.find_all("optgroup")] == [
-        "United States"
-    ]
     assert listing_type_select is not None
     assert listing_type_label is not None
     assert listing_type_label.get_text(" ", strip=True) == "Listing Type"
     assert [option.get("value") for option in listing_type_select.find_all("option")] == [
         "",
-        "verified",
-        "attorneys",
-        "newsrooms",
-        "securedrop",
-        "globaleaks",
     ]
     assert [
         option.get_text(" ", strip=True) for option in listing_type_select.find_all("option")
     ] == [
         "All",
-        "Verified (1)",
-        "Attorneys (1)",
-        "Journalists (1)",
-        "SecureDrop (1)",
-        "GlobaLeaks (1)",
     ]
     assert clear_filters_actions is not None
     assert clear_filters_actions.has_attr("hidden")
@@ -1794,12 +1900,14 @@ def test_directory_all_filter_panel_shows_selected_filters(
     country_select = soup.find(id="all-country-filter")
     region_select = soup.find(id="all-region-filter")
     listing_type_select = soup.find(id="all-listing-type-filter")
-    clear_filters_link = (
-        panel.find("a", id="all-filters-clear", href=url_for("directory"))
-        if isinstance(panel, Tag)
-        else None
+    all_rows = _directory_user_rows(
+        client, "all_country=US&all_region=CA&all_listing_type=attorneys&tab=all"
     )
-    all_panel = soup.find(id="all")
+    all_names = {row["display_name"] for row in all_rows}
+    all_filters_response = client.get(
+        f"{url_for('directory_all_filters')}?all_country=US&all_region=CA&all_listing_type=attorneys"
+    )
+    assert all_filters_response.status_code == 200
 
     assert toggle_shell is not None
     assert toggle_shell.has_attr("hidden")
@@ -1807,35 +1915,28 @@ def test_directory_all_filter_panel_shows_selected_filters(
     assert panel_shell.has_attr("hidden")
     assert toggle is not None
     assert toggle_label is not None
-    assert toggle_label.get_text(" ", strip=True) == "Hide Filters"
-    assert toggle.get("aria-expanded") == "true"
+    assert toggle_label.get_text(" ", strip=True) == "Show Filters"
+    assert toggle.get("aria-expanded") == "false"
     assert toggle_badge is not None
-    assert toggle_badge.get_text(" ", strip=True) == "3"
-    assert toggle_badge.get("aria-label") == "3 active filters"
+    assert toggle_badge.get_text(" ", strip=True) == "0"
+    assert toggle_badge.get("aria-label") == "0 active filters"
     assert toggle_badge.has_attr("hidden")
     assert panel is not None
-    assert not panel.has_attr("hidden")
+    assert panel.has_attr("hidden")
     assert clear_filters_actions is not None
-    assert not clear_filters_actions.has_attr("hidden")
+    assert clear_filters_actions.has_attr("hidden")
     assert country_select is not None
     assert region_select is not None
     assert listing_type_select is not None
-    assert clear_filters_link is not None
-    assert country_select.find("option", selected=True)["value"] == "United States"
-    assert country_select.find("option", selected=True).get_text(" ", strip=True) == (
-        "United States"
-    )
-    assert region_select.find("option", selected=True).get_text(" ", strip=True) == ("California")
-    assert region_select.find("option", selected=True)["value"] == "CA"
-    assert listing_type_select.find("option", selected=True)["value"] == "attorneys"
-    assert listing_type_select.find("option", selected=True).get_text(" ", strip=True) == (
-        "Attorneys"
-    )
-    assert all_panel is not None
-    all_panel_text = all_panel.get_text(" ", strip=True)
-    assert "California Attorney" in all_panel_text
-    assert "New York Attorney" not in all_panel_text
-    assert "General User" not in all_panel_text
+    assert country_select.find("option", selected=True) is None
+    assert region_select.find("option", selected=True) is None
+    assert listing_type_select.find("option", selected=True) is None
+    assert "California Attorney" in all_names
+    assert "New York Attorney" not in all_names
+    assert "General User" not in all_names
+    all_filter_metadata = cast(dict[str, object], all_filters_response.json)
+    listing_types = cast(list[dict[str, object]], all_filter_metadata["listing_types"])
+    assert {listing_type["code"] for listing_type in listing_types} == {"attorneys"}
 
 
 def test_directory_all_filters_do_not_change_attorney_or_newsroom_panels(
@@ -1888,17 +1989,16 @@ def test_directory_all_filters_do_not_change_attorney_or_newsroom_panels(
     soup = BeautifulSoup(response.text, "html.parser")
     public_records_panel = soup.find(id="public-records")
     newsroom_panel = soup.find(id="newsrooms")
-    all_panel = soup.find(id="all")
+    all_rows = _directory_user_rows(client, "all_country=Italy&all_listing_type=globaleaks&tab=all")
+    all_names = {row["display_name"] for row in all_rows}
 
     assert public_records_panel is not None
     assert newsroom_panel is not None
-    assert all_panel is not None
     assert "California Attorney" in public_records_panel.get_text(" ", strip=True)
     assert "California Newsroom" in newsroom_panel.get_text(" ", strip=True)
-    all_panel_text = all_panel.get_text(" ", strip=True)
-    assert "Italy GlobaLeaks" in all_panel_text
-    assert "California Attorney" not in all_panel_text
-    assert "California Newsroom" not in all_panel_text
+    assert "Italy GlobaLeaks" in all_names
+    assert "California Attorney" not in all_names
+    assert "California Newsroom" not in all_names
 
 
 def test_directory_users_json_filters_only_public_record_rows_by_query_params(
@@ -2996,17 +3096,19 @@ def test_directory_securedrop_render_only_in_securedrop_and_all(
     public_records_panel = soup.find(id="public-records")
     securedrop_panel = soup.find(id="securedrop")
     all_panel = soup.find(id="all")
+    all_row = next(
+        row for row in _directory_user_rows(client) if row["display_name"] == listing.name
+    )
 
     assert securedrop_panel is not None
     assert all_panel is not None
     assert listing.name in securedrop_panel.text
-    assert listing.name in all_panel.text
     assert listing.description in securedrop_panel.text
-    assert listing.description in all_panel.text
     assert securedrop_panel.select_one('span.badge[aria-label="SecureDrop listing"]') is None
     assert securedrop_panel.select_one('span.badge[aria-label="Automated listing"]') is not None
-    assert all_panel.select_one('span.badge[aria-label="SecureDrop listing"]') is not None
-    assert all_panel.select_one('span.badge[aria-label="Automated listing"]') is not None
+    assert not all_panel.select("article.user")
+    assert all_row["is_securedrop"] is True
+    assert all_row["bio"] == listing.description
     assert public_records_panel is not None
     assert listing.name not in public_records_panel.text
     assert verified_panel is not None
@@ -3031,17 +3133,19 @@ def test_directory_globaleaks_render_only_in_globaleaks_and_all(
     globaleaks_panel = soup.find(id="globaleaks")
     securedrop_panel = soup.find(id="securedrop")
     all_panel = soup.find(id="all")
+    all_row = next(
+        row for row in _directory_user_rows(client) if row["display_name"] == listing.name
+    )
 
     assert globaleaks_panel is not None
     assert all_panel is not None
     assert listing.name in globaleaks_panel.text
-    assert listing.name in all_panel.text
     assert listing.description in globaleaks_panel.text
-    assert listing.description in all_panel.text
     assert globaleaks_panel.select_one('span.badge[aria-label="GlobaLeaks listing"]') is None
     assert globaleaks_panel.select_one('span.badge[aria-label="Automated listing"]') is not None
-    assert all_panel.select_one('span.badge[aria-label="GlobaLeaks listing"]') is not None
-    assert all_panel.select_one('span.badge[aria-label="Automated listing"]') is not None
+    assert not all_panel.select("article.user")
+    assert all_row["is_globaleaks"] is True
+    assert all_row["bio"] == listing.description
     assert public_records_panel is not None
     assert listing.name not in public_records_panel.text
     assert securedrop_panel is not None
@@ -3097,13 +3201,14 @@ def test_directory_globaleaks_cards_do_not_show_location(
 
     soup = BeautifulSoup(response.text, "html.parser")
     globaleaks_panel = soup.find(id="globaleaks")
-    all_panel = soup.find(id="all")
+    all_row = next(
+        row for row in _directory_user_rows(client) if row["display_name"] == listing.name
+    )
 
     globaleaks_card = _find_directory_card(globaleaks_panel, listing.name)
-    all_card = _find_directory_card(all_panel, listing.name)
 
     assert listing.location not in globaleaks_card.get_text(" ", strip=True)
-    assert listing.location not in all_card.get_text(" ", strip=True)
+    assert "location" not in all_row
 
 
 def test_newsroom_seed_has_rows() -> None:
@@ -3184,13 +3289,14 @@ def test_directory_newsroom_cards_do_not_show_location(
 
     soup = BeautifulSoup(response.text, "html.parser")
     newsroom_panel = soup.find(id="newsrooms")
-    all_panel = soup.find(id="all")
+    all_row = next(
+        row for row in _directory_user_rows(client) if row["display_name"] == listing.name
+    )
 
     newsroom_card = _find_directory_card(newsroom_panel, listing.name)
-    all_card = _find_directory_card(all_panel, listing.name)
 
     assert listing.location not in newsroom_card.get_text(" ", strip=True)
-    assert listing.location not in all_card.get_text(" ", strip=True)
+    assert "location" not in all_row
 
 
 def test_directory_users_json_includes_securedrop_rows(client: FlaskClient) -> None:
@@ -3227,13 +3333,14 @@ def test_directory_securedrop_cards_do_not_show_location(client: FlaskClient) ->
 
     soup = BeautifulSoup(response.text, "html.parser")
     securedrop_panel = soup.find(id="securedrop")
-    all_panel = soup.find(id="all")
+    all_row = next(
+        row for row in _directory_user_rows(client) if row["display_name"] == listing.name
+    )
 
     securedrop_card = _find_directory_card(securedrop_panel, listing.name)
-    all_card = _find_directory_card(all_panel, listing.name)
 
     assert listing.location not in securedrop_card.get_text(" ", strip=True)
-    assert listing.location not in all_card.get_text(" ", strip=True)
+    assert "location" not in all_row
 
 
 def test_public_record_listing_normalizes_us_state_into_country_and_subdivision() -> None:
@@ -3580,6 +3687,7 @@ def test_directory_all_tab_is_homogeneous_with_admin_first_and_info_only_badge(
     verified_panel = soup.find(id="verified")
     assert all_panel is not None
     assert verified_panel is not None
+    all_rows = _directory_user_rows(client)
 
     assert all_panel.select("p.label") == []
     assert "Info-Only Accounts" not in all_panel.get_text(" ", strip=True)
@@ -3588,10 +3696,8 @@ def test_directory_all_tab_is_homogeneous_with_admin_first_and_info_only_badge(
     assert "GlobaLeaks Instances" not in all_panel.get_text(" ", strip=True)
     assert "SecureDrop Instances" not in all_panel.get_text(" ", strip=True)
 
-    all_titles = [
-        heading.get_text(" ", strip=True) for heading in all_panel.select("article.user h3")
-    ]
-    assert all_titles == [
+    assert not all_panel.select("article.user")
+    assert _client_sorted_all_display_names(all_rows) == [
         "Zulu Admin",
         "Alpha Public Listing",
         "Bravo Info",
@@ -3601,14 +3707,10 @@ def test_directory_all_tab_is_homogeneous_with_admin_first_and_info_only_badge(
         "Zulu User",
     ]
 
-    info_only_card = next(
-        card
-        for card in all_panel.select("article.user")
-        if card.select_one("h3") and card.select_one("h3").get_text(" ", strip=True) == "Bravo Info"
-    )
-    assert info_only_card.select_one('span.badge[aria-label="Info-only account"]') is not None
-    admin_card = _find_directory_card(all_panel, "Zulu Admin")
-    assert admin_card.select_one('span.badge[aria-label="Administrator account"]') is not None
+    info_only_row = next(row for row in all_rows if row["display_name"] == "Bravo Info")
+    admin_row = next(row for row in all_rows if row["display_name"] == "Zulu Admin")
+    assert info_only_row["has_pgp_key"] is False
+    assert admin_row["is_admin"] is True
     assert verified_panel.select_one('span.badge[aria-label="Info-only account"]') is None
 
 
@@ -3720,31 +3822,20 @@ def test_directory_all_tab_does_not_promote_non_admin_named_admin(
     soup = BeautifulSoup(response.text, "html.parser")
     all_panel = soup.find(id="all")
     assert all_panel is not None
+    all_rows = _directory_user_rows(client)
 
-    all_titles = [
-        heading.get_text(" ", strip=True) for heading in all_panel.select("article.user h3")
-    ]
-    assert all_titles == [
+    assert not all_panel.select("article.user")
+    assert _client_sorted_all_display_names(all_rows) == [
         "Hush Line Admin",
         "4allmn",
         "5a8er",
         "admin",
     ]
 
-    spoof_card = _find_directory_card(all_panel, "admin")
-    assert (
-        spoof_card.select_one(
-            'span.badge[aria-label="Caution: display name may be mistaken for admin"]'
-        )
-        is not None
-    )
-    official_admin_card = _find_directory_card(all_panel, "Hush Line Admin")
-    assert (
-        official_admin_card.select_one(
-            'span.badge[aria-label="Caution: display name may be mistaken for admin"]'
-        )
-        is None
-    )
+    spoof_row = next(row for row in all_rows if row["display_name"] == "admin")
+    official_admin_row = next(row for row in all_rows if row["display_name"] == "Hush Line Admin")
+    assert spoof_row["show_caution_badge"] is True
+    assert official_admin_row["show_caution_badge"] is False
 
 
 def test_directory_all_tab_moves_caution_accounts_to_bottom(
@@ -3792,14 +3883,7 @@ def test_directory_all_tab_moves_caution_accounts_to_bottom(
     response = client.get(url_for("directory"))
     assert response.status_code == 200
 
-    soup = BeautifulSoup(response.text, "html.parser")
-    all_panel = soup.find(id="all")
-    assert all_panel is not None
-
-    all_titles = [
-        heading.get_text(" ", strip=True) for heading in all_panel.select("article.user h3")
-    ]
-    assert all_titles == [
+    assert _client_sorted_all_display_names(_directory_user_rows(client)) == [
         "Hush Line Admin",
         "Alpha Witness",
         "Zulu Witness",
@@ -3872,14 +3956,7 @@ def test_directory_all_tab_orders_users_by_display_name_after_admin_pin(
     response = client.get(url_for("directory"))
     assert response.status_code == 200
 
-    soup = BeautifulSoup(response.text, "html.parser")
-    all_panel = soup.find(id="all")
-    assert all_panel is not None
-
-    all_titles = [
-        heading.get_text(" ", strip=True) for heading in all_panel.select("article.user h3")
-    ]
-    assert all_titles == [
+    assert _client_sorted_all_display_names(_directory_user_rows(client)) == [
         "Hush Line Admin",
         "Alpha Witness",
         "Bravo Listing",
@@ -3932,14 +4009,7 @@ def test_directory_all_tab_preserves_transliterated_display_name_order(
     response = client.get(url_for("directory"))
     assert response.status_code == 200
 
-    soup = BeautifulSoup(response.text, "html.parser")
-    all_panel = soup.find(id="all")
-    assert all_panel is not None
-
-    all_titles = [
-        heading.get_text(" ", strip=True) for heading in all_panel.select("article.user h3")
-    ]
-    assert all_titles == [
+    assert _client_sorted_all_display_names(_directory_user_rows(client)) == [
         "Hush Line Admin",
         "Alpha Witness",
         "피스피스스튜디오 주식회사",
