@@ -3422,7 +3422,7 @@ $'  File "/app/hushline/settings/common.py", line 358, in handle_embed_settings_
 $'    username.set_embed_allowed_origins(form.normalized_origins)\\n'\
 $'AttributeError: EmbedSettingsForm has no attribute normalized_origins\\n'
 for i in $(seq 1 180); do
-  failure_text+=$'hushline/module_'$i$'.py                         100      1    99%\\n'
+  failure_text+=$'hushline/module_'$i$'.py                         100      1    99%   42\\n'
 done
 failure_text+=$'FAILED tests/test_embeddable_forms_settings.py::test_origin - assert 500 == 400\\n'
 recent_failure_block_from_text "$failure_text"

@@ -3589,7 +3589,7 @@ recent_failure_block_from_text() {
     /^Coverage HTML written/ { next }
     /^Name[[:space:]]+Stmts[[:space:]]+Miss/ { next }
     /^TOTAL[[:space:]]+/ { next }
-    /^[^[:space:]]+\.py[[:space:]]+[0-9]+[[:space:]]+[0-9]+[[:space:]]+[0-9]+%$/ { next }
+    /^[^[:space:]]+\.py[[:space:]]+[0-9]+[[:space:]]+[0-9]+[[:space:]]+[0-9]+%([[:space:]].*)?$/ { next }
     /^={5,}/ { next }
     /^-{5,}/ { next }
     /^tests\/.* (PASSED|XFAIL|XPASS|SKIPPED)([[:space:]]|\[)/ { next }
