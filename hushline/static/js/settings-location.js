@@ -1,60 +1,104 @@
-document.addEventListener("DOMContentLoaded", function () {
-  const t = document.getElementById("country"),
-    e = document.getElementById("subdivision"),
-    n = document.getElementById("city");
-  if (!t || !e || !n) return;
-  const a = t.dataset.statesUrl,
-    i = e.dataset.citiesUrl;
-  function c(t, e) {
-    (t.disabled = e), t.setAttribute("aria-disabled", e ? "true" : "false");
-  }
-  function o(t, e, n, a) {
-    const i = [{ value: "", label: e }, ...n];
-    (t.innerHTML = ""),
-      i.forEach(function (e) {
-        const n = document.createElement("option");
-        (n.value = e.value), (n.textContent = e.label), t.appendChild(n);
+/******/ (() => {
+  // webpackBootstrap
+  /*!****************************************!*\
+  !*** ./assets/js/settings-location.js ***!
+  \****************************************/
+  document.addEventListener("DOMContentLoaded", function () {
+    const countryInput = document.getElementById("country");
+    const subdivisionInput = document.getElementById("subdivision");
+    const cityInput = document.getElementById("city");
+
+    if (!countryInput || !subdivisionInput || !cityInput) {
+      return;
+    }
+
+    const statesUrl = countryInput.dataset.statesUrl;
+    const citiesUrl = subdivisionInput.dataset.citiesUrl;
+
+    function setDisabledState(input, disabled) {
+      input.disabled = disabled;
+      input.setAttribute("aria-disabled", disabled ? "true" : "false");
+    }
+
+    function renderOptions(select, placeholder, options, selectedValue) {
+      const nextOptions = [{ value: "", label: placeholder }, ...options];
+      select.innerHTML = "";
+
+      nextOptions.forEach(function (option) {
+        const optionElement = document.createElement("option");
+        optionElement.value = option.value;
+        optionElement.textContent = option.label;
+        select.appendChild(optionElement);
       });
-    const c = new Set(
-      i.map(function (t) {
-        return t.value;
-      }),
-    );
-    t.value = c.has(a) ? a : "";
-  }
-  async function s(i) {
-    const s = t.value.trim();
-    if (!s || !a)
-      return (
-        o(e, "Select", [], ""), o(n, "Select", [], ""), c(e, !0), void c(n, !0)
+
+      const validValues = new Set(
+        nextOptions.map(function (option) {
+          return option.value;
+        }),
       );
-    const u = await fetch(`${a}?country=${encodeURIComponent(s)}`),
-      r = await u.json(),
-      l = Array.isArray(r.states) ? r.states : [];
-    o(e, "Select", l, i),
-      c(e, !1),
-      e.value || (o(n, "Select", [], ""), c(n, !0));
-  }
-  async function u(a) {
-    const s = t.value.trim(),
-      u = e.value.trim();
-    if (!s || !u || !i) return o(n, "Select", [], ""), void c(n, !0);
-    const r = new URLSearchParams({ country: s, subdivision: u }),
-      l = await fetch(`${i}?${r.toString()}`),
-      d = await l.json(),
-      v = Array.isArray(d.cities) ? d.cities : [];
-    o(n, "Select", v, a), c(n, !1);
-  }
-  t.addEventListener("change", async function () {
-    await s("");
-  }),
-    e.addEventListener("change", async function () {
-      await u("");
-    }),
-    (async function () {
-      c(e, !t.value.trim()),
-        c(n, !e.value.trim()),
-        await s(e.value),
-        await u(n.value);
+      select.value = validValues.has(selectedValue) ? selectedValue : "";
+    }
+
+    async function loadStates(selectedValue) {
+      const country = countryInput.value.trim();
+      if (!country || !statesUrl) {
+        renderOptions(subdivisionInput, "Select", [], "");
+        renderOptions(cityInput, "Select", [], "");
+        setDisabledState(subdivisionInput, true);
+        setDisabledState(cityInput, true);
+        return;
+      }
+
+      const response = await fetch(
+        `${statesUrl}?country=${encodeURIComponent(country)}`,
+      );
+      const payload = await response.json();
+      const states = Array.isArray(payload.states) ? payload.states : [];
+      renderOptions(subdivisionInput, "Select", states, selectedValue);
+      setDisabledState(subdivisionInput, false);
+
+      if (!subdivisionInput.value) {
+        renderOptions(cityInput, "Select", [], "");
+        setDisabledState(cityInput, true);
+      }
+    }
+
+    async function loadCities(selectedValue) {
+      const country = countryInput.value.trim();
+      const subdivision = subdivisionInput.value.trim();
+      if (!country || !subdivision || !citiesUrl) {
+        renderOptions(cityInput, "Select", [], "");
+        setDisabledState(cityInput, true);
+        return;
+      }
+
+      const params = new URLSearchParams({
+        country,
+        subdivision,
+      });
+      const response = await fetch(`${citiesUrl}?${params.toString()}`);
+      const payload = await response.json();
+      const cities = Array.isArray(payload.cities) ? payload.cities : [];
+      renderOptions(cityInput, "Select", cities, selectedValue);
+      setDisabledState(cityInput, false);
+    }
+
+    countryInput.addEventListener("change", async function () {
+      await loadStates("");
+    });
+
+    subdivisionInput.addEventListener("change", async function () {
+      await loadCities("");
+    });
+
+    (async function syncLocationInputs() {
+      setDisabledState(subdivisionInput, !countryInput.value.trim());
+      setDisabledState(cityInput, !subdivisionInput.value.trim());
+      await loadStates(subdivisionInput.value);
+      await loadCities(cityInput.value);
     })();
-});
+  });
+
+  /******/
+})();
+//# sourceMappingURL=settings-location.js.map

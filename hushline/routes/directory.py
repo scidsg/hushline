@@ -1115,9 +1115,17 @@ def register_directory_routes(app: Flask) -> None:
                     or _username_matches_newsroom_filters(username, newsroom_filter_state)
                 ],
                 *public_record_rows,
-                *[_globaleaks_row(listing) for listing in get_globaleaks_directory_listings()],
+                *(
+                    [_globaleaks_row(listing) for listing in get_globaleaks_directory_listings()]
+                    if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
+                    else []
+                ),
                 *newsroom_rows,
-                *[_securedrop_row(listing) for listing in get_securedrop_directory_listings()],
+                *(
+                    [_securedrop_row(listing) for listing in get_securedrop_directory_listings()]
+                    if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
+                    else []
+                ),
             ]
         )
         return [

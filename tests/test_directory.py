@@ -430,11 +430,22 @@ def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient
 
 
 def test_directory_users_json_excludes_public_records_when_verified_tabs_disabled(
-    client: FlaskClient,
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    def fail_source_loader() -> tuple[object, ...]:
+        raise AssertionError("disabled verified-tab source loader should not run")
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_globaleaks_directory_listings",
+        fail_source_loader,
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_securedrop_directory_listings",
+        fail_source_loader,
+    )
     client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = False
     try:
-        response = client.get(url_for("directory_users"))
+        response = client.get(f"{url_for('directory_users')}?tab=all")
     finally:
         client.application.config["DIRECTORY_VERIFIED_TAB_ENABLED"] = True
 
