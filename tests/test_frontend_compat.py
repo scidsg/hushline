@@ -273,7 +273,8 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert 'const directoryPath = window.location.pathname.replace(/\\/$/, "");' in (
         directory_verified_js
     )
-    assert "fetch(`${directoryPath}/users.json${search}`, requestOptions)" in directory_verified_js
+    assert "function usersJsonSearchForTab(tab, search)" in directory_verified_js
+    assert "usersJsonSearchForTab(tab, search)" in directory_verified_js
     assert 'metadataPath: "all-filters.json"' in directory_verified_js
     assert 'metadataPath: "attorney-filters.json"' in directory_verified_js
     assert 'metadataPath: "newsroom-filters.json"' in directory_verified_js
@@ -373,6 +374,7 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert "user.subdivision," in directory_verified_js
     assert "Array.isArray(user.countries)" in directory_verified_js
     assert "users.json" in directory_verified_static_js
+    assert "usersJsonSearchForTab" in directory_verified_static_js
     assert "all-filters.json" in directory_verified_static_js
     assert "attorney-filters.json" in directory_verified_static_js
     assert "fetch(`${directoryPath}/${controller.metadataPath}${search}`)" in (
