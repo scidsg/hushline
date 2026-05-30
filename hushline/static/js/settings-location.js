@@ -1,1 +1,60 @@
-document.addEventListener("DOMContentLoaded",function(){const t=document.getElementById("country"),e=document.getElementById("subdivision"),n=document.getElementById("city");if(!t||!e||!n)return;const a=t.dataset.statesUrl,i=e.dataset.citiesUrl;function c(t,e){t.disabled=e,t.setAttribute("aria-disabled",e?"true":"false")}function o(t,e,n,a){const i=[{value:"",label:e},...n];t.innerHTML="",i.forEach(function(e){const n=document.createElement("option");n.value=e.value,n.textContent=e.label,t.appendChild(n)});const c=new Set(i.map(function(t){return t.value}));t.value=c.has(a)?a:""}async function s(i){const s=t.value.trim();if(!s||!a)return o(e,"Select",[],""),o(n,"Select",[],""),c(e,!0),void c(n,!0);const u=await fetch(`${a}?country=${encodeURIComponent(s)}`),r=await u.json(),l=Array.isArray(r.states)?r.states:[];o(e,"Select",l,i),c(e,!1),e.value||(o(n,"Select",[],""),c(n,!0))}async function u(a){const s=t.value.trim(),u=e.value.trim();if(!s||!u||!i)return o(n,"Select",[],""),void c(n,!0);const r=new URLSearchParams({country:s,subdivision:u}),l=await fetch(`${i}?${r.toString()}`),d=await l.json(),v=Array.isArray(d.cities)?d.cities:[];o(n,"Select",v,a),c(n,!1)}t.addEventListener("change",async function(){await s("")}),e.addEventListener("change",async function(){await u("")}),async function(){c(e,!t.value.trim()),c(n,!e.value.trim()),await s(e.value),await u(n.value)}()});
+document.addEventListener("DOMContentLoaded", function () {
+  const t = document.getElementById("country"),
+    e = document.getElementById("subdivision"),
+    n = document.getElementById("city");
+  if (!t || !e || !n) return;
+  const a = t.dataset.statesUrl,
+    i = e.dataset.citiesUrl;
+  function c(t, e) {
+    (t.disabled = e), t.setAttribute("aria-disabled", e ? "true" : "false");
+  }
+  function o(t, e, n, a) {
+    const i = [{ value: "", label: e }, ...n];
+    (t.innerHTML = ""),
+      i.forEach(function (e) {
+        const n = document.createElement("option");
+        (n.value = e.value), (n.textContent = e.label), t.appendChild(n);
+      });
+    const c = new Set(
+      i.map(function (t) {
+        return t.value;
+      }),
+    );
+    t.value = c.has(a) ? a : "";
+  }
+  async function s(i) {
+    const s = t.value.trim();
+    if (!s || !a)
+      return (
+        o(e, "Select", [], ""), o(n, "Select", [], ""), c(e, !0), void c(n, !0)
+      );
+    const u = await fetch(`${a}?country=${encodeURIComponent(s)}`),
+      r = await u.json(),
+      l = Array.isArray(r.states) ? r.states : [];
+    o(e, "Select", l, i),
+      c(e, !1),
+      e.value || (o(n, "Select", [], ""), c(n, !0));
+  }
+  async function u(a) {
+    const s = t.value.trim(),
+      u = e.value.trim();
+    if (!s || !u || !i) return o(n, "Select", [], ""), void c(n, !0);
+    const r = new URLSearchParams({ country: s, subdivision: u }),
+      l = await fetch(`${i}?${r.toString()}`),
+      d = await l.json(),
+      v = Array.isArray(d.cities) ? d.cities : [];
+    o(n, "Select", v, a), c(n, !1);
+  }
+  t.addEventListener("change", async function () {
+    await s("");
+  }),
+    e.addEventListener("change", async function () {
+      await u("");
+    }),
+    (async function () {
+      c(e, !t.value.trim()),
+        c(n, !e.value.trim()),
+        await s(e.value),
+        await u(n.value);
+    })();
+});
