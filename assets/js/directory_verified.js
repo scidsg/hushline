@@ -51,8 +51,9 @@ document.addEventListener("DOMContentLoaded", function () {
   const newsroomCountryFilter = document.getElementById("newsroom-country-filter");
   const newsroomRegionFilter = document.getElementById("newsroom-region-filter");
   const initialMarkup = new Map();
-  let userData = [];
-  let allTabUserData = [];
+  const directoryDataByTab = new Map();
+  const directoryDataSearchByTab = new Map();
+  const directoryDataRequestsByTab = new Map();
   let hasRenderedSearch = false;
   let directoryDataRequestController = null;
   let directoryDataLoadingController = null;
@@ -86,7 +87,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function usersForTab(tab = activeTabName()) {
-    return tab === "all" ? allTabUserData : userData;
+    return directoryDataByTab.get(tab) || [];
   }
 
   function updateTabScrollControls() {
@@ -571,17 +572,28 @@ document.addEventListener("DOMContentLoaded", function () {
     return panel.innerHTML;
   }
 
-  function refreshInitialMarkup() {
-    ["public-records", "newsrooms", "all"].forEach((panelId) => {
+  function refreshInitialMarkup(panelIds = ["public-records", "newsrooms", "all"]) {
+    panelIds.forEach((panelId) => {
       if (document.getElementById(panelId)) {
         initialMarkup.set(panelId, buildDefaultPanelMarkup(panelId));
       }
     });
   }
 
+  function showPanelLoading(tab) {
+    const panel = document.getElementById(tab);
+    if (!panel) {
+      return;
+    }
+
+    const introMarkup = panelIntroMarkup(tab);
+    panel.innerHTML = `${introMarkup}<p class="empty-message" role="status">Loading...</p>`;
+  }
+
   function handleSearchInput() {
     const query = searchInput.value.trim();
     const panel = activePanel();
+    const tab = activeTabName();
     const currentScopeLabel = scopeLabel();
     const hasQuery = query.length > 0;
 
@@ -599,6 +611,23 @@ document.addEventListener("DOMContentLoaded", function () {
         setSearchStatus(`Showing all ${currentScopeLabel}.`);
       }
       hasRenderedSearch = false;
+      return;
+    }
+
+    if (!directoryDataByTab.has(tab)) {
+      setSearchStatus(`Loading ${currentScopeLabel}.`);
+      loadTabData(tab)
+        .then(() => {
+          handleSearchInput();
+        })
+        .catch((error) => {
+          if (error.name === "AbortError") {
+            return;
+          }
+
+          setSearchStatus(`Unable to load ${currentScopeLabel}.`);
+          console.error(`Failed to load ${currentScopeLabel}:`, error);
+        });
       return;
     }
 
@@ -632,6 +661,65 @@ document.addEventListener("DOMContentLoaded", function () {
       "newsroom_country",
       "newsroom_region",
     ]);
+  }
+
+  function directorySearchForTab(tab, search) {
+    if (tab === "all") {
+      return allTabDirectorySearch(search);
+    }
+
+    return sharedDirectorySearch(search);
+  }
+
+  function usersJsonSearchForTab(tab, search) {
+    const params = new URLSearchParams(directorySearchForTab(tab, search));
+    params.set("tab", tab);
+    const nextSearch = params.toString();
+    return nextSearch ? `?${nextSearch}` : `?tab=${encodeURIComponent(tab)}`;
+  }
+
+  function loadTabData(tab, search = window.location.search, options = {}) {
+    const dataSearch = directorySearchForTab(tab, search);
+    const requestKey = `${tab}\n${dataSearch}`;
+
+    if (
+      directoryDataSearchByTab.get(tab) === dataSearch &&
+      directoryDataByTab.has(tab)
+    ) {
+      return Promise.resolve(directoryDataByTab.get(tab));
+    }
+
+    if (directoryDataRequestsByTab.has(requestKey)) {
+      return directoryDataRequestsByTab.get(requestKey);
+    }
+
+    const requestOptions = {};
+    if (options.signal) {
+      requestOptions.signal = options.signal;
+    }
+
+    const request = fetch(
+      `${directoryPath}/users.json${usersJsonSearchForTab(tab, search)}`,
+      requestOptions,
+    )
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        directoryDataByTab.set(tab, data);
+        directoryDataSearchByTab.set(tab, dataSearch);
+        refreshInitialMarkup([tab]);
+        return data;
+      })
+      .finally(() => {
+        directoryDataRequestsByTab.delete(requestKey);
+      });
+
+    directoryDataRequestsByTab.set(requestKey, request);
+    return request;
   }
 
   function createLocationFilterController(config) {
@@ -1057,15 +1145,20 @@ document.addEventListener("DOMContentLoaded", function () {
       return metadataRequest;
     };
 
-    controller.refreshResults = async function () {
-      if (!controller.panel) {
-        return;
-      }
+      controller.refreshResults = async function () {
+        if (!controller.panel) {
+          return;
+        }
 
-      const nextSearch = controller.buildSearch();
-      if (controller.loading || loadedDirectorySearch === nextSearch) {
-        return;
-      }
+        const nextSearch = controller.buildSearch();
+        const dataSearch = directorySearchForTab(controller.tabName, nextSearch);
+        if (
+          controller.loading ||
+          (directoryDataSearchByTab.get(controller.tabName) === dataSearch &&
+            directoryDataByTab.has(controller.tabName))
+        ) {
+          return;
+        }
       setSearchStatus(`Updating ${controller.resultsLabelPlural} results.`);
       setDirectoryUrl(nextSearch);
 
@@ -1266,14 +1359,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function updateLocationFilterCountBadges() {
     locationFilterControllers.forEach((controller) => {
-      controller.updateCountBadge();
+      if (directoryDataByTab.has(controller.tabName)) {
+        controller.updateCountBadge();
+      }
     });
   }
 
-  function refreshLocationFilterMetadata(search = window.location.search) {
-    return Promise.all(
-      locationFilterControllers.map((controller) => controller.ensureMetadata(search)),
-    );
+  function locationFilterControllerForTab(tab) {
+    return locationFilterControllers.find((controller) => controller.tabName === tab) || null;
   }
 
   function setDirectoryUrl(search) {
@@ -1284,36 +1377,9 @@ document.addEventListener("DOMContentLoaded", function () {
     );
   }
 
-  function loadData(search = window.location.search, options = {}) {
-    const requestOptions = {};
-    if (options.signal) {
-      requestOptions.signal = options.signal;
-    }
-
-    const fetchUsers = (search) =>
-      fetch(`${directoryPath}/users.json${search}`, requestOptions).then((response) => {
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        return response.json();
-      });
-
-    return Promise.all([
-      fetchUsers(sharedDirectorySearch(search)),
-      fetchUsers(allTabDirectorySearch(search)),
-      refreshLocationFilterMetadata(search),
-    ]).then(([directoryData, nextAllTabUserData]) => {
-      userData = directoryData;
-      allTabUserData = nextAllTabUserData;
-      loadedDirectorySearch = search;
-      updateLocationFilterCountBadges();
-      refreshInitialMarkup();
-      handleSearchInput();
-    });
-  }
-
   function requestDirectoryData(search = window.location.search, options = {}) {
     const { loadingController = null } = options;
+    const tab = loadingController?.tabName || activeTabName();
 
     if (directoryDataRequestController) {
       directoryDataRequestController.abort();
@@ -1331,17 +1397,36 @@ document.addEventListener("DOMContentLoaded", function () {
       loadingController.setLoadingState(true);
     }
 
-    return loadData(search, { signal: controller.signal }).finally(() => {
-      if (directoryDataRequestController === controller) {
-        directoryDataRequestController = null;
-        if (directoryDataLoadingController === loadingController) {
-          if (loadingController) {
-            loadingController.setLoadingState(false);
+    if (!directoryDataByTab.has(tab)) {
+      showPanelLoading(tab);
+    }
+
+    const metadataController = loadingController || locationFilterControllerForTab(tab);
+    const metadataRequest = metadataController
+      ? metadataController.ensureMetadata(search)
+      : Promise.resolve(null);
+
+    return Promise.all([
+      loadTabData(tab, search, { signal: controller.signal }),
+      metadataRequest,
+    ])
+      .then(() => {
+        loadedDirectorySearch = search;
+        updateLocationFilterCountBadges();
+        refreshInitialMarkup([tab]);
+        handleSearchInput();
+      })
+      .finally(() => {
+        if (directoryDataRequestController === controller) {
+          directoryDataRequestController = null;
+          if (directoryDataLoadingController === loadingController) {
+            if (loadingController) {
+              loadingController.setLoadingState(false);
+            }
+            directoryDataLoadingController = null;
           }
-          directoryDataLoadingController = null;
         }
-      }
-    });
+      });
   }
 
   if (searchInput) {
@@ -1390,11 +1475,21 @@ document.addEventListener("DOMContentLoaded", function () {
     targetPanel.classList.add("active");
     selectedTab.scrollIntoView({ block: "nearest", inline: "nearest" });
 
-    updateLocationFilterVisibility();
-    updatePlaceholder();
-    handleSearchInput();
-    requestAnimationFrame(updateTabScrollControls);
-  };
+      updateLocationFilterVisibility();
+      updatePlaceholder();
+      handleSearchInput();
+      if (selectedTab.getAttribute("data-tab") !== "verified") {
+        requestDirectoryData().catch((error) => {
+          if (error.name === "AbortError") {
+            return;
+          }
+
+          setSearchStatus(`Unable to load ${scopeLabel()}.`);
+          console.error("Failed to load directory tab data:", error);
+        });
+      }
+      requestAnimationFrame(updateTabScrollControls);
+    };
 
   tabs.forEach((tab) => {
     tab.addEventListener("click", function (event) {
@@ -1487,15 +1582,5 @@ document.addEventListener("DOMContentLoaded", function () {
     updateTabScrollControls();
   }
 
-  updatePlaceholder();
-  locationFilterControllers.forEach((controller) => {
-    void controller.ensureMetadata();
+    updatePlaceholder();
   });
-  requestDirectoryData().catch((error) => {
-    if (error.name === "AbortError") {
-      return;
-    }
-
-    console.error("Failed to load user data:", error);
-  });
-});
