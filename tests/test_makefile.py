@@ -45,4 +45,5 @@ def test_test_target_writes_html_coverage_to_tmp_by_default() -> None:
     assert "COVERAGE_HTML_DIR ?= /tmp/hushline-htmlcov" in (REPO_ROOT / "Makefile").read_text(
         encoding="utf-8"
     )
+    assert "--cov-report term-missing" in target_section
     assert "--cov-report html:$(COVERAGE_HTML_DIR)" in target_section

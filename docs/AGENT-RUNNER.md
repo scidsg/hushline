@@ -117,7 +117,7 @@ Every queued issue is assumed to require a real change. Once the runner claims a
     - child issues under a parent epic open/update a child PR whose base branch is the shared epic branch
     - the long-lived epic PR, when present, remains the only PR that targets `main`
 21. Move the selected issue into project status `Ready for Review` once the PR exists.
-22. After the PR exists and before feedback polling starts, parse the latest `make test` coverage snapshot and open a follow-up issue for any files with missed statements. Add that issue to the `Hush Line Roadmap` project in the `Agent Eligible` status.
+22. After the PR exists and before feedback polling starts, parse the latest line-specific `make test` coverage snapshot and open one follow-up issue for any files with missed statements. The issue must include the exact missing line ranges, explicit 100% / zero-miss acceptance criteria, and instructions that the follow-up PR is not complete if it would create another coverage-gap issue. Add that issue to the `Hush Line Roadmap` project in the `Agent Eligible` status.
 23. For child PRs targeting an epic branch, record `Linked issue: #<n>` in the PR body instead of relying on GitHub's default-branch-only close keywords.
 24. A dedicated workflow closes that linked child issue after the child PR is merged into the epic branch.
 25. Include runner log path in PR context and use a plain-language narrative lead for broad audiences, followed by the structured PR body sections (`Summary`, `Context`, `Changed Files`, `Validation`, `Manual Testing`).
