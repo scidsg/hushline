@@ -380,6 +380,13 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert "fetch(`${directoryPath}/${controller.metadataPath}${search}`)" in (
         directory_verified_static_js
     )
+    assert "function setFeaturedSlideInteractive(slide, isInteractive)" in directory_verified_js
+    assert 'slide.setAttribute("inert", "");' in directory_verified_js
+    assert 'slide.removeAttribute("inert");' in directory_verified_js
+    assert "[data-featured-original-tabindex]" in directory_verified_js
+    assert ".featured-directory-window::before" in scss
+    assert ".featured-directory-window::after" in scss
+    assert "--featured-carousel-fade-bg" in scss
     assert "controller.countryLabelForValue = function (value) {" in directory_verified_static_js
     assert "replaceState" in directory_verified_static_js
     assert ".directory-sticky-shell" in scss

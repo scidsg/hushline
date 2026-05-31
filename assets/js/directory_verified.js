@@ -597,6 +597,40 @@ document.addEventListener("DOMContentLoaded", function () {
     featuredCarouselCleanups = [];
   }
 
+  function featuredFocusableElements(slide) {
+    return slide.querySelectorAll(
+      "a, button, input, select, textarea, [tabindex], [data-featured-had-tabindex], [data-featured-original-tabindex]",
+    );
+  }
+
+  function setFeaturedSlideInteractive(slide, isInteractive) {
+    if (isInteractive) {
+      slide.removeAttribute("inert");
+      featuredFocusableElements(slide).forEach((element) => {
+        if (element.dataset.featuredOriginalTabindex !== undefined) {
+          element.setAttribute("tabindex", element.dataset.featuredOriginalTabindex);
+          delete element.dataset.featuredOriginalTabindex;
+        } else if (element.dataset.featuredHadTabindex === "false") {
+          element.removeAttribute("tabindex");
+          delete element.dataset.featuredHadTabindex;
+        }
+      });
+      return;
+    }
+
+    slide.setAttribute("inert", "");
+    featuredFocusableElements(slide).forEach((element) => {
+      if (element.dataset.featuredHadTabindex === undefined) {
+        if (element.hasAttribute("tabindex")) {
+          element.dataset.featuredOriginalTabindex = element.getAttribute("tabindex");
+        } else {
+          element.dataset.featuredHadTabindex = "false";
+        }
+      }
+      element.setAttribute("tabindex", "-1");
+    });
+  }
+
   function initializeFeaturedCarousels() {
     clearFeaturedCarouselTimers();
 
@@ -675,8 +709,10 @@ document.addEventListener("DOMContentLoaded", function () {
           const isActive = index === activeIndex;
           slide.classList.toggle("active", isActive);
           slide.setAttribute("aria-hidden", isActive ? "false" : "true");
+          setFeaturedSlideInteractive(slide, isActive);
         });
       };
+      setActiveSlideState();
 
       const stopProgress = () => {
         if (autoAdvanceTimer) {
