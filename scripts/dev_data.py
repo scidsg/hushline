@@ -42,6 +42,7 @@ def default_users() -> list[dict[str, object]]:
             "password": "Test-testtesttesttest-1",
             "is_admin": True,
             "is_verified": True,
+            "is_featured": True,
             "display_name": "Hush Line Admin",
             "bio": (
                 "Message for account verification, technical problems, and general feedback!"
@@ -61,6 +62,7 @@ def default_users() -> list[dict[str, object]]:
             "password": "Test-testtesttesttest-1",
             "is_admin": False,
             "is_verified": True,
+            "is_featured": True,
             "tier": "Super User",
             "display_name": "Art Vandelay",
             "bio": (
@@ -311,6 +313,7 @@ def create_users() -> None:
         display_name = cast(str, data.get("display_name", username))
         bio = cast(str, data.get("bio", ""))[:250]  # Ensure truncation to 250 characters
         is_verified = cast(bool, data.get("is_verified", False))
+        is_featured = cast(bool, data.get("is_featured", False))
         extra_fields = cast(List[Tuple[str, str, bool]], data.get("extra_fields", []))
         pgp_key = cast(Optional[str], data.get("pgp_key"))  # Optional PGP key
         onboarding_complete = cast(bool, data.get("onboarding_complete", True))
@@ -340,6 +343,7 @@ def create_users() -> None:
                 is_primary=True,
                 show_in_directory=True,
                 is_verified=is_verified,
+                is_featured=is_featured,
             )
             db.session.add(primary)
 
@@ -395,6 +399,7 @@ def create_users() -> None:
         primary.bio = bio
         primary.show_in_directory = True
         primary.is_verified = is_verified
+        primary.is_featured = is_featured
 
         for i in range(1, MAX_EXTRA_FIELDS + 1):
             setattr(primary, f"extra_field_label{i}", None)

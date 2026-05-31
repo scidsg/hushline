@@ -333,6 +333,8 @@ def test_directory_verified_tab_promotes_featured_users_first(
 
     featured_section = verified_panel.select_one("[data-featured-carousel]")
     assert featured_section is not None
+    assert featured_section.select_one("[data-featured-window]") is not None
+    assert featured_section.select_one("[data-featured-track]") is not None
     first_card = verified_panel.select_one("article.user")
     assert first_card is not None
     first_card_heading = first_card.select_one("h3")
@@ -341,6 +343,7 @@ def test_directory_verified_tab_promotes_featured_users_first(
     assert first_card.find_previous("article.user") is None
     assert len(featured_section.select("[data-featured-dot]")) == 2
     assert not featured_section.select("[data-featured-slide][hidden]")
+    assert featured_section.select_one("[data-featured-slide].active") is not None
     more_link = first_card.select_one(".featured-directory-bio a")
     assert more_link is not None
     assert more_link.get_text(strip=True) == "more..."

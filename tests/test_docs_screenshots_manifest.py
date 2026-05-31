@@ -116,6 +116,30 @@ def test_docs_screenshots_manifest_disables_full_page_for_heavy_directory_scenes
     assert scenes["guest-directory-all"]["captureModes"] == ["fold", "scroll"]
 
 
+def test_docs_screenshots_manifest_includes_featured_directory_carousel() -> None:
+    scenes = _scene_map()
+    screenshots_readme = (REPO_ROOT / "docs" / "screenshots" / "README.md").read_text(
+        encoding="utf-8"
+    )
+
+    featured_scene = scenes["guest-directory-featured-carousel"]
+
+    assert featured_scene["title"] == "Directory - Featured Carousel"
+    assert featured_scene["path"] == "/directory"
+    assert featured_scene["session"] == "guest"
+    assert featured_scene["captureModes"] == ["fold"]
+    assert featured_scene["viewports"] == ["desktop"]
+    assert featured_scene["themes"] == ["light"]
+    assert (
+        featured_scene["waitForSelector"]
+        == "[data-featured-carousel].is-enhanced .featured-directory-slide.active"
+    )
+    assert (
+        "./releases/latest/guest/guest-directory-featured-carousel-desktop-light-fold.png"
+        in screenshots_readme
+    )
+
+
 def test_docs_screenshot_capture_suppresses_first_load_splash() -> None:
     script = CAPTURE_SCRIPT_PATH.read_text(encoding="utf-8")
 
