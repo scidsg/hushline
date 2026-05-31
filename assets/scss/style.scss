@@ -2475,7 +2475,8 @@ img.alert {
   --featured-carousel-peek: 2rem;
   --featured-carousel-shadow-overflow: 0.75rem;
   margin: 0 0 0.5rem 0;
-  overflow: visible;
+  overflow-x: clip;
+  overflow-y: visible;
 }
 
 .featured-directory-window {
