@@ -1353,7 +1353,6 @@ body {
 }
 
 body.directory-page {
-  overflow-x: clip;
   scroll-behavior: smooth;
 }
 
@@ -2500,8 +2499,10 @@ img.alert {
 
 .featured-directory.is-enhanced .featured-directory-window {
   clip-path: inset(0 0 calc(-1 * var(--featured-carousel-shadow-overflow)) 0);
+  margin-bottom: calc(-1 * var(--featured-carousel-shadow-overflow));
   margin-inline: calc(-1 * var(--featured-carousel-peek));
-  overflow: visible;
+  overflow: hidden;
+  padding-bottom: var(--featured-carousel-shadow-overflow);
 }
 
 .featured-directory.is-enhanced .featured-directory-track {
