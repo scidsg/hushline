@@ -91,10 +91,13 @@
     const directoryDataByTab = new Map();
     const directoryDataSearchByTab = new Map();
     const directoryDataRequestsByTab = new Map();
+    const directoryCardBioMaxLength = 250;
+    const featuredCarouselDurationMs = 7000;
     let hasRenderedSearch = false;
     let directoryDataRequestController = null;
     let directoryDataLoadingController = null;
     let loadedDirectorySearch = window.location.search;
+    let featuredCarouselCleanups = [];
 
     tabPanels.forEach((panel) => {
       initialMarkup.set(panel.id, panel.innerHTML);
@@ -451,6 +454,11 @@
         return badgeContainer;
       }
 
+      if (tab === "verified" && user.is_featured) {
+        badgeContainer +=
+          '<span class="badge" role="img" aria-label="Featured account">💎 Featured</span>';
+      }
+
       if (user.is_admin) {
         badgeContainer +=
           '<span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>';
@@ -505,7 +513,34 @@
     `;
     }
 
-    function buildUserCard(user, query, tab) {
+    function directoryCardBio(text) {
+      if (!text || text.length <= directoryCardBioMaxLength) {
+        return {
+          isTruncated: false,
+          text: text || "",
+        };
+      }
+
+      return {
+        isTruncated: true,
+        text: `${text.slice(0, directoryCardBioMaxLength - 3)}`,
+      };
+    }
+
+    function buildFeaturedBio(user, query, safeProfileUrl) {
+      if (!user.bio) {
+        return "";
+      }
+
+      const featuredBio = directoryCardBio(user.bio);
+      const bioHighlighted = highlightMatch(featuredBio.text, query);
+      const moreLink = featuredBio.isTruncated
+        ? ` <a href="${safeProfileUrl}">more...</a>`
+        : "";
+      return `<p class="bio featured-directory-bio">${bioHighlighted}${moreLink}</p>`;
+    }
+
+    function buildUserCard(user, query, tab, options = {}) {
       const safeDisplayName = userSearch.escapeHtml(
         user.display_name || user.primary_username || "",
       );
@@ -517,7 +552,11 @@
         query,
       );
       const usernameHighlighted = highlightMatch(user.primary_username, query);
-      const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
+      const bioMarkup = options.featuredCarousel
+        ? buildFeaturedBio(user, query, safeProfileUrl)
+        : user.bio
+          ? `<p class="bio">${highlightMatch(user.bio, query)}</p>`
+          : "";
 
       if (
         user.is_public_record ||
@@ -539,12 +578,205 @@
         <h3>${displayNameHighlighted}</h3>
         <p class="meta">@${usernameHighlighted}</p>
         ${badges ? `<div class="badgeContainer">${badges}</div>` : ""}
-        ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
+        ${bioMarkup}
         <div class="user-actions">
           <a href="${safeProfileUrl}" aria-label="${safeDisplayName}'s profile">View Profile</a>
         </div>
       </article>
     `;
+    }
+
+    function isPromotableFeaturedUser(user, tab) {
+      return (
+        tab === "verified" &&
+        user.is_featured &&
+        user.is_verified &&
+        !user.is_public_record &&
+        !user.is_globaleaks &&
+        !user.is_newsroom &&
+        !user.is_securedrop
+      );
+    }
+
+    function buildFeaturedCarousel(users, query, tab) {
+      const featuredUsers = users.filter((user) =>
+        isPromotableFeaturedUser(user, tab),
+      );
+      if (!featuredUsers.length) {
+        return "";
+      }
+
+      const slideMarkup = featuredUsers
+        .map(
+          (user, index) => `
+          <div
+            class="featured-directory-slide${index === 0 ? " active" : ""}"
+            data-featured-slide
+            aria-hidden="${index === 0 ? "false" : "true"}"
+          >
+            ${buildUserCard(user, query, tab, { featuredCarousel: true })}
+          </div>
+        `,
+        )
+        .join("");
+
+      const controlsMarkup =
+        featuredUsers.length > 1
+          ? `
+          <div class="featured-directory-controls">
+            <div></div>
+            <div class="featured-directory-dots" role="tablist" aria-label="Featured accounts">
+              ${featuredUsers
+                .map(
+                  (_user, index) => `
+                    <button
+                      type="button"
+                      class="featured-directory-dot${index === 0 ? " active" : ""}"
+                      aria-label="Show featured account ${index + 1} of ${featuredUsers.length}"
+                      aria-selected="${index === 0 ? "true" : "false"}"
+                      data-featured-dot
+                      data-featured-index="${index}"
+                    ></button>
+                  `,
+                )
+                .join("")}
+            </div>
+          </div>
+        `
+          : "";
+
+      return `
+      <section class="featured-directory" aria-label="Featured verified accounts" data-featured-carousel>
+        <div class="featured-directory-track">
+          ${slideMarkup}
+        </div>
+        ${controlsMarkup}
+      </section>
+    `;
+    }
+
+    function clearFeaturedCarouselTimers() {
+      featuredCarouselCleanups.forEach((cleanup) => cleanup());
+      featuredCarouselCleanups = [];
+    }
+
+    function initializeFeaturedCarousels() {
+      clearFeaturedCarouselTimers();
+
+      document
+        .querySelectorAll("[data-featured-carousel]")
+        .forEach((carousel) => {
+          const slides = Array.from(
+            carousel.querySelectorAll("[data-featured-slide]"),
+          );
+          const dots = Array.from(
+            carousel.querySelectorAll("[data-featured-dot]"),
+          );
+          if (slides.length < 2 || dots.length < 2) {
+            return;
+          }
+
+          const prefersReducedMotion = window.matchMedia(
+            "(prefers-reduced-motion: reduce)",
+          ).matches;
+          let activeIndex = Math.max(
+            0,
+            slides.findIndex((slide) => slide.classList.contains("active")),
+          );
+          let autoAdvanceTimer = null;
+          let progressFrame = null;
+          let progressStartedAt = 0;
+          let touchStartX = null;
+
+          const setProgress = (progress) => {
+            dots.forEach((dot, index) => {
+              dot.style.setProperty(
+                "--featured-dot-progress",
+                index === activeIndex ? `${progress * 100}%` : "0%",
+              );
+            });
+          };
+
+          const stopProgress = () => {
+            if (autoAdvanceTimer) {
+              window.clearTimeout(autoAdvanceTimer);
+              autoAdvanceTimer = null;
+            }
+            if (progressFrame) {
+              window.cancelAnimationFrame(progressFrame);
+              progressFrame = null;
+            }
+          };
+
+          const scheduleAutoAdvance = () => {
+            stopProgress();
+            setProgress(0);
+            if (prefersReducedMotion) {
+              return;
+            }
+
+            progressStartedAt = performance.now();
+            const updateProgress = (timestamp) => {
+              const elapsed = timestamp - progressStartedAt;
+              setProgress(Math.min(elapsed / featuredCarouselDurationMs, 1));
+              progressFrame = window.requestAnimationFrame(updateProgress);
+            };
+
+            progressFrame = window.requestAnimationFrame(updateProgress);
+            autoAdvanceTimer = window.setTimeout(() => {
+              showSlide(activeIndex + 1);
+            }, featuredCarouselDurationMs);
+          };
+
+          const showSlide = (nextIndex) => {
+            activeIndex = (nextIndex + slides.length) % slides.length;
+            slides.forEach((slide, index) => {
+              const isActive = index === activeIndex;
+              slide.classList.toggle("active", isActive);
+              slide.setAttribute("aria-hidden", isActive ? "false" : "true");
+            });
+            dots.forEach((dot, index) => {
+              const isActive = index === activeIndex;
+              dot.classList.toggle("active", isActive);
+              dot.setAttribute("aria-selected", isActive ? "true" : "false");
+            });
+            scheduleAutoAdvance();
+          };
+
+          dots.forEach((dot) => {
+            dot.addEventListener("click", () => {
+              showSlide(Number(dot.dataset.featuredIndex || 0));
+            });
+          });
+
+          carousel.addEventListener(
+            "touchstart",
+            (event) => {
+              touchStartX = event.changedTouches[0]?.clientX ?? null;
+            },
+            { passive: true },
+          );
+
+          carousel.addEventListener(
+            "touchend",
+            (event) => {
+              if (touchStartX === null) {
+                return;
+              }
+              const touchEndX = event.changedTouches[0]?.clientX ?? touchStartX;
+              const deltaX = touchEndX - touchStartX;
+              touchStartX = null;
+              if (Math.abs(deltaX) < 40) {
+                return;
+              }
+              showSlide(activeIndex + (deltaX < 0 ? 1 : -1));
+            },
+            { passive: true },
+          );
+
+          scheduleAutoAdvance();
+          featuredCarouselCleanups.push(stopProgress);
+        });
     }
 
     function appendSection(panel, label, users, query, tab) {
@@ -602,8 +834,24 @@
       }
 
       if (tab === "verified") {
-        appendSection(panel, "", withPgp, query, tab);
-        appendSection(panel, "📇 Info-Only Accounts", infoOnly, query, tab);
+        panel.insertAdjacentHTML(
+          "beforeend",
+          buildFeaturedCarousel(users, query, tab),
+        );
+        appendSection(
+          panel,
+          "",
+          withPgp.filter((user) => !isPromotableFeaturedUser(user, tab)),
+          query,
+          tab,
+        );
+        appendSection(
+          panel,
+          "📇 Info-Only Accounts",
+          infoOnly.filter((user) => !isPromotableFeaturedUser(user, tab)),
+          query,
+          tab,
+        );
         return;
       }
 
@@ -618,6 +866,7 @@
       }
 
       renderPanelContent(panel, users, query, tab);
+      initializeFeaturedCarousels();
     }
 
     function panelIntroMarkup(panelId) {
@@ -676,6 +925,7 @@
       if (query.length === 0) {
         if (panel && initialMarkup.has(panel.id)) {
           panel.innerHTML = initialMarkup.get(panel.id);
+          initializeFeaturedCarousels();
         }
         if (hasRenderedSearch) {
           setSearchStatus(`Showing all ${currentScopeLabel}.`);

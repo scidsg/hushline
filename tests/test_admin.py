@@ -39,6 +39,8 @@ def test_admin_settings_includes_user_search(app: Flask, client: FlaskClient) ->
     assert search_form.select_one('input[name="q"]') is not None
     assert "Set Cautious" in response.text
     assert "Set Suspended" in response.text
+    assert "Set Featured" in response.text
+    assert "Featured:" in response.text
     assert "Account Category:" in response.text
 
     account_category_form = soup.select_one(
@@ -236,6 +238,22 @@ def test_toggle_verified_alias_on_managed_service(
     refreshed_alias = db.session.get(Username, user_alias.id)
     assert refreshed_alias is not None
     assert refreshed_alias.is_verified is True
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_toggle_featured_username(client: FlaskClient, user_alias: Username) -> None:
+    assert user_alias.is_featured is False
+
+    response = client.post(
+        url_for("admin.toggle_featured_username", username_id=user_alias.id),
+        data={"is_featured": "true"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    refreshed_alias = db.session.get(Username, user_alias.id)
+    assert refreshed_alias is not None
+    assert refreshed_alias.is_featured is True
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")

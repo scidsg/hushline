@@ -150,6 +150,7 @@ def _directory_username(  # noqa: PLR0913
     display_name: str,
     bio: str = "",
     is_verified: bool = False,
+    is_featured: bool = False,
     is_admin: bool = False,
     pgp_key: str = "pgp-key",
     account_category: str | None = None,
@@ -162,6 +163,7 @@ def _directory_username(  # noqa: PLR0913
         display_name=display_name,
         bio=bio,
         is_verified=is_verified,
+        is_featured=is_featured,
         user=SimpleNamespace(
             is_admin=is_admin,
             is_cautious=False,
@@ -289,6 +291,73 @@ def test_directory_accessible(client: FlaskClient) -> None:
     assert "tab-content active" in " ".join(verified_panel.get("class", []))
     assert all_panel.get("data-lazy-directory-panel") == "true"
     assert not all_panel.select("article.user")
+
+
+def test_directory_verified_tab_promotes_featured_users_first(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    long_bio = "A" * (directory_routes.Username.BIO_MAX_LENGTH + 10)
+    featured_user = _directory_username(
+        username="featured-user",
+        display_name="Featured User",
+        bio=long_bio,
+        is_verified=True,
+        is_featured=True,
+    )
+    second_featured_user = _directory_username(
+        username="second-featured-user",
+        display_name="Second Featured User",
+        is_verified=True,
+        is_featured=True,
+    )
+    admin_user = _directory_username(
+        username="admin-user",
+        display_name="Admin User",
+        is_verified=True,
+        is_admin=True,
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames",
+        lambda: (featured_user, second_featured_user, admin_user),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    verified_panel = soup.find(id="verified")
+    assert verified_panel is not None
+
+    featured_section = verified_panel.select_one("[data-featured-carousel]")
+    assert featured_section is not None
+    first_card = verified_panel.select_one("article.user")
+    assert first_card is not None
+    first_card_heading = first_card.select_one("h3")
+    assert first_card_heading is not None
+    assert first_card_heading.get_text(strip=True) == "Featured User"
+    assert first_card.find_previous("article.user") is None
+    assert len(featured_section.select("[data-featured-dot]")) == 2
+    assert not featured_section.select("[data-featured-slide][hidden]")
+    more_link = first_card.select_one(".featured-directory-bio a")
+    assert more_link is not None
+    assert more_link.get_text(strip=True) == "more..."
+    assert more_link["href"] == url_for("profile", username="featured-user")
+    assert long_bio not in first_card.get_text(" ", strip=True)
+
+    badges = first_card.select(".badgeContainer .badge")
+    assert [badge.get("aria-label") for badge in badges[:2]] == [
+        "Featured account",
+        "Verified account",
+    ]
+
+    normal_cards = verified_panel.select(".user-list article.user")
+    assert len(normal_cards) == 1
+    normal_card_heading = normal_cards[0].select_one("h3")
+    assert normal_card_heading is not None
+    assert normal_card_heading.get_text(strip=True) == "Admin User"
 
 
 def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> None:
@@ -521,6 +590,7 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
     admin_user.primary_username._display_name = None
     admin_user.primary_username.bio = "admin bio"
     admin_user.primary_username.is_verified = True
+    admin_user.primary_username.is_featured = True
     db.session.commit()
 
     response = client.get(url_for("directory_users"))
@@ -536,6 +606,7 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
     assert admin_row["account_category_label"] is None
     assert admin_row["is_admin"] is True
     assert admin_row["is_verified"] is True
+    assert admin_row["is_featured"] is True
     assert admin_row["show_caution_badge"] is False
     assert isinstance(admin_row["has_pgp_key"], bool)
     assert admin_row["is_globaleaks"] is False

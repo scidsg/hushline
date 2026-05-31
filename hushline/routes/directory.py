@@ -427,6 +427,7 @@ def _directory_user_row(username: Username) -> dict[str, object | None]:
         "account_category_label": getattr(user, "account_category_label", None),
         "is_admin": user.is_admin,
         "is_verified": username.is_verified,
+        "is_featured": bool(getattr(username, "is_featured", False)),
         "show_caution_badge": _show_directory_caution_badge(username),
         "has_pgp_key": message_capable,
         "is_public_record": False,
@@ -461,6 +462,7 @@ def _public_record_row(listing: PublicRecordListing) -> dict[str, object | None]
         "account_category_label": None,
         "is_admin": False,
         "is_verified": False,
+        "is_featured": False,
         "show_caution_badge": False,
         "has_pgp_key": False,
         "is_public_record": True,
@@ -495,6 +497,7 @@ def _globaleaks_row(listing: GlobaLeaksDirectoryListing) -> dict[str, object | N
         "account_category_label": None,
         "is_admin": False,
         "is_verified": False,
+        "is_featured": False,
         "show_caution_badge": False,
         "has_pgp_key": False,
         "is_public_record": False,
@@ -529,6 +532,7 @@ def _newsroom_row(listing: NewsroomDirectoryListing) -> dict[str, object | None]
         "account_category_label": None,
         "is_admin": False,
         "is_verified": False,
+        "is_featured": False,
         "show_caution_badge": False,
         "has_pgp_key": False,
         "is_public_record": False,
@@ -563,6 +567,7 @@ def _securedrop_row(listing: SecureDropDirectoryListing) -> dict[str, object | N
         "account_category_label": None,
         "is_admin": False,
         "is_verified": False,
+        "is_featured": False,
         "show_caution_badge": False,
         "has_pgp_key": False,
         "is_public_record": False,
@@ -802,6 +807,11 @@ def register_directory_routes(app: Flask) -> None:
         ]
         verified_pgp_usernames = [username for username in pgp_usernames if username.is_verified]
         verified_info_usernames = [username for username in info_usernames if username.is_verified]
+        featured_usernames = [
+            username
+            for username in usernames
+            if username.is_verified and bool(getattr(username, "is_featured", False))
+        ]
         if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]:
             all_filter_metadata = _empty_all_filter_metadata()
             all_filter_state = {
@@ -830,6 +840,7 @@ def register_directory_routes(app: Flask) -> None:
             info_usernames=info_usernames,
             verified_pgp_usernames=verified_pgp_usernames,
             verified_info_usernames=verified_info_usernames,
+            featured_usernames=featured_usernames,
             attorney_usernames=filtered_attorney_usernames,
             public_record_all_listings=filtered_public_record_listings,
             public_record_listings=public_record_listings,
