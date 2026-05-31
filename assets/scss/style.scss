@@ -2470,6 +2470,113 @@ img.alert {
   margin-bottom: 0.75rem;
 }
 
+.featured-directory {
+  margin: 0 0 0.5rem 0;
+}
+
+.featured-directory-track {
+  display: grid;
+}
+
+.featured-directory-slide {
+  display: flex;
+  grid-area: 1 / 1;
+}
+
+.featured-directory-slide:not(.active) {
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.featured-directory .user {
+  margin-bottom: 0;
+  width: 100%;
+}
+
+.featured-directory-controls {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.featured-directory-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  margin: 0;
+}
+
+.featured-directory-dot {
+  --featured-dot-progress: 0%;
+  align-items: center;
+  background: transparent;
+  border: 0;
+  box-shadow: none !important;
+  color: #8f8f8f;
+  display: inline-flex;
+  height: 44px;
+  justify-content: center;
+  margin: 0;
+  min-height: 44px;
+  min-width: 28px;
+  padding: 0;
+  position: relative;
+  width: 28px;
+}
+
+.featured-directory-dot::before {
+  background-color: #cfcfcf;
+  border-radius: 50vw;
+  content: "";
+  height: 0.625rem;
+  position: absolute;
+  width: 0.625rem;
+}
+
+.featured-directory-dot.active {
+  color: var(--color-brand);
+}
+
+.featured-directory-dot.active::before {
+  background: linear-gradient(
+    90deg,
+    var(--color-brand) 0 var(--featured-dot-progress),
+    oklch(from var(--color-brand) l c h / 0.18) var(--featured-dot-progress) 100%
+  );
+  box-shadow: inset 0 0 0 1px var(--color-brand);
+  width: 1.75rem;
+}
+
+.featured-directory-bio a {
+  white-space: nowrap;
+}
+
+@media (prefers-color-scheme: dark) {
+  .featured-directory-dot {
+    color: var(--color-border-dark);
+  }
+
+  .featured-directory-dot::before {
+    background-color: var(--color-border-dark-1);
+  }
+
+  .featured-directory-dot.active {
+    color: var(--color-brand-dark-min-saturation);
+  }
+
+  .featured-directory-dot.active::before {
+    background: linear-gradient(
+      90deg,
+      var(--color-brand-dark-min-saturation) 0 var(--featured-dot-progress),
+      oklch(from var(--color-brand-dark-min-saturation) l c h / 0.22)
+        var(--featured-dot-progress) 100%
+    );
+    box-shadow: inset 0 0 0 1px var(--color-brand-dark-min-saturation);
+  }
+}
+
 #results>div {
   border-radius: 0.25rem;
 }

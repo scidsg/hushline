@@ -39,6 +39,7 @@ The app and public directory support more than individual profiles. Current disc
 - Individual tip lines for reporters, lawyers, educators, organizers, and security contacts
 - Shared or role-based intake points such as board, ethics, compliance, or security-reporting inboxes
 - Verified first-party Hush Line profiles
+- Featured verified profiles promoted by instance administrators
 - Imported public-interest directories for attorneys and newsrooms
 - Imported SecureDrop and GlobaLeaks listings
 
@@ -60,6 +61,7 @@ The app and public directory support more than individual profiles. Current disc
 | Whistleblower | Find a credible recipient without creating an account                          | I can report quickly without procedural friction                                                         | Directory, profile pages                              |
 | Whistleblower | Search the directory by name                                                   | I can find a known person or organization directly                                                       | Directory search                                      |
 | Whistleblower | Filter recipients by trust or type                                             | I can narrow the list to verified accounts, attorneys, newsrooms, SecureDrop, GlobaLeaks, or all sources | Directory tabs and filters                            |
+| Whistleblower | See administrator-featured verified recipients first                           | I can quickly find the accounts this deployment most wants visitors to notice                            | Directory verified tab                                |
 | Whistleblower | Filter by geography                                                            | I can find a recipient relevant to my jurisdiction or risk environment                                   | Directory country/region filters                      |
 | Whistleblower | Inspect a public profile before I send anything                                | I can judge whether this tip line belongs to the right person or organization                            | `/to/<username>` profile page                         |
 | Whistleblower | See trust signals on a profile                                                 | I can reduce impersonation risk before contacting someone                                                | Verified badge, caution badge, linked profile details |
@@ -152,6 +154,7 @@ The app and public directory support more than individual profiles. Current disc
 | Admin | Search all usernames                                                           | I can find accounts and aliases quickly in a larger deployment                     | Settings -> Admin         |
 | Admin | See aggregate usage metrics such as user count, 2FA adoption, and PGP adoption | I can evaluate account-hardening posture and platform uptake                       | Settings -> Admin         |
 | Admin | Mark a primary account or alias as verified                                    | Visitors can see that a staff member verified the identity behind a tip line       | Settings -> Admin         |
+| Admin | Mark one or more verified accounts as featured                                 | Visitors see priority verified recipients at the top of the Verified directory tab | Settings -> Admin         |
 | Admin | Mark an account as cautious                                                    | Visitors can receive a visible warning before trusting a listing                   | Settings -> Admin         |
 | Admin | Suspend an account                                                             | The platform can stop new message intake for unsafe or abusive accounts            | Settings -> Admin         |
 | Admin | Grant or remove admin privileges                                               | Governance tasks can be shared deliberately                                        | Settings -> Admin         |

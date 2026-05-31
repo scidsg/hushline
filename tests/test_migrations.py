@@ -36,6 +36,7 @@ SKIPPABLE_REVISIONS = [
     "f32aa741ddc4",  # simple add/drop on columns, no data migrated
     "7b9c2d1e4f60",  # simple add/drop on columns, no data migrated
     "a4c8f2d9e713",  # simple table create/drop, no data migrated
+    "e3b7c1a9d2f4",  # simple add/drop on columns, no data migrated
 ]
 DISALLOWED_DOWNGRADES = [
     "4a53667aff6e",  # downgrading is disabled to prevent accidental data loss
