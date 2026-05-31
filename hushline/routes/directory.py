@@ -1,5 +1,6 @@
+import random
 import unicodedata
-from typing import Sequence, cast
+from typing import Sequence, TypeVar, cast
 from urllib.parse import urlencode
 
 from flask import (
@@ -61,6 +62,7 @@ _ALL_LISTING_TYPE_LABELS = (
     ("securedrop", "SecureDrop"),
     ("globaleaks", "GlobaLeaks"),
 )
+_FeaturedItem = TypeVar("_FeaturedItem")
 _DIRECTORY_CARD_BIO_ELLIPSIS = "..."
 _SELF_REPORTED_JOURNALISM_ACCOUNT_CATEGORIES = frozenset(
     {
@@ -451,6 +453,30 @@ def _directory_user_row(username: Username) -> dict[str, object | None]:
     }
 
 
+def _shuffle_featured_directory_items(items: Sequence[_FeaturedItem]) -> list[_FeaturedItem]:
+    shuffled_items = list(items)
+    random.shuffle(shuffled_items)
+    return shuffled_items
+
+
+def _featured_directory_usernames(usernames: Sequence[Username]) -> list[Username]:
+    return _shuffle_featured_directory_items(
+        [
+            username
+            for username in usernames
+            if username.is_verified and bool(getattr(username, "is_featured", False))
+        ]
+    )
+
+
+def _featured_directory_rows_first(
+    rows: Sequence[dict[str, object | None]],
+) -> list[dict[str, object | None]]:
+    featured_rows = [row for row in rows if row.get("is_featured") is True]
+    standard_rows = [row for row in rows if row.get("is_featured") is not True]
+    return [*_shuffle_featured_directory_items(featured_rows), *standard_rows]
+
+
 def _public_record_row(listing: PublicRecordListing) -> dict[str, object | None]:
     geography = listing.geography
     return {
@@ -807,11 +833,7 @@ def register_directory_routes(app: Flask) -> None:
         ]
         verified_pgp_usernames = [username for username in pgp_usernames if username.is_verified]
         verified_info_usernames = [username for username in info_usernames if username.is_verified]
-        featured_usernames = [
-            username
-            for username in usernames
-            if username.is_verified and bool(getattr(username, "is_featured", False))
-        ]
+        featured_usernames = _featured_directory_usernames(usernames)
         if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]:
             all_filter_metadata = _empty_all_filter_metadata()
             all_filter_state = {
@@ -1004,7 +1026,7 @@ def register_directory_routes(app: Flask) -> None:
             if username.is_verified
         ]
         if tab == "verified":
-            return verified_rows
+            return _featured_directory_rows_first(verified_rows)
 
         if tab == "globaleaks":
             return (

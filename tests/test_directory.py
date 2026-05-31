@@ -324,6 +324,11 @@ def test_directory_verified_tab_promotes_featured_users_first(
     monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
     monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
+    monkeypatch.setattr(
+        directory_routes,
+        "_shuffle_featured_directory_items",
+        lambda items: list(items),
+    )
 
     response = client.get(url_for("directory"))
     assert response.status_code == 200
@@ -368,6 +373,56 @@ def test_directory_verified_tab_promotes_featured_users_first(
     normal_card_heading = normal_cards[0].select_one("h3")
     assert normal_card_heading is not None
     assert normal_card_heading.get_text(strip=True) == "Admin User"
+
+
+def test_directory_randomizes_featured_user_order(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    featured_user = _directory_username(
+        username="featured-user",
+        display_name="Featured User",
+        is_verified=True,
+        is_featured=True,
+    )
+    second_featured_user = _directory_username(
+        username="second-featured-user",
+        display_name="Second Featured User",
+        is_verified=True,
+        is_featured=True,
+    )
+    admin_user = _directory_username(
+        username="admin-user",
+        display_name="Admin User",
+        is_verified=True,
+        is_admin=True,
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames",
+        lambda: (featured_user, second_featured_user, admin_user),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
+    monkeypatch.setattr(
+        directory_routes,
+        "_shuffle_featured_directory_items",
+        lambda items: list(reversed(items)),
+    )
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    featured_headings = [
+        heading.get_text(strip=True)
+        for heading in soup.select("#verified [data-featured-slide] h3")
+    ]
+    assert featured_headings == ["Second Featured User", "Featured User"]
+
+    users_response = client.get(url_for("directory_users", tab="verified"))
+    assert users_response.status_code == 200
+    usernames = [row["primary_username"] for row in users_response.json or []]
+    assert usernames[:3] == ["second-featured-user", "featured-user", "admin-user"]
 
 
 def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> None:
