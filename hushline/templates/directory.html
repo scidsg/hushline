@@ -610,27 +610,29 @@
           aria-label="Featured verified accounts"
           data-featured-carousel
         >
-          <div class="featured-directory-track">
-            {% for username in featured_usernames %}
-              <div
-                class="featured-directory-slide{% if loop.first %} active{% endif %}"
-                data-featured-slide
-                aria-hidden="{{ 'false' if loop.first else 'true' }}"
-              >
-                {{ featured_user_card(username) }}
-              </div>
-            {% endfor %}
+          <div class="featured-directory-window" data-featured-window>
+            <div class="featured-directory-track" data-featured-track>
+              {% for username in featured_usernames %}
+                <div
+                  class="featured-directory-slide{% if loop.first %} active{% endif %}"
+                  data-featured-slide
+                  aria-hidden="{{ 'false' if loop.first else 'true' }}"
+                >
+                  {{ featured_user_card(username) }}
+                </div>
+              {% endfor %}
+            </div>
           </div>
           {% if featured_usernames|length > 1 %}
             <div class="featured-directory-controls">
               <div></div>
-              <div class="featured-directory-dots" role="tablist" aria-label="Featured accounts">
+              <div class="featured-directory-dots" role="group" aria-label="Featured accounts">
                 {% for username in featured_usernames %}
                   <button
                     type="button"
                     class="featured-directory-dot{% if loop.first %} active{% endif %}"
                     aria-label="Show featured account {{ loop.index }} of {{ featured_usernames|length }}"
-                    aria-selected="{{ 'true' if loop.first else 'false' }}"
+                    {% if loop.first %}aria-current="true"{% endif %}
                     data-featured-dot
                     data-featured-index="{{ loop.index0 }}"
                   ></button>

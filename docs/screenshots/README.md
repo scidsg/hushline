@@ -16,6 +16,10 @@ Each release stores images by session under `releases/<version>/<session>/`.
 - Path: [releases/one-off-directory/README.md](./releases/one-off-directory/README.md)
 - Latest alias: [releases/latest/README.md](./releases/latest/README.md)
 
+## Featured Directory
+
+![Directory featured carousel](./releases/latest/guest/guest-directory-featured-carousel-desktop-light-fold.png)
+
 ## Required accounts
 
 - admin (admin and org settings scenes)

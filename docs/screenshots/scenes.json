@@ -671,6 +671,16 @@
       "waitForSelector": "#verified.tab-content.active"
     },
     {
+      "slug": "guest-directory-featured-carousel",
+      "title": "Directory - Featured Carousel",
+      "path": "/directory",
+      "session": "guest",
+      "captureModes": ["fold"],
+      "viewports": ["desktop"],
+      "themes": ["light"],
+      "waitForSelector": "[data-featured-carousel].is-enhanced .featured-directory-slide.active"
+    },
+    {
       "slug": "guest-directory-attorneys-closed-filters",
       "title": "Directory - Attorneys (filters closed)",
       "path": "/directory",

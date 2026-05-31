@@ -625,7 +625,7 @@
           ? `
           <div class="featured-directory-controls">
             <div></div>
-            <div class="featured-directory-dots" role="tablist" aria-label="Featured accounts">
+            <div class="featured-directory-dots" role="group" aria-label="Featured accounts">
               ${featuredUsers
                 .map(
                   (_user, index) => `
@@ -633,7 +633,7 @@
                       type="button"
                       class="featured-directory-dot${index === 0 ? " active" : ""}"
                       aria-label="Show featured account ${index + 1} of ${featuredUsers.length}"
-                      aria-selected="${index === 0 ? "true" : "false"}"
+                      ${index === 0 ? 'aria-current="true"' : ""}
                       data-featured-dot
                       data-featured-index="${index}"
                     ></button>
@@ -647,8 +647,10 @@
 
       return `
       <section class="featured-directory" aria-label="Featured verified accounts" data-featured-carousel>
-        <div class="featured-directory-track">
-          ${slideMarkup}
+        <div class="featured-directory-window" data-featured-window>
+          <div class="featured-directory-track" data-featured-track>
+            ${slideMarkup}
+          </div>
         </div>
         ${controlsMarkup}
       </section>
@@ -660,21 +662,86 @@
       featuredCarouselCleanups = [];
     }
 
+    function featuredFocusableElements(slide) {
+      return slide.querySelectorAll(
+        "a, button, input, select, textarea, [tabindex], [data-featured-had-tabindex], [data-featured-original-tabindex]",
+      );
+    }
+
+    function setFeaturedSlideInteractive(slide, isInteractive) {
+      if (isInteractive) {
+        slide.removeAttribute("inert");
+        featuredFocusableElements(slide).forEach((element) => {
+          if (element.dataset.featuredOriginalTabindex !== undefined) {
+            element.setAttribute(
+              "tabindex",
+              element.dataset.featuredOriginalTabindex,
+            );
+            delete element.dataset.featuredOriginalTabindex;
+          } else if (element.dataset.featuredHadTabindex === "false") {
+            element.removeAttribute("tabindex");
+            delete element.dataset.featuredHadTabindex;
+          }
+        });
+        return;
+      }
+
+      slide.setAttribute("inert", "");
+      featuredFocusableElements(slide).forEach((element) => {
+        if (element.dataset.featuredHadTabindex === undefined) {
+          if (element.hasAttribute("tabindex")) {
+            element.dataset.featuredOriginalTabindex =
+              element.getAttribute("tabindex");
+          } else {
+            element.dataset.featuredHadTabindex = "false";
+          }
+        }
+        element.setAttribute("tabindex", "-1");
+      });
+    }
+
     function initializeFeaturedCarousels() {
       clearFeaturedCarouselTimers();
 
       document
         .querySelectorAll("[data-featured-carousel]")
         .forEach((carousel) => {
+          const track = carousel.querySelector("[data-featured-track]");
+          const windowEl = carousel.querySelector("[data-featured-window]");
           const slides = Array.from(
             carousel.querySelectorAll("[data-featured-slide]"),
           );
           const dots = Array.from(
             carousel.querySelectorAll("[data-featured-dot]"),
           );
-          if (slides.length < 2 || dots.length < 2) {
+          if (!track || !windowEl || slides.length < 2 || dots.length < 2) {
             return;
           }
+
+          track
+            .querySelectorAll("[data-featured-clone]")
+            .forEach((clone) => clone.remove());
+
+          const firstClone = slides[0].cloneNode(true);
+          const lastClone = slides[slides.length - 1].cloneNode(true);
+          [firstClone, lastClone].forEach((clone) => {
+            clone.classList.remove("active");
+            clone.removeAttribute("data-featured-slide");
+            clone.setAttribute("data-featured-clone", "");
+            clone.setAttribute("aria-hidden", "true");
+            clone.setAttribute("inert", "");
+            clone
+              .querySelectorAll("a, button, input, select, textarea")
+              .forEach((element) => {
+                element.setAttribute("tabindex", "-1");
+              });
+          });
+          track.insertBefore(lastClone, slides[0]);
+          track.appendChild(firstClone);
+          carousel.classList.add("is-enhanced");
+          const visualSlides = Array.from(
+            track.querySelectorAll(".featured-directory-slide"),
+          );
 
           const prefersReducedMotion = window.matchMedia(
             "(prefers-reduced-motion: reduce)",
@@ -687,6 +754,7 @@
           let progressFrame = null;
           let progressStartedAt = 0;
           let touchStartX = null;
+          let pendingSnapIndex = null;
 
           const setProgress = (progress) => {
             dots.forEach((dot, index) => {
@@ -696,6 +764,41 @@
               );
             });
           };
+
+          const setTrackPosition = (visualIndex, options = {}) => {
+            const animate = options.animate !== false && !prefersReducedMotion;
+            const previousTransition = track.style.transition;
+            if (!animate) {
+              track.style.transition = "none";
+            }
+
+            const trackStyles = window.getComputedStyle(track);
+            const gap =
+              Number.parseFloat(
+                trackStyles.columnGap || trackStyles.gap || "0",
+              ) || 0;
+            const slideWidth =
+              visualSlides[0]?.getBoundingClientRect().width || 0;
+            const windowWidth = windowEl.getBoundingClientRect().width;
+            const offset =
+              (windowWidth - slideWidth) / 2 - visualIndex * (slideWidth + gap);
+            track.style.transform = `translateX(${offset}px)`;
+
+            if (!animate) {
+              track.getBoundingClientRect();
+              track.style.transition = previousTransition;
+            }
+          };
+
+          const setActiveSlideState = () => {
+            slides.forEach((slide, index) => {
+              const isActive = index === activeIndex;
+              slide.classList.toggle("active", isActive);
+              slide.setAttribute("aria-hidden", isActive ? "false" : "true");
+              setFeaturedSlideInteractive(slide, isActive);
+            });
+          };
+          setActiveSlideState();
 
           const stopProgress = () => {
             if (autoAdvanceTimer) {
@@ -729,19 +832,43 @@
           };
 
           const showSlide = (nextIndex) => {
+            const previousIndex = activeIndex;
             activeIndex = (nextIndex + slides.length) % slides.length;
-            slides.forEach((slide, index) => {
-              const isActive = index === activeIndex;
-              slide.classList.toggle("active", isActive);
-              slide.setAttribute("aria-hidden", isActive ? "false" : "true");
-            });
+            let visualIndex = activeIndex + 1;
+            pendingSnapIndex = null;
+            if (
+              previousIndex === slides.length - 1 &&
+              nextIndex >= slides.length
+            ) {
+              visualIndex = slides.length + 1;
+              pendingSnapIndex = activeIndex + 1;
+            } else if (previousIndex === 0 && nextIndex < 0) {
+              visualIndex = 0;
+              pendingSnapIndex = activeIndex + 1;
+            }
+
+            setActiveSlideState();
             dots.forEach((dot, index) => {
               const isActive = index === activeIndex;
               dot.classList.toggle("active", isActive);
-              dot.setAttribute("aria-selected", isActive ? "true" : "false");
+              if (isActive) {
+                dot.setAttribute("aria-current", "true");
+              } else {
+                dot.removeAttribute("aria-current");
+              }
             });
+            setTrackPosition(visualIndex, { animate: true });
             scheduleAutoAdvance();
           };
+
+          const handleTrackTransitionEnd = (event) => {
+            if (event.target !== track || pendingSnapIndex === null) {
+              return;
+            }
+            setTrackPosition(pendingSnapIndex, { animate: false });
+            pendingSnapIndex = null;
+          };
+          track.addEventListener("transitionend", handleTrackTransitionEnd);
 
           dots.forEach((dot) => {
             dot.addEventListener("click", () => {
@@ -775,7 +902,21 @@
           );
 
           scheduleAutoAdvance();
-          featuredCarouselCleanups.push(stopProgress);
+          setActiveSlideState();
+          setTrackPosition(activeIndex + 1, { animate: false });
+
+          const handleResize = () => {
+            setTrackPosition(activeIndex + 1, { animate: false });
+          };
+          window.addEventListener("resize", handleResize);
+          featuredCarouselCleanups.push(() => {
+            stopProgress();
+            track.removeEventListener(
+              "transitionend",
+              handleTrackTransitionEnd,
+            );
+            window.removeEventListener("resize", handleResize);
+          });
         });
     }
 
