@@ -388,6 +388,8 @@ def test_directory_search_accessibility_hooks_exist() -> None:
         r"\.featured-directory \.user \{[^}]*box-shadow: var\(--shadow-dynamic\);",
         scss,
     )
+    assert "overflow-x: clip;" in scss
+    assert "overflow-y: visible;" in scss
     assert "--featured-carousel-peek: var(--container-padding, 1.25rem);" in scss
     assert "--featured-carousel-shadow-overflow: 0.75rem;" in scss
     assert "clip-path: inset(0 0 calc(-1 * var(--featured-carousel-shadow-overflow)) 0);" in scss
