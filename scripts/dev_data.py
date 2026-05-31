@@ -87,6 +87,7 @@ def default_users() -> list[dict[str, object]]:
             "password": "Test-testtesttesttest-1",
             "is_admin": False,
             "is_verified": True,
+            "is_featured": True,
             "display_name": "Jerry Seinfeld",
             "bio": (
                 "I'm a neurotic stand-up comic who loves cereal and Superman. "
@@ -119,6 +120,7 @@ def default_users() -> list[dict[str, object]]:
             "password": "Test-testtesttesttest-1",
             "is_admin": False,
             "is_verified": True,
+            "is_featured": True,
             "display_name": "Elaine Benes",
             "bio": (
                 "I dance like nobody’s watching—because they shouldn’t. "
@@ -133,7 +135,7 @@ def default_users() -> list[dict[str, object]]:
             "username": "cosmokramer",
             "password": "Test-testtesttesttest-1",
             "is_admin": False,
-            "is_verified": False,
+            "is_verified": True,
             "display_name": "Cosmo Kramer",
             "bio": (
                 "I'm the wacky neighbor with grand schemes (pizza bagels, anyone?). "
@@ -180,23 +182,25 @@ def default_users() -> list[dict[str, object]]:
             "username": "gobbluth",
             "password": "Test-testtesttesttest-1",
             "is_admin": False,
-            "is_verified": False,
+            "is_verified": True,
             "display_name": "Gob Bluth",
             "bio": (
                 "I'm an illusionist, not a magician—tricks are what a hooker does for money. "
                 "Tip me off to any half-decent gigs or adorable rabbits."
             ),
+            "pgp_key": PGP_KEY,
         },
         {
             "username": "busterbluth",
             "password": "Test-testtesttesttest-1",
             "is_admin": False,
-            "is_verified": False,
+            "is_verified": True,
             "display_name": "Buster Bluth",
             "bio": (
                 "Motherboy champion and proud hook-hand owner. "
                 "Use my tip line for anything related to juice boxes or loose seals."
             ),
+            "pgp_key": PGP_KEY,
         },
         {
             "username": "lucillebluth",
@@ -217,12 +221,13 @@ def default_users() -> list[dict[str, object]]:
             "username": "tobiasfunke",
             "password": "Test-testtesttesttest-1",
             "is_admin": False,
-            "is_verified": False,
+            "is_verified": True,
             "display_name": "Tobias Fünke",
             "bio": (
                 "Never-nude, aspiring actor, and first analrapist. "
                 "Tip me on potential casting calls or discreet cutoffs sales."
             ),
+            "pgp_key": PGP_KEY,
         },
         {
             "username": "larrydavid",
@@ -282,6 +287,126 @@ def default_users() -> list[dict[str, object]]:
                 "Time-traveling teen with a hoverboard. "
                 "Use my tip line if someone calls me chicken or there's a DeLorean sighting."
             ),
+            "pgp_key": PGP_KEY,
+        },
+        {
+            "username": "civicdesk",
+            "password": "Test-testtesttesttest-1",
+            "is_admin": False,
+            "is_verified": True,
+            "display_name": "Civic Desk",
+            "bio": (
+                "A public-interest reporting desk focused on local accountability, records, "
+                "and tips from people who know how institutions really work."
+            ),
+            "extra_fields": [
+                ("Website", "https://civicdesk.example", True),
+            ],
+            "pgp_key": PGP_KEY,
+        },
+        {
+            "username": "publicintegritylab",
+            "password": "Test-testtesttesttest-1",
+            "is_admin": False,
+            "is_verified": True,
+            "display_name": "Public Integrity Lab",
+            "bio": (
+                "Researchers and editors reviewing public-sector misconduct, contracting, "
+                "procurement, and oversight tips."
+            ),
+            "extra_fields": [
+                ("Website", "https://integritylab.example", True),
+            ],
+            "pgp_key": PGP_KEY,
+        },
+        {
+            "username": "studentpresswatch",
+            "password": "Test-testtesttesttest-1",
+            "is_admin": False,
+            "is_verified": True,
+            "display_name": "Student Press Watch",
+            "bio": (
+                "A student newsroom collective receiving tips about schools, universities, "
+                "and campus governance."
+            ),
+            "extra_fields": [
+                ("Website", "https://studentpress.example", True),
+            ],
+            "pgp_key": PGP_KEY,
+        },
+        {
+            "username": "laborrightsclinic",
+            "password": "Test-testtesttesttest-1",
+            "is_admin": False,
+            "is_verified": True,
+            "display_name": "Labor Rights Clinic",
+            "bio": (
+                "Legal advocates reviewing workplace safety, wage, retaliation, and organizing "
+                "concerns from workers."
+            ),
+            "extra_fields": [
+                ("Website", "https://laborrights.example", True),
+            ],
+            "pgp_key": PGP_KEY,
+        },
+        {
+            "username": "opensourcewatch",
+            "password": "Test-testtesttesttest-1",
+            "is_admin": False,
+            "is_verified": True,
+            "display_name": "Open Source Watch",
+            "bio": (
+                "Software maintainers and security researchers coordinating responsible tips "
+                "about digital infrastructure risks."
+            ),
+            "extra_fields": [
+                ("Website", "https://opensourcewatch.example", True),
+            ],
+            "pgp_key": PGP_KEY,
+        },
+        {
+            "username": "communitylegalaid",
+            "password": "Test-testtesttesttest-1",
+            "is_admin": False,
+            "is_verified": True,
+            "display_name": "Community Legal Aid",
+            "bio": (
+                "Attorneys and advocates available for civil rights, housing, benefits, and "
+                "community accountability tips."
+            ),
+            "extra_fields": [
+                ("Website", "https://legalaid.example", True),
+            ],
+            "pgp_key": PGP_KEY,
+        },
+        {
+            "username": "climateaccountability",
+            "password": "Test-testtesttesttest-1",
+            "is_admin": False,
+            "is_verified": True,
+            "display_name": "Climate Accountability Desk",
+            "bio": (
+                "Reporters investigating environmental compliance, climate risk disclosures, "
+                "and public-interest science."
+            ),
+            "extra_fields": [
+                ("Website", "https://climatedesk.example", True),
+            ],
+            "pgp_key": PGP_KEY,
+        },
+        {
+            "username": "privacyresearchdesk",
+            "password": "Test-testtesttesttest-1",
+            "is_admin": False,
+            "is_verified": True,
+            "display_name": "Privacy Research Desk",
+            "bio": (
+                "Researchers collecting tips about data misuse, surveillance, privacy harms, "
+                "and accountability failures."
+            ),
+            "extra_fields": [
+                ("Website", "https://privacyresearch.example", True),
+            ],
             "pgp_key": PGP_KEY,
         },
         {

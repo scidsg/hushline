@@ -51,4 +51,14 @@ def test_default_users_seed_featured_verified_directory_accounts() -> None:
         user["username"] for user in dev_data.default_users() if user.get("is_featured") is True
     }
 
-    assert featured_usernames == {"admin", "artvandelay"}
+    assert featured_usernames == {"admin", "artvandelay", "jerryseinfeld", "elainebenes"}
+
+
+def test_default_users_seed_more_than_twenty_verified_directory_accounts() -> None:
+    dev_data = _load_dev_data_module()
+
+    verified_usernames = [
+        user["username"] for user in dev_data.default_users() if user.get("is_verified") is True
+    ]
+
+    assert len(verified_usernames) > 20

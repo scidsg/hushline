@@ -341,7 +341,14 @@ def test_directory_verified_tab_promotes_featured_users_first(
     assert first_card_heading is not None
     assert first_card_heading.get_text(strip=True) == "Featured User"
     assert first_card.find_previous("article.user") is None
-    assert len(featured_section.select("[data-featured-dot]")) == 2
+    featured_dot_container = featured_section.select_one(".featured-directory-dots")
+    assert featured_dot_container is not None
+    assert featured_dot_container.get("role") == "group"
+    featured_dots = featured_section.select("[data-featured-dot]")
+    assert len(featured_dots) == 2
+    assert featured_dots[0].get("aria-current") == "true"
+    assert featured_dots[1].get("aria-current") is None
+    assert not featured_section.select("[data-featured-dot][aria-selected]")
     assert not featured_section.select("[data-featured-slide][hidden]")
     assert featured_section.select_one("[data-featured-slide].active") is not None
     more_link = first_card.select_one(".featured-directory-bio a")

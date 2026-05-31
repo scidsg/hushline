@@ -626,13 +626,13 @@
           {% if featured_usernames|length > 1 %}
             <div class="featured-directory-controls">
               <div></div>
-              <div class="featured-directory-dots" role="tablist" aria-label="Featured accounts">
+              <div class="featured-directory-dots" role="group" aria-label="Featured accounts">
                 {% for username in featured_usernames %}
                   <button
                     type="button"
                     class="featured-directory-dot{% if loop.first %} active{% endif %}"
                     aria-label="Show featured account {{ loop.index }} of {{ featured_usernames|length }}"
-                    aria-selected="{{ 'true' if loop.first else 'false' }}"
+                    {% if loop.first %}aria-current="true"{% endif %}
                     data-featured-dot
                     data-featured-index="{{ loop.index0 }}"
                   ></button>

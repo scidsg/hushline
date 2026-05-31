@@ -560,7 +560,7 @@ document.addEventListener("DOMContentLoaded", function () {
         ? `
           <div class="featured-directory-controls">
             <div></div>
-            <div class="featured-directory-dots" role="tablist" aria-label="Featured accounts">
+            <div class="featured-directory-dots" role="group" aria-label="Featured accounts">
               ${featuredUsers
                 .map(
                   (_user, index) => `
@@ -568,7 +568,7 @@ document.addEventListener("DOMContentLoaded", function () {
                       type="button"
                       class="featured-directory-dot${index === 0 ? " active" : ""}"
                       aria-label="Show featured account ${index + 1} of ${featuredUsers.length}"
-                      aria-selected="${index === 0 ? "true" : "false"}"
+                      ${index === 0 ? 'aria-current="true"' : ""}
                       data-featured-dot
                       data-featured-index="${index}"
                     ></button>
@@ -726,7 +726,11 @@ document.addEventListener("DOMContentLoaded", function () {
         dots.forEach((dot, index) => {
           const isActive = index === activeIndex;
           dot.classList.toggle("active", isActive);
-          dot.setAttribute("aria-selected", isActive ? "true" : "false");
+          if (isActive) {
+            dot.setAttribute("aria-current", "true");
+          } else {
+            dot.removeAttribute("aria-current");
+          }
         });
         setTrackPosition(visualIndex, { animate: true });
         scheduleAutoAdvance();
