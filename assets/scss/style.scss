@@ -2473,6 +2473,7 @@ img.alert {
 .featured-directory {
   --featured-carousel-gap: 0.75rem;
   --featured-carousel-peek: 2rem;
+  --featured-carousel-shadow-overflow: 0.75rem;
   margin: 0 0 0.5rem 0;
   overflow: visible;
 }
@@ -2497,8 +2498,9 @@ img.alert {
 }
 
 .featured-directory.is-enhanced .featured-directory-window {
+  clip-path: inset(0 0 calc(-1 * var(--featured-carousel-shadow-overflow)) 0);
   margin-inline: calc(-1 * var(--featured-carousel-peek));
-  overflow: hidden;
+  overflow: visible;
 }
 
 .featured-directory.is-enhanced .featured-directory-track {
@@ -2618,7 +2620,7 @@ img.alert {
 
 @media only screen and (max-width: 800px) {
   .featured-directory {
-    --featured-carousel-peek: 1rem;
+    --featured-carousel-peek: var(--container-padding, 1.25rem);
   }
 }
 
