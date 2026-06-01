@@ -42,7 +42,6 @@ def default_users() -> list[dict[str, object]]:
             "password": "Test-testtesttesttest-1",
             "is_admin": True,
             "is_verified": True,
-            "is_featured": True,
             "display_name": "Hush Line Admin",
             "bio": (
                 "Message for account verification, technical problems, and general feedback!"
@@ -104,6 +103,7 @@ def default_users() -> list[dict[str, object]]:
             "password": "Test-testtesttesttest-1",
             "is_admin": False,
             "is_verified": True,
+            "is_featured": True,
             "display_name": "George Costanza",
             "bio": (
                 "Perpetually unemployed, living with my parents, but I have "

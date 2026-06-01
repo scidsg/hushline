@@ -46,12 +46,19 @@ def test_default_users_seed_paid_artvandelay_with_three_notification_recipients(
 
 def test_default_users_seed_featured_verified_directory_accounts() -> None:
     dev_data = _load_dev_data_module()
+    users = dev_data.default_users()
 
-    featured_usernames = {
-        user["username"] for user in dev_data.default_users() if user.get("is_featured") is True
+    featured_usernames = {user["username"] for user in users if user.get("is_featured") is True}
+    featured_users = [user for user in users if user.get("is_featured") is True]
+
+    assert featured_usernames == {
+        "artvandelay",
+        "jerryseinfeld",
+        "georgecostanza",
+        "elainebenes",
     }
-
-    assert featured_usernames == {"admin", "artvandelay", "jerryseinfeld", "elainebenes"}
+    assert all(user["is_verified"] is True for user in featured_users)
+    assert all(user["is_admin"] is False for user in featured_users)
 
 
 def test_default_users_seed_more_than_twenty_verified_directory_accounts() -> None:

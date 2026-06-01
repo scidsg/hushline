@@ -1,32 +1,63 @@
 {
   "release": "one-off-directory",
   "baseUrl": "http://localhost:8080",
-  "capturedAt": "2026-04-03T02:33:29.994Z",
+  "capturedAt": "2026-06-01T04:08:15.983Z",
   "viewports": [
     {
       "id": "desktop",
       "width": 1000,
       "height": 800
+    },
+    {
+      "id": "mobile",
+      "width": 390,
+      "height": 844,
+      "isMobile": true,
+      "hasTouch": true,
+      "deviceScaleFactor": 3
     }
   ],
-  "themes": ["light"],
+  "themes": ["light", "dark"],
   "sessions": {
+    "guest": {
+      "username": ""
+    },
     "admin": {
       "username": "admin"
+    },
+    "artvandelay": {
+      "username": "artvandelay"
+    },
+    "newman": {
+      "username": "newman"
     }
   },
   "scenes": [
     {
-      "title": "Directory - Verified (admin)",
-      "slug": "auth-admin-directory-verified",
+      "title": "Onboarding - Step 1 Profile (newman)",
+      "slug": "auth-newman-onboarding-profile",
+      "path": "/onboarding?step=profile",
+      "session": "newman",
+      "viewport": "mobile",
+      "theme": "light",
+      "files": [
+        {
+          "mode": "fold",
+          "file": "newman/auth-newman-onboarding-profile-mobile-light-fold.png"
+        }
+      ]
+    },
+    {
+      "title": "Directory - Featured Carousel",
+      "slug": "guest-directory-featured-carousel",
       "path": "/directory",
-      "session": "admin",
+      "session": "guest",
       "viewport": "desktop",
       "theme": "light",
       "files": [
         {
           "mode": "fold",
-          "file": "admin/auth-admin-directory-verified-desktop-light-fold.png"
+          "file": "guest/guest-directory-featured-carousel-desktop-light-fold.png"
         }
       ]
     }
