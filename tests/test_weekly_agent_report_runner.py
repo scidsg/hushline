@@ -218,8 +218,9 @@ def test_send_with_mail_app_uses_native_mail_and_fixed_envelope(
     assert kwargs["timeout"] == runner.MAIL_APP_OSASCRIPT_TIMEOUT_SECONDS
 
 
-def test_send_with_mail_app_reports_osascript_timeout_and_cleans_tempfile(
+def test_send_with_mail_app_treats_osascript_timeout_as_handoff_warning_and_cleans_tempfile(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     runner = load_runner()
     body_paths = []
@@ -233,9 +234,9 @@ def test_send_with_mail_app_reports_osascript_timeout_and_cleans_tempfile(
 
     monkeypatch.setattr(runner.subprocess, "run", fake_run)
 
-    with pytest.raises(runner.RunnerError, match="Mail.app send timed out"):
-        runner.send_with_mail_app("Subject", "Body")
+    runner.send_with_mail_app("Subject", "Body")
 
+    assert "send handoff exceeded the osascript timeout" in capsys.readouterr().err
     assert len(body_paths) == 1
     assert not body_paths[0].exists()
 
