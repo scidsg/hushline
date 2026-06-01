@@ -271,7 +271,7 @@ Every queued issue is assumed to require a real change. Once the runner claims a
 
 Script: `scripts/weekly_hushline_code_agent_report_runner.py`
 
-This runner scans the local runner logs monitored on this machine and builds a plain-text `Weekly Agent Report`. It persists a timestamped local copy before sending through the native macOS Mail app. Mail.app delivery uses a bounded AppleScript timeout and sends asynchronously once the message is handed to Mail. If Mail reports its own AppleEvent timeout after that handoff, the runner logs a warning and exits successfully so slow Mail.app network delivery does not fail the LaunchAgent run after the local report has already been written.
+This runner scans the local runner logs monitored on this machine and builds a plain-text `Weekly Agent Report`. It persists a timestamped local copy before sending through the native macOS Mail app. Mail.app delivery uses a bounded AppleScript timeout and sends asynchronously once the message is handed to Mail. If Mail reports its own AppleEvent timeout after that handoff, or if the outer `osascript` process exceeds its timeout while waiting on Mail.app, the runner logs a warning and exits successfully so slow Mail.app network delivery does not fail the LaunchAgent run after the local report has already been written.
 
 Default log files:
 

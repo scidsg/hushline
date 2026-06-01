@@ -581,10 +581,13 @@ def send_with_mail_app(subject: str, body: str) -> None:
                 check=False,
                 timeout=MAIL_APP_OSASCRIPT_TIMEOUT_SECONDS,
             )
-        except subprocess.TimeoutExpired as exc:
-            raise RunnerError(
-                f"Mail.app send timed out after {MAIL_APP_OSASCRIPT_TIMEOUT_SECONDS} seconds",
-            ) from exc
+        except subprocess.TimeoutExpired:
+            print(
+                "Warning: Mail.app send handoff exceeded the osascript timeout; "
+                "the persisted report is available if delivery needs manual confirmation.",
+                file=sys.stderr,
+            )
+            return
     finally:
         Path(body_path).unlink(missing_ok=True)
     if result.returncode != 0:
