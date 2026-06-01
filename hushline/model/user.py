@@ -6,8 +6,14 @@ from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy import text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from hushline.config import AliasMode, FieldsMode
-from hushline.crypto import decrypt_field, encrypt_field
+from hushline.config import AliasMode, EncryptedFieldWriteFormat, FieldsMode
+from hushline.crypto import (
+    ENCRYPTED_FIELD_CONTRACT_BY_ID,
+    decrypt_field,
+    encrypt_field,
+    encrypted_field_write_format,
+    is_encrypted_field_aead_envelope,
+)
 from hushline.db import db
 from hushline.model.directory_listing_geography import build_directory_geography
 from hushline.model.enums import (
@@ -68,9 +74,7 @@ class User(Model):
     _password_hash: Mapped[str] = mapped_column(
         "password_hash", db.String(PASSWORD_HASH_MAX_LENGTH)
     )
-    _totp_secret: Mapped[Optional[str]] = mapped_column(
-        "totp_secret", db.String(TOTP_SECRET_MAX_LENGTH)
-    )
+    _totp_secret: Mapped[Optional[str]] = mapped_column("totp_secret", db.Text)
 
     primary_username: Mapped["Username"] = relationship(
         primaryjoin="and_(Username.user_id == User.id, Username.is_primary)",
@@ -101,17 +105,11 @@ class User(Model):
     email_include_message_content: Mapped[bool] = mapped_column(server_default=text("false"))
     email_encrypt_entire_body: Mapped[bool] = mapped_column(server_default=text("true"))
 
-    _email: Mapped[Optional[str]] = mapped_column("email", db.String(EMAIL_MAX_LENGTH))
-    _smtp_server: Mapped[Optional[str]] = mapped_column(
-        "smtp_server", db.String(SMTP_SERVER_MAX_LENGTH)
-    )
+    _email: Mapped[Optional[str]] = mapped_column("email", db.Text)
+    _smtp_server: Mapped[Optional[str]] = mapped_column("smtp_server", db.Text)
     smtp_port: Mapped[Optional[int]]
-    _smtp_username: Mapped[Optional[str]] = mapped_column(
-        "smtp_username", db.String(SMTP_USERNAME_MAX_LENGTH)
-    )
-    _smtp_password: Mapped[Optional[str]] = mapped_column(
-        "smtp_password", db.String(SMTP_PASSWORD_MAX_LENGTH)
-    )
+    _smtp_username: Mapped[Optional[str]] = mapped_column("smtp_username", db.Text)
+    _smtp_password: Mapped[Optional[str]] = mapped_column("smtp_password", db.Text)
     _pgp_key: Mapped[Optional[str]] = mapped_column("pgp_key", db.Text)
     smtp_encryption: Mapped[SMTPEncryption] = mapped_column(
         db.Enum(SMTPEncryption, native_enum=False), default=SMTPEncryption.StartTLS
@@ -157,6 +155,41 @@ class User(Model):
     def new_session_id() -> str:
         return _generate_session_id()
 
+    def _encrypted_field_aad_values(self) -> dict[str, int]:
+        if (
+            self.id is None
+            and encrypted_field_write_format() == EncryptedFieldWriteFormat.ENVELOPE_AES_GCM
+        ):
+            db.session.add(self)
+            db.session.flush()
+        if self.id is None:
+            raise ValueError("User encrypted-field AAD requires a persisted user id")
+        return {"user_id": self.id}
+
+    def _encrypt_encrypted_field(self, contract_id: str, value: str | None) -> str | None:
+        if encrypted_field_write_format() != EncryptedFieldWriteFormat.ENVELOPE_AES_GCM:
+            return encrypt_field(value)
+
+        contract = ENCRYPTED_FIELD_CONTRACT_BY_ID[contract_id]
+        return encrypt_field(
+            value,
+            contract=contract,
+            aad_values=self._encrypted_field_aad_values(),
+        )
+
+    def _decrypt_encrypted_field(self, contract_id: str, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if not is_encrypted_field_aead_envelope(value):
+            return decrypt_field(value)
+
+        contract = ENCRYPTED_FIELD_CONTRACT_BY_ID[contract_id]
+        return decrypt_field(
+            value,
+            contract=contract,
+            aad_values=self._encrypted_field_aad_values(),
+        )
+
     @property
     def password_hash(self) -> str:
         """Return the hashed password."""
@@ -173,25 +206,27 @@ class User(Model):
 
     @property
     def totp_secret(self) -> str | None:
-        return decrypt_field(self._totp_secret)
+        return self._decrypt_encrypted_field("User.totp_secret", self._totp_secret)
 
     @totp_secret.setter
     def totp_secret(self, value: str) -> None:
         if value is None:
             self._totp_secret = None
         else:
-            self._totp_secret = encrypt_field(value)
+            self._totp_secret = self._encrypt_encrypted_field("User.totp_secret", value)
 
     @property
     def email(self) -> str | None:
         if recipient := self.preferred_notification_recipient:
             return recipient.email
-        return decrypt_field(self._email)
+        return self._decrypt_encrypted_field("User.email", self._email)
 
     @email.setter
     def email(self, value: str | None) -> None:
-        old_email = decrypt_field(self._email)
-        self._email = encrypt_field(value) if value is not None else None
+        old_email = self._decrypt_encrypted_field("User.email", self._email)
+        self._email = (
+            self._encrypt_encrypted_field("User.email", value) if value is not None else None
+        )
 
         recipient = self.primary_notification_recipient
         if value is not None:
@@ -200,45 +235,48 @@ class User(Model):
             if recipient.email in {None, old_email}:
                 recipient.email = value
                 if recipient.pgp_key is None:
-                    recipient.pgp_key = decrypt_field(self._pgp_key)
+                    recipient.pgp_key = self._decrypt_encrypted_field(
+                        "User.pgp_key",
+                        self._pgp_key,
+                    )
         elif recipient is not None and recipient.email == old_email:
             recipient.email = None
 
     @property
     def smtp_server(self) -> str | None:
-        return decrypt_field(self._smtp_server)
+        return self._decrypt_encrypted_field("User.smtp_server", self._smtp_server)
 
     @smtp_server.setter
     def smtp_server(self, value: str) -> None:
-        self._smtp_server = encrypt_field(value)
+        self._smtp_server = self._encrypt_encrypted_field("User.smtp_server", value)
 
     @property
     def smtp_username(self) -> str | None:
-        return decrypt_field(self._smtp_username)
+        return self._decrypt_encrypted_field("User.smtp_username", self._smtp_username)
 
     @smtp_username.setter
     def smtp_username(self, value: str) -> None:
-        self._smtp_username = encrypt_field(value)
+        self._smtp_username = self._encrypt_encrypted_field("User.smtp_username", value)
 
     @property
     def smtp_password(self) -> str | None:
-        return decrypt_field(self._smtp_password)
+        return self._decrypt_encrypted_field("User.smtp_password", self._smtp_password)
 
     @smtp_password.setter
     def smtp_password(self, value: str) -> None:
-        self._smtp_password = encrypt_field(value)
+        self._smtp_password = self._encrypt_encrypted_field("User.smtp_password", value)
 
     @property
     def pgp_key(self) -> str | None:
-        return decrypt_field(self._pgp_key)
+        return self._decrypt_encrypted_field("User.pgp_key", self._pgp_key)
 
     @pgp_key.setter
     def pgp_key(self, value: str | None) -> None:
-        old_key = decrypt_field(self._pgp_key)
+        old_key = self._decrypt_encrypted_field("User.pgp_key", self._pgp_key)
         if value is None:
             self._pgp_key = None
         else:
-            self._pgp_key = encrypt_field(value)
+            self._pgp_key = self._encrypt_encrypted_field("User.pgp_key", value)
 
         recipient = self.primary_notification_recipient
         if recipient is not None and recipient.pgp_key in {None, old_key}:
@@ -434,8 +472,12 @@ class User(Model):
         recipient = self.preferred_notification_recipient
         email = recipient.email if recipient is not None else None
         pgp_key = recipient.pgp_key if recipient is not None else None
-        self._email = encrypt_field(email) if email is not None else None
-        self._pgp_key = encrypt_field(pgp_key) if pgp_key is not None else None
+        self._email = (
+            self._encrypt_encrypted_field("User.email", email) if email is not None else None
+        )
+        self._pgp_key = (
+            self._encrypt_encrypted_field("User.pgp_key", pgp_key) if pgp_key is not None else None
+        )
 
     def __init__(self, **kwargs: Any) -> None:
         for key in ["password_hash", "_password_hash"]:

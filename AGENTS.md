@@ -94,10 +94,13 @@ This file provides operating guidance for coding agents working in the Hush Line
   - Runner exits early if any issue is already in project status `In Progress`.
 - One-bot-PR guard:
   - Runner exits early if any unrelated open PR exists from bot login (`HUSHLINE_BOT_LOGIN`, default `hushline-dev`).
-  - The dedicated coverage runner PR head (`HUSHLINE_COVERAGE_BRANCH_NAME`, default `codex/daily-coverage`) is treated as an allowed maintenance PR and must not block daily issue selection.
   - Exception: when the selected issue is a child of a GitHub parent epic, the runner may allow the long-lived epic PR plus the matching child issue PR, and should stop only for unrelated bot PRs.
 - Required runner behavior:
-  - At runner start, perform a full local environment reset and seed sequence:
+  - The runner must acquire a local non-blocking lock before touching the repository or Docker; if another Hush Line code-agent run is active, exit without changing local state.
+  - After acquiring the runner lock, normalize the agent-only checkout by discarding local worktree changes and switching to the base branch.
+  - If no issue is available, or a cheap GitHub guard blocks work, exit before `git fetch`, Docker reset, or dev-data seeding.
+  - After an issue is selected and all cheap GitHub guards pass, sync the local base branch to `origin/main`.
+  - Before issue work starts, perform a full local environment reset and seed sequence:
     - `docker compose down -v --remove-orphans`
     - Stop/remove all Docker containers (`docker rm -f $(docker ps -aq)`)
     - Kill listener processes on configured runner ports (`HUSHLINE_DAILY_KILL_PORTS`, default `4566 4571 5432 8080`)
@@ -106,13 +109,12 @@ This file provides operating guidance for coding agents working in the Hush Line
   - Run required validation checks locally before opening PRs (`make lint`, `make test`).
   - Persist per-run logs in `docs/agent-logs/` and include the log path in PR context.
   - Use signed commits that verify on GitHub.
-  - Force-sync local checkout to `origin/main` at runner start to clear dirty trees.
   - If the selected issue is a child of a GitHub parent epic, create/update the child issue branch as usual, but target its PR at the shared epic branch instead of `main`.
   - The shared epic branch should be the only long-lived PR that targets `main` for that epic.
   - Move the selected issue's project status to `In Progress` while work is underway.
   - Move the selected issue's project status to `Ready for Review` after the PR is open.
   - For child PRs that target an epic branch, do not rely on GitHub auto-close keywords alone; the child issue must be explicitly closed when that PR is merged into the epic branch.
-  - Keep the PR branch checked out and poll the open PR for feedback every 60 seconds until it closes.
+  - Keep the PR branch checked out and poll the open PR for feedback every 10 minutes until it closes.
   - Return to `main` only after that PR is closed.
 
 ## Required Checks Before PR

@@ -1,0 +1,71 @@
+{
+  "schema": "hushline.crypto-known-answer-vectors.v1",
+  "rationale": "These vectors lock AES-GCM behavior against public NIST examples and lock Hush Line AEAD envelope bytes for versioning, canonical AAD, 96-bit nonce handling, and JSON/base64url serialization. Fixture values are synthetic and contain no production secrets or user data.",
+  "sources": [
+    {
+      "name": "NIST SP 800-38D, Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM) and GMAC",
+      "url": "https://csrc.nist.gov/pubs/sp/800/38/d/final",
+      "doi": "10.6028/NIST.SP.800-38D",
+      "notes": "The AES-GCM known-answer vectors use the all-zero examples widely published from the NIST SP 800-38D / CAVP GCMVS material."
+    },
+    {
+      "name": "NIST CAVP Testing: Block Cipher Modes, GCM Test Vectors (SP 800-38D)",
+      "url": "https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/cavp-testing-block-cipher-modes",
+      "notes": "NIST documents GCM test vectors for informal verification of SP 800-38D block cipher mode implementations."
+    }
+  ],
+  "aes_gcm_known_answer_vectors": [
+    {
+      "id": "nist-sp800-38d-aes-128-gcm-empty",
+      "algorithm": "AES-128-GCM",
+      "key_hex": "00000000000000000000000000000000",
+      "nonce_hex": "000000000000000000000000",
+      "aad_hex": "",
+      "plaintext_hex": "",
+      "ciphertext_hex": "",
+      "tag_hex": "58e2fccefa7e3061367f1d57a4e7455a"
+    },
+    {
+      "id": "nist-sp800-38d-aes-128-gcm-one-block",
+      "algorithm": "AES-128-GCM",
+      "key_hex": "00000000000000000000000000000000",
+      "nonce_hex": "000000000000000000000000",
+      "aad_hex": "",
+      "plaintext_hex": "00000000000000000000000000000000",
+      "ciphertext_hex": "0388dace60b6a392f328c2b971b2fe78",
+      "tag_hex": "ab6e47d42cec13bdf53a67b21257bddf"
+    }
+  ],
+  "hushline_encrypted_field_aead_vectors": [
+    {
+      "id": "hushline-aes-256-gcm-notification-recipient-email-v1",
+      "base_encryption_key_base64": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+      "derived_aes_key_hex": "b0fa0b8a7006a9022ca9f7e5ccbcdba0fd5970587ca76b0cf1ae202c26514539",
+      "contract_id": "NotificationRecipient.email",
+      "aad_values": {
+        "notification_recipient_id": 3,
+        "user_id": 7
+      },
+      "plaintext": "recipient@example.org",
+      "nonce_hex": "000102030405060708090a0b",
+      "aad_json": "{\"alg\":\"aes-256-gcm\",\"column\":\"email\",\"domain\":\"hushline.encrypted-field.notification_recipients.email\",\"row\":{\"notification_recipient_id\":3,\"user_id\":7},\"schema\":\"hushline.encrypted-field.aad.v1\",\"table\":\"notification_recipients\",\"v\":2}",
+      "aad_hex": "7b22616c67223a226165732d3235362d67636d222c22636f6c756d6e223a22656d61696c222c22646f6d61696e223a22687573686c696e652e656e637279707465642d6669656c642e6e6f74696669636174696f6e5f726563697069656e74732e656d61696c222c22726f77223a7b226e6f74696669636174696f6e5f726563697069656e745f6964223a332c22757365725f6964223a377d2c22736368656d61223a22687573686c696e652e656e637279707465642d6669656c642e6161642e7631222c227461626c65223a226e6f74696669636174696f6e5f726563697069656e7473222c2276223a327d",
+      "ciphertext_hex": "4979bdd70643f69ed8176f75c146bbc77864d8c152",
+      "tag_hex": "26dba50ad2b96beaca9b3acad9f2edba",
+      "ciphertext_and_tag_hex": "4979bdd70643f69ed8176f75c146bbc77864d8c15226dba50ad2b96beaca9b3acad9f2edba",
+      "serialized_payload_json": "{\"alg\":\"aes-256-gcm\",\"ct\":\"SXm91wZD9p7YF291wUa7x3hk2MFSJtulCtK5a-rKmzrK2fLtug\",\"n\":\"AAECAwQFBgcICQoL\",\"v\":2}",
+      "envelope": "hlfield:eyJhbGciOiJhZXMtMjU2LWdjbSIsImN0IjoiU1htOTF3WkQ5cDdZRjI5MXdVYTd4M2hrMk1GU0p0dWxDdEs1YS1yS216cksyZkx0dWciLCJuIjoiQUFFQ0F3UUZCZ2NJQ1FvTCIsInYiOjJ9",
+      "negative_cases": [
+        "corrupted ciphertext byte",
+        "corrupted authentication tag byte",
+        "wrong AAD row identifier",
+        "wrong AAD domain",
+        "corrupted nonce byte",
+        "malformed nonce length",
+        "unknown envelope version",
+        "unknown envelope algorithm",
+        "unexpected envelope metadata"
+      ]
+    }
+  ]
+}

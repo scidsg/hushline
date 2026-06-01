@@ -139,7 +139,7 @@ If local audit commands are blocked by network/tooling availability, document th
   <tr>
     <td valign="bottom" width="73%">
       <img
-        src="https://raw.githubusercontent.com/scidsg/hushline-screenshots/refs/heads/main/releases/latest/guest/guest-directory-verified-desktop-light-fold.png"
+        src="https://raw.githubusercontent.com/scidsg/hushline-screenshots/refs/heads/main/releases/latest/guest/guest-directory-featured-carousel-desktop-light-fold.png"
         width="100%"
         alt="Guest directory screenshot"
       />

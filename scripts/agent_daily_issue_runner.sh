@@ -16,7 +16,7 @@ prepare_runner_exec_snapshot() {
 
   original_script_dir="$(CDPATH= cd -- "$(dirname -- "$runner_script_path")" && pwd)"
   original_script_path="$original_script_dir/$(basename -- "$runner_script_path")"
-  snapshot_file="$(mktemp "${TMPDIR:-/tmp}/agent_daily_issue_runner.XXXXXX.sh")"
+  snapshot_file="$(mktemp "${TMPDIR:-/tmp}/agent_daily_issue_runner.XXXXXX")"
   cp "$original_script_path" "$snapshot_file"
   chmod 700 "$snapshot_file"
   printf '%s\t%s\n' "$original_script_dir" "$snapshot_file"
@@ -45,7 +45,6 @@ BOT_GIT_SIGNING_KEY="${HUSHLINE_BOT_GIT_SIGNING_KEY:-}"
 DEFAULT_BOT_GIT_SSH_SIGNING_KEY_PATH="${HUSHLINE_BOT_GIT_DEFAULT_SSH_SIGNING_KEY_PATH:-}"
 BRANCH_PREFIX="${HUSHLINE_DAILY_BRANCH_PREFIX:-codex/daily-issue-}"
 EPIC_BRANCH_PREFIX="${HUSHLINE_DAILY_EPIC_BRANCH_PREFIX:-codex/epic-}"
-COVERAGE_BRANCH_NAME="${HUSHLINE_COVERAGE_BRANCH_NAME:-codex/daily-coverage}"
 CODEX_MODEL="${HUSHLINE_CODEX_MODEL:-gpt-5.5}"
 CODEX_REASONING_EFFORT="${HUSHLINE_CODEX_REASONING_EFFORT:-high}"
 PROJECT_OWNER="${HUSHLINE_DAILY_PROJECT_OWNER:-${REPO_SLUG%%/*}}"
@@ -61,19 +60,29 @@ MAX_FIX_ATTEMPTS="${HUSHLINE_DAILY_MAX_FIX_ATTEMPTS:-8}"
 RUNTIME_BOOTSTRAP_ATTEMPTS="${HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_ATTEMPTS:-3}"
 RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS="${HUSHLINE_DAILY_RUNTIME_BOOTSTRAP_RETRY_DELAY_SECONDS:-10}"
 CHECK_TIMEOUT_SECONDS="${HUSHLINE_DAILY_CHECK_TIMEOUT_SECONDS:-1800}"
-POST_PR_FEEDBACK_DELAY_SECONDS="${HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS:-60}"
+POST_PR_FEEDBACK_DELAY_SECONDS="${HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS:-600}"
+CODEX_STATUS_CHECK_ENABLED="${HUSHLINE_DAILY_CODEX_STATUS_CHECK_ENABLED:-1}"
+CODEX_STATUS_CHECK_TIMEOUT_SECONDS="${HUSHLINE_DAILY_CODEX_STATUS_CHECK_TIMEOUT_SECONDS:-15}"
+CODEX_STATUS_RESET_BUFFER_SECONDS="${HUSHLINE_DAILY_CODEX_STATUS_RESET_BUFFER_SECONDS:-60}"
+CODEX_STATUS_MIN_REMAINING_PERCENT="${HUSHLINE_DAILY_CODEX_STATUS_MIN_REMAINING_PERCENT:-25}"
+CODEX_STATUS_STALE_RESET_RECHECK_SECONDS="${HUSHLINE_DAILY_CODEX_STATUS_STALE_RESET_RECHECK_SECONDS:-600}"
+CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS="${HUSHLINE_DAILY_CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS:-3600}"
 
 CHECK_LOG_FILE=""
 PROMPT_FILE=""
 PR_BODY_FILE=""
 CODEX_OUTPUT_FILE=""
 CODEX_TRANSCRIPT_FILE=""
+CODEX_EXEC_UNAVAILABLE=0
 RUN_LOG_TMP_FILE=""
 RUN_LOG_TIMESTAMP=""
 RUN_LOG_GIT_PATH=""
 RUN_LOG_RETENTION_COUNT="${HUSHLINE_DAILY_RUN_LOG_RETENTION:-10}"
 VERBOSE_CODEX_OUTPUT="${HUSHLINE_DAILY_VERBOSE_CODEX_OUTPUT:-0}"
 AUDIT_STATUS="ok"
+CLEANUP_REPO_ON_EXIT=0
+RUNNER_LOCK_DIR="${HUSHLINE_DAILY_RUNNER_LOCK_DIR:-$REPO_DIR/.git/hushline-code-agent.lock}"
+RUNNER_LOCK_HELD=0
 AUDIT_NOTE=""
 NODE_FULL_AUDIT_REQUIRED=0
 MIGRATION_SMOKE_REQUIRED=0
@@ -85,6 +94,11 @@ PR_FEEDBACK_MONITOR_ACTIVE=0
 PR_FEEDBACK_MONITOR_CLOSED=0
 PR_FEEDBACK_MONITOR_PR_NUMBER=""
 PR_FEEDBACK_MONITOR_BRANCH=""
+RUNNER_DIAGNOSTIC_PR=0
+RUNNER_DIAGNOSTIC_REASON=""
+RUNNER_NO_USABLE_CHANGES=0
+RUNNER_LOCK_STATE_BASENAME="${RUNNER_LOCK_DIR%/}"
+CODEX_STATUS_IDLE_CHECK_STATE_FILE="${HUSHLINE_DAILY_CODEX_STATUS_IDLE_CHECK_STATE_FILE:-$(dirname "$RUNNER_LOCK_STATE_BASENAME")/.$(basename "$RUNNER_LOCK_STATE_BASENAME").codex-status-last-check}"
 
 parse_args() {
   while [[ $# -gt 0 ]]; do
@@ -109,6 +123,302 @@ runner_status() {
   printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S %Z')" "$*"
 }
 
+epoch_to_local_time() {
+  local epoch="$1"
+
+  if date -r "$epoch" '+%Y-%m-%d %H:%M:%S %Z' >/dev/null 2>&1; then
+    date -r "$epoch" '+%Y-%m-%d %H:%M:%S %Z'
+  else
+    date -d "@$epoch" '+%Y-%m-%d %H:%M:%S %Z'
+  fi
+}
+
+fetch_codex_status_json() {
+  if [[ -n "${HUSHLINE_DAILY_CODEX_STATUS_JSON:-}" ]]; then
+    printf '%s\n' "$HUSHLINE_DAILY_CODEX_STATUS_JSON"
+    return 0
+  fi
+
+  CODEX_STATUS_CHECK_TIMEOUT_SECONDS="$CODEX_STATUS_CHECK_TIMEOUT_SECONDS" node -e '
+const { spawn } = require("node:child_process");
+
+const timeoutSeconds = Number(process.env.CODEX_STATUS_CHECK_TIMEOUT_SECONDS || "15");
+const timeoutMs = Math.max(1, timeoutSeconds) * 1000;
+const child = spawn("codex", ["app-server", "--listen", "stdio://"], {
+  stdio: ["pipe", "pipe", "pipe"],
+});
+let completed = false;
+let stdoutBuffer = "";
+let stderrBuffer = "";
+
+function isAuthFailure(text) {
+  return /token[_ -]?(invalidated|reused)|refresh token|access token|unauthorized|sign in again|log out and sign in again/i.test(text || "");
+}
+
+function finish(code) {
+  if (completed) return;
+  completed = true;
+  clearTimeout(timer);
+  child.kill("SIGTERM");
+  process.exit(code);
+}
+
+const timer = setTimeout(() => {
+  console.error("Codex /status rate limit check timed out.");
+  finish(2);
+}, timeoutMs);
+
+child.stdout.setEncoding("utf8");
+child.stdout.on("data", (chunk) => {
+  stdoutBuffer += chunk;
+  const lines = stdoutBuffer.split(/\n/);
+  stdoutBuffer = lines.pop() || "";
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    let message;
+    try {
+      message = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (message.id === 2) {
+      if (message.error) {
+        const errorMessage = message.error.message || "unknown error";
+        console.error(`Codex /status rate limit check failed: ${errorMessage}`);
+        finish(isAuthFailure(errorMessage) ? 3 : 2);
+      }
+      process.stdout.write(`${JSON.stringify(message.result || {})}\n`);
+      finish(0);
+    }
+  }
+});
+child.stderr.on("data", (chunk) => {
+  stderrBuffer += chunk.toString();
+  if (stderrBuffer.length > 12000) {
+    stderrBuffer = stderrBuffer.slice(-12000);
+  }
+});
+child.on("error", (error) => {
+  console.error(`Codex /status rate limit check failed: ${error.message}`);
+  finish(isAuthFailure(error.message) ? 3 : 2);
+});
+child.on("exit", (code) => {
+  if (!completed) {
+    console.error(`Codex /status rate limit check exited before returning status: ${code}`);
+    finish(isAuthFailure(stderrBuffer) ? 3 : 2);
+  }
+});
+
+child.stdin.write(`${JSON.stringify({
+  method: "initialize",
+  id: 1,
+  params: {
+    clientInfo: {
+      name: "hushline_runner",
+      title: "Hush Line Runner",
+      version: "1",
+    },
+  },
+})}\n`);
+child.stdin.write(`${JSON.stringify({ method: "initialized", params: {} })}\n`);
+child.stdin.write(`${JSON.stringify({ method: "account/rateLimits/read", id: 2 })}\n`);
+'
+}
+
+parse_codex_primary_limit_status() {
+  node -e '
+const fs = require("node:fs");
+const input = fs.readFileSync(0, "utf8");
+const root = JSON.parse(input);
+const limits =
+  root.rateLimitsByLimitId?.codex ||
+  root.rateLimits ||
+  root;
+const primary = limits.primary;
+if (!primary) {
+  process.exit(2);
+}
+const usedPercent = Number(primary.usedPercent);
+const windowDurationMins = Number(primary.windowDurationMins);
+const resetsAt = Number(primary.resetsAt);
+const reachedType = limits.rateLimitReachedType || "null";
+if (!Number.isFinite(usedPercent) || !Number.isFinite(windowDurationMins) || !Number.isFinite(resetsAt)) {
+  process.exit(2);
+}
+process.stdout.write([
+  Math.trunc(usedPercent),
+  Math.trunc(windowDurationMins),
+  Math.trunc(resetsAt),
+  reachedType,
+].join("\t"));
+'
+}
+
+codex_status_reached_type_blocks_issue_work() {
+  local reached_type="$1"
+
+  case "$reached_type" in
+    "" | "null" | "primary")
+      return 1
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+}
+
+wait_for_codex_status_credit_window() {
+  local status_json=""
+  local status_rc=0
+  local parsed_status=""
+  local used_percent=""
+  local window_duration_mins=""
+  local resets_at=""
+  local reached_type=""
+  local now_epoch=""
+  local sleep_seconds=""
+  local reset_label=""
+  local remaining_percent=""
+
+  if [[ "$CODEX_STATUS_CHECK_ENABLED" != "1" ]]; then
+    echo "Codex /status preflight disabled by HUSHLINE_DAILY_CODEX_STATUS_CHECK_ENABLED."
+    return 0
+  fi
+
+  while :; do
+    echo "==> Check Codex /status usage limits"
+    if status_json="$(fetch_codex_status_json)"; then
+      status_rc=0
+    else
+      status_rc=$?
+      if (( status_rc == 3 )); then
+        echo "Blocked: Codex /status reported an authentication failure; sign in again for CODEX_HOME before running assigned work." >&2
+        return 1
+      fi
+      echo "Warning: Codex /status preflight failed; continuing so the runner can still attempt assigned work." >&2
+      return 0
+    fi
+
+    if ! parsed_status="$(printf '%s\n' "$status_json" | parse_codex_primary_limit_status)"; then
+      echo "Warning: Codex /status preflight returned unparseable rate limit data; continuing." >&2
+      return 0
+    fi
+
+    IFS=$'\t' read -r used_percent window_duration_mins resets_at reached_type <<< "$parsed_status"
+    reset_label="$(epoch_to_local_time "$resets_at")"
+    remaining_percent=$((100 - used_percent))
+    if (( remaining_percent < 0 )); then
+      remaining_percent=0
+    fi
+    echo "Codex /status: primary ${window_duration_mins}m window ${used_percent}% used; ${remaining_percent}% remaining; resets at ${reset_label}."
+
+    if codex_status_reached_type_blocks_issue_work "$reached_type"; then
+      echo "Blocked: Codex /status reported non-window limit type '${reached_type}'; refusing to start assigned work until Codex access is restored." >&2
+      return 1
+    fi
+
+    if (( window_duration_mins == 300 && remaining_percent < CODEX_STATUS_MIN_REMAINING_PERCENT )); then
+      now_epoch="$(date +%s)"
+      if (( resets_at > now_epoch )); then
+        sleep_seconds=$((resets_at - now_epoch + CODEX_STATUS_RESET_BUFFER_SECONDS))
+        runner_status "Codex 5h remaining quota is ${remaining_percent}%, below ${CODEX_STATUS_MIN_REMAINING_PERCENT}%; waiting ${sleep_seconds}s until after reset at ${reset_label}."
+        sleep "$sleep_seconds"
+        continue
+      fi
+      runner_status "Codex 5h remaining quota is below ${CODEX_STATUS_MIN_REMAINING_PERCENT}%, but reset time has passed; waiting ${CODEX_STATUS_STALE_RESET_RECHECK_SECONDS}s before rechecking."
+      sleep "$CODEX_STATUS_STALE_RESET_RECHECK_SECONDS"
+      continue
+    fi
+
+    if [[ -n "$reached_type" && "$reached_type" != "null" ]]; then
+      echo "Codex /status reported reached limit type '${reached_type}', but the 5h window still has capacity; proceeding."
+    fi
+    return 0
+  done
+}
+
+codex_idle_status_check_due() {
+  local now_epoch=""
+  local last_epoch=""
+
+  if [[ "$CODEX_STATUS_CHECK_ENABLED" != "1" ]]; then
+    return 1
+  fi
+
+  if (( CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS == 0 )); then
+    return 0
+  fi
+
+  now_epoch="$(date +%s)"
+  if [[ -f "$CODEX_STATUS_IDLE_CHECK_STATE_FILE" && ! -L "$CODEX_STATUS_IDLE_CHECK_STATE_FILE" && -r "$CODEX_STATUS_IDLE_CHECK_STATE_FILE" ]]; then
+    last_epoch="$(tr -cd '0-9' < "$CODEX_STATUS_IDLE_CHECK_STATE_FILE")"
+    if [[ -n "$last_epoch" ]] && (( now_epoch - last_epoch < CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS )); then
+      return 1
+    fi
+  fi
+
+  return 0
+}
+
+record_codex_idle_status_check_attempt() {
+  local state_dir=""
+  local state_tmp_file=""
+
+  state_dir="$(dirname "$CODEX_STATUS_IDLE_CHECK_STATE_FILE")"
+  mkdir -p "$state_dir"
+  chmod 700 "$state_dir" 2>/dev/null || true
+
+  if [[ -e "$CODEX_STATUS_IDLE_CHECK_STATE_FILE" && ( -L "$CODEX_STATUS_IDLE_CHECK_STATE_FILE" || ! -f "$CODEX_STATUS_IDLE_CHECK_STATE_FILE" ) ]]; then
+    runner_status "Warning: refusing to write idle Codex status state file at unsafe path: $CODEX_STATUS_IDLE_CHECK_STATE_FILE"
+    return 1
+  fi
+
+  state_tmp_file="$(mktemp "${CODEX_STATUS_IDLE_CHECK_STATE_FILE}.tmp.XXXXXX")"
+  chmod 600 "$state_tmp_file"
+  date +%s > "$state_tmp_file"
+  mv -f "$state_tmp_file" "$CODEX_STATUS_IDLE_CHECK_STATE_FILE"
+}
+
+check_codex_status_once_for_idle_run() {
+  local status_json=""
+  local parsed_status=""
+  local used_percent=""
+  local window_duration_mins=""
+  local resets_at=""
+  local reached_type=""
+  local reset_label=""
+  local remaining_percent=""
+
+  if ! codex_idle_status_check_due; then
+    return 0
+  fi
+
+  record_codex_idle_status_check_attempt
+  runner_status "Hourly idle Codex /status check due."
+  echo "==> Check Codex /status usage limits"
+  if ! status_json="$(fetch_codex_status_json)"; then
+    echo "Warning: idle Codex /status check failed; continuing idle exit." >&2
+    return 0
+  fi
+
+  if ! parsed_status="$(printf '%s\n' "$status_json" | parse_codex_primary_limit_status)"; then
+    echo "Warning: idle Codex /status check returned unparseable rate limit data; continuing idle exit." >&2
+    return 0
+  fi
+
+  IFS=$'\t' read -r used_percent window_duration_mins resets_at reached_type <<< "$parsed_status"
+  reset_label="$(epoch_to_local_time "$resets_at")"
+  remaining_percent=$((100 - used_percent))
+  if (( remaining_percent < 0 )); then
+    remaining_percent=0
+  fi
+  echo "Codex /status: primary ${window_duration_mins}m window ${used_percent}% used; ${remaining_percent}% remaining; resets at ${reset_label}."
+
+  if [[ -n "$reached_type" && "$reached_type" != "null" ]]; then
+    echo "Codex /status reported reached limit type '${reached_type}' during idle check."
+  fi
+}
+
 initialize_run_state() {
   CHECK_LOG_FILE="$(mktemp)"
   PROMPT_FILE="$(mktemp)"
@@ -126,25 +436,120 @@ initialize_run_state() {
 }
 
 cleanup() {
+  local exit_code=$?
+  local cleanup_branch=""
+  local cleanup_status=""
+  local checkout_ok=1
+
   rm -f "${CHECK_LOG_FILE:-}" "${PROMPT_FILE:-}" "${PR_BODY_FILE:-}" "${CODEX_OUTPUT_FILE:-}" "${CODEX_TRANSCRIPT_FILE:-}" "${RUN_LOG_TMP_FILE:-}"
   rm -f "${HUSHLINE_DAILY_RUNNER_SNAPSHOT_PATH:-}"
-  if [[ -d "$REPO_DIR/.git" ]]; then
+  if [[ -d "$REPO_DIR/.git" && "$CLEANUP_REPO_ON_EXIT" == "1" ]]; then
     if [[ "${PR_FEEDBACK_MONITOR_ACTIVE:-0}" == "1" && "${PR_FEEDBACK_MONITOR_CLOSED:-0}" != "1" ]]; then
       echo "Leaving branch ${PR_FEEDBACK_MONITOR_BRANCH:-current branch} checked out because PR #${PR_FEEDBACK_MONITOR_PR_NUMBER:-unknown} is still open."
-      return
-    fi
-    if ! git -C "$REPO_DIR" checkout "$BASE_BRANCH" >/dev/null 2>&1; then
-      echo "Warning: failed to switch back to $BASE_BRANCH during cleanup." >&2
-      return
-    fi
-    if ! git -C "$REPO_DIR" reset --hard "origin/$BASE_BRANCH" >/dev/null 2>&1; then
-      if ! git -C "$REPO_DIR" reset --hard "$BASE_BRANCH" >/dev/null 2>&1; then
-        echo "Warning: failed to reset $BASE_BRANCH during cleanup." >&2
+    else
+      if (( exit_code != 0 )); then
+        cleanup_branch="$(git -C "$REPO_DIR" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+        cleanup_status="$(git -C "$REPO_DIR" status --short 2>/dev/null || true)"
+        if [[ "$cleanup_branch" != "$BASE_BRANCH" || -n "$cleanup_status" ]]; then
+          echo "Resetting failed runner worktree from ${cleanup_branch:-detached HEAD}; exit status was ${exit_code}."
+          if [[ -n "$cleanup_status" ]]; then
+            printf '%s\n' "$cleanup_status"
+          fi
+        fi
+      fi
+
+      if ! git -C "$REPO_DIR" checkout "$BASE_BRANCH" >/dev/null 2>&1; then
+        echo "Warning: failed to switch back to $BASE_BRANCH during cleanup." >&2
+        checkout_ok=0
+      fi
+      if [[ "$checkout_ok" == "1" ]]; then
+        if ! git -C "$REPO_DIR" reset --hard "origin/$BASE_BRANCH" >/dev/null 2>&1; then
+          if ! git -C "$REPO_DIR" reset --hard "$BASE_BRANCH" >/dev/null 2>&1; then
+            echo "Warning: failed to reset $BASE_BRANCH during cleanup." >&2
+          fi
+        fi
+        if ! git -C "$REPO_DIR" clean -fd >/dev/null 2>&1; then
+          echo "Warning: failed to remove untracked files during cleanup." >&2
+        fi
       fi
     fi
-    if ! git -C "$REPO_DIR" clean -fd >/dev/null 2>&1; then
-      echo "Warning: failed to remove untracked files during cleanup." >&2
+  fi
+  release_runner_lock
+}
+
+release_runner_lock() {
+  if [[ "$RUNNER_LOCK_HELD" != "1" ]]; then
+    return 0
+  fi
+  rm -f "$RUNNER_LOCK_DIR/pid"
+  rmdir "$RUNNER_LOCK_DIR" 2>/dev/null || true
+  RUNNER_LOCK_HELD=0
+}
+
+acquire_runner_lock() {
+  local existing_pid=""
+
+  if mkdir "$RUNNER_LOCK_DIR" 2>/dev/null; then
+    RUNNER_LOCK_HELD=1
+    printf '%s\n' "$$" > "$RUNNER_LOCK_DIR/pid"
+    return 0
+  fi
+
+  if [[ -L "$RUNNER_LOCK_DIR" ]]; then
+    runner_status "Skipped: runner lock path is a symlink; refusing to modify it."
+    exit 0
+  fi
+
+  if [[ -f "$RUNNER_LOCK_DIR/pid" ]]; then
+    existing_pid="$(sed -n '1p' "$RUNNER_LOCK_DIR/pid" 2>/dev/null || true)"
+    if [[ "$existing_pid" =~ ^[0-9]+$ ]] && kill -0 "$existing_pid" 2>/dev/null; then
+      runner_status "Skipped: another Hush Line code agent run is already active as PID $existing_pid."
+      exit 0
     fi
+  fi
+
+  rm -f "$RUNNER_LOCK_DIR/pid" 2>/dev/null || true
+  if rmdir "$RUNNER_LOCK_DIR" 2>/dev/null && mkdir "$RUNNER_LOCK_DIR" 2>/dev/null; then
+    RUNNER_LOCK_HELD=1
+    printf '%s\n' "$$" > "$RUNNER_LOCK_DIR/pid"
+    return 0
+  fi
+
+  runner_status "Skipped: another Hush Line code agent run is already active."
+  exit 0
+}
+
+current_branch_name() {
+  git symbolic-ref --quiet --short HEAD 2>/dev/null || true
+}
+
+worktree_status_porcelain() {
+  git status --porcelain 2>/dev/null || true
+}
+
+assert_runner_can_take_checkout() {
+  local current_branch=""
+  local status_output=""
+
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    return 0
+  fi
+
+  current_branch="$(current_branch_name)"
+  status_output="$(worktree_status_porcelain)"
+
+  if [[ -n "$status_output" ]]; then
+    runner_status "Discarding local checkout changes before runner work."
+    printf '%s\n' "$status_output"
+    git reset --hard
+    git clean -fd
+  fi
+
+  if [[ "$current_branch" != "$BASE_BRANCH" ]]; then
+    runner_status "Switching checkout from '${current_branch:-detached HEAD}' to '$BASE_BRANCH' before runner work."
+    git checkout "$BASE_BRANCH"
+    git reset --hard
+    git clean -fd
   fi
 }
 
@@ -198,6 +603,16 @@ require_non_negative_integer() {
 
   if ! [[ "$value" =~ ^[0-9]+$ ]]; then
     echo "${name} must be a non-negative integer (got '${value}')." >&2
+    return 1
+  fi
+}
+
+require_percentage_integer() {
+  local name="$1"
+  local value="$2"
+
+  if ! [[ "$value" =~ ^[0-9]+$ ]] || (( value > 100 )); then
+    echo "${name} must be an integer percentage from 0 to 100 (got '${value}')." >&2
     return 1
   fi
 }
@@ -408,6 +823,61 @@ refresh_runtime_after_schema_changes() {
   fi
 
   reset_runtime_stack_and_seed_dev_data
+}
+
+restore_runtime_generated_static_artifacts() {
+  local generated_status=""
+
+  generated_status="$(git status --short -- hushline/static/js 2>/dev/null || true)"
+  if [[ -z "$generated_status" ]]; then
+    return 0
+  fi
+
+  echo "Restoring generated static JS artifacts dirtied by runtime bootstrap."
+  printf '%s\n' "$generated_status"
+  git restore -- hushline/static/js
+}
+
+restore_non_log_worktree_changes() {
+  local tracked_files=""
+  local untracked_files=""
+  local line
+  local -a tracked_paths=()
+  local -a untracked_paths=()
+
+  tracked_files="$(
+    {
+      git diff --name-only
+      git diff --cached --name-only
+    } | awk 'NF && !/^docs\/agent-logs\/run-.*-issue-[0-9]+\.txt$/ && !seen[$0]++'
+  )"
+  untracked_files="$(
+    git ls-files --others --exclude-standard \
+      | awk 'NF && !/^docs\/agent-logs\/run-.*-issue-[0-9]+\.txt$/'
+  )"
+
+  if [[ -z "$tracked_files" && -z "$untracked_files" ]]; then
+    return 0
+  fi
+
+  echo "Restoring non-log worktree changes before opening diagnostic PR."
+  {
+    printf '%s\n' "$tracked_files"
+    printf '%s\n' "$untracked_files"
+  } | sed '/^$/d'
+
+  if [[ -n "$tracked_files" ]]; then
+    while IFS= read -r line; do
+      [[ -n "$line" ]] && tracked_paths+=("$line")
+    done <<< "$tracked_files"
+    git restore --staged --worktree -- "${tracked_paths[@]}"
+  fi
+  if [[ -n "$untracked_files" ]]; then
+    while IFS= read -r line; do
+      [[ -n "$line" ]] && untracked_paths+=("$line")
+    done <<< "$untracked_files"
+    git clean -f -- "${untracked_paths[@]}"
+  fi
 }
 
 list_changed_files() {
@@ -739,6 +1209,11 @@ build_pr_title() {
   local issue_title="$2"
   local normalized_title=""
 
+  if [[ "$RUNNER_DIAGNOSTIC_PR" == "1" ]]; then
+    printf '#%s Daily runner diagnostic\n' "$issue_number"
+    return 0
+  fi
+
   normalized_title="$(printf '%s' "$issue_title" | tr '\n' ' ' | tr -s ' ')"
   printf '#%s %s\n' "$issue_number" "$(printf '%s' "$normalized_title" | cut -c1-90)"
 }
@@ -847,6 +1322,45 @@ find_open_pr_for_head_branch() {
     --limit 1 \
     --json number,url,title \
     --jq '.[0] // empty'
+}
+
+find_open_issue_pr_to_resume() {
+  local prs_json=""
+
+  if ! prs_json="$(
+    gh pr list \
+      --repo "$REPO_SLUG" \
+      --state open \
+      --author "$BOT_LOGIN" \
+      --limit 100 \
+      --json number,title,headRefName,updatedAt
+  )"; then
+    echo "Failed to list open PRs by ${BOT_LOGIN}; cannot check for restart-resume PRs." >&2
+    return 1
+  fi
+
+  printf '%s\n' "$prs_json" \
+    | BRANCH_PREFIX="$BRANCH_PREFIX" node -e '
+      const fs = require("fs");
+      const branchPrefix = String(process.env.BRANCH_PREFIX || "");
+      const prs = JSON.parse(fs.readFileSync(0, "utf8"));
+      const match = Array.isArray(prs)
+        ? prs.find((pr) => {
+            const head = String(pr && pr.headRefName ? pr.headRefName : "");
+            const suffix = head.startsWith(branchPrefix)
+              ? head.slice(branchPrefix.length)
+              : "";
+            return /^[0-9]+$/.test(suffix) && Number.isInteger(pr.number);
+          })
+        : null;
+      if (!match) {
+        process.exit(0);
+      }
+      const head = String(match.headRefName);
+      const issueNumber = head.slice(branchPrefix.length);
+      const title = String(match.title || "").replace(/\t/g, " ").replace(/\n/g, " ");
+      process.stdout.write(`${match.number}\t${issueNumber}\t${head}\t${title}\n`);
+    '
 }
 
 count_open_human_prs() {
@@ -1181,6 +1695,24 @@ resolve_pr_number_from_ref() {
   return 1
 }
 
+resolve_issue_number_from_ref() {
+  local issue_ref="$1"
+  local resolved=""
+
+  if [[ "$issue_ref" =~ /issues/([0-9]+)$ ]]; then
+    printf '%s\n' "${BASH_REMATCH[1]}"
+    return 0
+  fi
+
+  resolved="$(gh issue view "$issue_ref" --repo "$REPO_SLUG" --json number --jq .number 2>/dev/null || true)"
+  if [[ "$resolved" =~ ^[0-9]+$ ]]; then
+    printf '%s\n' "$resolved"
+    return 0
+  fi
+
+  return 1
+}
+
 pr_feedback_state() {
   local feedback_json="$1"
 
@@ -1212,13 +1744,26 @@ pr_feedback_summary_has_actionable_items() {
 pr_feedback_summary_requires_runner_action() {
   local feedback_summary="$1"
   local summary_line=""
+  local review_or_comment_count=0
 
   summary_line="$(printf '%s\n' "$feedback_summary" | sed -n '1p')"
   if [[ ! "$summary_line" =~ unresolved_review_threads=([0-9]+).*changes_requested_reviews=([0-9]+).*discussion_comments=([0-9]+).*failing_checks=([0-9]+).*pending_checks=([0-9]+) ]]; then
     return 1
   fi
 
-  (( BASH_REMATCH[1] + BASH_REMATCH[2] + BASH_REMATCH[3] + BASH_REMATCH[4] > 0 ))
+  review_or_comment_count=$((BASH_REMATCH[1] + BASH_REMATCH[2] + BASH_REMATCH[3]))
+  if (( review_or_comment_count > 0 )); then
+    return 0
+  fi
+
+  # For check-only feedback, wait for the full PR check set to settle so
+  # failures from slower jobs, especially test jobs, are included in one repair
+  # pass. Human comments and review feedback should not wait behind CI.
+  if (( BASH_REMATCH[5] > 0 )); then
+    return 1
+  fi
+
+  (( BASH_REMATCH[4] > 0 ))
 }
 
 pr_feedback_action_key() {
@@ -1447,13 +1992,72 @@ check_pr_feedback_after_delay() {
         "$issue_number" \
         "$issue_title" \
         "$issue_labels" \
-        "${branch_name:-$current_branch}" \
+        "$branch_name" \
         "$feedback_summary" \
         "$feedback_json"
     fi
 
     sleep "$POST_PR_FEEDBACK_DELAY_SECONDS"
   done
+}
+
+resume_open_issue_pr_monitor_if_any() {
+  local resume_info=""
+  local pr_number=""
+  local issue_number=""
+  local branch_name=""
+  local pr_title=""
+  local issue_title=""
+  local issue_labels=""
+
+  if [[ -n "$FORCE_ISSUE_NUMBER" ]]; then
+    return 1
+  fi
+
+  if ! resume_info="$(find_open_issue_pr_to_resume)"; then
+    return 1
+  fi
+
+  if [[ -z "$resume_info" ]]; then
+    return 1
+  fi
+
+  IFS=$'\t' read -r pr_number issue_number branch_name pr_title <<< "$resume_info"
+  if [[ -z "$pr_number" || -z "$branch_name" ]]; then
+    return 1
+  fi
+
+  echo "Resuming monitor for open PR #${pr_number} on ${branch_name}; skipping new issue selection until that PR closes."
+  CLEANUP_REPO_ON_EXIT=1
+
+  if remote_branch_exists "$branch_name"; then
+    run_step "Fetch PR branch $branch_name" \
+      git fetch origin "$branch_name:refs/remotes/origin/$branch_name"
+    run_step "Checkout PR branch $branch_name" \
+      git checkout -B "$branch_name" "origin/$branch_name"
+  else
+    if ! ensure_worktree_on_branch "$branch_name"; then
+      echo "Warning: PR branch ${branch_name} is unavailable on origin and local checkout recovery failed; monitoring PR #${pr_number} by number only." >&2
+      branch_name=""
+    fi
+  fi
+
+  if [[ -n "$issue_number" ]]; then
+    issue_title="$({
+      gh issue view "$issue_number" --repo "$REPO_SLUG" --json title --jq .title
+    } || true)"
+    issue_labels="$({
+      gh issue view "$issue_number" --repo "$REPO_SLUG" --json labels --jq '.labels[].name // empty'
+    } || true)"
+  fi
+
+  check_pr_feedback_after_delay \
+    "$pr_number" \
+    "$issue_number" \
+    "${issue_title:-$pr_title}" \
+    "$issue_labels" \
+    "$branch_name"
+  return 0
 }
 
 resolve_issue_parent_epic() {
@@ -1718,6 +2322,138 @@ resolve_issue_project_item_id() {
       }
       process.stdout.write(String(match.id));
     ' || true
+}
+
+resolve_issue_node_id() {
+  local issue_number="$1"
+  local owner="${REPO_SLUG%%/*}"
+  local repo="${REPO_SLUG##*/}"
+  local number="${issue_number}"
+  local response=""
+
+  response="$({
+    gh api graphql \
+      -F issueNumber="$number" \
+      -f query='
+        query($issueNumber: Int!) {
+          repository(owner: "'"$owner"'", name: "'"$repo"'") {
+            issue(number: $issueNumber) {
+              id
+            }
+          }
+        }
+      ' 2>/dev/null
+  } || true)"
+
+  if ! printf '%s' "$response" | is_json_response; then
+    warn_non_json_response "issue node lookup for issue #${issue_number}" "$response"
+    return 0
+  fi
+
+  printf '%s' "$response" | node -e '
+    const fs = require("fs");
+    const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+    const issue =
+      payload &&
+      payload.data &&
+      payload.data.repository &&
+      payload.data.repository.issue
+        ? payload.data.repository.issue
+        : null;
+    process.stdout.write(issue && issue.id ? String(issue.id) : "");
+  ' || true
+}
+
+add_issue_to_project_status() {
+  local issue_number="$1"
+  local target_status_name="$2"
+  local project_number project_id field_id option_id item_id issue_node_id response
+  local edit_args=""
+
+  project_number="$(resolve_project_number)"
+  if [[ -z "$project_number" ]]; then
+    echo "Warning: could not resolve project number for coverage gap issue #${issue_number}." >&2
+    return 0
+  fi
+
+  edit_args="$(resolve_project_status_edit_args "$project_number" "$target_status_name")"
+  if [[ -z "$edit_args" ]]; then
+    echo "Warning: could not resolve project status field/option for coverage gap issue #${issue_number}." >&2
+    return 0
+  fi
+  IFS=$'\t' read -r project_id field_id option_id <<< "$edit_args"
+
+  item_id="$(resolve_issue_project_item_id "$issue_number" "$project_number")"
+  if [[ -z "$item_id" ]]; then
+    issue_node_id="$(resolve_issue_node_id "$issue_number")"
+    if [[ -z "$issue_node_id" ]]; then
+      echo "Warning: could not resolve node id for coverage gap issue #${issue_number}." >&2
+      return 0
+    fi
+
+    response="$({
+      gh api graphql \
+        -f projectId="$project_id" \
+        -f contentId="$issue_node_id" \
+        -f query='
+          mutation($projectId: ID!, $contentId: ID!) {
+            addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
+              item {
+                id
+              }
+            }
+          }
+        ' 2>/dev/null
+    } || true)"
+
+    if ! printf '%s' "$response" | is_json_response; then
+      warn_non_json_response "project add for coverage gap issue #${issue_number}" "$response"
+      return 0
+    fi
+
+    item_id="$(printf '%s' "$response" | node -e '
+      const fs = require("fs");
+      const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+      const item =
+        payload &&
+        payload.data &&
+        payload.data.addProjectV2ItemById &&
+        payload.data.addProjectV2ItemById.item
+          ? payload.data.addProjectV2ItemById.item
+          : null;
+      process.stdout.write(item && item.id ? String(item.id) : "");
+    ' || true)"
+  fi
+
+  if [[ -z "$item_id" ]]; then
+    echo "Warning: could not attach coverage gap issue #${issue_number} to project '${PROJECT_TITLE}'." >&2
+    return 0
+  fi
+
+  if ! gh api graphql \
+    -f projectId="$project_id" \
+    -f itemId="$item_id" \
+    -f fieldId="$field_id" \
+    -f optionId="$option_id" \
+    -f query='
+      mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+        updateProjectV2ItemFieldValue(
+          input: {
+            projectId: $projectId
+            itemId: $itemId
+            fieldId: $fieldId
+            value: { singleSelectOptionId: $optionId }
+          }
+        ) {
+          projectV2Item {
+            id
+          }
+        }
+      }
+    ' >/dev/null; then
+    echo "Warning: failed to set coverage gap issue #${issue_number} to project status '${target_status_name}'." >&2
+    return 0
+  fi
 }
 
 set_issue_project_status() {
@@ -2054,20 +2790,26 @@ collect_issue_candidates() {
   collect_issue_candidates_from_project "$project_number"
 }
 
-count_open_project_issues_in_status() {
+collect_issue_candidates_in_status() {
   local target_status_name="$1"
-  local project_number issue_number count=0
+  local project_number
 
   project_number="$(resolve_project_number)"
   if [[ -z "$project_number" ]]; then
-    printf '0\n'
     return 0
   fi
+
+  collect_issue_candidates_from_project "$project_number" "$target_status_name"
+}
+
+count_open_project_issues_in_status() {
+  local target_status_name="$1"
+  local issue_number count=0
 
   while IFS= read -r issue_number; do
     [[ -n "$issue_number" ]] || continue
     count=$((count + 1))
-  done < <(collect_issue_candidates_from_project "$project_number" "$target_status_name")
+  done < <(collect_issue_candidates_in_status "$target_status_name")
 
   printf '%s\n' "$count"
 }
@@ -2110,6 +2852,164 @@ run_local_workflow_checks() {
   fi
 
   run_runtime_check_with_self_heal "Run test (full suite)" make test || return 1
+}
+
+coverage_gap_snapshot_from_log() {
+  local log_file="${1:-$CHECK_LOG_FILE}"
+
+  if [[ -z "$log_file" || ! -s "$log_file" ]]; then
+    return 0
+  fi
+
+  awk '
+    /^Name[[:space:]]+Stmts[[:space:]]+Miss[[:space:]]+Cover([[:space:]]+Missing)?$/ {
+      in_table = 1
+      current_header = $0
+      current_count = 0
+      current_total = ""
+      delete current_rows
+      next
+    }
+    in_table && /^-+$/ {
+      next
+    }
+    in_table && /^TOTAL[[:space:]]+/ {
+      current_total = $0
+      final_header = current_header
+      final_total = current_total
+      final_count = current_count
+      delete final_rows
+      if (current_count > 0) {
+        for (i = 1; i <= current_count; i += 1) {
+          final_rows[i] = current_rows[i]
+        }
+      }
+      in_table = 0
+      next
+    }
+    in_table && NF >= 4 {
+      miss = $3
+      gsub(/[^0-9]/, "", miss)
+      if ((miss + 0) > 0) {
+        current_rows[++current_count] = $0
+      }
+      next
+    }
+    END {
+      if (final_count > 0) {
+        print final_header
+        for (i = 1; i <= final_count; i += 1) {
+          print final_rows[i]
+        }
+        if (final_total != "") {
+          print final_total
+        }
+      }
+    }
+  ' "$log_file"
+}
+
+write_coverage_gap_issue_body() {
+  local pr_number="$1"
+  local pr_url="$2"
+  local source_issue_number="$3"
+  local source_issue_title="$4"
+  local branch_name="$5"
+  local coverage_snapshot="$6"
+  local pr_label="the runner PR"
+
+  if [[ -n "$pr_number" ]]; then
+    pr_label="PR #${pr_number}"
+  fi
+
+  cat <<EOF
+## Summary
+The daily runner opened ${pr_label} after local validation passed, then captured the line-specific test coverage snapshot below. This issue is complete only when the full suite returns to ${COVERAGE_TARGET_PERCENT:-100}% coverage with zero missed statements.
+
+## Source
+- PR: ${pr_url:-unknown}
+- Source issue: #${source_issue_number} ${source_issue_title}
+- Branch: ${branch_name}
+
+## Coverage Gaps
+
+\`\`\`text
+${coverage_snapshot}
+\`\`\`
+
+## Acceptance Criteria
+- Add or adjust tests so every file in the coverage snapshot has \`0\` missed statements.
+- Run the full suite until the total coverage line reports \`100%\` and \`0\` missed statements.
+- Do not open a partial coverage PR that leaves a new coverage-gap issue for the next runner pass.
+- Do not change production behavior only to satisfy coverage.
+
+## Validation
+- \`make lint\`
+- \`make test\`
+
+## Guidance
+- Use the exact uncovered line ranges in the \`Missing\` column as the work queue.
+- Prefer user-visible behavior and security-critical outcomes over implementation-only assertions.
+- Keep privacy, E2EE, CSP, and operational safety guarantees intact.
+EOF
+}
+
+open_coverage_gap_issue_after_pr() {
+  local pr_number="$1"
+  local pr_url="$2"
+  local source_issue_number="$3"
+  local source_issue_title="$4"
+  local branch_name="$5"
+  local coverage_snapshot=""
+  local issue_body_file=""
+  local issue_title=""
+  local issue_url=""
+  local coverage_issue_number=""
+
+  coverage_snapshot="$(coverage_gap_snapshot_from_log "$CHECK_LOG_FILE")"
+  if [[ -z "$coverage_snapshot" ]]; then
+    echo "Coverage gap issue skipped: no missed statements found in the latest test coverage snapshot."
+    return 0
+  fi
+
+  issue_body_file="$(mktemp)"
+  if [[ -n "$pr_number" ]]; then
+    issue_title="Close test coverage gaps from PR #${pr_number}"
+  else
+    issue_title="Close test coverage gaps from daily runner PR"
+  fi
+
+  write_coverage_gap_issue_body \
+    "$pr_number" \
+    "$pr_url" \
+    "$source_issue_number" \
+    "$source_issue_title" \
+    "$branch_name" \
+    "$coverage_snapshot" > "$issue_body_file"
+
+  if ! issue_url="$(
+    gh issue create \
+      --repo "$REPO_SLUG" \
+      --title "$issue_title" \
+      --body-file "$issue_body_file"
+  )"; then
+    rm -f "$issue_body_file"
+    echo "Warning: failed to open coverage gap issue for ${pr_url:-PR #${pr_number}}." >&2
+    return 0
+  fi
+  rm -f "$issue_body_file"
+
+  if ! coverage_issue_number="$(resolve_issue_number_from_ref "$issue_url")"; then
+    echo "Warning: opened coverage gap issue but failed to resolve its number from '$issue_url'." >&2
+    return 0
+  fi
+
+  echo "Opened coverage gap issue: $issue_url"
+  run_step \
+    "Add coverage gap issue #${coverage_issue_number} to ${PROJECT_COLUMN}" \
+    add_issue_to_project_status \
+    "$coverage_issue_number" \
+    "$PROJECT_COLUMN"
 }
 
 write_pr_changed_files_section() {
@@ -2345,8 +3245,13 @@ write_pr_narrative_lead() {
   review_line=""
 
   if [[ "$non_log_files" == "0" ]]; then
-    scope_line="This run only changes the runner log artifact."
-    plain_line="This run does not change the product itself; it only updates the runner log artifact that records what the daily runner did."
+    if [[ "$RUNNER_DIAGNOSTIC_PR" == "1" ]]; then
+      scope_line="This diagnostic PR only changes the runner log artifact."
+      plain_line="The runner could not produce a product change for \"$issue_title\", so it opened this sanitized log-only PR instead of leaving the local checkout stranded."
+    else
+      scope_line="This run only changes the runner log artifact."
+      plain_line="This run does not change the product itself; it only updates the runner log artifact that records what the daily runner did."
+    fi
   elif [[ -n "$changed_areas" ]]; then
     scope_line="It touches ${non_log_files} non-log file(s) (${total_files} total including runner artifacts), primarily in ${changed_areas}."
   else
@@ -2378,8 +3283,13 @@ $(if [[ -n "$epic_issue_number" ]]; then
   printf 'It is intended to merge into the epic branch first, not directly into `%s`.\n' \
     "$BASE_BRANCH"
 else
-  printf 'This PR implements #%s (`%s`) via the daily runner with a scoped change set focused on the issue requirements.\n' \
-    "$issue_number" "$issue_title"
+  if [[ "$RUNNER_DIAGNOSTIC_PR" == "1" ]]; then
+    printf 'This diagnostic PR records the daily runner outcome for #%s (`%s`).\n' \
+      "$issue_number" "$issue_title"
+  else
+    printf 'This PR implements #%s (`%s`) via the daily runner with a scoped change set focused on the issue requirements.\n' \
+      "$issue_number" "$issue_title"
+  fi
 fi)
 
 ${plain_line}
@@ -2410,6 +3320,10 @@ $(if [[ -n "$epic_issue_number" ]]; then
   printf '%s\n' "- Part of epic #$epic_issue_number: ${epic_issue_title}"
   printf '%s\n' "- This PR targets the epic integration branch \`$base_branch_name\`."
   printf '%s\n' "- The child issue is closed explicitly by workflow after this PR merges into the epic branch."
+elif [[ "$RUNNER_DIAGNOSTIC_PR" == "1" ]]; then
+  printf '%s\n' "- Diagnostic daily runner PR for #$issue_number."
+  printf '%s\n' "- No product code is changed; this PR carries the sanitized runner log so the failure is visible in review."
+  printf '%s\n' "- Runner outcome: ${RUNNER_DIAGNOSTIC_REASON:-implementation did not complete}"
 else
   printf '%s\n' "- Automated daily issue runner implementation for #$issue_number."
   printf '%s\n' "- Implements issue goal: ${issue_title}"
@@ -2436,20 +3350,29 @@ fi)
 EOF2
   write_pr_changed_files_section >> "$PR_BODY_FILE"
 
-  cat >> "$PR_BODY_FILE" <<'EOF2'
+  cat >> "$PR_BODY_FILE" <<EOF2
 
 ## Validation
-- `make lint`
-- `make test` (full suite)
+$(if [[ "$RUNNER_DIAGNOSTIC_PR" == "1" ]]; then
+  printf '%s\n' "- Not run: the runner opened this diagnostic PR because implementation did not complete before validation."
+else
+  printf '%s\n' "- \`make lint\`"
+  printf '%s\n' "- \`make test\` (full suite)"
+fi)
 EOF2
-  cat >> "$PR_BODY_FILE" <<'EOF2'
+  cat >> "$PR_BODY_FILE" <<EOF2
 - Additional CI workflows run on the PR after branch push; the runner does not try to mirror the full workflow matrix locally.
 
 ## Manual Testing
-- Manual testing is for reviewer-executed product checks, not a log of steps the runner or LLM took.
-- In a local or staging environment, open the feature or workflow changed by this issue.
-- Reproduce the issue scenario or perform the changed workflow end to end as a user.
-- Verify the expected behavior from the issue description and check the nearest adjacent core flow for regressions.
+$(if [[ "$RUNNER_DIAGNOSTIC_PR" == "1" ]]; then
+  printf '%s\n' "- Review the sanitized runner log linked above."
+  printf '%s\n' "- Confirm the PR contains only the runner log artifact and no product-code changes."
+else
+  printf '%s\n' "- Manual testing is for reviewer-executed product checks, not a log of steps the runner or LLM took."
+  printf '%s\n' "- In a local or staging environment, open the feature or workflow changed by this issue."
+  printf '%s\n' "- Reproduce the issue scenario or perform the changed workflow end to end as a user."
+  printf '%s\n' "- Verify the expected behavior from the issue description and check the nearest adjacent core flow for regressions."
+fi)
 EOF2
 }
 
@@ -2488,8 +3411,25 @@ persist_run_log() {
   fi
 }
 
+codex_transcript_has_rate_quota_or_credit_failure() {
+  local transcript_file="$1"
+  local access_failure_pattern
+
+  access_failure_pattern='(^|[^[:alnum:]_])((usage|rate)[ -]?limit(ed|ing)?|too many requests|quota[ _-]*(exceeded|exhausted|reached|depleted|unavailable)|exceeded[ _-]+quota|insufficient[ _-]+quota|no[ _-]+credits?|out[ _-]+of[ _-]+credits?|insufficient[ _-]+credits?|credits?[ _-]+(exhausted|depleted|required|unavailable))([^[:alnum:]_]|$)'
+  grep -Eiq "$access_failure_pattern" "$transcript_file"
+}
+
+codex_transcript_has_auth_failure() {
+  local transcript_file="$1"
+  local auth_failure_pattern
+
+  auth_failure_pattern='(^|[^[:alnum:]_])((token[ _-]*(invalidated|reused))|refresh[ _-]*token|access[ _-]*token|unauthorized|sign[ _-]*in[ _-]*again|log[ _-]*out[ _-]*and[ _-]*sign[ _-]*in[ _-]*again)([^[:alnum:]_]|$)'
+  grep -Eiq "$auth_failure_pattern" "$transcript_file"
+}
+
 run_codex_from_prompt() {
   local rc=0
+  CODEX_EXEC_UNAVAILABLE=0
   : > "$CODEX_OUTPUT_FILE"
   : > "$CODEX_TRANSCRIPT_FILE"
 
@@ -2504,7 +3444,6 @@ run_codex_from_prompt() {
   codex exec \
     --model "$CODEX_MODEL" \
     -c "model_reasoning_effort=\"$CODEX_REASONING_EFFORT\"" \
-    --full-auto \
     --sandbox workspace-write \
     -C "$REPO_DIR" \
     -o "$CODEX_OUTPUT_FILE" \
@@ -2520,6 +3459,16 @@ run_codex_from_prompt() {
 
   if (( rc != 0 )); then
     echo "Codex execution failed (exit ${rc})."
+    if grep -Eq '"has_credits"[[:space:]]*:[[:space:]]*false' "$CODEX_TRANSCRIPT_FILE"; then
+      CODEX_EXEC_UNAVAILABLE=1
+      echo "Codex unavailable: account has no credits; self-heal cannot proceed until credits are restored."
+    elif codex_transcript_has_auth_failure "$CODEX_TRANSCRIPT_FILE"; then
+      CODEX_EXEC_UNAVAILABLE=1
+      echo "Codex unavailable: authentication failed; sign in again for CODEX_HOME before retrying assigned work."
+    elif codex_transcript_has_rate_quota_or_credit_failure "$CODEX_TRANSCRIPT_FILE"; then
+      CODEX_EXEC_UNAVAILABLE=1
+      echo "Codex unavailable: transcript indicates a rate limit, quota, or credit failure; self-heal cannot proceed until access is restored."
+    fi
     log_worktree_snapshot "Post-Codex worktree snapshot:"
     return "$rc"
   fi
@@ -2640,6 +3589,7 @@ recent_failure_block_from_text() {
     /^Coverage HTML written/ { next }
     /^Name[[:space:]]+Stmts[[:space:]]+Miss/ { next }
     /^TOTAL[[:space:]]+/ { next }
+    /^[^[:space:]]+\.py[[:space:]]+[0-9]+[[:space:]]+[0-9]+[[:space:]]+[0-9]+%([[:space:]].*)?$/ { next }
     /^={5,}/ { next }
     /^-{5,}/ { next }
     /^tests\/.* (PASSED|XFAIL|XPASS|SKIPPED)([[:space:]]|\[)/ { next }
@@ -2947,7 +3897,12 @@ run_fix_attempt_loop() {
       "$FAILURE_CONTEXT" \
       "$FAILURE_SIGNATURE" \
       "$REPEATED_FAILURE_COUNT"
-    run_codex_from_prompt
+    if ! run_codex_from_prompt; then
+      if [[ "$CODEX_EXEC_UNAVAILABLE" == "1" ]]; then
+        echo "Blocked: Codex self-heal is unavailable for issue #$issue_number; stopping retry loop." >&2
+        return 1
+      fi
+    fi
     fix_attempt=$((fix_attempt + 1))
   done
 
@@ -2963,13 +3918,19 @@ run_issue_attempt_loop() {
   local issue_branch="$5"
   local issue_attempt=1
 
+  RUNNER_NO_USABLE_CHANGES=0
   PREVIOUS_FAILURE_SIGNATURE=""
   FAILURE_SIGNATURE=""
   REPEATED_FAILURE_COUNT=0
 
   while (( issue_attempt <= MAX_ISSUE_ATTEMPTS )); do
     echo "==> Codex issue attempt $issue_attempt"
-    run_codex_from_prompt
+    if ! run_codex_from_prompt; then
+      if [[ "$CODEX_EXEC_UNAVAILABLE" == "1" ]]; then
+        echo "Blocked: Codex issue work is unavailable for issue #$issue_number; stopping retry loop." >&2
+        return 1
+      fi
+    fi
 
     if ! has_non_log_changes; then
       emit_codex_no_change_diagnostic "$issue_number" "$issue_attempt"
@@ -2991,6 +3952,7 @@ run_issue_attempt_loop() {
   done
 
   echo "Blocked: Codex produced no usable changes for issue #$issue_number after $MAX_ISSUE_ATTEMPTS attempt(s)." >&2
+  RUNNER_NO_USABLE_CHANGES=1
   return 1
 }
 
@@ -2998,6 +3960,15 @@ main() {
   parse_args "$@"
   initialize_run_state
   trap cleanup EXIT
+
+  if [[ ! -d "$REPO_DIR/.git" ]]; then
+    echo "Repository not found: $REPO_DIR" >&2
+    exit 1
+  fi
+
+  cd "$REPO_DIR"
+
+  acquire_runner_lock
 
   require_cmd git
   require_cmd gh
@@ -3016,18 +3987,27 @@ main() {
   require_non_negative_integer \
     "HUSHLINE_DAILY_POST_PR_FEEDBACK_DELAY_SECONDS" \
     "$POST_PR_FEEDBACK_DELAY_SECONDS"
+  require_positive_integer \
+    "HUSHLINE_DAILY_CODEX_STATUS_CHECK_TIMEOUT_SECONDS" \
+    "$CODEX_STATUS_CHECK_TIMEOUT_SECONDS"
+  require_non_negative_integer \
+    "HUSHLINE_DAILY_CODEX_STATUS_RESET_BUFFER_SECONDS" \
+    "$CODEX_STATUS_RESET_BUFFER_SECONDS"
+  require_percentage_integer \
+    "HUSHLINE_DAILY_CODEX_STATUS_MIN_REMAINING_PERCENT" \
+    "$CODEX_STATUS_MIN_REMAINING_PERCENT"
+  require_positive_integer \
+    "HUSHLINE_DAILY_CODEX_STATUS_STALE_RESET_RECHECK_SECONDS" \
+    "$CODEX_STATUS_STALE_RESET_RECHECK_SECONDS"
+  require_non_negative_integer \
+    "HUSHLINE_DAILY_CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS" \
+    "$CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS"
 
-  if [[ ! -d "$REPO_DIR/.git" ]]; then
-    echo "Repository not found: $REPO_DIR" >&2
-    exit 1
+  assert_runner_can_take_checkout
+
+  if resume_open_issue_pr_monitor_if_any; then
+    exit 0
   fi
-
-  cd "$REPO_DIR"
-
-  run_step "Fetch latest from origin" git fetch origin
-  run_step "Checkout $BASE_BRANCH" git checkout "$BASE_BRANCH"
-  run_step "Reset to origin/$BASE_BRANCH" git reset --hard "origin/$BASE_BRANCH"
-  run_step "Remove untracked files" git clean -fd
 
   ISSUE_NUMBER=""
   if [[ -n "$FORCE_ISSUE_NUMBER" ]]; then
@@ -3038,14 +4018,35 @@ main() {
     ISSUE_NUMBER="$FORCE_ISSUE_NUMBER"
     echo "Selected forced issue #${ISSUE_NUMBER}."
   else
-    ISSUE_NUMBER="$(collect_issue_candidates | sed -n '1p')"
-    if [[ -n "$ISSUE_NUMBER" ]]; then
-      echo "Selected issue #${ISSUE_NUMBER} from project queue."
+    OPEN_HUMAN_PRS="$(count_open_human_prs)"
+    echo "Open human-authored PR count: ${OPEN_HUMAN_PRS}"
+    if [[ "$OPEN_HUMAN_PRS" != "0" ]]; then
+      check_codex_status_once_for_idle_run
+      runner_status "Skipped: found ${OPEN_HUMAN_PRS} open human-authored PR(s)."
+      exit 0
+    fi
+
+    OPEN_IN_PROGRESS_ISSUES="$(count_open_project_issues_in_status "$PROJECT_STATUS_IN_PROGRESS")"
+    echo "Open project issues in ${PROJECT_STATUS_IN_PROGRESS}: ${OPEN_IN_PROGRESS_ISSUES}"
+    if [[ "$OPEN_IN_PROGRESS_ISSUES" != "0" ]]; then
+      ISSUE_NUMBER="$(collect_issue_candidates_in_status "$PROJECT_STATUS_IN_PROGRESS" | sed -n '1p')"
+      echo "Resuming assigned issue #${ISSUE_NUMBER} from project status '${PROJECT_STATUS_IN_PROGRESS}'."
+    else
+      ISSUE_NUMBER="$(collect_issue_candidates | sed -n '1p')"
+      if [[ -n "$ISSUE_NUMBER" ]]; then
+        echo "Selected issue #${ISSUE_NUMBER} from project queue."
+      fi
     fi
   fi
 
   if [[ -z "$ISSUE_NUMBER" ]]; then
+    check_codex_status_once_for_idle_run
     runner_status "Skipped: no open issues found in project '${PROJECT_TITLE}' column '${PROJECT_COLUMN}'."
+    exit 0
+  fi
+
+  if ! wait_for_codex_status_credit_window; then
+    runner_status "Skipped: Codex /status reported a blocking access limit; leaving assigned issue #${ISSUE_NUMBER} in ${PROJECT_STATUS_IN_PROGRESS}."
     exit 0
   fi
 
@@ -3066,26 +4067,21 @@ main() {
   EXISTING_EPIC_PR_JSON=""
   EXISTING_CHILD_PR_JSON=""
 
-  OPEN_HUMAN_PRS="$(count_open_human_prs)"
-  echo "Open human-authored PR count: ${OPEN_HUMAN_PRS}"
-  if [[ "$OPEN_HUMAN_PRS" != "0" ]]; then
-    runner_status "Skipped: found ${OPEN_HUMAN_PRS} open human-authored PR(s)."
-    exit 0
-  fi
-
-  OPEN_IN_PROGRESS_ISSUES="$(count_open_project_issues_in_status "$PROJECT_STATUS_IN_PROGRESS")"
-  echo "Open project issues in ${PROJECT_STATUS_IN_PROGRESS}: ${OPEN_IN_PROGRESS_ISSUES}"
-  if [[ "$OPEN_IN_PROGRESS_ISSUES" != "0" ]]; then
-    runner_status "Skipped: found ${OPEN_IN_PROGRESS_ISSUES} open issue(s) in project status '${PROJECT_STATUS_IN_PROGRESS}'."
-    exit 0
+  if [[ -n "$FORCE_ISSUE_NUMBER" ]]; then
+    OPEN_HUMAN_PRS="$(count_open_human_prs)"
+    echo "Open human-authored PR count: ${OPEN_HUMAN_PRS}"
+    if [[ "$OPEN_HUMAN_PRS" != "0" ]]; then
+      runner_status "Skipped: found ${OPEN_HUMAN_PRS} open human-authored PR(s)."
+      exit 0
+    fi
   fi
 
   if [[ -n "$EPIC_ISSUE_NUMBER" ]]; then
     EXISTING_EPIC_PR_JSON="$(find_open_pr_for_head_branch "$EPIC_BRANCH_NAME")"
     EXISTING_CHILD_PR_JSON="$(find_open_pr_for_head_branch "$BRANCH_NAME")"
-    OPEN_BOT_PRS="$(count_open_bot_prs_excluding_heads "$COVERAGE_BRANCH_NAME" "$EPIC_BRANCH_NAME" "$BRANCH_NAME")"
+    OPEN_BOT_PRS="$(count_open_bot_prs_excluding_heads "$EPIC_BRANCH_NAME" "$BRANCH_NAME")"
     echo "Open unrelated bot PR count: ${OPEN_BOT_PRS}"
-    echo "Allowed bot PR heads: ${COVERAGE_BRANCH_NAME}, ${EPIC_BRANCH_NAME}, ${BRANCH_NAME}"
+    echo "Allowed bot PR heads: ${EPIC_BRANCH_NAME}, ${BRANCH_NAME}"
     if [[ "$OPEN_BOT_PRS" != "0" ]]; then
       runner_status "Skipped: found ${OPEN_BOT_PRS} unrelated open PR(s) by ${BOT_LOGIN}."
       exit 0
@@ -3098,14 +4094,20 @@ main() {
       echo "Child branch ${BRANCH_NAME} already has an open PR; runner will update it."
     fi
   else
-    OPEN_BOT_PRS="$(count_open_bot_prs_excluding_heads "$COVERAGE_BRANCH_NAME")"
+    OPEN_BOT_PRS="$(count_open_bot_prs_excluding_heads)"
     echo "Open unrelated bot PR count: ${OPEN_BOT_PRS}"
-    echo "Allowed bot PR heads: ${COVERAGE_BRANCH_NAME}"
     if [[ "$OPEN_BOT_PRS" != "0" ]]; then
       runner_status "Skipped: found ${OPEN_BOT_PRS} open PR(s) by ${BOT_LOGIN}."
       exit 0
     fi
   fi
+
+  CLEANUP_REPO_ON_EXIT=1
+
+  run_step "Fetch latest from origin" git fetch origin
+  run_step "Checkout $BASE_BRANCH" git checkout "$BASE_BRANCH"
+  run_step "Reset to origin/$BASE_BRANCH" git reset --hard "origin/$BASE_BRANCH"
+  run_step "Remove untracked files" git clean -fd
 
   run_step \
     "Mark issue #${ISSUE_NUMBER} as ${PROJECT_STATUS_IN_PROGRESS}" \
@@ -3119,6 +4121,7 @@ main() {
   run_step "Kill all Docker containers" kill_all_docker_containers
   run_step "Kill processes on runner ports" kill_processes_on_ports
   start_runtime_stack_and_seed_dev_data --build
+  restore_runtime_generated_static_artifacts
 
   ISSUE_TITLE="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json title --jq .title)"
   ISSUE_BODY="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO_SLUG" --json body --jq .body)"
@@ -3148,10 +4151,11 @@ main() {
   fi
 
   build_issue_prompt "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY"
-  run_issue_attempt_loop "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY" "$ISSUE_LABELS" "$BRANCH_NAME"
-
-  if ! has_non_log_changes; then
-    echo "Blocked: no usable non-log changes remain for issue #$ISSUE_NUMBER after $MAX_ISSUE_ATTEMPTS attempt(s)." >&2
+  if ! run_issue_attempt_loop "$ISSUE_NUMBER" "$ISSUE_TITLE" "$ISSUE_BODY" "$ISSUE_LABELS" "$BRANCH_NAME"; then
+    echo "Blocked: assigned issue #${ISSUE_NUMBER} still requires implementation; keeping it in progress and refusing to open a diagnostic PR or mark it ready for review." >&2
+    exit 1
+  elif ! has_non_log_changes; then
+    echo "Blocked: assigned issue #${ISSUE_NUMBER} still requires implementation; keeping it in progress and refusing to open a diagnostic PR or mark it ready for review." >&2
     exit 1
   fi
 
@@ -3222,6 +4226,13 @@ main() {
     set_issue_project_status \
     "$ISSUE_NUMBER" \
     "$PROJECT_STATUS_READY_FOR_REVIEW"
+
+  open_coverage_gap_issue_after_pr \
+    "$PR_NUMBER" \
+    "$PR_URL" \
+    "$ISSUE_NUMBER" \
+    "$ISSUE_TITLE" \
+    "$BRANCH_NAME"
 
   persist_run_log "$ISSUE_NUMBER"
 

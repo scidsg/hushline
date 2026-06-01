@@ -109,6 +109,12 @@ class Username(Model):
     )
     is_primary: Mapped[bool] = mapped_column()
     is_verified: Mapped[bool] = mapped_column(default=False)
+    is_featured: Mapped[bool] = mapped_column(
+        db.Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+    )
     show_in_directory: Mapped[bool] = mapped_column(default=False)
     bio: Mapped[Optional[str]] = mapped_column(db.Text)
     embed_enabled: Mapped[bool] = mapped_column(

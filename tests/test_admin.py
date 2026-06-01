@@ -39,6 +39,8 @@ def test_admin_settings_includes_user_search(app: Flask, client: FlaskClient) ->
     assert search_form.select_one('input[name="q"]') is not None
     assert "Set Cautious" in response.text
     assert "Set Suspended" in response.text
+    assert "Set Featured" in response.text
+    assert "Featured:" in response.text
     assert "Account Category:" in response.text
 
     account_category_form = soup.select_one(
@@ -97,6 +99,26 @@ def test_admin_settings_paginates_usernames(client: FlaskClient) -> None:
     assert summary_text == "Showing 21-26 of 26 usernames."
     assert "Page 2 of 2" in soup.get_text(" ", strip=True)
     assert soup.find("a", string="Previous") is not None
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_admin_settings_clamps_invalid_page_requests(client: FlaskClient) -> None:
+    for index in range(25):
+        _create_admin_list_user(f"page-user-{index:02d}")
+
+    response = client.get(url_for("settings.admin", page="not-a-number"), follow_redirects=True)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    assert "Page 1 of 2" in soup.get_text(" ", strip=True)
+    assert len(soup.select("#admin-users-list .user")) == 20
+
+    response = client.get(url_for("settings.admin", page=999), follow_redirects=True)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    assert "Page 2 of 2" in soup.get_text(" ", strip=True)
+    assert len(soup.select("#admin-users-list .user")) == 6
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
@@ -216,6 +238,22 @@ def test_toggle_verified_alias_on_managed_service(
     refreshed_alias = db.session.get(Username, user_alias.id)
     assert refreshed_alias is not None
     assert refreshed_alias.is_verified is True
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_toggle_featured_username(client: FlaskClient, user_alias: Username) -> None:
+    assert user_alias.is_featured is False
+
+    response = client.post(
+        url_for("admin.toggle_featured_username", username_id=user_alias.id),
+        data={"is_featured": "true"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    refreshed_alias = db.session.get(Username, user_alias.id)
+    assert refreshed_alias is not None
+    assert refreshed_alias.is_featured is True
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
@@ -442,6 +480,20 @@ def test_update_account_category_validates_and_updates_user(
     refreshed_user = db.session.get(User, user.id)
     assert refreshed_user is not None
     assert refreshed_user.account_category is None
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_update_account_category_rejects_missing_field_and_unknown_user(
+    client: FlaskClient, user: User
+) -> None:
+    response = client.post(url_for("admin.update_account_category", user_id=user.id), data={})
+    assert response.status_code == 400
+
+    response = client.post(
+        url_for("admin.update_account_category", user_id=999999),
+        data={"account_category": AccountCategory.LAWYER.value},
+    )
+    assert response.status_code == 404
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")

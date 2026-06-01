@@ -267,6 +267,34 @@ def test_send_email_to_user_recipients_accepts_recipient_body_factory(
     ]
 
 
+def test_send_email_to_user_recipients_skips_empty_recipient_body(
+    app: Flask,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user.enable_email_notifications = True
+    user.email = "primary@example.com"
+    user.smtp_server = None
+
+    app.config["SMTP_USERNAME"] = "default-user"
+    app.config["SMTP_SERVER"] = "smtp.default.example"
+    app.config["SMTP_PORT"] = 587
+    app.config["SMTP_PASSWORD"] = "default-pass"
+    app.config["NOTIFICATIONS_ADDRESS"] = "notify@example.com"
+    app.config["SMTP_ENCRYPTION"] = "StartTLS"
+
+    create_smtp_config = MagicMock(return_value=MagicMock())
+    send_email = MagicMock()
+    monkeypatch.setattr("hushline.routes.common.create_smtp_config", create_smtp_config)
+    monkeypatch.setattr("hushline.routes.common.send_email", send_email)
+
+    with app.app_context():
+        routes_common.send_email_to_user_recipients(user, "Subject", lambda _recipient: None)
+
+    create_smtp_config.assert_called_once()
+    send_email.assert_not_called()
+
+
 def test_notification_email_encryption_target_returns_all_enabled_keys(
     user: User,
 ) -> None:
@@ -369,6 +397,54 @@ def test_notification_email_encryption_target_deduplicates_repeated_keys_in_mult
         "primary-key",
         "tertiary-key",
     ]
+
+
+def test_notification_recipient_public_key_entries_skip_unsaved_recipients(user: User) -> None:
+    unsaved_recipient = NotificationRecipient(position=0, enabled=True)
+    unsaved_recipient.email = "unsaved@example.com"
+    unsaved_recipient.pgp_key = "unsaved-key"
+
+    with patch.object(
+        User,
+        "enabled_notification_recipients",
+        new_callable=PropertyMock,
+        return_value=[unsaved_recipient],
+    ):
+        assert routes_common.notification_recipient_public_key_entries(user) == []
+
+
+def test_notification_recipient_encryption_target_uses_legacy_primary_key(
+    user: User,
+) -> None:
+    user.pgp_key = "legacy-key"
+    recipient = NotificationRecipient(position=0, enabled=True)
+
+    assert routes_common.notification_recipient_encryption_target(user, recipient) == "legacy-key"
+
+
+def test_notification_recipient_encryption_target_uses_legacy_key_for_primary_row(
+    user: User,
+) -> None:
+    user.pgp_key = "legacy-key"
+    user.email = "primary@example.com"
+    primary_recipient = user.primary_notification_recipient
+    assert primary_recipient is not None
+    primary_recipient.position = 3
+    primary_recipient.pgp_key = None
+
+    assert (
+        routes_common.notification_recipient_encryption_target(user, primary_recipient)
+        == "legacy-key"
+    )
+
+
+def test_notification_recipient_encryption_target_returns_none_without_key(
+    user: User,
+) -> None:
+    user.pgp_key = None
+    recipient = NotificationRecipient(position=1, enabled=True)
+
+    assert routes_common.notification_recipient_encryption_target(user, recipient) is None
 
 
 def test_do_send_email_continues_after_single_recipient_failure(

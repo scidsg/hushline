@@ -70,6 +70,21 @@ def create_blueprint() -> Blueprint:
         flash(f"✅ Username verification set to {status_label}.", "success")
         return redirect(url_for("settings.admin"))
 
+    @bp.route("/toggle_featured_username/<int:username_id>", methods=["POST"])
+    @admin_authentication_required
+    def toggle_featured_username(username_id: int) -> Response:
+        _validate_csrf()
+
+        username = db.session.get(Username, username_id)
+        if username is None:
+            abort(404)
+        desired_featured = _parse_form_bool("is_featured")
+        username.is_featured = desired_featured
+        db.session.commit()
+        status_label = "featured" if desired_featured else "not featured"
+        flash(f"✅ Username featured status set to {status_label}.", "success")
+        return redirect(url_for("settings.admin"))
+
     @bp.route("/toggle_admin/<int:user_id>", methods=["POST"])
     @admin_authentication_required
     def toggle_admin(user_id: int) -> Response:

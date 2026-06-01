@@ -43,6 +43,49 @@ def test_create_smtp_config_invalid_encryption() -> None:
         )
 
 
+def test_ssl_smtp_login_authenticates_over_ssl() -> None:
+    server = MagicMock()
+    smtp_context = MagicMock()
+    smtp_context.__enter__.return_value = server
+    smtp_context.__exit__.return_value = None
+    cfg = email_mod.SSL_SMTPConfig(
+        "smtp-user", "smtp.example.com", 465, "smtp-pass", "sender@example.com"
+    )
+
+    with (
+        patch("hushline.email.smtplib.SMTP_SSL", return_value=smtp_context) as smtp_ssl,
+        cfg.smtp_login(timeout=5) as logged_in_server,
+    ):
+        assert logged_in_server is server
+
+    smtp_ssl.assert_called_once_with("smtp.example.com", 465, timeout=5)
+    server.ehlo.assert_called_once_with()
+    server.login.assert_called_once_with("smtp-user", "smtp-pass")
+
+
+def test_starttls_smtp_login_upgrades_with_default_tls_context() -> None:
+    server = MagicMock()
+    smtp_context = MagicMock()
+    smtp_context.__enter__.return_value = server
+    smtp_context.__exit__.return_value = None
+    tls_context = object()
+    cfg = email_mod.StartTLS_SMTPConfig(
+        "smtp-user", "smtp.example.com", 587, "smtp-pass", "sender@example.com"
+    )
+
+    with (
+        patch("hushline.email.smtplib.SMTP", return_value=smtp_context) as smtp,
+        patch("hushline.email.ssl.create_default_context", return_value=tls_context),
+        cfg.smtp_login(timeout=5) as logged_in_server,
+    ):
+        assert logged_in_server is server
+
+    smtp.assert_called_once_with("smtp.example.com", 587, timeout=5)
+    assert server.ehlo.call_count == 2
+    server.starttls.assert_called_once_with(context=tls_context)
+    server.login.assert_called_once_with("smtp-user", "smtp-pass")
+
+
 def test_is_safe_smtp_host_validation(app: Flask) -> None:
     with app.app_context():
         assert email_mod.is_safe_smtp_host("") is False
@@ -142,6 +185,22 @@ def test_send_email_success_and_retry(app: Flask) -> None:
         sleep_mock.assert_called_once()
 
 
+def test_send_email_returns_false_when_final_login_attempt_fails(app: Flask) -> None:
+    smtp_server = MagicMock()
+    cfg = _FlakyLoginConfig(smtp_server=smtp_server)
+
+    with (
+        app.app_context(),
+        patch("hushline.email.is_safe_smtp_host", return_value=True),
+        patch("hushline.email.time.sleep") as sleep_mock,
+    ):
+        app.config["SMTP_SEND_ATTEMPTS"] = 1
+        assert email_mod.send_email("to@example.com", "subject", "body", cfg) is False
+
+    smtp_server.send_message.assert_not_called()
+    sleep_mock.assert_not_called()
+
+
 def test_send_email_does_not_retry_after_message_submission_attempt(app: Flask) -> None:
     smtp_server = MagicMock()
     smtp_server.send_message.side_effect = smtplib.SMTPServerDisconnected("after DATA")
@@ -168,6 +227,17 @@ def test_send_email_recipient_refusal_returns_false(app: Flask) -> None:
     with app.app_context(), patch("hushline.email.is_safe_smtp_host", return_value=True):
         app.config["SMTP_SEND_ATTEMPTS"] = 1
         assert email_mod.send_email("to@example.com", "subject", "body", cfg) is False
+
+
+def test_send_email_returns_false_when_attempts_disabled(app: Flask) -> None:
+    smtp_server = MagicMock()
+    cfg = _DummyConfig(smtp_server=smtp_server)
+
+    with app.app_context(), patch("hushline.email.is_safe_smtp_host", return_value=True):
+        app.config["SMTP_SEND_ATTEMPTS"] = 0
+        assert email_mod.send_email("to@example.com", "subject", "body", cfg) is False
+
+    smtp_server.send_message.assert_not_called()
 
 
 def test_send_email_sets_reply_to_header(app: Flask) -> None:

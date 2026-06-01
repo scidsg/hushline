@@ -45,6 +45,7 @@ from hushline.settings.common import (
     create_profile_forms,
     handle_change_password_form,
     handle_change_username_form,
+    handle_embed_settings_form,
     handle_field_post,
     handle_new_alias_form,
     handle_pgp_key_form,
@@ -60,10 +61,12 @@ from hushline.settings.forms import (
     ChangeUsernameForm,
     DirectoryVisibilityForm,
     DisplayNameForm,
+    EmbedSettingsForm,
     FieldForm,
     NewAliasForm,
     PGPKeyForm,
     ProfileForm,
+    strip_whitespace,
 )
 
 
@@ -299,6 +302,11 @@ def test_profile_form_preserves_unknown_saved_country_choice(app: Flask) -> None
     assert form.country.choices[:2] == [("", "Select"), ("Atlantis", "Atlantis")]
 
 
+def test_strip_whitespace_leaves_non_string_values_unchanged() -> None:
+    value = object()
+    assert strip_whitespace(value) is value
+
+
 def test_profile_form_preserves_unknown_saved_subdivision_and_city_labels(
     app: Flask,
 ) -> None:
@@ -376,6 +384,35 @@ def test_create_profile_forms_selects_saved_subdivision_and_city(user: User) -> 
 
     assert profile_form.subdivision.data == state_choice_value("Illinois", "United States")
     assert profile_form.city.data == city_choice_value("Chicago", "United States", "Illinois")
+
+
+def test_embed_settings_form_requires_origin_when_enabled(app: Flask) -> None:
+    with app.test_request_context(
+        "/settings/developer",
+        method="POST",
+        data={"embed_enabled": "y", "embed_allowed_origins": ""},
+    ):
+        form = EmbedSettingsForm()
+
+    assert not form.validate()
+    assert "Add at least one exact allowed origin before enabling embeds." in (
+        form.embed_allowed_origins.errors
+    )
+
+
+def test_handle_embed_settings_form_requires_paid_plan(app: Flask, user: User) -> None:
+    user.pgp_key = "key"
+    form = cast(
+        EmbedSettingsForm,
+        SimpleNamespace(validate_on_submit=lambda: True, normalized_origins=[]),
+    )
+
+    with app.test_request_context("/settings/developer", method="POST"):
+        result = handle_embed_settings_form(user.primary_username, form)
+        messages = session.get("_flashes", [])
+
+    assert result is None
+    assert ("message", "⛔️ Upgrade to Super User before enabling embeds.") in messages
 
 
 def test_is_blocked_ip_classification() -> None:
@@ -999,6 +1036,35 @@ async def test_handle_profile_post_invalid_form_returns_none(app: Flask, user: U
         assert result is None
 
 
+@pytest.mark.asyncio()
+async def test_handle_profile_post_updates_directory_visibility(app: Flask, user: User) -> None:
+    username = user.primary_username
+    with app.test_request_context(
+        "/settings/profile",
+        method="POST",
+        data={"update_directory_visibility": "", "show_in_directory": "y"},
+    ):
+        display_name_form = cast(
+            DisplayNameForm,
+            SimpleNamespace(submit=SimpleNamespace(name="update_display_name")),
+        )
+        directory_form = DirectoryVisibilityForm()
+        profile_form = cast(
+            ProfileForm,
+            SimpleNamespace(submit=SimpleNamespace(name="update_bio")),
+        )
+        response = await handle_profile_post(
+            display_name_form,
+            directory_form,
+            profile_form,
+            username,
+        )
+
+    assert response is not None
+    assert response.status_code == 302
+    assert username.show_in_directory is True
+
+
 def _fake_field_form(action: str, field_id: int | None = None) -> SimpleNamespace:
     submit = SimpleNamespace(name="submit")
     update = SimpleNamespace(name="update")
@@ -1157,6 +1223,17 @@ def test_handle_field_post_move_up_and_down_branches(app: Flask, user: User) -> 
     ):
         response_down = handle_field_post(username)
     assert response_down is not None
+
+
+def test_handle_field_post_rejects_invalid_field_id(app: Flask, user: User) -> None:
+    form = _fake_field_form("update")
+    form.id.data = "not-an-integer"
+
+    with (
+        app.test_request_context("/settings/fields", method="POST", data={"update": ""}),
+        pytest.raises(NotFound),
+    ):
+        handle_field_post(user.primary_username, cast(FieldForm, form))
 
 
 @pytest.mark.parametrize(

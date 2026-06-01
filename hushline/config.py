@@ -15,6 +15,10 @@ _STRING_CFG_PREFIX = "HL_CFG_"
 _JSON_CFG_PREFIX = "HL_CFG_JSON_"
 PASSWORD_HASH_REHASH_ON_AUTH_ENABLED = "PASSWORD_HASH_REHASH_ON_AUTH_ENABLED"  # noqa: S105
 PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT = "PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT"  # noqa: S105
+ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL = "ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL"
+ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED = "ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED"
+ENCRYPTED_FIELD_LEGACY_READS_ENABLED = "ENCRYPTED_FIELD_LEGACY_READS_ENABLED"
+ENCRYPTED_FIELD_WRITE_FORMAT = "ENCRYPTED_FIELD_WRITE_FORMAT"
 SPLASH_SCREEN_DURATION_MS = "SPLASH_SCREEN_DURATION_MS"
 
 
@@ -40,6 +44,20 @@ class AliasMode(Enum):
 class FieldsMode(Enum):
     ALWAYS = "always"
     PREMIUM = "premium"
+
+    @classmethod
+    def parse(cls, string: str) -> Self:
+        for var in cls:
+            if var.value == string:
+                return var
+        raise ConfigParseError(f"Not a valid value for {cls.__name__}: {string!r}")
+
+
+@unique
+class EncryptedFieldWriteFormat(Enum):
+    LEGACY_FERNET = "legacy-fernet"
+    ENVELOPE_FERNET = "envelope-fernet"
+    ENVELOPE_AES_GCM = "envelope-aes-gcm"
 
     @classmethod
     def parse(cls, string: str) -> Self:
@@ -170,6 +188,8 @@ def _load_hushline_misc(env: Mapping[str, str]) -> Mapping[str, Any]:
 
     bool_configs = [
         ("DIRECTORY_VERIFIED_TAB_ENABLED", True),
+        (ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED, False),
+        (ENCRYPTED_FIELD_LEGACY_READS_ENABLED, True),
         ("FILE_UPLOADS_ENABLED", False),
         (PASSWORD_HASH_REHASH_ON_AUTH_ENABLED, False),
         (PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT, False),
@@ -191,6 +211,28 @@ def _load_hushline_misc(env: Mapping[str, str]) -> Mapping[str, Any]:
         data["FIELDS_MODE"] = FieldsMode.parse(fields_str)
     else:
         data["FIELDS_MODE"] = FieldsMode.ALWAYS
+
+    if encrypted_field_write_format := env.get(ENCRYPTED_FIELD_WRITE_FORMAT):
+        data[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.parse(
+            encrypted_field_write_format
+        )
+    else:
+        data[ENCRYPTED_FIELD_WRITE_FORMAT] = EncryptedFieldWriteFormat.LEGACY_FERNET
+
+    if ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL in env:
+        data[ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL] = env[ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL]
+    if data[ENCRYPTED_FIELD_WRITE_FORMAT] == EncryptedFieldWriteFormat.ENVELOPE_AES_GCM:
+        if not data[ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED]:
+            raise ConfigParseError(
+                "ENCRYPTED_FIELD_WRITE_FORMAT='envelope-aes-gcm' requires "
+                "ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED='true'"
+            )
+        approval = data.get(ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL)
+        if not isinstance(approval, str) or not approval.strip():
+            raise ConfigParseError(
+                "ENCRYPTED_FIELD_WRITE_FORMAT='envelope-aes-gcm' requires "
+                "non-empty ENCRYPTED_FIELD_AES_GCM_WRITE_APPROVAL"
+            )
 
     return data
 

@@ -43,6 +43,372 @@ printf '%s %s\\n' "$CODEX_MODEL" "$CODEX_REASONING_EFFORT"
     assert result.stdout.strip() == "gpt-5.5 high"
 
 
+def test_runner_defaults_to_ten_minute_idle_polling() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+printf '%s %s %s\\n' \\
+  "$POST_PR_FEEDBACK_DELAY_SECONDS" \\
+  "$CODEX_STATUS_STALE_RESET_RECHECK_SECONDS" \\
+  "$CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "600 600 3600"
+
+
+def test_runner_lock_defaults_to_repo_git_dir() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+printf '%s\\n' "$RUNNER_LOCK_DIR"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == str(ROOT / ".git" / "hushline-code-agent.lock")
+
+
+def test_main_reports_missing_repo_before_acquiring_git_lock(tmp_path: Path) -> None:
+    missing_repo = tmp_path / "missing-repo"
+
+    shell_script = f"""
+HUSHLINE_REPO_DIR={shlex.quote(str(missing_repo))}
+source {shlex.quote(str(RUNNER_SCRIPT))}
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+acquire_runner_lock() {{
+  printf 'unexpected-lock\\n'
+  return 99
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 1
+    assert f"Repository not found: {missing_repo}" in result.stderr
+    assert "unexpected-lock" not in result.stdout
+
+
+def test_runner_defaults_idle_status_state_file_outside_lock_dir(tmp_path: Path) -> None:
+    lock_dir = tmp_path / "hushline-lock"
+    expected_state_file = tmp_path / ".hushline-lock.codex-status-last-check"
+
+    shell_script = f"""
+HUSHLINE_DAILY_RUNNER_LOCK_DIR={shlex.quote(str(lock_dir))}/
+source {shlex.quote(str(RUNNER_SCRIPT))}
+printf '%s\\n' "$CODEX_STATUS_IDLE_CHECK_STATE_FILE"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == str(expected_state_file)
+    assert expected_state_file.parent == tmp_path
+
+
+def test_idle_status_state_file_does_not_wedge_lock_cleanup(tmp_path: Path) -> None:
+    lock_dir = tmp_path / "hushline-lock"
+    expected_state_file = tmp_path / ".hushline-lock.codex-status-last-check"
+
+    shell_script = f"""
+HUSHLINE_DAILY_RUNNER_LOCK_DIR={shlex.quote(str(lock_dir))}
+source {shlex.quote(str(RUNNER_SCRIPT))}
+acquire_runner_lock
+record_codex_idle_status_check_attempt
+release_runner_lock
+acquire_runner_lock
+printf 'held=%s state_exists=%s lock_dir_exists=%s\\n' \\
+  "$RUNNER_LOCK_HELD" \\
+  "$([[ -f {shlex.quote(str(expected_state_file))} ]] && printf yes || printf no)" \\
+  "$([[ -d {shlex.quote(str(lock_dir))} ]] && printf yes || printf no)"
+release_runner_lock
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "held=1 state_exists=yes lock_dir_exists=yes"
+    assert expected_state_file.exists()
+    assert not lock_dir.exists()
+
+
+def test_wait_for_codex_status_credit_window_proceeds_when_5h_has_capacity() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_CHECK_ENABLED=1
+HUSHLINE_DAILY_CODEX_STATUS_JSON='{{"rateLimits":{{"primary":{{"usedPercent":42,"windowDurationMins":300,"resetsAt":1779683479}},"secondary":null,"rateLimitReachedType":null}}}}'
+sleep() {{
+  printf 'unexpected-sleep:%s\\n' "$1"
+  return 1
+}}
+wait_for_codex_status_credit_window
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Codex /status: primary 300m window 42% used; 58% remaining" in result.stdout
+    assert "unexpected-sleep" not in result.stdout
+
+
+def test_wait_for_codex_status_credit_window_blocks_workspace_credit_depletion() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_CHECK_ENABLED=1
+HUSHLINE_DAILY_CODEX_STATUS_JSON='{{"rateLimits":{{"primary":{{"usedPercent":1,"windowDurationMins":300,"resetsAt":1779683479}},"secondary":null,"rateLimitReachedType":"workspace_member_credits_depleted"}}}}'
+sleep() {{
+  printf 'unexpected-sleep:%s\\n' "$1"
+  return 1
+}}
+set +e
+wait_for_codex_status_credit_window
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Codex /status: primary 300m window 1% used; 99% remaining" in result.stdout
+    assert "rc=1" in result.stdout
+    assert "unexpected-sleep" not in result.stdout
+    assert "non-window limit type 'workspace_member_credits_depleted'" in result.stderr
+    assert "5h window still has capacity; proceeding" not in result.stdout
+
+
+def test_wait_for_codex_status_credit_window_blocks_auth_failure() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_CHECK_ENABLED=1
+fetch_codex_status_json() {{
+  printf 'Codex /status rate limit check exited before returning status: 1\\n' >&2
+  return 3
+}}
+sleep() {{
+  printf 'unexpected-sleep:%s\\n' "$1"
+  return 1
+}}
+set +e
+wait_for_codex_status_credit_window
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=1" in result.stdout
+    assert "unexpected-sleep" not in result.stdout
+    assert "authentication failure" in result.stderr
+    assert "continuing so the runner can still attempt assigned work" not in result.stderr
+
+
+def test_wait_for_codex_status_credit_window_allows_shared_usage_without_credit_balance() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_CHECK_ENABLED=1
+HUSHLINE_DAILY_CODEX_STATUS_JSON='{{"rateLimits":{{"primary":{{"usedPercent":1,"windowDurationMins":300,"resetsAt":1779683479}},"secondary":{{"usedPercent":55,"windowDurationMins":10080,"resetsAt":1780201172}},"credits":{{"hasCredits":false,"unlimited":false,"balance":"0"}},"planType":"plus","rateLimitReachedType":null}}}}'
+sleep() {{
+  printf 'unexpected-sleep:%s\\n' "$1"
+  return 1
+}}
+set +e
+wait_for_codex_status_credit_window
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Codex /status: primary 300m window 1% used; 99% remaining" in result.stdout
+    assert "rc=0" in result.stdout
+    assert "unexpected-sleep" not in result.stdout
+    assert "credits.hasCredits=false" not in result.stderr
+    assert "5h window still has capacity; proceeding" not in result.stdout
+
+
+def test_wait_for_codex_status_credit_window_sleeps_until_low_5h_quota_resets(
+    tmp_path: Path,
+) -> None:
+    call_count_file = tmp_path / "status-calls.txt"
+    sleep_log = tmp_path / "sleep-log.txt"
+    call_count_file.write_text("0\n", encoding="utf-8")
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_CHECK_ENABLED=1
+CODEX_STATUS_RESET_BUFFER_SECONDS=11
+fetch_codex_status_json() {{
+  count="$(cat {shlex.quote(str(call_count_file))})"
+  count=$((count + 1))
+  printf '%s\\n' "$count" > {shlex.quote(str(call_count_file))}
+  if [[ "$count" == "1" ]]; then
+    reset_at=$(($(date +%s) + 5))
+    printf '%s' '{{"rateLimits":{{"primary":{{"usedPercent":76,'
+    printf '%s' '"windowDurationMins":300,'
+    printf '"resetsAt":%s}},"secondary":null,' "$reset_at"
+    printf '%s\n' '"rateLimitReachedType":"primary"}}}}'
+  else
+    printf '%s' '{{"rateLimits":{{"primary":{{"usedPercent":7,'
+    printf '%s' '"windowDurationMins":300,"resetsAt":1779683479}},'
+    printf '%s\n' '"secondary":null,"rateLimitReachedType":null}}}}'
+  fi
+}}
+sleep() {{
+  printf 'sleep:%s\\n' "$1" >> {shlex.quote(str(sleep_log))}
+}}
+wait_for_codex_status_credit_window
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Codex 5h remaining quota is 24%, below 25%" in result.stdout
+    assert "Codex /status: primary 300m window 7% used; 93% remaining" in result.stdout
+    assert call_count_file.read_text(encoding="utf-8").strip() == "2"
+    slept_seconds = int(sleep_log.read_text(encoding="utf-8").strip().split(":")[1])
+    assert slept_seconds >= 11
+
+
+def test_wait_for_codex_status_credit_window_backs_off_when_reset_is_stale(
+    tmp_path: Path,
+) -> None:
+    call_count_file = tmp_path / "status-calls.txt"
+    sleep_log = tmp_path / "sleep-log.txt"
+    call_count_file.write_text("0\n", encoding="utf-8")
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_CHECK_ENABLED=1
+CODEX_STATUS_STALE_RESET_RECHECK_SECONDS=17
+fetch_codex_status_json() {{
+  count="$(cat {shlex.quote(str(call_count_file))})"
+  count=$((count + 1))
+  printf '%s\\n' "$count" > {shlex.quote(str(call_count_file))}
+  if [[ "$count" == "1" ]]; then
+    reset_at=$(($(date +%s) - 5))
+    printf '%s' '{{"rateLimits":{{"primary":{{"usedPercent":76,'
+    printf '%s' '"windowDurationMins":300,'
+    printf '"resetsAt":%s}},"secondary":null,' "$reset_at"
+    printf '%s\n' '"rateLimitReachedType":"primary"}}}}'
+  else
+    printf '%s' '{{"rateLimits":{{"primary":{{"usedPercent":7,'
+    printf '%s' '"windowDurationMins":300,"resetsAt":1779683479}},'
+    printf '%s\n' '"secondary":null,"rateLimitReachedType":null}}}}'
+  fi
+}}
+sleep() {{
+  printf 'sleep:%s\\n' "$1" >> {shlex.quote(str(sleep_log))}
+}}
+wait_for_codex_status_credit_window
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "reset time has passed; waiting 17s before rechecking" in result.stdout
+    assert "Codex /status: primary 300m window 7% used; 93% remaining" in result.stdout
+    assert call_count_file.read_text(encoding="utf-8").strip() == "2"
+    assert sleep_log.read_text(encoding="utf-8").strip() == "sleep:17"
+
+
+def test_idle_codex_status_check_skips_when_recent(tmp_path: Path) -> None:
+    state_file = tmp_path / "last-check"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_CHECK_ENABLED=1
+CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS=3600
+CODEX_STATUS_IDLE_CHECK_STATE_FILE={shlex.quote(str(state_file))}
+date +%s > "$CODEX_STATUS_IDLE_CHECK_STATE_FILE"
+fetch_codex_status_json() {{
+  printf 'unexpected-fetch\\n'
+  return 1
+}}
+check_codex_status_once_for_idle_run
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "unexpected-fetch" not in result.stdout
+    assert "Hourly idle Codex /status check due" not in result.stdout
+
+
+def test_idle_codex_status_check_runs_when_due(tmp_path: Path) -> None:
+    state_file = tmp_path / "last-check"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_CHECK_ENABLED=1
+CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS=0
+CODEX_STATUS_IDLE_CHECK_STATE_FILE={shlex.quote(str(state_file))}
+HUSHLINE_DAILY_CODEX_STATUS_JSON='{{"rateLimits":{{"primary":{{"usedPercent":51,"windowDurationMins":300,"resetsAt":1779683479}},"secondary":null,"rateLimitReachedType":null}}}}'
+check_codex_status_once_for_idle_run
+test -s "$CODEX_STATUS_IDLE_CHECK_STATE_FILE"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Hourly idle Codex /status check due" in result.stdout
+    assert "Codex /status: primary 300m window 51% used; 49% remaining" in result.stdout
+
+
+def test_record_idle_codex_status_check_attempt_refuses_symlink_state_file(
+    tmp_path: Path,
+) -> None:
+    state_file = tmp_path / "last-check"
+    victim_file = tmp_path / "victim"
+    victim_file.write_text("original\n", encoding="utf-8")
+    state_file.symlink_to(victim_file)
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_IDLE_CHECK_STATE_FILE={shlex.quote(str(state_file))}
+set +e
+record_codex_idle_status_check_attempt
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=1" in result.stdout
+    assert "refusing to write idle Codex status state file at unsafe path" in result.stdout
+    assert victim_file.read_text(encoding="utf-8") == "original\n"
+
+
+def test_idle_codex_status_check_treats_fifo_state_file_as_due(tmp_path: Path) -> None:
+    state_file = tmp_path / "last-check.fifo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CODEX_STATUS_CHECK_ENABLED=1
+CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS=3600
+CODEX_STATUS_IDLE_CHECK_STATE_FILE={shlex.quote(str(state_file))}
+mkfifo "$CODEX_STATUS_IDLE_CHECK_STATE_FILE"
+if codex_idle_status_check_due; then
+  printf 'due\\n'
+else
+  printf 'not-due\\n'
+fi
+"""
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "due"
+
+
 def test_count_open_bot_prs_excluding_heads_fails_closed_when_pr_query_fails() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
@@ -50,7 +416,7 @@ gh() {{
   return 42
 }}
 set +e
-count_open_bot_prs_excluding_heads codex/daily-coverage
+count_open_bot_prs_excluding_heads
 rc=$?
 set -e
 printf 'rc=%s\\n' "$rc"
@@ -84,7 +450,415 @@ printf '%s\\n' "$snapshot_metadata"
     assert Path(original_dir) == RUNNER_SCRIPT.parent
     assert snapshot_file.exists()
     assert snapshot_file.parent == tmp_path
+    assert snapshot_file.name.startswith("agent_daily_issue_runner.")
+    assert "XXXXXX" not in snapshot_file.name
+    assert not snapshot_file.name.endswith(".sh")
     assert snapshot_file.read_text(encoding="utf-8") == RUNNER_SCRIPT.read_text(encoding="utf-8")
+
+
+def test_runner_preflight_switches_to_base_branch(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+git() {{
+  printf 'git:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+  case "${{1-}} ${{2-}} ${{3-}}" in
+    "rev-parse --is-inside-work-tree ")
+      return 0
+      ;;
+    "symbolic-ref --quiet --short")
+      printf 'feature\\n'
+      return 0
+      ;;
+    "status --porcelain ")
+      return 0
+      ;;
+  esac
+  return 0
+}}
+assert_runner_can_take_checkout
+printf 'continued\\n'
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Switching checkout from 'feature' to 'main' before runner work." in result.stdout
+    assert "continued" in result.stdout
+    calls = call_log.read_text(encoding="utf-8")
+    assert "git:checkout main" in calls
+    assert "git:reset --hard" in calls
+    assert "git:clean -fd" in calls
+
+
+def test_runner_preflight_discards_local_changes(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+git() {{
+  printf 'git:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+  case "${{1-}} ${{2-}} ${{3-}}" in
+    "rev-parse --is-inside-work-tree ")
+      return 0
+      ;;
+    "symbolic-ref --quiet --short")
+      printf 'main\\n'
+      return 0
+      ;;
+    "status --porcelain ")
+      printf ' M file.txt\\n'
+      return 0
+      ;;
+  esac
+  return 0
+}}
+assert_runner_can_take_checkout
+printf 'continued\\n'
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Discarding local checkout changes before runner work." in result.stdout
+    assert " M file.txt" in result.stdout
+    assert "continued" in result.stdout
+    calls = call_log.read_text(encoding="utf-8")
+    assert "git:reset --hard" in calls
+    assert "git:clean -fd" in calls
+
+
+def test_cleanup_resets_successful_runner_worktree_to_base_branch(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(tmp_path / "repo"))}
+mkdir -p "$REPO_DIR/.git"
+git() {{
+  printf 'git:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+  case "${{1-}} ${{2-}} ${{3-}}" in
+    "-C $REPO_DIR branch")
+      printf 'codex/daily-issue-1978\\n'
+      return 0
+      ;;
+    "-C $REPO_DIR status")
+      printf ' M file.txt\\n'
+      return 0
+      ;;
+  esac
+  return 0
+}}
+CLEANUP_REPO_ON_EXIT=1
+cleanup
+git -C "$REPO_DIR" branch --show-current
+git -C "$REPO_DIR" status --short
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    calls = call_log.read_text(encoding="utf-8")
+    assert f"git:-C {tmp_path / 'repo'} checkout main" in calls
+    assert f"git:-C {tmp_path / 'repo'} reset --hard origin/main" in calls
+    assert f"git:-C {tmp_path / 'repo'} clean -fd" in calls
+
+
+def test_cleanup_resets_failed_runner_worktree_on_issue_branch(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(tmp_path / "repo"))}
+mkdir -p "$REPO_DIR/.git"
+git() {{
+  printf 'git:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+  case "$*" in
+    "-C $REPO_DIR symbolic-ref --quiet --short HEAD")
+      printf 'codex/daily-issue-1978\\n'
+      return 0
+      ;;
+    "-C $REPO_DIR status --short")
+      printf ' M file.txt\\n'
+      return 0
+      ;;
+  esac
+  return 0
+}}
+CLEANUP_REPO_ON_EXIT=1
+set +e
+false
+cleanup
+set -e
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Resetting failed runner worktree from codex/daily-issue-1978" in result.stdout
+    assert " M file.txt" in result.stdout
+    calls = call_log.read_text(encoding="utf-8")
+    assert f"git:-C {tmp_path / 'repo'} checkout main" in calls
+    assert f"git:-C {tmp_path / 'repo'} reset --hard origin/main" in calls
+    assert f"git:-C {tmp_path / 'repo'} clean -fd" in calls
+
+
+def test_cleanup_releases_runner_lock_after_worktree_reset(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(tmp_path / "repo"))}
+mkdir -p "$REPO_DIR/.git"
+git() {{
+  printf 'git:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+  return 0
+}}
+release_runner_lock() {{
+  printf 'release_runner_lock\\n' >> {shlex.quote(str(call_log))}
+  RUNNER_LOCK_HELD=0
+}}
+CLEANUP_REPO_ON_EXIT=1
+RUNNER_LOCK_HELD=1
+cleanup
+printf 'lock=%s\\n' "$RUNNER_LOCK_HELD"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "lock=0"
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert calls[-1] == "release_runner_lock"
+    assert calls.index(f"git:-C {tmp_path / 'repo'} checkout main") < calls.index(
+        "release_runner_lock"
+    )
+    assert calls.index(f"git:-C {tmp_path / 'repo'} reset --hard origin/main") < calls.index(
+        "release_runner_lock"
+    )
+    assert calls.index(f"git:-C {tmp_path / 'repo'} clean -fd") < calls.index("release_runner_lock")
+
+
+def test_runner_lock_skips_when_existing_runner_is_active(tmp_path: Path) -> None:
+    lock_dir = tmp_path / "runner.lock"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+RUNNER_LOCK_DIR={shlex.quote(str(lock_dir))}
+mkdir -p "$RUNNER_LOCK_DIR"
+printf '%s\\n' "$$" > "$RUNNER_LOCK_DIR/pid"
+acquire_runner_lock
+printf 'unexpected\\n'
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "another Hush Line code agent run is already active" in result.stdout
+    assert "unexpected" not in result.stdout
+
+
+def test_find_open_issue_pr_to_resume_selects_issue_branch() -> None:
+    prs_json = json.dumps(
+        [
+            {
+                "number": 1900,
+                "title": "#1900 Epic",
+                "headRefName": "codex/epic-1900",
+                "updatedAt": "2026-05-19T00:00:00Z",
+            },
+            {
+                "number": 1991,
+                "title": "#1990 Embedded Hush Line profile updates",
+                "headRefName": "codex/daily-issue-1990",
+                "updatedAt": "2026-05-19T01:00:00Z",
+            },
+        ]
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+gh() {{
+  if [[ "$1" == "pr" && "$2" == "list" ]]; then
+    printf '%s\\n' {shlex.quote(prs_json)}
+    return 0
+  fi
+  printf 'unexpected gh invocation: %s\\n' "$*" >&2
+  return 99
+}}
+find_open_issue_pr_to_resume
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == (
+        "1991\t1990\tcodex/daily-issue-1990\t" "#1990 Embedded Hush Line profile updates\n"
+    )
+
+
+def test_main_resumes_open_issue_pr_before_selecting_new_work(tmp_path: Path) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{
+  printf 'assert-runner-can-take-checkout\\n' >> {shlex.quote(str(call_log))}
+}}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
+find_open_issue_pr_to_resume() {{
+  printf '1991\\t1990\\tcodex/daily-issue-1990\\t#1990 Embedded Hush Line profile updates\\n'
+}}
+remote_branch_exists() {{ return 0; }}
+run_step() {{
+  printf 'run-step:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  shift
+  "$@"
+}}
+git() {{
+  printf 'git:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+  return 0
+}}
+gh() {{
+  if [[ "$1" == "issue" && "$2" == "view" && "$3" == "1990" && "$*" == *"--jq .title"* ]]; then
+    printf 'Embedded Hush Line profile updates\\n'
+    return 0
+  fi
+  if [[ "$1" == "issue" && "$2" == "view" && "$3" == "1990" && "$*" == *".labels[].name"* ]]; then
+    printf 'frontend\\n'
+    return 0
+  fi
+  printf 'unexpected-gh:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+  return 99
+}}
+check_pr_feedback_after_delay() {{
+  printf 'monitor:%s:%s:%s:%s:%s\\n' "$1" "$2" "$3" "$4" "$5" >> {shlex.quote(str(call_log))}
+}}
+collect_issue_candidates() {{
+  printf 'collect-issue-candidates\\n' >> {shlex.quote(str(call_log))}
+  printf '2001\\n'
+}}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        "Resuming monitor for open PR #1991 on codex/daily-issue-1990; "
+        "skipping new issue selection until that PR closes."
+    ) in result.stdout
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert calls == [
+        "assert-runner-can-take-checkout",
+        "run-step:Fetch PR branch codex/daily-issue-1990",
+        "git:fetch origin codex/daily-issue-1990:refs/remotes/origin/codex/daily-issue-1990",
+        "run-step:Checkout PR branch codex/daily-issue-1990",
+        "git:checkout -B codex/daily-issue-1990 origin/codex/daily-issue-1990",
+        "monitor:1991:1990:Embedded Hush Line profile updates:frontend:codex/daily-issue-1990",
+    ]
+    assert "collect-issue-candidates" not in calls
+    assert "runtime-bootstrap" not in calls
+
+
+def test_main_resumes_open_issue_pr_with_missing_branch_monitors_by_number(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+    repo_dir = tmp_path / "repo"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(repo_dir))}
+mkdir -p "$REPO_DIR/.git"
+parse_args() {{ :; }}
+initialize_run_state() {{ :; }}
+cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{
+  printf 'assert-runner-can-take-checkout\\n' >> {shlex.quote(str(call_log))}
+}}
+require_cmd() {{ :; }}
+require_positive_integer() {{ :; }}
+require_non_negative_integer() {{ :; }}
+find_open_issue_pr_to_resume() {{
+  printf '1991\\t1990\\tcodex/daily-issue-1990\\t#1990 Embedded Hush Line profile updates\\n'
+}}
+remote_branch_exists() {{ return 1; }}
+git() {{
+  case "$*" in
+    "symbolic-ref --quiet --short HEAD")
+      printf 'main\\n'
+      return 0
+      ;;
+    "checkout codex/daily-issue-1990")
+      printf 'git:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+      return 1
+      ;;
+  esac
+  return 0
+}}
+gh() {{
+  if [[ "$1" == "issue" && "$2" == "view" && "$3" == "1990" && "$*" == *"--jq .title"* ]]; then
+    printf 'Embedded Hush Line profile updates\\n'
+    return 0
+  fi
+  if [[ "$1" == "issue" && "$2" == "view" && "$3" == "1990" && "$*" == *".labels[].name"* ]]; then
+    printf 'frontend\\n'
+    return 0
+  fi
+  printf 'unexpected-gh:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+  return 99
+}}
+check_pr_feedback_after_delay() {{
+  printf 'monitor:%s:%s:%s:%s:%s\\n' "$1" "$2" "$3" "$4" "${{5-}}" >> {shlex.quote(str(call_log))}
+}}
+collect_issue_candidates() {{
+  printf 'collect-issue-candidates\\n' >> {shlex.quote(str(call_log))}
+  printf '2001\\n'
+}}
+start_runtime_stack_and_seed_dev_data() {{
+  printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
+}}
+main
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        "Resuming monitor for open PR #1991 on codex/daily-issue-1990; "
+        "skipping new issue selection until that PR closes."
+    ) in result.stdout
+    assert (
+        "Warning: PR branch codex/daily-issue-1990 is unavailable on origin and "
+        "local checkout recovery failed; monitoring PR #1991 by number only."
+    ) in result.stderr
+    calls = call_log.read_text(encoding="utf-8").splitlines()
+    assert calls == [
+        "assert-runner-can-take-checkout",
+        "git:checkout codex/daily-issue-1990",
+        "monitor:1991:1990:Embedded Hush Line profile updates:frontend:",
+    ]
+    assert "collect-issue-candidates" not in calls
+    assert "runtime-bootstrap" not in calls
 
 
 def test_main_exits_before_runtime_bootstrap_when_bot_pr_exists(tmp_path: Path) -> None:
@@ -99,6 +873,8 @@ mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -120,6 +896,10 @@ count_open_human_prs() {{
   printf 'count-open-human-prs\\n' >> {shlex.quote(str(call_log))}
   printf '0\\n'
 }}
+count_open_project_issues_in_status() {{
+  printf 'count-open-project-issues-in-status:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  printf '0\\n'
+}}
 collect_issue_candidates() {{
   printf 'collect-issue-candidates\\n' >> {shlex.quote(str(call_log))}
   printf '1558\\n'
@@ -135,7 +915,10 @@ main
     calls = call_log.read_text(encoding="utf-8").splitlines()
     assert "collect-issue-candidates" in calls
     assert "count-open-human-prs" in calls
-    assert "count-open-bot-prs-excluding-heads:codex/daily-coverage" in calls
+    assert "count-open-project-issues-in-status:In Progress" in calls
+    assert "count-open-bot-prs-excluding-heads:" in calls
+    assert "Fetch latest from origin" not in calls
+    assert "Reset to origin/main" not in calls
     assert "configure-bot-git" not in calls
     assert "runtime-bootstrap" not in calls
 
@@ -152,6 +935,8 @@ mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -165,6 +950,8 @@ resolve_issue_parent_epic() {{ :; }}
 start_runtime_stack_and_seed_dev_data() {{
   printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
 }}
+resume_open_issue_pr_monitor_if_any() {{ return 1; }}
+check_codex_status_once_for_idle_run() {{ :; }}
 count_open_bot_prs() {{
   printf 'count-open-bot-prs\\n' >> {shlex.quote(str(call_log))}
   printf '0\\n'
@@ -186,14 +973,16 @@ main
     assert "Skipped: found 2 open human-authored PR(s)." in result.stdout
 
     calls = call_log.read_text(encoding="utf-8").splitlines()
-    assert "collect-issue-candidates" in calls
+    assert "collect-issue-candidates" not in calls
     assert "count-open-human-prs" in calls
+    assert "Fetch latest from origin" not in calls
+    assert "Reset to origin/main" not in calls
     assert "count-open-bot-prs" not in calls
     assert "configure-bot-git" not in calls
     assert "runtime-bootstrap" not in calls
 
 
-def test_main_exits_before_runtime_bootstrap_when_issue_is_already_in_progress(
+def test_main_resumes_in_progress_issue_before_selecting_new_work(
     tmp_path: Path,
 ) -> None:
     call_log = tmp_path / "calls.txt"
@@ -207,6 +996,8 @@ mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -220,10 +1011,6 @@ resolve_issue_parent_epic() {{ :; }}
 start_runtime_stack_and_seed_dev_data() {{
   printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
 }}
-count_open_bot_prs() {{
-  printf 'count-open-bot-prs\\n' >> {shlex.quote(str(call_log))}
-  printf '0\\n'
-}}
 count_open_human_prs() {{
   printf 'count-open-human-prs\\n' >> {shlex.quote(str(call_log))}
   printf '0\\n'
@@ -232,9 +1019,17 @@ count_open_project_issues_in_status() {{
   printf 'count-open-project-issues-in-status:%s\\n' "$1" >> {shlex.quote(str(call_log))}
   printf '1\\n'
 }}
+collect_issue_candidates_in_status() {{
+  printf 'collect-issue-candidates-in-status:%s\\n' "$1" >> {shlex.quote(str(call_log))}
+  printf '1558\\n'
+}}
 collect_issue_candidates() {{
   printf 'collect-issue-candidates\\n' >> {shlex.quote(str(call_log))}
-  printf '1558\\n'
+  printf '9999\\n'
+}}
+count_open_bot_prs_excluding_heads() {{
+  printf 'count-open-bot-prs-excluding-heads:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+  printf '1\\n'
 }}
 main
 """
@@ -242,13 +1037,17 @@ main
     result = _run_bash(shell_script)
 
     assert result.returncode == 0, result.stderr
-    assert "Skipped: found 1 open issue(s) in project status 'In Progress'." in result.stdout
+    assert "Resuming assigned issue #1558 from project status 'In Progress'." in result.stdout
+    assert "Skipped: found 1 open PR(s) by hushline-dev." in result.stdout
 
     calls = call_log.read_text(encoding="utf-8").splitlines()
-    assert "collect-issue-candidates" in calls
+    assert "collect-issue-candidates" not in calls
+    assert "collect-issue-candidates-in-status:In Progress" in calls
     assert "count-open-human-prs" in calls
     assert "count-open-project-issues-in-status:In Progress" in calls
-    assert "count-open-bot-prs" not in calls
+    assert "Fetch latest from origin" not in calls
+    assert "Reset to origin/main" not in calls
+    assert "count-open-bot-prs-excluding-heads:" in calls
     assert "configure-bot-git" not in calls
     assert "runtime-bootstrap" not in calls
 
@@ -265,6 +1064,8 @@ mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -278,12 +1079,18 @@ resolve_issue_parent_epic() {{ :; }}
 start_runtime_stack_and_seed_dev_data() {{
   printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
 }}
+resume_open_issue_pr_monitor_if_any() {{ return 1; }}
+check_codex_status_once_for_idle_run() {{ :; }}
 count_open_bot_prs() {{
   printf 'count-open-bot-prs\\n' >> {shlex.quote(str(call_log))}
   printf '0\\n'
 }}
 count_open_human_prs() {{
   printf 'count-open-human-prs\\n' >> {shlex.quote(str(call_log))}
+  printf '0\\n'
+}}
+count_open_project_issues_in_status() {{
+  printf 'count-open-project-issues-in-status:%s\\n' "$1" >> {shlex.quote(str(call_log))}
   printf '0\\n'
 }}
 collect_issue_candidates() {{
@@ -300,8 +1107,13 @@ main
 
     calls = call_log.read_text(encoding="utf-8").splitlines()
     assert "collect-issue-candidates" in calls
+    assert "Fetch latest from origin" not in calls
+    assert "Checkout main" not in calls
+    assert "Reset to origin/main" not in calls
+    assert "Remove untracked files" not in calls
     assert "count-open-bot-prs" not in calls
-    assert "count-open-human-prs" not in calls
+    assert "count-open-human-prs" in calls
+    assert "count-open-project-issues-in-status:In Progress" in calls
     assert "configure-bot-git" not in calls
     assert "runtime-bootstrap" not in calls
 
@@ -330,6 +1142,8 @@ mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -344,6 +1158,7 @@ configure_bot_git_identity() {{ :; }}
 resolve_issue_parent_epic() {{ :; }}
 count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
 count_open_human_prs() {{ printf '0\\n'; }}
+count_open_project_issues_in_status() {{ printf '0\\n'; }}
 collect_issue_candidates() {{ printf '1558\\n'; }}
 start_runtime_stack_and_seed_dev_data() {{
   printf 'runtime-bootstrap\\n' >> {shlex.quote(str(call_log))}
@@ -379,6 +1194,19 @@ build_pr_title 1622 $'Normalize geography\\nacross directory listing types'
     assert result.returncode == 0, result.stderr
     assert result.stdout == "#1622 Normalize geography across directory listing types\n"
     assert "Codex Daily:" not in result.stdout
+
+
+def test_build_pr_title_uses_diagnostic_title_for_diagnostic_pr() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+RUNNER_DIAGNOSTIC_PR=1
+build_pr_title 1622 "Normalize geography"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "#1622 Daily runner diagnostic\n"
 
 
 def test_build_branch_name_uses_issue_prefix() -> None:
@@ -665,6 +1493,294 @@ set_issue_project_status 1732 "Ready for Review"
     assert result.returncode == 0, result.stderr
 
 
+def test_add_issue_to_project_status_adds_missing_item_and_updates_status(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+resolve_project_number() {{ printf '7\\n'; }}
+resolve_project_status_edit_args() {{ printf 'PVT_project\\tPVTSSF_status\\topt_agent\\n'; }}
+resolve_issue_project_item_id() {{ :; }}
+resolve_issue_node_id() {{ printf 'I_issue\\n'; }}
+gh() {{
+  local query_text=""
+  local project_id=""
+  local content_id=""
+  local item_id=""
+  local field_id=""
+  local option_id=""
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -f)
+        case "$2" in
+          query=*) query_text="${{2#query=}}" ;;
+          projectId=*) project_id="${{2#projectId=}}" ;;
+          contentId=*) content_id="${{2#contentId=}}" ;;
+          itemId=*) item_id="${{2#itemId=}}" ;;
+          fieldId=*) field_id="${{2#fieldId=}}" ;;
+          optionId=*) option_id="${{2#optionId=}}" ;;
+        esac
+        shift
+        ;;
+    esac
+    shift || break
+  done
+
+  if [[ "$query_text" == *"addProjectV2ItemById"* ]]; then
+    printf 'add:%s:%s\\n' "$project_id" "$content_id" >> {shlex.quote(str(call_log))}
+    printf '{{"data":{{"addProjectV2ItemById":{{"item":{{"id":"PVTI_added"}}}}}}}}\\n'
+    return 0
+  fi
+
+  if [[ "$query_text" == *"updateProjectV2ItemFieldValue"* ]]; then
+    printf 'update:%s:%s:%s:%s\\n' \\
+      "$project_id" \\
+      "$item_id" \\
+      "$field_id" \\
+      "$option_id" \\
+      >> {shlex.quote(str(call_log))}
+    printf '%s\\n' \\
+      '{{"data":{{"updateProjectV2ItemFieldValue":{{"projectV2Item":{{"id":"PVTI_added"}}}}}}}}'
+    return 0
+  fi
+
+  printf 'unexpected gh invocation: %s\\n' "$*" >&2
+  return 99
+}}
+add_issue_to_project_status 2002 "Agent Eligible"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert call_log.read_text(encoding="utf-8").splitlines() == [
+        "add:PVT_project:I_issue",
+        "update:PVT_project:PVTI_added:PVTSSF_status:opt_agent",
+    ]
+
+
+def test_add_issue_to_project_status_warns_when_status_update_fails(
+    tmp_path: Path,
+) -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+resolve_project_number() {{ printf '7\\n'; }}
+resolve_project_status_edit_args() {{ printf 'PVT_project\\tPVTSSF_status\\topt_agent\\n'; }}
+resolve_issue_project_item_id() {{ printf 'PVTI_existing\\n'; }}
+gh() {{
+  local query_text=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -f)
+        case "$2" in
+          query=*) query_text="${{2#query=}}" ;;
+        esac
+        shift
+        ;;
+    esac
+    shift || break
+  done
+
+  if [[ "$query_text" == *"updateProjectV2ItemFieldValue"* ]]; then
+    return 1
+  fi
+
+  printf 'unexpected gh invocation: %s\\n' "$*" >&2
+  return 99
+}}
+add_issue_to_project_status 2002 "Agent Eligible"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "failed to set coverage gap issue #2002" in result.stderr
+
+
+def test_coverage_gap_snapshot_from_log_reports_latest_missed_rows(
+    tmp_path: Path,
+) -> None:
+    check_log = tmp_path / "check.log"
+    check_log.write_text(
+        """
+old run
+Name                                             Stmts   Miss  Cover
+--------------------------------------------------------------------
+hushline/old.py                                    10      1    90%
+TOTAL                                              10      1    90%
+new run
+Name                                             Stmts   Miss  Cover
+--------------------------------------------------------------------
+hushline/__init__.py                              160      0   100%
+hushline/email.py                                 109      1    99%
+hushline/routes/profile.py                        272     17    94%
+TOTAL                                            8881     36    99%
+""",
+        encoding="utf-8",
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+coverage_gap_snapshot_from_log {shlex.quote(str(check_log))}
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "hushline/old.py" not in result.stdout
+    assert "hushline/__init__.py" not in result.stdout
+    assert "hushline/email.py" in result.stdout
+    assert "hushline/routes/profile.py" in result.stdout
+    assert "TOTAL                                            8881     36    99%" in result.stdout
+
+
+def test_coverage_gap_snapshot_from_log_preserves_missing_line_ranges(
+    tmp_path: Path,
+) -> None:
+    check_log = tmp_path / "check.log"
+    check_log.write_text(
+        """
+Name                                             Stmts   Miss  Cover   Missing
+------------------------------------------------------------------------------
+hushline/admin.py                                  187      2    99%   155, 159
+hushline/email.py                                  109      0   100%
+hushline/routes/profile.py                        272     20    93%   105-106, 573
+TOTAL                                             8881     22    99%
+""",
+        encoding="utf-8",
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+coverage_gap_snapshot_from_log {shlex.quote(str(check_log))}
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        "Name                                             Stmts   Miss  Cover   Missing"
+        in result.stdout
+    )
+    assert "hushline/admin.py" in result.stdout
+    assert "155, 159" in result.stdout
+    assert "hushline/email.py" not in result.stdout
+    assert "hushline/routes/profile.py" in result.stdout
+    assert "105-106, 573" in result.stdout
+    assert "TOTAL                                             8881     22    99%" in result.stdout
+
+
+def test_coverage_gap_snapshot_from_log_uses_latest_table_when_latest_has_no_misses(
+    tmp_path: Path,
+) -> None:
+    check_log = tmp_path / "check.log"
+    check_log.write_text(
+        """
+older run
+Name                                             Stmts   Miss  Cover
+--------------------------------------------------------------------
+hushline/old.py                                    10      1    90%
+TOTAL                                              10      1    90%
+latest run
+Name                                             Stmts   Miss  Cover
+--------------------------------------------------------------------
+hushline/new.py                                    22      0   100%
+TOTAL                                              22      0   100%
+""",
+        encoding="utf-8",
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+coverage_gap_snapshot_from_log {shlex.quote(str(check_log))}
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == ""
+
+
+def test_open_coverage_gap_issue_after_pr_creates_agent_eligible_issue(
+    tmp_path: Path,
+) -> None:
+    check_log = tmp_path / "check.log"
+    call_log = tmp_path / "calls.txt"
+    body_copy = tmp_path / "body.md"
+    check_log.write_text(
+        """
+Name                                             Stmts   Miss  Cover
+--------------------------------------------------------------------
+hushline/email.py                                 109      1    99%
+hushline/routes/profile.py                        272     17    94%
+TOTAL                                            8881     36    99%
+""",
+        encoding="utf-8",
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CHECK_LOG_FILE={shlex.quote(str(check_log))}
+add_issue_to_project_status() {{
+  printf 'project:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
+}}
+gh() {{
+  if [[ "${{1-}} ${{2-}}" == "issue create" ]]; then
+    local title=""
+    local body_file=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --title)
+          title="$2"
+          shift
+          ;;
+        --body-file)
+          body_file="$2"
+          shift
+          ;;
+      esac
+      shift || break
+    done
+    printf 'title:%s\\n' "$title" >> {shlex.quote(str(call_log))}
+    cp "$body_file" {shlex.quote(str(body_copy))}
+    printf 'https://github.com/scidsg/hushline/issues/2002\\n'
+    return 0
+  fi
+  printf 'unexpected gh invocation: %s\\n' "$*" >&2
+  return 99
+}}
+open_coverage_gap_issue_after_pr \\
+  2000 \\
+  "https://github.com/scidsg/hushline/pull/2000" \\
+  1558 \\
+  "Fill coverage gaps" \\
+  "codex/daily-issue-1558"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        "Opened coverage gap issue: https://github.com/scidsg/hushline/issues/2002" in result.stdout
+    )
+    assert call_log.read_text(encoding="utf-8").splitlines() == [
+        "title:Close test coverage gaps from PR #2000",
+        "project:2002:Agent Eligible",
+    ]
+    body = body_copy.read_text(encoding="utf-8")
+    assert "PR: https://github.com/scidsg/hushline/pull/2000" in body
+    assert "Source issue: #1558 Fill coverage gaps" in body
+    assert "This issue is complete only when the full suite returns to 100% coverage" in body
+    assert "Do not open a partial coverage PR" in body
+    assert "`make lint`" in body
+    assert "`make test`" in body
+    assert "hushline/email.py" in body
+    assert "hushline/routes/profile.py" in body
+
+
 def test_collect_issue_candidates_from_project_filters_open_issues_in_target_status() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
@@ -894,6 +2010,8 @@ mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -909,6 +2027,7 @@ resolve_issue_parent_epic() {{
   printf '1735\\tEpic title\\thttps://github.com/scidsg/hushline/issues/1735\\n'
 }}
 count_open_human_prs() {{ printf '0\\n'; }}
+count_open_project_issues_in_status() {{ printf '0\\n'; }}
 count_open_bot_prs_excluding_heads() {{
   printf 'count-open-bot-prs-excluding-heads\\n' >> {shlex.quote(str(call_log))}
   printf '0\\n'
@@ -949,6 +2068,8 @@ mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -962,6 +2083,7 @@ run_step() {{
 collect_issue_candidates() {{ printf '1558\\n'; }}
 resolve_issue_parent_epic() {{ :; }}
 count_open_human_prs() {{ printf '0\\n'; }}
+count_open_project_issues_in_status() {{ printf '0\\n'; }}
 count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
 set_issue_project_status() {{
   printf 'status:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
@@ -1001,6 +2123,8 @@ PR_BODY_FILE={shlex.quote(str(tmp_path / "pr-body.md"))}
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -1040,6 +2164,7 @@ resolve_issue_parent_epic() {{
   printf '1735\\tEpic title\\thttps://github.com/scidsg/hushline/issues/1735\\n'
 }}
 count_open_human_prs() {{ printf '0\\n'; }}
+count_open_project_issues_in_status() {{ printf '0\\n'; }}
 count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
 find_open_pr_for_head_branch() {{ :; }}
 set_issue_project_status() {{ :; }}
@@ -1183,6 +2308,8 @@ PR_BODY_FILE={shlex.quote(str(tmp_path / "pr-body.md"))}
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -1214,6 +2341,7 @@ docker() {{ :; }}
 collect_issue_candidates() {{ printf '1558\\n'; }}
 resolve_issue_parent_epic() {{ :; }}
 count_open_human_prs() {{ printf '0\\n'; }}
+count_open_project_issues_in_status() {{ printf '0\\n'; }}
 count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
 set_issue_project_status() {{
   printf 'status:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
@@ -1442,6 +2570,186 @@ run_codex_from_prompt > {shlex.quote(str(run_log_file))} 2>&1
     assert "Safe final summary" in run_log_text
 
 
+def test_run_codex_from_prompt_reports_no_credits_without_transcript(
+    tmp_path: Path,
+) -> None:
+    prompt_file = tmp_path / "prompt.txt"
+    output_file = tmp_path / "codex-output.txt"
+    transcript_file = tmp_path / "codex-transcript.txt"
+    run_log_file = tmp_path / "run-log.txt"
+    console_file = tmp_path / "console.txt"
+
+    prompt_file.write_text("issue prompt\n", encoding="utf-8")
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(tmp_path))}
+PROMPT_FILE={shlex.quote(str(prompt_file))}
+CODEX_OUTPUT_FILE={shlex.quote(str(output_file))}
+CODEX_TRANSCRIPT_FILE={shlex.quote(str(transcript_file))}
+CODEX_MODEL=test-model
+CODEX_REASONING_EFFORT=high
+VERBOSE_CODEX_OUTPUT=0
+exec 3>{shlex.quote(str(console_file))}
+codex() {{
+  printf '%s\\n' '{{"rate_limits":{{"credits":{{"has_credits":false}}}}}}'
+  printf 'SECRET_TRANSCRIPT_LINE\\n'
+  return 1
+}}
+if run_codex_from_prompt > {shlex.quote(str(run_log_file))} 2>&1; then
+  rc=0
+else
+  rc=$?
+fi
+printf 'rc=%s unavailable=%s\\n' "$rc" "$CODEX_EXEC_UNAVAILABLE"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "rc=1 unavailable=1"
+    run_log_text = run_log_file.read_text(encoding="utf-8")
+    transcript_text = transcript_file.read_text(encoding="utf-8")
+    assert "Codex execution failed (exit 1)." in run_log_text
+    assert "Codex unavailable: account has no credits" in run_log_text
+    assert "SECRET_TRANSCRIPT_LINE" in transcript_text
+    assert "SECRET_TRANSCRIPT_LINE" not in run_log_text
+
+
+def test_run_codex_from_prompt_ignores_positive_credit_telemetry(
+    tmp_path: Path,
+) -> None:
+    prompt_file = tmp_path / "prompt.txt"
+    output_file = tmp_path / "codex-output.txt"
+    transcript_file = tmp_path / "codex-transcript.txt"
+    run_log_file = tmp_path / "run-log.txt"
+    console_file = tmp_path / "console.txt"
+
+    prompt_file.write_text("issue prompt\n", encoding="utf-8")
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(tmp_path))}
+PROMPT_FILE={shlex.quote(str(prompt_file))}
+CODEX_OUTPUT_FILE={shlex.quote(str(output_file))}
+CODEX_TRANSCRIPT_FILE={shlex.quote(str(transcript_file))}
+CODEX_MODEL=test-model
+CODEX_REASONING_EFFORT=high
+VERBOSE_CODEX_OUTPUT=0
+exec 3>{shlex.quote(str(console_file))}
+codex() {{
+  printf '%s\\n' '{{"rate_limits":{{"credits":{{"has_credits":true}}}}}}'
+  printf 'unrelated execution failure\\n'
+  return 1
+}}
+if run_codex_from_prompt > {shlex.quote(str(run_log_file))} 2>&1; then
+  rc=0
+else
+  rc=$?
+fi
+printf 'rc=%s unavailable=%s\\n' "$rc" "$CODEX_EXEC_UNAVAILABLE"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "rc=1 unavailable=0"
+    run_log_text = run_log_file.read_text(encoding="utf-8")
+    transcript_text = transcript_file.read_text(encoding="utf-8")
+    assert "Codex execution failed (exit 1)." in run_log_text
+    assert "Codex unavailable:" not in run_log_text
+    assert '"has_credits":true' in transcript_text
+    assert "unrelated execution failure" in transcript_text
+
+
+def test_run_codex_from_prompt_reports_usage_limit_without_retries(
+    tmp_path: Path,
+) -> None:
+    prompt_file = tmp_path / "prompt.txt"
+    output_file = tmp_path / "codex-output.txt"
+    transcript_file = tmp_path / "codex-transcript.txt"
+    run_log_file = tmp_path / "run-log.txt"
+    console_file = tmp_path / "console.txt"
+
+    prompt_file.write_text("issue prompt\n", encoding="utf-8")
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(tmp_path))}
+PROMPT_FILE={shlex.quote(str(prompt_file))}
+CODEX_OUTPUT_FILE={shlex.quote(str(output_file))}
+CODEX_TRANSCRIPT_FILE={shlex.quote(str(transcript_file))}
+CODEX_MODEL=test-model
+CODEX_REASONING_EFFORT=high
+VERBOSE_CODEX_OUTPUT=0
+exec 3>{shlex.quote(str(console_file))}
+codex() {{
+  printf '%s\\n' "ERROR: You've hit your usage limit. Try again at 7:41 PM."
+  return 1
+}}
+if run_codex_from_prompt > {shlex.quote(str(run_log_file))} 2>&1; then
+  rc=0
+else
+  rc=$?
+fi
+printf 'rc=%s unavailable=%s\\n' "$rc" "$CODEX_EXEC_UNAVAILABLE"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "rc=1 unavailable=1"
+    run_log_text = run_log_file.read_text(encoding="utf-8")
+    transcript_text = transcript_file.read_text(encoding="utf-8")
+    assert "Codex unavailable:" in run_log_text
+    assert "usage limit" in transcript_text
+
+
+def test_run_codex_from_prompt_reports_auth_failure_without_retries(
+    tmp_path: Path,
+) -> None:
+    prompt_file = tmp_path / "prompt.txt"
+    output_file = tmp_path / "codex-output.txt"
+    transcript_file = tmp_path / "codex-transcript.txt"
+    run_log_file = tmp_path / "run-log.txt"
+    console_file = tmp_path / "console.txt"
+
+    prompt_file.write_text("issue prompt\n", encoding="utf-8")
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+REPO_DIR={shlex.quote(str(tmp_path))}
+PROMPT_FILE={shlex.quote(str(prompt_file))}
+CODEX_OUTPUT_FILE={shlex.quote(str(output_file))}
+CODEX_TRANSCRIPT_FILE={shlex.quote(str(transcript_file))}
+CODEX_MODEL=test-model
+CODEX_REASONING_EFFORT=high
+VERBOSE_CODEX_OUTPUT=0
+exec 3>{shlex.quote(str(console_file))}
+codex() {{
+  printf '%s' "ERROR: Your access token could not be refreshed because "
+  printf '%s\\n' "your refresh token was already used. Please log out and sign in again."
+  return 1
+}}
+if run_codex_from_prompt > {shlex.quote(str(run_log_file))} 2>&1; then
+  rc=0
+else
+  rc=$?
+fi
+printf 'rc=%s unavailable=%s\\n' "$rc" "$CODEX_EXEC_UNAVAILABLE"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "rc=1 unavailable=1"
+    run_log_text = run_log_file.read_text(encoding="utf-8")
+    transcript_text = transcript_file.read_text(encoding="utf-8")
+    assert "Codex unavailable: authentication failed" in run_log_text
+    assert "access token could not be refreshed" in transcript_text
+    assert "log out and sign in again" in transcript_text
+
+
 def test_write_pr_narrative_lead_adds_plain_language_summary() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
@@ -1493,6 +2801,27 @@ write_pr_narrative_lead 1622 "Normalize geography across directory listing types
         "artifact that records what the daily runner did."
     ) in result.stdout
     assert "This run only changes the runner log artifact." in result.stdout
+
+
+def test_write_pr_narrative_lead_explains_diagnostic_pr() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+RUNNER_DIAGNOSTIC_PR=1
+stream_changed_files() {{
+  printf '%s\\n' 'docs/agent-logs/run-20260308T000000Z-issue-1622.txt'
+}}
+write_pr_narrative_lead 1622 "Normalize geography across directory listing types"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "This diagnostic PR records the daily runner outcome" in result.stdout
+    assert (
+        "it opened this sanitized log-only PR instead of leaving the local checkout stranded"
+        in result.stdout
+    )
+    assert "This diagnostic PR only changes the runner log artifact." in result.stdout
 
 
 def test_audit_failure_environmental_classifier_matches_network_errors() -> None:
@@ -1563,6 +2892,72 @@ fi
 
     assert result.returncode == 0, result.stderr
     assert result.stdout == "schema-changed\n"
+
+
+def test_restore_runtime_generated_static_artifacts_cleans_bootstrap_noise(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+git() {{
+  printf 'git:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+  case "$*" in
+    "status --short -- hushline/static/js")
+      printf ' M hushline/static/js/directory_verified.js\\n'
+      return 0
+      ;;
+  esac
+  return 0
+}}
+restore_runtime_generated_static_artifacts
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Restoring generated static JS artifacts dirtied by runtime bootstrap." in result.stdout
+    calls = call_log.read_text(encoding="utf-8")
+    assert "git:restore -- hushline/static/js" in calls
+
+
+def test_restore_non_log_worktree_changes_uses_staged_and_worktree_restore(
+    tmp_path: Path,
+) -> None:
+    call_log = tmp_path / "calls.txt"
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+git() {{
+  printf 'git:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+  case "$*" in
+    "diff --name-only")
+      printf 'hushline/static/js/directory_verified.js\\n'
+      return 0
+      ;;
+    "diff --cached --name-only")
+      printf 'tests/test_agent_daily_issue_runner.py\\n'
+      return 0
+      ;;
+    "ls-files --others --exclude-standard")
+      printf 'tmp/new-file.txt\\n'
+      return 0
+      ;;
+  esac
+  return 0
+}}
+restore_non_log_worktree_changes
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Restoring non-log worktree changes before opening diagnostic PR." in result.stdout
+    calls = call_log.read_text(encoding="utf-8")
+    assert (
+        "git:restore --staged --worktree -- hushline/static/js/directory_verified.js "
+        "tests/test_agent_daily_issue_runner.py"
+    ) in calls
+    assert "git:clean -f -- tmp/new-file.txt" in calls
 
 
 def test_run_check_capture_times_out_stuck_check(tmp_path: Path) -> None:
@@ -1965,6 +3360,8 @@ def test_recent_failure_block_from_text_extracts_recent_actionable_context() -> 
         "$'tests/test_setup.py::test_boot PASSED [  1%]\\n'\\\n"
         "$'/Users/scidsg/hushline/tests/test_module.py:12:34: "
         "F821 Undefined name `MissingName`\\n'\\\n"
+        "$'hushline/routes/profile.py                         272     17    94%\\n'\\\n"
+        "$'hushline/settings/common.py                        374      4    99%\\n'\\\n"
         "$'make: *** [fix] Error 1\\nFAILED tests/test_example.py::test_case\\n"
         "/tmp/codex-secret-artifact.txt\\nTraceback\\n'"
     )
@@ -1980,6 +3377,8 @@ recent_failure_block_from_text "$failure_text"
     assert result.returncode == 0, result.stderr
     assert "Container hushline-dev_data-1 Exited" not in result.stdout
     assert "PASSED" not in result.stdout
+    assert "hushline/routes/profile.py" not in result.stdout
+    assert "hushline/settings/common.py" not in result.stdout
     assert "/Users/scidsg/hushline" not in result.stdout
     assert "tests/test_module.py:12:34: F821 Undefined name `MissingName`" in result.stdout
     assert "FAILED tests/test_example.py::test_case" in result.stdout
@@ -2012,6 +3411,30 @@ recent_failure_block_from_text "$failure_text"
     assert "abc/def+ghi~jkl" not in result.stdout
     assert "zyx/wvu+tsr~qpo" not in result.stdout
     assert "hunter2" not in result.stdout
+
+
+def test_recent_failure_block_keeps_traceback_when_coverage_table_follows() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+failure_text=$'FAILED tests/test_embeddable_forms_settings.py::test_origin\\n'\
+$'Traceback (most recent call last):\\n'\
+$'  File "/app/hushline/settings/common.py", line 358, in handle_embed_settings_form\\n'\
+$'    username.set_embed_allowed_origins(form.normalized_origins)\\n'\
+$'AttributeError: EmbedSettingsForm has no attribute normalized_origins\\n'
+for i in $(seq 1 180); do
+  failure_text+=$'hushline/module_'$i$'.py                         100      1    99%   42\\n'
+done
+failure_text+=$'FAILED tests/test_embeddable_forms_settings.py::test_origin - assert 500 == 400\\n'
+recent_failure_block_from_text "$failure_text"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "Traceback (most recent call last):" in result.stdout
+    assert "AttributeError: EmbedSettingsForm has no attribute normalized_origins" in result.stdout
+    assert "hushline/module_180.py" not in result.stdout
+    assert "FAILED tests/test_embeddable_forms_settings.py::test_origin" in result.stdout
 
 
 def test_failure_excerpt_from_text_redacts_sensitive_values() -> None:
@@ -2743,7 +4166,7 @@ def test_check_pr_feedback_after_delay_polls_until_pr_closes(tmp_path: Path) -> 
 
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
-POST_PR_FEEDBACK_DELAY_SECONDS=60
+POST_PR_FEEDBACK_DELAY_SECONDS=600
 counter_file={shlex.quote(str(counter_file))}
 rm -f "$counter_file"
 sleep() {{
@@ -2773,42 +4196,64 @@ rm -f "$counter_file"
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.count("==> Check PR #2000 feedback and checks") == 3
-    assert result.stdout.count("sleep:60") == 2
+    assert result.stdout.count("sleep:600") == 2
     assert "Feedback comment 1: @reviewer1 :: Please fix the branch handling." in result.stdout
     assert "PR #2000 is MERGED; returning to main." in result.stdout
 
 
-def test_pr_feedback_action_ignores_pending_only_changes() -> None:
+def test_pr_feedback_action_waits_for_pending_checks() -> None:
     pending_only_summary = (
         "Post-PR feedback summary: unresolved_review_threads=0 "
         "changes_requested_reviews=0 discussion_comments=0 failing_checks=0 pending_checks=3\n"
         "Feedback pending check 1: pending PR check Run Linter and Tests / test (IN_PROGRESS)"
     )
+    failing_with_pending_summary = (
+        "Post-PR feedback summary: unresolved_review_threads=0 "
+        "changes_requested_reviews=0 discussion_comments=0 failing_checks=1 pending_checks=2\n"
+        "Feedback check 1: failing PR check Run Linter and Tests / lint (FAILURE)\n"
+        "Feedback pending check 1: pending PR check Run Linter and Tests / test (IN_PROGRESS)"
+    )
     unresolved_summary = (
         "Post-PR feedback summary: unresolved_review_threads=1 "
-        "changes_requested_reviews=0 discussion_comments=0 failing_checks=0 pending_checks=3\n"
+        "changes_requested_reviews=0 discussion_comments=0 failing_checks=0 pending_checks=0\n"
         "Feedback 1: unresolved review thread by @reviewer on hushline/templates/base.html:100"
+    )
+    comment_with_pending_summary = (
+        "Post-PR feedback summary: unresolved_review_threads=0 "
+        "changes_requested_reviews=0 discussion_comments=1 failing_checks=0 pending_checks=2\n"
+        "Feedback comment 1: @maintainer :: This does not address the issue.\n"
+        "Feedback pending check 1: pending PR check Run Linter and Tests / test (IN_PROGRESS)"
     )
 
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
 pending_only_summary={shlex.quote(pending_only_summary)}
+failing_with_pending_summary={shlex.quote(failing_with_pending_summary)}
 unresolved_summary={shlex.quote(unresolved_summary)}
+comment_with_pending_summary={shlex.quote(comment_with_pending_summary)}
 set +e
 pr_feedback_summary_requires_runner_action "$pending_only_summary"
 pending_rc=$?
+pr_feedback_summary_requires_runner_action "$failing_with_pending_summary"
+failing_with_pending_rc=$?
 pr_feedback_summary_requires_runner_action "$unresolved_summary"
 unresolved_rc=$?
+pr_feedback_summary_requires_runner_action "$comment_with_pending_summary"
+comment_with_pending_rc=$?
 set -e
 printf 'pending_rc=%s\\n' "$pending_rc"
+printf 'failing_with_pending_rc=%s\\n' "$failing_with_pending_rc"
 printf 'unresolved_rc=%s\\n' "$unresolved_rc"
+printf 'comment_with_pending_rc=%s\\n' "$comment_with_pending_rc"
 """
 
     result = _run_bash(shell_script)
 
     assert result.returncode == 0, result.stderr
     assert "pending_rc=1" in result.stdout
+    assert "failing_with_pending_rc=1" in result.stdout
     assert "unresolved_rc=0" in result.stdout
+    assert "comment_with_pending_rc=0" in result.stdout
 
 
 def test_pr_feedback_action_key_ignores_pending_count_changes() -> None:
@@ -2912,7 +4357,7 @@ def test_check_pr_feedback_after_delay_addresses_actionable_feedback_once(
 
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
-POST_PR_FEEDBACK_DELAY_SECONDS=60
+POST_PR_FEEDBACK_DELAY_SECONDS=600
 counter_file={shlex.quote(str(counter_file))}
 calls_file={shlex.quote(str(calls_file))}
 rm -f "$counter_file" "$calls_file"
@@ -3236,17 +4681,20 @@ resolve_pr_number_from_ref "https://github.com/scidsg/hushline/pull/2000"
     assert "unexpected gh invocation" not in result.stderr
 
 
-def test_main_blocks_pr_creation_when_only_runner_artifacts_exist(tmp_path: Path) -> None:
+def test_main_refuses_review_pr_when_issue_loop_fails(tmp_path: Path) -> None:
     call_log = tmp_path / "calls.txt"
     repo_dir = tmp_path / "repo"
 
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
 REPO_DIR={shlex.quote(str(repo_dir))}
+PR_BODY_FILE={shlex.quote(str(tmp_path / "pr-body.md"))}
 mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -3254,30 +4702,65 @@ run_step() {{
   shift
   "$@"
 }}
-git() {{ return 0; }}
+git() {{
+  case "${{1-}} ${{2-}} ${{3-}} ${{4-}}" in
+    "symbolic-ref --quiet --short HEAD")
+      printf 'codex/daily-issue-1558\\n'
+      return 0
+      ;;
+    "diff --cached --quiet ")
+      return 1
+      ;;
+    "rev-list --count main..codex/daily-issue-1558")
+      printf '1\\n'
+      return 0
+      ;;
+    "commit -m "*)
+      printf 'commit:%s\\n' "$*" >> {shlex.quote(str(call_log))}
+      return 0
+      ;;
+    "push origin codex/daily-issue-1558 ")
+      printf 'push-log-update\\n' >> {shlex.quote(str(call_log))}
+      return 0
+      ;;
+  esac
+  return 0
+}}
 docker() {{ :; }}
 collect_issue_candidates() {{ printf '1558\\n'; }}
 resolve_issue_parent_epic() {{ :; }}
 count_open_human_prs() {{ printf '0\\n'; }}
+count_open_project_issues_in_status() {{ printf '0\\n'; }}
 count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
-set_issue_project_status() {{ :; }}
+set_issue_project_status() {{
+  printf 'status:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
+}}
 configure_bot_git_identity() {{ :; }}
 start_runtime_stack_and_seed_dev_data() {{ :; }}
 kill_all_docker_containers() {{ :; }}
 kill_processes_on_ports() {{ :; }}
 remote_branch_exists() {{ return 1; }}
 build_issue_prompt() {{ :; }}
-run_issue_attempt_loop() {{ :; }}
-has_non_log_changes() {{ return 1; }}
+run_issue_attempt_loop() {{
+  RUNNER_NO_USABLE_CHANGES=0
+  return 1
+}}
+has_non_log_changes() {{ return 0; }}
 persist_run_log() {{
+  RUN_LOG_GIT_PATH="docs/agent-logs/run-test-issue-$1.txt"
   printf 'persist:%s\\n' "$1" >> {shlex.quote(str(call_log))}
 }}
 push_branch_for_pr() {{
   printf 'push:%s\\n' "$1" >> {shlex.quote(str(call_log))}
 }}
-write_pr_body() {{ :; }}
-build_pr_title() {{
-  printf '#1558 Title\\n'
+restore_non_log_worktree_changes() {{
+  printf 'restore-non-log\\n' >> {shlex.quote(str(call_log))}
+}}
+write_pr_body() {{
+  printf 'body:diagnostic=%s:%s\\n' \\
+    "$RUNNER_DIAGNOSTIC_PR" \\
+    "$RUNNER_DIAGNOSTIC_REASON" \\
+    >> {shlex.quote(str(call_log))}
 }}
 check_pr_feedback_after_delay() {{ :; }}
 gh() {{
@@ -3292,7 +4775,8 @@ gh() {{
     return 0
   fi
   if [[ "${{1-}} ${{2-}}" == "pr create" ]]; then
-    printf 'pr-create\\n' >> {shlex.quote(str(call_log))}
+    printf 'https://github.com/scidsg/hushline/pull/2000\\n'
+    printf 'pr-create:%s\\n' "$*" >> {shlex.quote(str(call_log))}
     return 0
   fi
   return 0
@@ -3308,10 +4792,17 @@ printf 'rc=%s\\n' "$rc"
 
     assert result.returncode == 0, result.stderr
     assert "rc=1" in result.stdout
-    assert "Blocked: no usable non-log changes remain for issue #1558 after" in result.stderr
+    assert "assigned issue #1558 still requires implementation" in result.stderr
+    assert "keeping it in progress" in result.stderr
+    assert "refusing to open a diagnostic PR or mark it ready for review" in result.stderr
     calls = call_log.read_text(encoding="utf-8").splitlines() if call_log.exists() else []
-    assert not any(line == "pr-create" for line in calls)
-    assert not any(line.startswith("persist:") for line in calls)
+    assert "status:1558:In Progress" in calls
+    assert "status:1558:Agent Eligible" not in calls
+    assert "status:1558:Ready for Review" not in calls
+    assert "restore-non-log" not in calls
+    assert not any(line.startswith("body:") for line in calls)
+    assert not any(line.startswith("pr-create:") for line in calls)
+    assert not any(line.startswith("persist:1558") for line in calls)
 
 
 def test_main_continues_after_pr_create_when_pr_number_lookup_fails(
@@ -3330,6 +4821,8 @@ PR_BODY_FILE={shlex.quote(str(tmp_path / "pr-body.md"))}
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -3361,6 +4854,7 @@ docker() {{ :; }}
 collect_issue_candidates() {{ printf '1558\\n'; }}
 resolve_issue_parent_epic() {{ :; }}
 count_open_human_prs() {{ printf '0\\n'; }}
+count_open_project_issues_in_status() {{ printf '0\\n'; }}
 count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
 set_issue_project_status() {{
   printf 'status:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
@@ -3389,6 +4883,9 @@ build_pr_title() {{
 check_pr_feedback_after_delay() {{
   printf 'feedback:%s\\n' "${{1-}}" >> {shlex.quote(str(call_log))}
 }}
+open_coverage_gap_issue_after_pr() {{
+  printf 'coverage-issue:%s:%s\\n' "$1" "$3" >> {shlex.quote(str(call_log))}
+}}
 gh() {{
   if [[ "${{1-}} ${{2-}} ${{3-}}" == "issue view 1558" ]]; then
     local last_arg="${{@: -1}}"
@@ -3414,7 +4911,10 @@ main
     assert result.returncode == 0, result.stderr
     calls = call_log.read_text(encoding="utf-8").splitlines()
     assert "status:1558:Ready for Review" in calls
+    assert "coverage-issue:2000:1558" in calls
     assert "feedback:2000" in calls
+    assert calls.index("status:1558:Ready for Review") < calls.index("coverage-issue:2000:1558")
+    assert calls.index("coverage-issue:2000:1558") < calls.index("feedback:2000")
     assert "Warning: opened PR but failed to resolve its number" not in result.stdout
 
 
@@ -3431,6 +4931,8 @@ mkdir -p "$REPO_DIR/.git"
 parse_args() {{ :; }}
 initialize_run_state() {{ :; }}
 cleanup() {{ :; }}
+acquire_runner_lock() {{ :; }}
+assert_runner_can_take_checkout() {{ :; }}
 require_cmd() {{ :; }}
 require_positive_integer() {{ :; }}
 require_non_negative_integer() {{ :; }}
@@ -3459,6 +4961,7 @@ docker() {{ :; }}
 collect_issue_candidates() {{ printf '1558\\n'; }}
 resolve_issue_parent_epic() {{ :; }}
 count_open_human_prs() {{ printf '0\\n'; }}
+count_open_project_issues_in_status() {{ printf '0\\n'; }}
 count_open_bot_prs_excluding_heads() {{ printf '0\\n'; }}
 set_issue_project_status() {{ :; }}
 configure_bot_git_identity() {{ :; }}
@@ -3541,6 +5044,48 @@ printf 'rc=%s\\n' "$rc"
     assert "rc=1" in result.stdout
     assert (
         "Blocked: workflow checks failed after 2 self-heal attempt(s) for issue #1558."
+        in result.stderr
+    )
+
+
+def test_fix_attempt_loop_stops_when_codex_is_unavailable(tmp_path: Path) -> None:
+    check_log_file = tmp_path / "check.log"
+    codex_output_file = tmp_path / "codex-output.txt"
+    call_log = tmp_path / "calls.txt"
+    check_log_file.write_text("persistent failure\n", encoding="utf-8")
+    codex_output_file.write_text("prior summary\n", encoding="utf-8")
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+MAX_FIX_ATTEMPTS=4
+CHECK_LOG_FILE={shlex.quote(str(check_log_file))}
+CODEX_OUTPUT_FILE={shlex.quote(str(codex_output_file))}
+PREVIOUS_FAILURE_SIGNATURE=""
+FAILURE_SIGNATURE=""
+REPEATED_FAILURE_COUNT=0
+run_local_workflow_checks() {{ return 1; }}
+failure_signature_from_text() {{ printf 'same-failure\\n'; }}
+current_change_summary() {{ printf 'summary\\n'; }}
+build_fix_prompt() {{ :; }}
+run_codex_from_prompt() {{
+  printf 'codex\\n' >> {shlex.quote(str(call_log))}
+  CODEX_EXEC_UNAVAILABLE=1
+  return 1
+}}
+set +e
+run_fix_attempt_loop 1558 "Title" "Body" "" "branch"
+rc=$?
+set -e
+printf 'rc=%s\\n' "$rc"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "rc=1" in result.stdout
+    assert call_log.read_text(encoding="utf-8").splitlines() == ["codex"]
+    assert (
+        "Blocked: Codex self-heal is unavailable for issue #1558; stopping retry loop."
         in result.stderr
     )
 

@@ -372,6 +372,124 @@ def test_notifications_multi_recipient_missing_field_ciphertext_uses_generic_bod
 @pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
 @patch("hushline.routes.profile.encrypt_message")
+def test_notifications_multi_recipient_non_object_field_ciphertext_payload_uses_generic_body(
+    mock_encrypt_message: MagicMock,
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _configure_default_smtp(app)
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email_encrypt_entire_body = False
+    user.email = "primary@example.com"
+    _add_secondary_recipient(user)
+    db.session.commit()
+
+    create_smtp_config = MagicMock(return_value=MagicMock())
+    send_email = MagicMock()
+    monkeypatch.setattr("hushline.routes.common.create_smtp_config", create_smtp_config)
+    monkeypatch.setattr("hushline.routes.common.send_email", send_email)
+
+    response = client.post(
+        url_for("profile", username=user.primary_username.username),
+        data={
+            "encrypted_email_fields_by_recipient": json.dumps(["not", "an", "object"]),
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            **get_profile_submission_data(client, user.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200, response.text
+    assert [call.args[0] for call in send_email.call_args_list] == [
+        "primary@example.com",
+        "secondary@example.com",
+    ]
+    assert [call.args[2] for call in send_email.call_args_list] == [
+        plaintext_new_message_body,
+        plaintext_new_message_body,
+    ]
+    mock_encrypt_message.assert_not_called()
+    create_smtp_config.assert_called_once()
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+@patch("hushline.routes.profile.encrypt_message")
+def test_notifications_multi_recipient_uses_recipient_specific_field_ciphertext(
+    mock_encrypt_message: MagicMock,
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _configure_default_smtp(app)
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email_encrypt_entire_body = False
+    user.email = "primary@example.com"
+    _add_secondary_recipient(user)
+    db.session.commit()
+    primary_recipient, secondary_recipient = user.enabled_notification_recipients
+    primary_contact = (
+        "-----BEGIN PGP MESSAGE-----\n\nprimary encrypted contact\n\n-----END PGP MESSAGE-----"
+    )
+    primary_message = (
+        "-----BEGIN PGP MESSAGE-----\n\nprimary encrypted message\n\n-----END PGP MESSAGE-----"
+    )
+    secondary_contact = (
+        "-----BEGIN PGP MESSAGE-----\n\nsecondary encrypted contact\n\n-----END PGP MESSAGE-----"
+    )
+    secondary_message = (
+        "-----BEGIN PGP MESSAGE-----\n\nsecondary encrypted message\n\n-----END PGP MESSAGE-----"
+    )
+
+    create_smtp_config = MagicMock(return_value=MagicMock())
+    send_email = MagicMock(return_value=True)
+    monkeypatch.setattr("hushline.routes.common.create_smtp_config", create_smtp_config)
+    monkeypatch.setattr("hushline.routes.common.send_email", send_email)
+
+    response = client.post(
+        url_for("profile", username=user.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            "encrypted_email_fields_by_recipient": json.dumps(
+                {
+                    str(primary_recipient.id): {
+                        "field_0": primary_contact,
+                        "field_1": primary_message,
+                    },
+                    str(secondary_recipient.id): {
+                        "field_0": secondary_contact,
+                        "field_1": secondary_message,
+                    },
+                }
+            ),
+            **get_profile_submission_data(client, user.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200, response.text
+    bodies = [call.args[2] for call in send_email.call_args_list]
+    assert len(bodies) == 2
+    assert primary_contact in bodies[0]
+    assert primary_message in bodies[0]
+    assert secondary_contact in bodies[1]
+    assert secondary_message in bodies[1]
+    assert msg_contact_method not in "\n".join(bodies)
+    assert msg_content not in "\n".join(bodies)
+    mock_encrypt_message.assert_not_called()
+    create_smtp_config.assert_called_once()
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+@patch("hushline.routes.profile.encrypt_message")
 @patch("hushline.routes.profile.do_send_email")
 def test_notifications_enabled_yes_content_yes_encrypted_body(
     mock_do_send_email: MagicMock,

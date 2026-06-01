@@ -1,5 +1,6 @@
+import random
 import unicodedata
-from typing import Sequence, cast
+from typing import Sequence, TypeVar, cast
 from urllib.parse import urlencode
 
 from flask import (
@@ -61,6 +62,7 @@ _ALL_LISTING_TYPE_LABELS = (
     ("securedrop", "SecureDrop"),
     ("globaleaks", "GlobaLeaks"),
 )
+_FeaturedItem = TypeVar("_FeaturedItem")
 _DIRECTORY_CARD_BIO_ELLIPSIS = "..."
 _SELF_REPORTED_JOURNALISM_ACCOUNT_CATEGORIES = frozenset(
     {
@@ -427,6 +429,7 @@ def _directory_user_row(username: Username) -> dict[str, object | None]:
         "account_category_label": getattr(user, "account_category_label", None),
         "is_admin": user.is_admin,
         "is_verified": username.is_verified,
+        "is_featured": bool(getattr(username, "is_featured", False)),
         "show_caution_badge": _show_directory_caution_badge(username),
         "has_pgp_key": message_capable,
         "is_public_record": False,
@@ -450,6 +453,30 @@ def _directory_user_row(username: Username) -> dict[str, object | None]:
     }
 
 
+def _shuffle_featured_directory_items(items: Sequence[_FeaturedItem]) -> list[_FeaturedItem]:
+    shuffled_items = list(items)
+    random.shuffle(shuffled_items)
+    return shuffled_items
+
+
+def _featured_directory_usernames(usernames: Sequence[Username]) -> list[Username]:
+    return _shuffle_featured_directory_items(
+        [
+            username
+            for username in usernames
+            if username.is_verified and bool(getattr(username, "is_featured", False))
+        ]
+    )
+
+
+def _featured_directory_rows_first(
+    rows: Sequence[dict[str, object | None]],
+) -> list[dict[str, object | None]]:
+    featured_rows = [row for row in rows if row.get("is_featured") is True]
+    standard_rows = [row for row in rows if row.get("is_featured") is not True]
+    return [*_shuffle_featured_directory_items(featured_rows), *standard_rows]
+
+
 def _public_record_row(listing: PublicRecordListing) -> dict[str, object | None]:
     geography = listing.geography
     return {
@@ -461,6 +488,7 @@ def _public_record_row(listing: PublicRecordListing) -> dict[str, object | None]
         "account_category_label": None,
         "is_admin": False,
         "is_verified": False,
+        "is_featured": False,
         "show_caution_badge": False,
         "has_pgp_key": False,
         "is_public_record": True,
@@ -495,6 +523,7 @@ def _globaleaks_row(listing: GlobaLeaksDirectoryListing) -> dict[str, object | N
         "account_category_label": None,
         "is_admin": False,
         "is_verified": False,
+        "is_featured": False,
         "show_caution_badge": False,
         "has_pgp_key": False,
         "is_public_record": False,
@@ -529,6 +558,7 @@ def _newsroom_row(listing: NewsroomDirectoryListing) -> dict[str, object | None]
         "account_category_label": None,
         "is_admin": False,
         "is_verified": False,
+        "is_featured": False,
         "show_caution_badge": False,
         "has_pgp_key": False,
         "is_public_record": False,
@@ -563,6 +593,7 @@ def _securedrop_row(listing: SecureDropDirectoryListing) -> dict[str, object | N
         "account_category_label": None,
         "is_admin": False,
         "is_verified": False,
+        "is_featured": False,
         "show_caution_badge": False,
         "has_pgp_key": False,
         "is_public_record": False,
@@ -802,38 +833,16 @@ def register_directory_routes(app: Flask) -> None:
         ]
         verified_pgp_usernames = [username for username in pgp_usernames if username.is_verified]
         verified_info_usernames = [username for username in info_usernames if username.is_verified]
-        all_directory_entries = _build_all_directory_entries(
-            usernames,
-            all_public_record_listings,
-            globaleaks_listings,
-            all_newsroom_listings,
-            securedrop_listings,
-        )
-        legacy_filtered_all_directory_entries = [
-            *[
-                _directory_user_row(username)
-                for username in usernames
-                if not _is_self_reported_journalism_account(username)
-                or _username_matches_newsroom_filters(username, newsroom_filter_state)
-            ],
-            *[_public_record_row(listing) for listing in filtered_public_record_listings],
-            *[_globaleaks_row(listing) for listing in globaleaks_listings],
-            *[_newsroom_row(listing) for listing in newsroom_listings],
-            *[_securedrop_row(listing) for listing in securedrop_listings],
-        ]
+        featured_usernames = _featured_directory_usernames(usernames)
         if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]:
-            all_filter_metadata = _all_filter_metadata(all_directory_entries)
-            all_filter_state = _all_filter_state(all_filter_metadata)
-            has_active_all_filters = bool(
-                all_filter_state["country"]
-                or all_filter_state["region_code"]
-                or all_filter_state["listing_type"]
-            )
-            filtered_all_directory_entries = (
-                _filter_all_directory_entries(all_directory_entries, all_filter_state)
-                if has_active_all_filters
-                else legacy_filtered_all_directory_entries
-            )
+            all_filter_metadata = _empty_all_filter_metadata()
+            all_filter_state = {
+                "country": None,
+                "region": None,
+                "region_code": None,
+                "listing_type": None,
+            }
+            filtered_all_directory_entries: list[dict[str, object | None]] = []
         else:
             all_filter_metadata = _empty_all_filter_metadata()
             all_filter_state = {
@@ -842,7 +851,9 @@ def register_directory_routes(app: Flask) -> None:
                 "region_code": None,
                 "listing_type": None,
             }
-            filtered_all_directory_entries = legacy_filtered_all_directory_entries
+            filtered_all_directory_entries = [
+                *[_directory_user_row(username) for username in usernames],
+            ]
         filtered_all_directory_entries.sort(key=_all_directory_entry_sort_key)
         return render_template(
             "directory.html",
@@ -851,6 +862,7 @@ def register_directory_routes(app: Flask) -> None:
             info_usernames=info_usernames,
             verified_pgp_usernames=verified_pgp_usernames,
             verified_info_usernames=verified_info_usernames,
+            featured_usernames=featured_usernames,
             attorney_usernames=filtered_attorney_usernames,
             public_record_all_listings=filtered_public_record_listings,
             public_record_listings=public_record_listings,
@@ -1006,7 +1018,30 @@ def register_directory_routes(app: Flask) -> None:
 
     @app.route("/directory/users.json")
     def directory_users() -> list[dict[str, object | None]]:
+        tab = request.args.get("tab")
         directory_usernames = list(get_directory_usernames())
+        verified_rows = [
+            _directory_user_row(username)
+            for username in directory_usernames
+            if username.is_verified
+        ]
+        if tab == "verified":
+            return _featured_directory_rows_first(verified_rows)
+
+        if tab == "globaleaks":
+            return (
+                [_globaleaks_row(listing) for listing in get_globaleaks_directory_listings()]
+                if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
+                else []
+            )
+
+        if tab == "securedrop":
+            return (
+                [_securedrop_row(listing) for listing in get_securedrop_directory_listings()]
+                if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
+                else []
+            )
+
         public_record_listings = (
             list(get_public_record_listings())
             if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
@@ -1022,6 +1057,27 @@ def register_directory_routes(app: Flask) -> None:
                 ),
             )
         )
+        public_record_rows = (
+            [
+                _public_record_row(listing)
+                for listing in _filter_public_record_listings(
+                    public_record_listings, attorney_filter_state
+                )
+            ]
+            if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
+            else []
+        )
+        if tab == "public-records":
+            return [
+                *[
+                    _directory_user_row(username)
+                    for username in directory_usernames
+                    if _is_self_reported_attorney(username)
+                    and _username_matches_attorney_filters(username, attorney_filter_state)
+                ],
+                *public_record_rows,
+            ]
+
         if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]:
             newsroom_listings = list(get_newsroom_directory_listings())
             newsroom_filter_state = _newsroom_filter_state(
@@ -1037,21 +1093,6 @@ def register_directory_routes(app: Flask) -> None:
         else:
             newsroom_listings = []
             newsroom_filter_state = {"country": None, "region": None, "region_code": None}
-        public_record_rows = (
-            [
-                _public_record_row(listing)
-                for listing in _filter_public_record_listings(
-                    public_record_listings, attorney_filter_state
-                )
-            ]
-            if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
-            else []
-        )
-        globaleaks_rows = (
-            [_globaleaks_row(listing) for listing in get_globaleaks_directory_listings()]
-            if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
-            else []
-        )
         newsroom_rows = (
             [
                 _newsroom_row(listing)
@@ -1060,11 +1101,17 @@ def register_directory_routes(app: Flask) -> None:
             if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
             else []
         )
-        securedrop_rows = (
-            [_securedrop_row(listing) for listing in get_securedrop_directory_listings()]
-            if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
-            else []
-        )
+        if tab == "newsrooms":
+            return [
+                *[
+                    _directory_user_row(username)
+                    for username in directory_usernames
+                    if _is_self_reported_journalism_account(username)
+                    and _username_matches_newsroom_filters(username, newsroom_filter_state)
+                ],
+                *newsroom_rows,
+            ]
+
         all_directory_entries = (
             _build_all_directory_entries(
                 directory_usernames,
@@ -1101,9 +1148,17 @@ def register_directory_routes(app: Flask) -> None:
                     or _username_matches_newsroom_filters(username, newsroom_filter_state)
                 ],
                 *public_record_rows,
-                *globaleaks_rows,
+                *(
+                    [_globaleaks_row(listing) for listing in get_globaleaks_directory_listings()]
+                    if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
+                    else []
+                ),
                 *newsroom_rows,
-                *securedrop_rows,
+                *(
+                    [_securedrop_row(listing) for listing in get_securedrop_directory_listings()]
+                    if app.config["DIRECTORY_VERIFIED_TAB_ENABLED"]
+                    else []
+                ),
             ]
         )
         return [

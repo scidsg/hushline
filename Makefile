@@ -5,7 +5,8 @@ CMD := docker compose run --rm app
 else
 CMD :=
 endif
-PRETTIER_TARGETS := ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./hushline/static/js/*.js
+PRETTIER_STATIC_JS_TARGETS := ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js
+PRETTIER_TARGETS := ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js $(PRETTIER_STATIC_JS_TARGETS)
 PRETTIER_FLAGS := --ignore-path /dev/null
 RUNNER_APP_URL ?= http://localhost:8080
 RUNNER_APP_WAIT_ATTEMPTS ?= 30
@@ -109,7 +110,7 @@ PYTEST_DEFAULT_MARK_EXPR ?= not external_network
 COVERAGE_HTML_DIR ?= /tmp/hushline-htmlcov
 .PHONY: test
 test: ## Run the test suite
-	$(CMD) poetry run pytest --cov hushline --cov-report term --cov-report html:$(COVERAGE_HTML_DIR) -vv -m "$(PYTEST_DEFAULT_MARK_EXPR)" $(PYTEST_ADDOPTS) $(TESTS)
+	$(CMD) poetry run pytest --cov hushline --cov-report term-missing --cov-report html:$(COVERAGE_HTML_DIR) -vv -m "$(PYTEST_DEFAULT_MARK_EXPR)" $(PYTEST_ADDOPTS) $(TESTS)
 
 .PHONY: test-public-record-links
 test-public-record-links: ## Audit live public-record external links without failing on actionable removals

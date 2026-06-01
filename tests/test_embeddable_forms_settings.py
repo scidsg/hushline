@@ -1,7 +1,8 @@
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import pytest
 from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
@@ -14,6 +15,7 @@ from hushline.model import (
     FieldDefinition,
     FieldType,
     Message,
+    NotificationRecipient,
     OrganizationSetting,
     StripeSubscriptionStatusEnum,
     User,
@@ -47,6 +49,22 @@ def _configure_embed(username: Username, origin: str = "https://tips.example") -
     username.embed_enabled = True
     username.set_embed_allowed_origins([origin])
     db.session.commit()
+
+
+def _configure_default_smtp(app: Flask) -> None:
+    app.config["SMTP_USERNAME"] = "default-user"
+    app.config["SMTP_SERVER"] = "smtp.default.example"
+    app.config["SMTP_PORT"] = 587
+    app.config["SMTP_PASSWORD"] = "default-pass"
+    app.config["NOTIFICATIONS_ADDRESS"] = "notify@example.com"
+    app.config["NOTIFICATIONS_REPLY_TO"] = "reply@example.com"
+    app.config["SMTP_ENCRYPTION"] = "StartTLS"
+
+
+def _add_secondary_notification_recipient(user: User) -> None:
+    user.notification_recipients.append(NotificationRecipient(position=1, enabled=True))
+    user.notification_recipients[-1].email = "secondary@example.com"
+    user.notification_recipients[-1].pgp_key = Path("tests/test_pgp_key.txt").read_text()
 
 
 def _assert_safe_embed_denial(response: TestResponse) -> None:
@@ -556,6 +574,32 @@ def test_embed_profile_rate_limit_persists_outside_flask_extension_state(
     assert limited_result.limited_scopes == ("source",)
 
 
+def test_embed_profile_rate_limit_handles_unknown_source_and_deployment_scope(
+    app: Flask, user: User
+) -> None:
+    app.config["EMBED_RATE_LIMIT_WINDOW_SECONDS"] = 10
+    app.config["EMBED_RATE_LIMIT_PROFILE_MAX"] = 20
+    app.config["EMBED_RATE_LIMIT_SOURCE_MAX"] = 20
+    app.config["EMBED_RATE_LIMIT_DEPLOYMENT_MAX"] = 1
+
+    with (
+        app.test_request_context(environ_base={"REMOTE_ADDR": "not-an-ip"}),
+        patch("hushline.embeds.time.time", return_value=1000.0),
+    ):
+        first_result = check_embed_rate_limit(user.primary_username)
+
+    with (
+        app.test_request_context(environ_base={"REMOTE_ADDR": "still-not-an-ip"}),
+        patch("hushline.embeds.time.time", return_value=1001.0),
+    ):
+        limited_result = check_embed_rate_limit(user.primary_username)
+
+    assert first_result.limited is False
+    assert limited_result.limited is True
+    assert limited_result.limited_scopes == ("deployment",)
+    assert limited_result.source_bucket_hash == first_result.source_bucket_hash
+
+
 def test_embed_profile_rate_limit_evicts_stale_global_state(app: Flask, user: User) -> None:
     app.config["EMBED_RATE_LIMIT_WINDOW_SECONDS"] = 10
     app.config["EMBED_RATE_LIMIT_PROFILE_MAX"] = 20
@@ -700,6 +744,31 @@ def test_embed_profile_submission_rejects_captcha_failure(client: FlaskClient, u
     assert _first_message_for(user.primary_username) is None
 
 
+def test_embed_profile_submission_rejects_missing_required_field(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "Embedded Signal contact",
+            **submission_data,
+        },
+    )
+
+    assert post_response.status_code == 400
+    assert "There was an error submitting your message" in post_response.text
+    assert "Message: This field is required." in post_response.text
+    assert _first_message_for(user.primary_username) is None
+
+
 def test_embed_profile_submission_rejects_stale_form_after_suspension(
     client: FlaskClient, user: User
 ) -> None:
@@ -821,6 +890,100 @@ def test_embed_profile_submission_uses_same_enabled_custom_fields(
     }
 
 
+def test_embed_profile_malformed_recipient_ciphertexts_use_generic_notification_body(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _configure_default_smtp(app)
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email_encrypt_entire_body = False
+    user.email = "primary@example.com"
+    _add_secondary_notification_recipient(user)
+    db.session.commit()
+    _configure_embed(user.primary_username)
+
+    send_email = MagicMock(return_value=True)
+    monkeypatch.setattr("hushline.routes.common.create_smtp_config", MagicMock())
+    monkeypatch.setattr("hushline.routes.common.send_email", send_email)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "sender-contact@example.com",
+            "field_1": "secret disclosure body",
+            "encrypted_email_fields_by_recipient": "not-json",
+            **submission_data,
+        },
+    )
+
+    assert post_response.status_code == 200, post_response.text
+    assert [call.args[0] for call in send_email.call_args_list] == [
+        "primary@example.com",
+        "secondary@example.com",
+    ]
+    assert [call.args[2] for call in send_email.call_args_list] == [
+        "You have a new Hush Line message! Please log in to read it.",
+        "You have a new Hush Line message! Please log in to read it.",
+    ]
+
+
+@pytest.mark.parametrize(
+    "recipient_ciphertexts",
+    [
+        "",
+        '{"not-id": {}, "123": "not-an-object"}',
+    ],
+)
+def test_embed_profile_invalid_recipient_ciphertexts_use_generic_notification_body(
+    recipient_ciphertexts: str,
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _configure_default_smtp(app)
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email_encrypt_entire_body = False
+    user.email = "primary@example.com"
+    _add_secondary_notification_recipient(user)
+    db.session.commit()
+    _configure_embed(user.primary_username)
+
+    send_email = MagicMock(return_value=True)
+    monkeypatch.setattr("hushline.routes.common.create_smtp_config", MagicMock())
+    monkeypatch.setattr("hushline.routes.common.send_email", send_email)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "sender-contact@example.com",
+            "field_1": "secret disclosure body",
+            "encrypted_email_fields_by_recipient": recipient_ciphertexts,
+            **submission_data,
+        },
+    )
+
+    assert post_response.status_code == 200, post_response.text
+    assert [call.args[2] for call in send_email.call_args_list] == [
+        "You have a new Hush Line message! Please log in to read it.",
+        "You have a new Hush Line message! Please log in to read it.",
+    ]
+
+
 def test_embed_profile_has_no_postmessage_submission_path(client: FlaskClient, user: User) -> None:
     _enable_embeds_globally()
     _make_message_capable(user)
@@ -904,6 +1067,24 @@ def test_non_super_non_admin_user_cannot_access_developer_settings(
     assert user.primary_username.embed_enabled is False
 
 
+def test_developer_settings_requires_primary_username(client: FlaskClient, user: User) -> None:
+    _make_current_paid_super_user(user)
+    username = user.primary_username
+    with client.session_transaction() as session:
+        session["user_id"] = user.id
+        session["session_id"] = user.session_id
+        session["username"] = username.username
+        session["is_authenticated"] = True
+
+    username.is_primary = False
+    db.session.commit()
+    db.session.expire(user, ["primary_username"])
+
+    response = client.get(url_for("settings.developer"))
+
+    assert response.status_code == 500
+
+
 def test_settings_nav_shows_developer_for_admin_or_current_paid_super_user(
     client: FlaskClient, user: User
 ) -> None:
@@ -972,6 +1153,28 @@ def test_admin_non_super_user_can_access_developer_global_embed_settings_only(
     assert "Enable embeddable forms globally" in response.text
     assert "Embeddable Profile" not in response.text
     assert 'name="embed_enabled"' not in response.text
+
+
+def test_admin_non_super_user_cannot_update_profile_embed_settings(
+    client: FlaskClient, user: User
+) -> None:
+    user.is_admin = True
+    db.session.commit()
+    with client.session_transaction() as session:
+        session["user_id"] = user.id
+        session["session_id"] = user.session_id
+        session["username"] = user.primary_username.username
+        session["is_authenticated"] = True
+
+    response = client.post(
+        url_for("settings.developer"),
+        data=_embed_settings_data(True, "https://tips.example"),
+    )
+
+    assert response.status_code == 401
+    db.session.refresh(user.primary_username)
+    assert user.primary_username.embed_enabled is False
+    assert user.primary_username.embed_allowed_origins == []
 
 
 def test_developer_embed_settings_require_usable_recipient_key(
@@ -1131,7 +1334,7 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     runtime_style = page.find("style")
     assert runtime_style is not None
     assert "--color-brand: oklch(from" in runtime_style.get_text()
-    assert "--theme-color-dark:" in runtime_style.get_text()
+    assert "--theme-color-dark:" not in runtime_style.get_text()
     assert page.find(string="Secure Hush Line form") is None
     assert "Hosted by" not in response.text
     assert "Powered by Hush Line" not in response.text
@@ -1148,6 +1351,7 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     assert "default-src 'self'" in csp
     assert "frame-ancestors https://tips.example" in csp
     assert "frame-ancestors *" not in csp
+    assert page.select_one(".embed-actions") is not None
     assert page.find("a", string=lambda value: value and "Open on Hush Line" in value) is not None
     exit_link = page.find("a", attrs={"aria-label": "Emergency exit: Leave"})
     assert exit_link is not None
@@ -1175,13 +1379,24 @@ def test_embed_profile_layout_and_focus_styles_are_in_compiled_stylesheet_source
     stylesheet_source = Path("assets/scss/style.scss").read_text()
 
     assert "body.embed-page" in stylesheet_source
+    assert "body.embed-page *:not(button)" in stylesheet_source
+    assert "background-color: white;" in stylesheet_source
     assert ".embed-shell" in stylesheet_source
-    assert ".embed-profile-summary" in stylesheet_source
+    assert "padding: 1.5rem 1.25rem;" in stylesheet_source
+    assert ".embed-profile-summary" not in stylesheet_source
     assert ".embed-actions" in stylesheet_source
+    assert "h2.submit+p {\n  margin-top: 1rem;" not in stylesheet_source
+    assert "h2.submit:not(:has(+ p.bio))" not in stylesheet_source
     assert ".embed-error-summary" in stylesheet_source
     assert ".embed-noscript" in stylesheet_source
+    assert ".embed-page .captcha_container {\n  align-items: center;" in stylesheet_source
+    assert (
+        "#messageForm {\n  position: relative;\n  padding-top: 1.5rem;\n  margin-top: 0;"
+        in stylesheet_source
+    )
     assert ".embed-page a:focus-visible" in stylesheet_source
-    assert "outline: 3px solid var(--theme-color-dark)" in stylesheet_source
+    assert "outline: 3px solid var(--color-brand-min-contrast)" in stylesheet_source
+    assert "outline: 3px solid var(--theme-color-dark)" not in stylesheet_source
 
 
 def test_embed_profile_renders_additional_profile_fields_like_full_profile(
@@ -1288,6 +1503,7 @@ def test_embed_profile_required_chrome_survives_recipient_branding_settings(
     badge_texts = _badge_texts(page)
     assert "⭐️ Verified" in badge_texts
     assert "🔒 End-to-End Encrypted" in badge_texts
+    assert page.select_one(".embed-actions") is not None
     assert page.find("a", string=lambda value: value and "Open on Hush Line" in value) is not None
     assert page.find("a", attrs={"aria-label": "Emergency exit: Leave"}) is not None
 
@@ -1400,6 +1616,30 @@ def test_alias_embed_settings_are_independent(
         username=user_alias.username,
         _external=True,
     )
+
+
+def test_alias_embed_settings_reject_invalid_origin(
+    client: FlaskClient, user: User, user_alias: Username
+) -> None:
+    _make_message_capable(user)
+    with client.session_transaction() as session:
+        session["user_id"] = user.id
+        session["session_id"] = user.session_id
+        session["username"] = user.primary_username.username
+        session["is_authenticated"] = True
+
+    response = client.post(
+        url_for("settings.alias", username_id=user_alias.id),
+        data=_embed_settings_data(True, "https://alias.example/path"),
+    )
+
+    assert response.status_code == 400
+    assert (
+        "Embed origins must be exact http(s) origins without paths or wildcards." in response.text
+    )
+    db.session.refresh(user_alias)
+    assert user_alias.embed_enabled is False
+    assert user_alias.embed_allowed_origins == []
 
 
 def test_alias_embed_settings_require_alias_owner(

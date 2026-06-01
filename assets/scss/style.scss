@@ -1358,6 +1358,8 @@ body.directory-page {
 
 body.embed-page {
   align-items: stretch;
+  background-color: white;
+  color: var(--color-text);
   display: block;
   padding: 0;
 }
@@ -1409,10 +1411,6 @@ h2.submit {
 
 h2+p {
   margin-top: 0.25rem;
-}
-
-h2.submit+p {
-  margin-top: 1rem;
 }
 
 h2.submit~.instr {
@@ -1556,10 +1554,6 @@ p b {
 
 .user .user-actions {
   margin-top: 0.75rem;
-}
-
-h2.submit:not(:has(+ p.bio)):not(:has(+ .extra-fields)):not( :has(+ .badgeContainer)):not(:has(+ .instr)) {
-  margin-bottom: 1rem;
 }
 
 .bio,
@@ -2474,6 +2468,162 @@ img.alert {
   border-radius: 0.25rem;
   padding: 1rem;
   margin-bottom: 0.75rem;
+}
+
+.featured-directory {
+  --featured-carousel-gap: 0.75rem;
+  --featured-carousel-peek: 2rem;
+  --featured-carousel-shadow-overflow: 0.75rem;
+  margin: 0 0 0.5rem 0;
+  overflow: visible;
+}
+
+.featured-directory-window {
+  overflow: visible;
+  position: relative;
+}
+
+.featured-directory-track {
+  display: grid;
+}
+
+.featured-directory-slide {
+  display: flex;
+  grid-area: 1 / 1;
+}
+
+.featured-directory:not(.is-enhanced) .featured-directory-slide:not(.active) {
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.featured-directory.is-enhanced .featured-directory-window {
+  clip-path: inset(0 0 calc(-1 * var(--featured-carousel-shadow-overflow)) 0);
+  margin-bottom: calc(-1 * var(--featured-carousel-shadow-overflow));
+  margin-inline: calc(-1 * var(--featured-carousel-peek));
+  overflow: hidden;
+  padding-bottom: var(--featured-carousel-shadow-overflow);
+}
+
+.featured-directory.is-enhanced .featured-directory-track {
+  align-items: stretch;
+  display: flex;
+  gap: var(--featured-carousel-gap);
+  transition: transform 0.35s ease;
+  will-change: transform;
+}
+
+.featured-directory.is-enhanced .featured-directory-slide {
+  flex: 0 0 calc(100% - (2 * var(--featured-carousel-peek)));
+  grid-area: auto;
+  visibility: visible;
+}
+
+.featured-directory.is-enhanced .featured-directory-slide:not(.active) {
+  pointer-events: none;
+}
+
+.featured-directory .user {
+  box-shadow: var(--shadow-dynamic);
+  margin-bottom: 0;
+  width: 100%;
+}
+
+.featured-directory-controls {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.featured-directory-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  margin: 0;
+}
+
+.featured-directory-dot {
+  --featured-dot-progress: 0%;
+  align-items: center;
+  background: transparent;
+  border: 0;
+  box-shadow: none !important;
+  color: #8f8f8f;
+  display: inline-flex;
+  height: 44px;
+  justify-content: center;
+  margin: 0;
+  min-height: 44px;
+  min-width: 28px;
+  padding: 0;
+  position: relative;
+  width: 28px;
+}
+
+.featured-directory-dot::before {
+  background-color: #cfcfcf;
+  border-radius: 50vw;
+  content: "";
+  height: 0.625rem;
+  position: absolute;
+  width: 0.625rem;
+}
+
+.featured-directory-dot.active {
+  color: var(--color-brand);
+  width: 44px;
+}
+
+.featured-directory-dot.active::before {
+  background: linear-gradient(
+    90deg,
+    var(--color-brand) 0 var(--featured-dot-progress),
+    oklch(from var(--color-brand) l c h / 0.18) var(--featured-dot-progress) 100%
+  );
+  box-shadow: inset 0 0 0 1px var(--color-brand);
+  width: 1.75rem;
+}
+
+.featured-directory-bio a {
+  white-space: nowrap;
+}
+
+@media (prefers-color-scheme: dark) {
+  .featured-directory-dot {
+    color: var(--color-border-dark);
+  }
+
+  .featured-directory-dot::before {
+    background-color: var(--color-border-dark-1);
+  }
+
+  .featured-directory-dot.active {
+    color: var(--color-brand-dark-min-saturation);
+  }
+
+  .featured-directory-dot.active::before {
+    background: linear-gradient(
+      90deg,
+      var(--color-brand-dark-min-saturation) 0 var(--featured-dot-progress),
+      oklch(from var(--color-brand-dark-min-saturation) l c h / 0.22)
+        var(--featured-dot-progress) 100%
+    );
+    box-shadow: inset 0 0 0 1px var(--color-brand-dark-min-saturation);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .featured-directory.is-enhanced .featured-directory-track {
+    transition: none;
+  }
+}
+
+@media only screen and (max-width: 800px) {
+  .featured-directory {
+    --featured-carousel-peek: var(--container-padding, 1.25rem);
+  }
 }
 
 #results>div {
@@ -3466,6 +3616,12 @@ body.embed-page *::after {
   box-sizing: border-box;
 }
 
+body.embed-page *:not(button),
+body.embed-page *:not(button)::before,
+body.embed-page *:not(button)::after {
+  background-color: white;
+}
+
 .embed-shell {
   display: flex;
   flex-direction: column;
@@ -3473,21 +3629,34 @@ body.embed-page *::after {
   margin: 0 auto;
   max-width: 44rem;
   min-width: 0;
-  padding: 1rem;
-}
-
-.embed-profile-summary,
-.embed-actions {
-  border-bottom: 1px solid #d8d8d8;
-  padding-bottom: 1rem;
+  padding: 1.5rem 1.25rem;
 }
 
 .embed-meta {
   margin: 0.25rem 0 0;
 }
 
+.embed-page a,
+.embed-page a.meta {
+  color: var(--color-brand-mid-contrast);
+}
+
+.embed-page .meta {
+  color: var(--color-text-light);
+}
+
 .embed-page .badgeContainer {
   flex-wrap: wrap;
+}
+
+.embed-page .badge {
+  border: 1px solid var(--color-brand-min-contrast);
+  color: var(--color-brand-mid-contrast);
+}
+
+.embed-page .badgeCaution {
+  border: 1px solid darkred;
+  color: darkred;
 }
 
 .embed-actions {
@@ -3530,6 +3699,25 @@ body.embed-page *::after {
   max-width: 100%;
 }
 
+.embed-page button {
+  background-color: var(--color-brand-mid-contrast);
+  border: var(--border);
+  box-shadow: none;
+  color: white;
+}
+
+.embed-page input,
+.embed-page textarea,
+.embed-page select {
+  background-color: white;
+  border: var(--border);
+  color: var(--color-text);
+}
+
+.embed-page select {
+  background-image: url("../img/dropdown.png");
+}
+
 .embed-page textarea,
 .embed-page input:not([type="hidden"]),
 .embed-page select {
@@ -3537,7 +3725,7 @@ body.embed-page *::after {
 }
 
 .embed-page .captcha_container {
-  align-items: flex-start;
+  align-items: center;
   flex-wrap: wrap;
 }
 
@@ -3551,7 +3739,7 @@ body.embed-page *::after {
 .embed-page input:focus-visible,
 .embed-page textarea:focus-visible,
 .embed-page select:focus-visible {
-  outline: 3px solid var(--theme-color-dark);
+  outline: 3px solid var(--color-brand-min-contrast);
   outline-offset: 3px;
 }
 
@@ -3577,14 +3765,10 @@ body.embed-page *::after {
 #messageForm {
   position: relative;
   padding-top: 1.5rem;
-  margin-top: 0.5rem;
+  margin-top: 0;
 }
 
 @media (max-width: 28rem) {
-  .embed-shell {
-    padding: 0.75rem;
-  }
-
   .embed-actions {
     flex-direction: column;
   }

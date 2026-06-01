@@ -31,10 +31,19 @@ def test_lint_target_keeps_format_check_before_ruff_check() -> None:
     )
 
 
+def test_prettier_targets_skip_generated_static_js_glob() -> None:
+    make_text = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+
+    assert "./hushline/static/js/*.js" not in make_text
+    assert "./hushline/static/js/directory_verified.js" in make_text
+    assert "./hushline/static/js/settings-location.js" in make_text
+
+
 def test_test_target_writes_html_coverage_to_tmp_by_default() -> None:
     target_section = _target_section("test")
 
     assert "COVERAGE_HTML_DIR ?= /tmp/hushline-htmlcov" in (REPO_ROOT / "Makefile").read_text(
         encoding="utf-8"
     )
+    assert "--cov-report term-missing" in target_section
     assert "--cov-report html:$(COVERAGE_HTML_DIR)" in target_section

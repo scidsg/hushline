@@ -1,3 +1,6 @@
+from types import SimpleNamespace
+from unittest.mock import patch
+
 import pytest
 
 from hushline.db import db
@@ -127,6 +130,50 @@ def test_embed_origin_normalization_canonicalizes_host_and_ports() -> None:
     assert normalize_embed_origin("http://localhost:80") == "http://localhost"
     assert normalize_embed_origin("http://127.0.0.2:80") == "http://127.0.0.2"
     assert normalize_embed_origin("http://exampleonion.onion:80") == "http://exampleonion.onion"
+    assert normalize_embed_origin("https://[2001:4860:4860::8888]:443") == (
+        "https://[2001:4860:4860::8888]"
+    )
+
+
+def test_embed_origin_normalization_rejects_invalid_ports_and_deduplicates(user: User) -> None:
+    with pytest.raises(ValueError, match="valid port"):
+        normalize_embed_origin("https://tips.example:abc")
+
+    with pytest.raises(ValueError, match="valid port"):
+        normalize_embed_origin("https://tips.example:99999")
+
+    user.primary_username.set_embed_allowed_origins(
+        [
+            "https://Tips.Example:443",
+            "https://tips.example",
+            "https://other.example",
+        ]
+    )
+
+    assert user.primary_username.embed_allowed_origins == [
+        "https://tips.example",
+        "https://other.example",
+    ]
+
+
+def test_embed_origin_normalization_rejects_parsed_wildcard_host() -> None:
+    parsed = SimpleNamespace(
+        scheme="https",
+        netloc="tips.example",
+        hostname="*.example",
+        username=None,
+        password=None,
+        path="",
+        query="",
+        fragment="",
+        port=None,
+    )
+
+    with (
+        patch("hushline.model.username.urlsplit", return_value=parsed),
+        pytest.raises(ValueError, match="cannot contain wildcards"),
+    ):
+        normalize_embed_origin("https://tips.example")
 
 
 @pytest.mark.parametrize(

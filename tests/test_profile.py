@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 from helpers import get_profile_submission_data
+from itsdangerous import BadData, SignatureExpired, URLSafeTimedSerializer
 from sqlalchemy.exc import MultipleResultsFound
 from werkzeug.exceptions import NotFound
 
@@ -16,6 +17,7 @@ from hushline.model import (
     Message,
     NotificationRecipient,
     OrganizationSetting,
+    StripeSubscriptionStatusEnum,
     User,
     Username,
 )
@@ -25,6 +27,37 @@ msg_content = "This is a test message."
 suspended_message = "This account is suspended. New messages cannot be sent at this time."
 
 pgp_message_sig = "-----BEGIN PGP MESSAGE-----\n\n"
+
+
+def _make_current_paid_super_user(user: User) -> None:
+    user.set_business_tier()
+    user.stripe_subscription_status = StripeSubscriptionStatusEnum.ACTIVE
+
+
+def _enable_embeds_globally() -> None:
+    OrganizationSetting.upsert(OrganizationSetting.EMBEDDABLE_FORMS_ENABLED, True)
+
+
+def _configure_embed(username: Username, origin: str = "https://tips.example") -> None:
+    username.embed_enabled = True
+    username.set_embed_allowed_origins([origin])
+
+
+def _embed_submission_data(response_text: str) -> dict[str, str]:
+    page = BeautifulSoup(response_text, "html.parser")
+    label = page.find("label", attrs={"for": "captcha_answer"})
+    assert label is not None
+    left, right = label.get_text(strip=True).replace("=", "").split("+")
+
+    data = {"captcha_answer": str(int(left.strip()) + int(right.strip()))}
+    for name in ["owner_guard_nonce", "owner_guard_signature", "embed_captcha_token"]:
+        field = page.find("input", attrs={"name": name})
+        assert field is not None
+        value = field.get("value")
+        assert value
+        data[name] = str(value)
+    data["csrf_token"] = data["embed_captcha_token"]
+    return data
 
 
 @pytest.mark.usefixtures("_pgp_user")
@@ -257,6 +290,264 @@ def test_profile_rejects_owner_guard_mismatch(client: FlaskClient, user: User) -
     )
     assert response.status_code == 400
     assert "tip line changed" in response.text
+
+
+@pytest.mark.usefixtures("_pgp_user")
+def test_embed_profile_rejects_non_numeric_captcha(client: FlaskClient, user: User) -> None:
+    _enable_embeds_globally()
+    _make_current_paid_super_user(user)
+    _configure_embed(user.primary_username)
+    db.session.commit()
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    submission_data["captcha_answer"] = "abc"
+
+    response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            **submission_data,
+        },
+    )
+
+    assert response.status_code == 400
+    assert "Invalid CAPTCHA answer" in response.text
+
+
+@pytest.mark.usefixtures("_pgp_user")
+def test_embed_profile_rejects_expired_captcha_token(client: FlaskClient, user: User) -> None:
+    _enable_embeds_globally()
+    _make_current_paid_super_user(user)
+    _configure_embed(user.primary_username)
+    db.session.commit()
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+
+    with patch(
+        "hushline.routes.profile.URLSafeTimedSerializer.loads",
+        side_effect=SignatureExpired("expired"),
+    ):
+        response = client.post(
+            url_for("embed_profile", username=user.primary_username.username),
+            data={
+                "field_0": msg_contact_method,
+                "field_1": msg_content,
+                **submission_data,
+            },
+        )
+
+    assert response.status_code == 400
+    assert "CAPTCHA expired" in response.text
+
+
+@pytest.mark.usefixtures("_pgp_user")
+def test_embed_profile_rejects_bad_captcha_token(client: FlaskClient, user: User) -> None:
+    _enable_embeds_globally()
+    _make_current_paid_super_user(user)
+    _configure_embed(user.primary_username)
+    db.session.commit()
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+
+    with patch(
+        "hushline.routes.profile.URLSafeTimedSerializer.loads",
+        side_effect=BadData("bad token"),
+    ):
+        response = client.post(
+            url_for("embed_profile", username=user.primary_username.username),
+            data={
+                "field_0": msg_contact_method,
+                "field_1": msg_content,
+                **submission_data,
+            },
+        )
+
+    assert response.status_code == 400
+    assert "Incorrect CAPTCHA" in response.text
+
+
+@pytest.mark.usefixtures("_pgp_user")
+def test_embed_profile_rejects_captcha_token_for_different_profile(
+    app: Flask, client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_current_paid_super_user(user)
+    _configure_embed(user.primary_username)
+    db.session.commit()
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    bad_token = URLSafeTimedSerializer(app.secret_key or "", salt="embed-profile-captcha").dumps(
+        {
+            "v": 1,
+            "username": "different-user",
+            "user_id": user.id,
+            "nonce": "nonce",
+            "math_problem": "1 + 1 =",
+            "answer_signature": "not-checked-before-profile-mismatch",
+        }
+    )
+    submission_data["captcha_answer"] = "2"
+    submission_data["embed_captcha_token"] = bad_token
+    submission_data["csrf_token"] = bad_token
+
+    response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            **submission_data,
+        },
+    )
+
+    assert response.status_code == 400
+    assert "Incorrect CAPTCHA" in response.text
+
+
+@pytest.mark.usefixtures("_pgp_user")
+def test_embed_profile_post_404s_if_account_is_suspended_after_render(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_current_paid_super_user(user)
+    _configure_embed(user.primary_username)
+    db.session.commit()
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+
+    def suspend_after_embed_eligibility_check(*_args: object, **_kwargs: object) -> str:
+        user.is_suspended = True
+        return "Submit a message"
+
+    with patch(
+        "hushline.routes.profile.safe_render_template",
+        side_effect=suspend_after_embed_eligibility_check,
+    ):
+        response = client.post(
+            url_for("embed_profile", username=user.primary_username.username),
+            data={
+                "field_0": msg_contact_method,
+                "field_1": msg_content,
+                **submission_data,
+            },
+        )
+
+    assert response.status_code == 404
+    csp = (response.headers.get("Content-Security-Policy") or "").strip()
+    assert "frame-ancestors 'none'" in csp
+
+
+@pytest.mark.usefixtures("_pgp_user")
+def test_embed_profile_rejects_if_account_is_suspended_during_submission(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_current_paid_super_user(user)
+    _configure_embed(user.primary_username)
+    db.session.commit()
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    rate_limit_result = MagicMock(
+        limited=False,
+        profile_hash="profile-hash",
+        source_bucket_hash="source-bucket-hash",
+    )
+
+    def suspend_after_initial_block_check(_username: Username) -> MagicMock:
+        user.is_suspended = True
+        return rate_limit_result
+
+    with (
+        patch(
+            "hushline.routes.profile.check_embed_rate_limit",
+            side_effect=suspend_after_initial_block_check,
+        ),
+        patch("hushline.routes.profile.emit_embed_abuse_counter") as emit_counter,
+    ):
+        response = client.post(
+            url_for("embed_profile", username=user.primary_username.username),
+            data={
+                "field_0": msg_contact_method,
+                "field_1": msg_content,
+                **submission_data,
+            },
+        )
+
+    assert response.status_code == 400
+    assert suspended_message in response.text
+    assert any(call.kwargs.get("reason") == "suspended" for call in emit_counter.call_args_list)
+    assert (
+        db.session.scalars(
+            db.select(Message).filter_by(username_id=user.primary_username.id)
+        ).first()
+        is None
+    )
+
+
+@pytest.mark.usefixtures("_pgp_user")
+def test_embed_profile_rejects_if_recipient_keys_are_removed_during_submission(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_current_paid_super_user(user)
+    _configure_embed(user.primary_username)
+    db.session.commit()
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    rate_limit_result = MagicMock(
+        limited=False,
+        profile_hash="profile-hash",
+        source_bucket_hash="source-bucket-hash",
+    )
+
+    def remove_keys_after_initial_block_check(_username: Username) -> MagicMock:
+        user.pgp_key = None
+        for recipient in user.notification_recipients:
+            recipient.pgp_key = None
+        return rate_limit_result
+
+    with (
+        patch(
+            "hushline.routes.profile.check_embed_rate_limit",
+            side_effect=remove_keys_after_initial_block_check,
+        ),
+        patch("hushline.routes.profile.emit_embed_abuse_counter") as emit_counter,
+    ):
+        response = client.post(
+            url_for("embed_profile", username=user.primary_username.username),
+            data={
+                "field_0": msg_contact_method,
+                "field_1": msg_content,
+                **submission_data,
+            },
+        )
+
+    assert response.status_code == 400
+    assert "do not have any usable recipient PGP keys" in response.text
+    assert any(
+        call.kwargs.get("reason") == "missing_recipient_keys"
+        for call in emit_counter.call_args_list
+    )
+    assert (
+        db.session.scalars(
+            db.select(Message).filter_by(username_id=user.primary_username.id)
+        ).first()
+        is None
+    )
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -572,6 +863,106 @@ def test_profile_full_body_encryption_exception_falls_back_to_generic(
     assert response.status_code == 200
     assert "Message submitted successfully." in response.text
     assert sent == ["You have a new Hush Line message! Please log in to read it."]
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+def test_profile_full_body_encryption_uses_server_fallback_when_client_body_missing(
+    client: FlaskClient, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email_encrypt_entire_body = True
+    db.session.commit()
+
+    sent: list[str] = []
+    encrypt_message = MagicMock(return_value="encrypted fallback body")
+
+    def fake_send_email(_user: User, body: str) -> None:
+        sent.append(body)
+
+    monkeypatch.setattr("hushline.routes.profile.encrypt_message", encrypt_message)
+    monkeypatch.setattr("hushline.routes.profile.do_send_email", fake_send_email)
+
+    response = client.post(
+        url_for("profile", username=user.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            "encrypted_email_body": "",
+            **get_profile_submission_data(client, user.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "Message submitted successfully." in response.text
+    assert sent == ["encrypted fallback body"]
+    encrypted_plaintext = encrypt_message.call_args.args[0]
+    assert "Contact Method" in encrypted_plaintext
+    assert msg_content in encrypted_plaintext
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+def test_profile_notification_without_message_content_sends_generic_body(
+    client: FlaskClient, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    user.enable_email_notifications = True
+    user.email_include_message_content = False
+    db.session.commit()
+    sent: list[str] = []
+
+    def fake_send_email(_user: User, body: str) -> None:
+        sent.append(body)
+
+    monkeypatch.setattr("hushline.routes.profile.do_send_email", fake_send_email)
+
+    response = client.post(
+        url_for("profile", username=user.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            **get_profile_submission_data(client, user.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert sent == ["You have a new Hush Line message! Please log in to read it."]
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+def test_profile_single_recipient_notification_can_include_stored_message_content(
+    client: FlaskClient, user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    user.enable_email_notifications = True
+    user.email_include_message_content = True
+    user.email_encrypt_entire_body = False
+    db.session.commit()
+    sent: list[str] = []
+
+    def fake_send_email(_user: User, body: str) -> None:
+        sent.append(body)
+
+    monkeypatch.setattr("hushline.routes.profile.do_send_email", fake_send_email)
+
+    response = client.post(
+        url_for("profile", username=user.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            **get_profile_submission_data(client, user.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert len(sent) == 1
+    assert "Contact Method" in sent[0]
+    assert "Message" in sent[0]
+    assert pgp_message_sig in sent[0]
 
 
 @pytest.mark.usefixtures("_authenticated_user")

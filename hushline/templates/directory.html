@@ -3,6 +3,80 @@
 {% block title %}Directory{% endblock %}
 {% block body_class %}directory-page{% endblock %}
 
+{% macro verified_user_card(username) %}
+  <article class="user">
+    <h3>{{ username.display_name or username.username }}</h3>
+    {% if username.username %}
+      <p class="meta">@{{ username.username }}</p>
+    {% endif %}
+    {% set is_featured = username.is_featured | default(false) %}
+    {% if is_featured or username.is_verified or username.user.is_admin %}
+      <div class="badgeContainer">
+        {% if is_featured %}
+          <span class="badge" role="img" aria-label="Featured account">💎 Featured</span>
+        {% endif %}
+        {% if username.user.is_admin %}
+          <span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>
+        {% endif %}
+        {% if username.is_verified %}
+          <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
+        {% endif %}
+      </div>
+    {% endif %}
+    {% if username.bio %}
+      <p class="bio">{{ username.bio }}</p>
+    {% endif %}
+    <div class="user-actions">
+      <a
+        href="{{ url_for('profile', username=username.username) }}"
+        aria-label="{{ (username.display_name or username.username) }}'s profile"
+        >View Profile</a
+      >
+    </div>
+  </article>
+{% endmacro %}
+
+{% macro featured_user_card(username) %}
+  <article class="user">
+    <h3>{{ username.display_name or username.username }}</h3>
+    {% if username.username %}
+      <p class="meta">@{{ username.username }}</p>
+    {% endif %}
+    {% set is_featured = username.is_featured | default(false) %}
+    {% if is_featured or username.is_verified or username.user.is_admin %}
+      <div class="badgeContainer">
+        {% if is_featured %}
+          <span class="badge" role="img" aria-label="Featured account">💎 Featured</span>
+        {% endif %}
+        {% if username.user.is_admin %}
+          <span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>
+        {% endif %}
+        {% if username.is_verified %}
+          <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
+        {% endif %}
+      </div>
+    {% endif %}
+    {% if username.bio %}
+      {% set featured_bio = truncate_directory_bio(username.bio) %}
+      <p class="bio featured-directory-bio">
+        {%- if featured_bio != username.bio and featured_bio.endswith("...") -%}
+          {{ featured_bio[:featured_bio|length - 3] }}
+          <a href="{{ url_for('profile', username=username.username) }}">more...</a>
+        {%- else -%}
+          {{ featured_bio }}
+        {%- endif -%}
+      </p>
+    {% endif %}
+    <div class="user-actions">
+      <a
+        href="{{ url_for('profile', username=username.username) }}"
+        aria-label="{{ (username.display_name or username.username) }}'s profile"
+        >View Profile</a
+      >
+    </div>
+  </article>
+{% endmacro %}
+
 {% block content %}
   <h2 id="directory-title">Whistleblower Support Directory</h2>
 
@@ -530,66 +604,55 @@
         </p>
       {% endif %}
 
-      <div class="user-list">
-        {% for username in verified_pgp_usernames %}
-          <article class="user">
-            <h3>{{ username.display_name or username.username }}</h3>
-            {% if username.username %}
-              <p class="meta">@{{ username.username }}</p>
-            {% endif %}
-            {% if username.is_verified or username.user.is_admin %}
-              <div class="badgeContainer">
-                {% if username.user.is_admin %}
-                  <span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>
-                {% endif %}
-                {% if username.is_verified %}
-                  <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
-                {% endif %}
-              </div>
-            {% endif %}
-            {% if username.bio %}
-              <p class="bio">{{ username.bio }}</p>
-            {% endif %}
-            <div class="user-actions">
-              <a
-                href="{{ url_for('profile', username=username.username) }}"
-                aria-label="{{ (username.display_name or username.username) }}'s profile"
-                >View Profile</a
-              >
+      {% if featured_usernames %}
+        <section
+          class="featured-directory"
+          aria-label="Featured verified accounts"
+          data-featured-carousel
+        >
+          <div class="featured-directory-window" data-featured-window>
+            <div class="featured-directory-track" data-featured-track>
+              {% for username in featured_usernames %}
+                <div
+                  class="featured-directory-slide{% if loop.first %} active{% endif %}"
+                  data-featured-slide
+                  aria-hidden="{{ 'false' if loop.first else 'true' }}"
+                >
+                  {{ featured_user_card(username) }}
+                </div>
+              {% endfor %}
             </div>
-          </article>
+          </div>
+          {% if featured_usernames|length > 1 %}
+            <div class="featured-directory-controls">
+              <div></div>
+              <div class="featured-directory-dots" role="group" aria-label="Featured accounts">
+                {% for username in featured_usernames %}
+                  <button
+                    type="button"
+                    class="featured-directory-dot{% if loop.first %} active{% endif %}"
+                    aria-label="Show featured account {{ loop.index }} of {{ featured_usernames|length }}"
+                    {% if loop.first %}aria-current="true"{% endif %}
+                    data-featured-dot
+                    data-featured-index="{{ loop.index0 }}"
+                  ></button>
+                {% endfor %}
+              </div>
+            </div>
+          {% endif %}
+        </section>
+      {% endif %}
+
+      <div class="user-list">
+        {% for username in verified_pgp_usernames if not (username.is_featured | default(false)) %}
+          {{ verified_user_card(username) }}
         {% endfor %}
       </div>
       {% if verified_info_usernames %}
         <p class="label">📇 Info-Only Accounts</p>
         <div class="user-list">
-          {% for username in verified_info_usernames %}
-            <article class="user">
-              <h3>{{ username.display_name or username.username }}</h3>
-              {% if username.username %}
-                <p class="meta">@{{ username.username }}</p>
-              {% endif %}
-              {% if username.is_verified or username.user.is_admin %}
-                <div class="badgeContainer">
-                  {% if username.user.is_admin %}
-                    <span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>
-                  {% endif %}
-                  {% if username.is_verified %}
-                    <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
-                  {% endif %}
-                </div>
-              {% endif %}
-              {% if username.bio %}
-                <p class="bio">{{ username.bio }}</p>
-              {% endif %}
-              <div class="user-actions">
-                <a
-                  href="{{ url_for('profile', username=username.username) }}"
-                  aria-label="{{ (username.display_name or username.username) }}'s profile"
-                  >View Profile</a
-                >
-              </div>
-            </article>
+          {% for username in verified_info_usernames if not (username.is_featured | default(false)) %}
+            {{ verified_user_card(username) }}
           {% endfor %}
         </div>
       {% endif %}
@@ -790,6 +853,7 @@
     class="tab-content {% if not directory_verified_tab_enabled %}active{% endif %}"
     role="tabpanel"
     {% if directory_verified_tab_enabled %}aria-labelledby="all-tab"{% endif %}
+    {% if directory_verified_tab_enabled %}data-lazy-directory-panel="true"{% endif %}
   >
     {% if directory_verified_tab_enabled %}
       <p class="meta dirMeta">
@@ -797,37 +861,17 @@
         <a href="/to/admin">Request a correction</a>.
       </p>
     {% endif %}
-    <div class="user-list">
-      {% for entry in all_directory_entries %}
-        <article class="user">
-          <h3>{{ entry.display_name }}</h3>
-          {% if entry.primary_username %}
-            <p class="meta">@{{ entry.primary_username }}</p>
-          {% endif %}
+    {% if not directory_verified_tab_enabled %}
+      <div class="user-list">
+        {% for entry in all_directory_entries %}
+          <article class="user">
+            <h3>{{ entry.display_name }}</h3>
+            {% if entry.primary_username %}
+              <p class="meta">@{{ entry.primary_username }}</p>
+            {% endif %}
 
-          {% if entry.entry_type != "user" or entry.is_admin or entry.is_verified or not entry.has_pgp_key or entry.show_caution_badge %}
-            <div class="badgeContainer">
-              {% if entry.entry_type == "public_record" %}
-                <span class="badge" role="img" aria-label="Attorney listing">⚖️ Attorney</span>
-                {% if entry.is_automated %}
-                  <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
-                {% endif %}
-              {% elif entry.entry_type == "globaleaks" %}
-                <span class="badge" role="img" aria-label="GlobaLeaks listing">🌐 GlobaLeaks</span>
-                {% if entry.is_automated %}
-                  <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
-                {% endif %}
-              {% elif entry.entry_type == "newsroom" %}
-                <span class="badge" role="img" aria-label="Newsroom listing">📰 Newsroom</span>
-                {% if entry.is_automated %}
-                  <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
-                {% endif %}
-              {% elif entry.entry_type == "securedrop" %}
-                <span class="badge" role="img" aria-label="SecureDrop listing">🛡️ SecureDrop</span>
-                {% if entry.is_automated %}
-                  <span class="badge" role="img" aria-label="Automated listing">🤖 Automated</span>
-                {% endif %}
-              {% else %}
+            {% if entry.entry_type != "user" or entry.is_admin or entry.is_verified or not entry.has_pgp_key or entry.show_caution_badge %}
+              <div class="badgeContainer">
                 {% if entry.is_admin %}
                   <span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>
                 {% endif %}
@@ -840,31 +884,23 @@
                 {% if not entry.has_pgp_key %}
                   <span class="badge" role="img" aria-label="Info-only account">📇 Info Only</span>
                 {% endif %}
-              {% endif %}
-            </div>
-          {% endif %}
+              </div>
+            {% endif %}
 
-          {% if entry.bio %}
-            <p class="bio">{{ entry.bio }}</p>
-          {% endif %}
-          <div class="user-actions">
-            {% if entry.entry_type == "user" %}
+            {% if entry.bio %}
+              <p class="bio">{{ entry.bio }}</p>
+            {% endif %}
+            <div class="user-actions">
               <a
                 href="{{ entry.profile_url }}"
                 aria-label="{{ entry.display_name }}'s profile"
                 >View Profile</a
               >
-            {% else %}
-              <a
-                href="{{ entry.profile_url }}"
-                aria-label="View read-only listing for {{ entry.display_name }}"
-                >View Listing</a
-              >
-            {% endif %}
-          </div>
-        </article>
-      {% endfor %}
-    </div>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% endif %}
   </div>
 {% endblock %}
 

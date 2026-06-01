@@ -88,12 +88,16 @@
       "newsroom-region-filter",
     );
     const initialMarkup = new Map();
-    let userData = [];
-    let allTabUserData = [];
+    const directoryDataByTab = new Map();
+    const directoryDataSearchByTab = new Map();
+    const directoryDataRequestsByTab = new Map();
+    const directoryCardBioMaxLength = 250;
+    const featuredCarouselDurationMs = 7000;
     let hasRenderedSearch = false;
     let directoryDataRequestController = null;
     let directoryDataLoadingController = null;
     let loadedDirectorySearch = window.location.search;
+    let featuredCarouselCleanups = [];
 
     tabPanels.forEach((panel) => {
       initialMarkup.set(panel.id, panel.innerHTML);
@@ -131,7 +135,7 @@
     }
 
     function usersForTab(tab = activeTabName()) {
-      return tab === "all" ? allTabUserData : userData;
+      return directoryDataByTab.get(tab) || [];
     }
 
     function updateTabScrollControls() {
@@ -450,6 +454,11 @@
         return badgeContainer;
       }
 
+      if (tab === "verified" && user.is_featured) {
+        badgeContainer +=
+          '<span class="badge" role="img" aria-label="Featured account">💎 Featured</span>';
+      }
+
       if (user.is_admin) {
         badgeContainer +=
           '<span class="badge" role="img" aria-label="Administrator account">⚙️ Admin</span>';
@@ -504,7 +513,34 @@
     `;
     }
 
-    function buildUserCard(user, query, tab) {
+    function directoryCardBio(text) {
+      if (!text || text.length <= directoryCardBioMaxLength) {
+        return {
+          isTruncated: false,
+          text: text || "",
+        };
+      }
+
+      return {
+        isTruncated: true,
+        text: `${text.slice(0, directoryCardBioMaxLength - 3)}`,
+      };
+    }
+
+    function buildFeaturedBio(user, query, safeProfileUrl) {
+      if (!user.bio) {
+        return "";
+      }
+
+      const featuredBio = directoryCardBio(user.bio);
+      const bioHighlighted = highlightMatch(featuredBio.text, query);
+      const moreLink = featuredBio.isTruncated
+        ? ` <a href="${safeProfileUrl}">more...</a>`
+        : "";
+      return `<p class="bio featured-directory-bio">${bioHighlighted}${moreLink}</p>`;
+    }
+
+    function buildUserCard(user, query, tab, options = {}) {
       const safeDisplayName = userSearch.escapeHtml(
         user.display_name || user.primary_username || "",
       );
@@ -516,7 +552,11 @@
         query,
       );
       const usernameHighlighted = highlightMatch(user.primary_username, query);
-      const bioHighlighted = user.bio ? highlightMatch(user.bio, query) : "";
+      const bioMarkup = options.featuredCarousel
+        ? buildFeaturedBio(user, query, safeProfileUrl)
+        : user.bio
+          ? `<p class="bio">${highlightMatch(user.bio, query)}</p>`
+          : "";
 
       if (
         user.is_public_record ||
@@ -538,12 +578,346 @@
         <h3>${displayNameHighlighted}</h3>
         <p class="meta">@${usernameHighlighted}</p>
         ${badges ? `<div class="badgeContainer">${badges}</div>` : ""}
-        ${bioHighlighted ? `<p class="bio">${bioHighlighted}</p>` : ""}
+        ${bioMarkup}
         <div class="user-actions">
           <a href="${safeProfileUrl}" aria-label="${safeDisplayName}'s profile">View Profile</a>
         </div>
       </article>
     `;
+    }
+
+    function isPromotableFeaturedUser(user, tab) {
+      return (
+        tab === "verified" &&
+        user.is_featured &&
+        user.is_verified &&
+        !user.is_public_record &&
+        !user.is_globaleaks &&
+        !user.is_newsroom &&
+        !user.is_securedrop
+      );
+    }
+
+    function buildFeaturedCarousel(users, query, tab) {
+      const featuredUsers = users.filter((user) =>
+        isPromotableFeaturedUser(user, tab),
+      );
+      if (!featuredUsers.length) {
+        return "";
+      }
+
+      const slideMarkup = featuredUsers
+        .map(
+          (user, index) => `
+          <div
+            class="featured-directory-slide${index === 0 ? " active" : ""}"
+            data-featured-slide
+            aria-hidden="${index === 0 ? "false" : "true"}"
+          >
+            ${buildUserCard(user, query, tab, { featuredCarousel: true })}
+          </div>
+        `,
+        )
+        .join("");
+
+      const controlsMarkup =
+        featuredUsers.length > 1
+          ? `
+          <div class="featured-directory-controls">
+            <div></div>
+            <div class="featured-directory-dots" role="group" aria-label="Featured accounts">
+              ${featuredUsers
+                .map(
+                  (_user, index) => `
+                    <button
+                      type="button"
+                      class="featured-directory-dot${index === 0 ? " active" : ""}"
+                      aria-label="Show featured account ${index + 1} of ${featuredUsers.length}"
+                      ${index === 0 ? 'aria-current="true"' : ""}
+                      data-featured-dot
+                      data-featured-index="${index}"
+                    ></button>
+                  `,
+                )
+                .join("")}
+            </div>
+          </div>
+        `
+          : "";
+
+      return `
+      <section class="featured-directory" aria-label="Featured verified accounts" data-featured-carousel>
+        <div class="featured-directory-window" data-featured-window>
+          <div class="featured-directory-track" data-featured-track>
+            ${slideMarkup}
+          </div>
+        </div>
+        ${controlsMarkup}
+      </section>
+    `;
+    }
+
+    function clearFeaturedCarouselTimers() {
+      featuredCarouselCleanups.forEach((cleanup) => cleanup());
+      featuredCarouselCleanups = [];
+    }
+
+    function featuredFocusableElements(slide) {
+      return slide.querySelectorAll(
+        "a, button, input, select, textarea, [tabindex], [data-featured-had-tabindex], [data-featured-original-tabindex]",
+      );
+    }
+
+    function setFeaturedSlideInteractive(slide, isInteractive) {
+      if (isInteractive) {
+        slide.removeAttribute("inert");
+        featuredFocusableElements(slide).forEach((element) => {
+          if (element.dataset.featuredOriginalTabindex !== undefined) {
+            element.setAttribute(
+              "tabindex",
+              element.dataset.featuredOriginalTabindex,
+            );
+            delete element.dataset.featuredOriginalTabindex;
+          } else if (element.dataset.featuredHadTabindex === "false") {
+            element.removeAttribute("tabindex");
+            delete element.dataset.featuredHadTabindex;
+          }
+        });
+        return;
+      }
+
+      slide.setAttribute("inert", "");
+      featuredFocusableElements(slide).forEach((element) => {
+        if (element.dataset.featuredHadTabindex === undefined) {
+          if (element.hasAttribute("tabindex")) {
+            element.dataset.featuredOriginalTabindex =
+              element.getAttribute("tabindex");
+          } else {
+            element.dataset.featuredHadTabindex = "false";
+          }
+        }
+        element.setAttribute("tabindex", "-1");
+      });
+    }
+
+    function initializeFeaturedCarousels() {
+      clearFeaturedCarouselTimers();
+
+      document
+        .querySelectorAll("[data-featured-carousel]")
+        .forEach((carousel) => {
+          const track = carousel.querySelector("[data-featured-track]");
+          const windowEl = carousel.querySelector("[data-featured-window]");
+          const slides = Array.from(
+            carousel.querySelectorAll("[data-featured-slide]"),
+          );
+          const dots = Array.from(
+            carousel.querySelectorAll("[data-featured-dot]"),
+          );
+          if (!track || !windowEl || slides.length < 2 || dots.length < 2) {
+            return;
+          }
+
+          track
+            .querySelectorAll("[data-featured-clone]")
+            .forEach((clone) => clone.remove());
+
+          const firstClone = slides[0].cloneNode(true);
+          const lastClone = slides[slides.length - 1].cloneNode(true);
+          [firstClone, lastClone].forEach((clone) => {
+            clone.classList.remove("active");
+            clone.removeAttribute("data-featured-slide");
+            clone.setAttribute("data-featured-clone", "");
+            clone.setAttribute("aria-hidden", "true");
+            clone.setAttribute("inert", "");
+            clone
+              .querySelectorAll("a, button, input, select, textarea")
+              .forEach((element) => {
+                element.setAttribute("tabindex", "-1");
+              });
+          });
+          track.insertBefore(lastClone, slides[0]);
+          track.appendChild(firstClone);
+          carousel.classList.add("is-enhanced");
+          const visualSlides = Array.from(
+            track.querySelectorAll(".featured-directory-slide"),
+          );
+
+          const prefersReducedMotion = window.matchMedia(
+            "(prefers-reduced-motion: reduce)",
+          ).matches;
+          let activeIndex = Math.max(
+            0,
+            slides.findIndex((slide) => slide.classList.contains("active")),
+          );
+          let autoAdvanceTimer = null;
+          let progressFrame = null;
+          let progressStartedAt = 0;
+          let touchStartX = null;
+          let pendingSnapIndex = null;
+
+          const setProgress = (progress) => {
+            dots.forEach((dot, index) => {
+              dot.style.setProperty(
+                "--featured-dot-progress",
+                index === activeIndex ? `${progress * 100}%` : "0%",
+              );
+            });
+          };
+
+          const setTrackPosition = (visualIndex, options = {}) => {
+            const animate = options.animate !== false && !prefersReducedMotion;
+            const previousTransition = track.style.transition;
+            if (!animate) {
+              track.style.transition = "none";
+            }
+
+            const trackStyles = window.getComputedStyle(track);
+            const gap =
+              Number.parseFloat(
+                trackStyles.columnGap || trackStyles.gap || "0",
+              ) || 0;
+            const slideWidth =
+              visualSlides[0]?.getBoundingClientRect().width || 0;
+            const windowWidth = windowEl.getBoundingClientRect().width;
+            const offset =
+              (windowWidth - slideWidth) / 2 - visualIndex * (slideWidth + gap);
+            track.style.transform = `translateX(${offset}px)`;
+
+            if (!animate) {
+              track.getBoundingClientRect();
+              track.style.transition = previousTransition;
+            }
+          };
+
+          const setActiveSlideState = () => {
+            slides.forEach((slide, index) => {
+              const isActive = index === activeIndex;
+              slide.classList.toggle("active", isActive);
+              slide.setAttribute("aria-hidden", isActive ? "false" : "true");
+              setFeaturedSlideInteractive(slide, isActive);
+            });
+          };
+          setActiveSlideState();
+
+          const stopProgress = () => {
+            if (autoAdvanceTimer) {
+              window.clearTimeout(autoAdvanceTimer);
+              autoAdvanceTimer = null;
+            }
+            if (progressFrame) {
+              window.cancelAnimationFrame(progressFrame);
+              progressFrame = null;
+            }
+          };
+
+          const scheduleAutoAdvance = () => {
+            stopProgress();
+            setProgress(0);
+            if (prefersReducedMotion) {
+              return;
+            }
+
+            progressStartedAt = performance.now();
+            const updateProgress = (timestamp) => {
+              const elapsed = timestamp - progressStartedAt;
+              setProgress(Math.min(elapsed / featuredCarouselDurationMs, 1));
+              progressFrame = window.requestAnimationFrame(updateProgress);
+            };
+
+            progressFrame = window.requestAnimationFrame(updateProgress);
+            autoAdvanceTimer = window.setTimeout(() => {
+              showSlide(activeIndex + 1);
+            }, featuredCarouselDurationMs);
+          };
+
+          const showSlide = (nextIndex) => {
+            const previousIndex = activeIndex;
+            activeIndex = (nextIndex + slides.length) % slides.length;
+            let visualIndex = activeIndex + 1;
+            pendingSnapIndex = null;
+            if (
+              previousIndex === slides.length - 1 &&
+              nextIndex >= slides.length
+            ) {
+              visualIndex = slides.length + 1;
+              pendingSnapIndex = activeIndex + 1;
+            } else if (previousIndex === 0 && nextIndex < 0) {
+              visualIndex = 0;
+              pendingSnapIndex = activeIndex + 1;
+            }
+
+            setActiveSlideState();
+            dots.forEach((dot, index) => {
+              const isActive = index === activeIndex;
+              dot.classList.toggle("active", isActive);
+              if (isActive) {
+                dot.setAttribute("aria-current", "true");
+              } else {
+                dot.removeAttribute("aria-current");
+              }
+            });
+            setTrackPosition(visualIndex, { animate: true });
+            scheduleAutoAdvance();
+          };
+
+          const handleTrackTransitionEnd = (event) => {
+            if (event.target !== track || pendingSnapIndex === null) {
+              return;
+            }
+            setTrackPosition(pendingSnapIndex, { animate: false });
+            pendingSnapIndex = null;
+          };
+          track.addEventListener("transitionend", handleTrackTransitionEnd);
+
+          dots.forEach((dot) => {
+            dot.addEventListener("click", () => {
+              showSlide(Number(dot.dataset.featuredIndex || 0));
+            });
+          });
+
+          carousel.addEventListener(
+            "touchstart",
+            (event) => {
+              touchStartX = event.changedTouches[0]?.clientX ?? null;
+            },
+            { passive: true },
+          );
+
+          carousel.addEventListener(
+            "touchend",
+            (event) => {
+              if (touchStartX === null) {
+                return;
+              }
+              const touchEndX = event.changedTouches[0]?.clientX ?? touchStartX;
+              const deltaX = touchEndX - touchStartX;
+              touchStartX = null;
+              if (Math.abs(deltaX) < 40) {
+                return;
+              }
+              showSlide(activeIndex + (deltaX < 0 ? 1 : -1));
+            },
+            { passive: true },
+          );
+
+          scheduleAutoAdvance();
+          setActiveSlideState();
+          setTrackPosition(activeIndex + 1, { animate: false });
+
+          const handleResize = () => {
+            setTrackPosition(activeIndex + 1, { animate: false });
+          };
+          window.addEventListener("resize", handleResize);
+          featuredCarouselCleanups.push(() => {
+            stopProgress();
+            track.removeEventListener(
+              "transitionend",
+              handleTrackTransitionEnd,
+            );
+            window.removeEventListener("resize", handleResize);
+          });
+        });
     }
 
     function appendSection(panel, label, users, query, tab) {
@@ -601,8 +975,24 @@
       }
 
       if (tab === "verified") {
-        appendSection(panel, "", withPgp, query, tab);
-        appendSection(panel, "📇 Info-Only Accounts", infoOnly, query, tab);
+        panel.insertAdjacentHTML(
+          "beforeend",
+          buildFeaturedCarousel(users, query, tab),
+        );
+        appendSection(
+          panel,
+          "",
+          withPgp.filter((user) => !isPromotableFeaturedUser(user, tab)),
+          query,
+          tab,
+        );
+        appendSection(
+          panel,
+          "📇 Info-Only Accounts",
+          infoOnly.filter((user) => !isPromotableFeaturedUser(user, tab)),
+          query,
+          tab,
+        );
         return;
       }
 
@@ -617,6 +1007,7 @@
       }
 
       renderPanelContent(panel, users, query, tab);
+      initializeFeaturedCarousels();
     }
 
     function panelIntroMarkup(panelId) {
@@ -639,17 +1030,30 @@
       return panel.innerHTML;
     }
 
-    function refreshInitialMarkup() {
-      ["public-records", "newsrooms", "all"].forEach((panelId) => {
+    function refreshInitialMarkup(
+      panelIds = ["public-records", "newsrooms", "all"],
+    ) {
+      panelIds.forEach((panelId) => {
         if (document.getElementById(panelId)) {
           initialMarkup.set(panelId, buildDefaultPanelMarkup(panelId));
         }
       });
     }
 
+    function showPanelLoading(tab) {
+      const panel = document.getElementById(tab);
+      if (!panel) {
+        return;
+      }
+
+      const introMarkup = panelIntroMarkup(tab);
+      panel.innerHTML = `${introMarkup}<p class="empty-message" role="status">Loading...</p>`;
+    }
+
     function handleSearchInput() {
       const query = searchInput.value.trim();
       const panel = activePanel();
+      const tab = activeTabName();
       const currentScopeLabel = scopeLabel();
       const hasQuery = query.length > 0;
 
@@ -662,11 +1066,29 @@
       if (query.length === 0) {
         if (panel && initialMarkup.has(panel.id)) {
           panel.innerHTML = initialMarkup.get(panel.id);
+          initializeFeaturedCarousels();
         }
         if (hasRenderedSearch) {
           setSearchStatus(`Showing all ${currentScopeLabel}.`);
         }
         hasRenderedSearch = false;
+        return;
+      }
+
+      if (!directoryDataByTab.has(tab)) {
+        setSearchStatus(`Loading ${currentScopeLabel}.`);
+        loadTabData(tab)
+          .then(() => {
+            handleSearchInput();
+          })
+          .catch((error) => {
+            if (error.name === "AbortError") {
+              return;
+            }
+
+            setSearchStatus(`Unable to load ${currentScopeLabel}.`);
+            console.error(`Failed to load ${currentScopeLabel}:`, error);
+          });
         return;
       }
 
@@ -704,6 +1126,65 @@
         "newsroom_country",
         "newsroom_region",
       ]);
+    }
+
+    function directorySearchForTab(tab, search) {
+      if (tab === "all") {
+        return allTabDirectorySearch(search);
+      }
+
+      return sharedDirectorySearch(search);
+    }
+
+    function usersJsonSearchForTab(tab, search) {
+      const params = new URLSearchParams(directorySearchForTab(tab, search));
+      params.set("tab", tab);
+      const nextSearch = params.toString();
+      return nextSearch ? `?${nextSearch}` : `?tab=${encodeURIComponent(tab)}`;
+    }
+
+    function loadTabData(tab, search = window.location.search, options = {}) {
+      const dataSearch = directorySearchForTab(tab, search);
+      const requestKey = `${tab}\n${dataSearch}`;
+
+      if (
+        directoryDataSearchByTab.get(tab) === dataSearch &&
+        directoryDataByTab.has(tab)
+      ) {
+        return Promise.resolve(directoryDataByTab.get(tab));
+      }
+
+      if (directoryDataRequestsByTab.has(requestKey)) {
+        return directoryDataRequestsByTab.get(requestKey);
+      }
+
+      const requestOptions = {};
+      if (options.signal) {
+        requestOptions.signal = options.signal;
+      }
+
+      const request = fetch(
+        `${directoryPath}/users.json${usersJsonSearchForTab(tab, search)}`,
+        requestOptions,
+      )
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Network response was not ok");
+          }
+          return response.json();
+        })
+        .then((data) => {
+          directoryDataByTab.set(tab, data);
+          directoryDataSearchByTab.set(tab, dataSearch);
+          refreshInitialMarkup([tab]);
+          return data;
+        })
+        .finally(() => {
+          directoryDataRequestsByTab.delete(requestKey);
+        });
+
+      directoryDataRequestsByTab.set(requestKey, request);
+      return request;
     }
 
     function createLocationFilterController(config) {
@@ -1192,7 +1673,15 @@
         }
 
         const nextSearch = controller.buildSearch();
-        if (controller.loading || loadedDirectorySearch === nextSearch) {
+        const dataSearch = directorySearchForTab(
+          controller.tabName,
+          nextSearch,
+        );
+        if (
+          controller.loading ||
+          (directoryDataSearchByTab.get(controller.tabName) === dataSearch &&
+            directoryDataByTab.has(controller.tabName))
+        ) {
           return;
         }
         setSearchStatus(`Updating ${controller.resultsLabelPlural} results.`);
@@ -1410,15 +1899,17 @@
 
     function updateLocationFilterCountBadges() {
       locationFilterControllers.forEach((controller) => {
-        controller.updateCountBadge();
+        if (directoryDataByTab.has(controller.tabName)) {
+          controller.updateCountBadge();
+        }
       });
     }
 
-    function refreshLocationFilterMetadata(search = window.location.search) {
-      return Promise.all(
-        locationFilterControllers.map((controller) =>
-          controller.ensureMetadata(search),
-        ),
+    function locationFilterControllerForTab(tab) {
+      return (
+        locationFilterControllers.find(
+          (controller) => controller.tabName === tab,
+        ) || null
       );
     }
 
@@ -1430,41 +1921,12 @@
       );
     }
 
-    function loadData(search = window.location.search, options = {}) {
-      const requestOptions = {};
-      if (options.signal) {
-        requestOptions.signal = options.signal;
-      }
-
-      const fetchUsers = (search) =>
-        fetch(`${directoryPath}/users.json${search}`, requestOptions).then(
-          (response) => {
-            if (!response.ok) {
-              throw new Error("Network response was not ok");
-            }
-            return response.json();
-          },
-        );
-
-      return Promise.all([
-        fetchUsers(sharedDirectorySearch(search)),
-        fetchUsers(allTabDirectorySearch(search)),
-        refreshLocationFilterMetadata(search),
-      ]).then(([directoryData, nextAllTabUserData]) => {
-        userData = directoryData;
-        allTabUserData = nextAllTabUserData;
-        loadedDirectorySearch = search;
-        updateLocationFilterCountBadges();
-        refreshInitialMarkup();
-        handleSearchInput();
-      });
-    }
-
     function requestDirectoryData(
       search = window.location.search,
       options = {},
     ) {
       const { loadingController = null } = options;
+      const tab = loadingController?.tabName || activeTabName();
 
       if (directoryDataRequestController) {
         directoryDataRequestController.abort();
@@ -1485,17 +1947,37 @@
         loadingController.setLoadingState(true);
       }
 
-      return loadData(search, { signal: controller.signal }).finally(() => {
-        if (directoryDataRequestController === controller) {
-          directoryDataRequestController = null;
-          if (directoryDataLoadingController === loadingController) {
-            if (loadingController) {
-              loadingController.setLoadingState(false);
+      if (!directoryDataByTab.has(tab)) {
+        showPanelLoading(tab);
+      }
+
+      const metadataController =
+        loadingController || locationFilterControllerForTab(tab);
+      const metadataRequest = metadataController
+        ? metadataController.ensureMetadata(search)
+        : Promise.resolve(null);
+
+      return Promise.all([
+        loadTabData(tab, search, { signal: controller.signal }),
+        metadataRequest,
+      ])
+        .then(() => {
+          loadedDirectorySearch = search;
+          updateLocationFilterCountBadges();
+          refreshInitialMarkup([tab]);
+          handleSearchInput();
+        })
+        .finally(() => {
+          if (directoryDataRequestController === controller) {
+            directoryDataRequestController = null;
+            if (directoryDataLoadingController === loadingController) {
+              if (loadingController) {
+                loadingController.setLoadingState(false);
+              }
+              directoryDataLoadingController = null;
             }
-            directoryDataLoadingController = null;
           }
-        }
-      });
+        });
     }
 
     if (searchInput) {
@@ -1549,6 +2031,16 @@
       updateLocationFilterVisibility();
       updatePlaceholder();
       handleSearchInput();
+      if (selectedTab.getAttribute("data-tab") !== "verified") {
+        requestDirectoryData().catch((error) => {
+          if (error.name === "AbortError") {
+            return;
+          }
+
+          setSearchStatus(`Unable to load ${scopeLabel()}.`);
+          console.error("Failed to load directory tab data:", error);
+        });
+      }
       requestAnimationFrame(updateTabScrollControls);
     };
 
@@ -1658,16 +2150,6 @@
     }
 
     updatePlaceholder();
-    locationFilterControllers.forEach((controller) => {
-      void controller.ensureMetadata();
-    });
-    requestDirectoryData().catch((error) => {
-      if (error.name === "AbortError") {
-        return;
-      }
-
-      console.error("Failed to load user data:", error);
-    });
   });
 
   /******/
