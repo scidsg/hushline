@@ -1710,6 +1710,8 @@ def test_open_coverage_gap_issue_after_pr_creates_agent_eligible_issue(
     check_log = tmp_path / "check.log"
     call_log = tmp_path / "calls.txt"
     body_copy = tmp_path / "body.md"
+    temp_dir = tmp_path / "tmp"
+    temp_dir.mkdir()
     check_log.write_text(
         """
 Name                                             Stmts   Miss  Cover
@@ -1723,6 +1725,7 @@ TOTAL                                            8881     36    99%
 
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
+export TMPDIR={shlex.quote(str(temp_dir))}
 CHECK_LOG_FILE={shlex.quote(str(check_log))}
 add_issue_to_project_status() {{
   printf 'project:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
@@ -1783,6 +1786,7 @@ open_coverage_gap_issue_after_pr \\
     assert "`make test`" in body
     assert "hushline/email.py" in body
     assert "hushline/routes/profile.py" in body
+    assert list(temp_dir.iterdir()) == []
 
 
 def test_open_coverage_gap_issue_after_pr_comments_on_existing_gap_issue(
@@ -1791,6 +1795,8 @@ def test_open_coverage_gap_issue_after_pr_comments_on_existing_gap_issue(
     check_log = tmp_path / "check.log"
     call_log = tmp_path / "calls.txt"
     comment_copy = tmp_path / "comment.md"
+    temp_dir = tmp_path / "tmp"
+    temp_dir.mkdir()
     check_log.write_text(
         """
 Name                                             Stmts   Miss  Cover   Missing
@@ -1804,6 +1810,7 @@ TOTAL                                            8881     36    99%
 
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
+export TMPDIR={shlex.quote(str(temp_dir))}
 CHECK_LOG_FILE={shlex.quote(str(check_log))}
 add_issue_to_project_status() {{
   printf 'project:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
@@ -1872,12 +1879,15 @@ open_coverage_gap_issue_after_pr \\
     assert "hushline/routes/profile.py" in comment
     assert "105-106, 573" in comment
     assert "instead of opening another follow-up ticket" in comment
+    assert list(temp_dir.iterdir()) == []
 
 
 def test_open_coverage_gap_issue_after_pr_skips_duplicate_when_lookup_fails(
     tmp_path: Path,
 ) -> None:
     check_log = tmp_path / "check.log"
+    temp_dir = tmp_path / "tmp"
+    temp_dir.mkdir()
     check_log.write_text(
         """
 Name                                             Stmts   Miss  Cover
@@ -1890,6 +1900,7 @@ TOTAL                                            8881      1    99%
 
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
+export TMPDIR={shlex.quote(str(temp_dir))}
 CHECK_LOG_FILE={shlex.quote(str(check_log))}
 gh() {{
   if [[ "${{1-}} ${{2-}}" == "issue list" ]]; then
@@ -1920,6 +1931,7 @@ open_coverage_gap_issue_after_pr \\
     assert "refusing to create a possible duplicate" in result.stderr
     assert "Opened coverage gap issue" not in result.stdout
     assert "Updated coverage gap issue" not in result.stdout
+    assert list(temp_dir.iterdir()) == []
 
 
 def test_collect_issue_candidates_from_project_filters_open_issues_in_target_status() -> None:
