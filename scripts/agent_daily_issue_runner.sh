@@ -3046,7 +3046,6 @@ open_coverage_gap_issue_after_pr() {
     return 0
   fi
 
-  issue_body_file="$(mktemp)"
   if [[ -n "$pr_number" ]]; then
     issue_title="Close test coverage gaps from PR #${pr_number}"
   else
@@ -3087,6 +3086,7 @@ open_coverage_gap_issue_after_pr() {
     return 0
   fi
 
+  issue_body_file="$(mktemp)"
   write_coverage_gap_issue_body \
     "$pr_number" \
     "$pr_url" \
