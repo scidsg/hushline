@@ -1390,6 +1390,8 @@ def test_embed_profile_layout_and_focus_styles_are_in_compiled_stylesheet_source
         "body.embed-page {\n  align-items: stretch;\n  background-color:" not in stylesheet_source
     )
     assert ".embed-shell" in stylesheet_source
+    embed_shell_block = stylesheet_source.split(".embed-shell {", 1)[1].split("}", 1)[0]
+    assert "box-sizing: border-box;" in embed_shell_block
     assert "padding: 2.5rem 2rem;" in stylesheet_source
     assert ".embed-profile-summary" not in stylesheet_source
     assert ".embed-actions" not in stylesheet_source
