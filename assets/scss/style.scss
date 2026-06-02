@@ -3663,6 +3663,18 @@ body.embed-page *:not(button)::after {
   color: darkred;
 }
 
+.embed-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.embed-actions a {
+  align-items: center;
+  display: inline-flex;
+  min-height: 2rem;
+}
+
 .embed-error-summary,
 .embed-noscript {
   border: 2px solid var(--color-error);
@@ -3761,6 +3773,10 @@ body.embed-page *:not(button)::after {
 }
 
 @media (max-width: 28rem) {
+  .embed-actions {
+    flex-direction: column;
+  }
+
   .embed-page button[type="submit"] {
     width: 100%;
   }
