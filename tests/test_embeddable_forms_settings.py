@@ -1302,6 +1302,7 @@ def test_primary_embed_settings_update_origins_and_render_iframe_snippet(
     assert iframe["sandbox"] == [
         "allow-forms",
         "allow-popups",
+        "allow-popups-to-escape-sandbox",
         "allow-scripts",
         "allow-top-navigation-by-user-activation",
     ]

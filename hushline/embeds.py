@@ -18,7 +18,8 @@ EMBED_SUBMISSION_ACCEPTED_COUNTER = "embed_form_submission_accepted_total"
 EMBED_SUBMISSION_REJECTED_COUNTER = "embed_form_submission_rejected_total"
 EMBED_SUBMISSION_RATE_LIMITED_COUNTER = "embed_form_submission_rate_limited_total"
 EMBED_IFRAME_SANDBOX = (
-    "allow-forms allow-popups allow-scripts allow-top-navigation-by-user-activation"
+    "allow-forms allow-popups allow-popups-to-escape-sandbox "
+    "allow-scripts allow-top-navigation-by-user-activation"
 )
 EMBED_IFRAME_HEIGHT = 700
 EMBED_IFRAME_MAX_WIDTH = 720
