@@ -39,14 +39,14 @@ jobs:
 
       - name: Pull compose dependency images
         run: |
-          for attempt in 1 2 3; do
+          for attempt in 1 2 3 4 5; do
             if docker compose pull postgres blob-storage; then
               exit 0
             fi
-            if [ "$attempt" -eq 3 ]; then
+            if [ "$attempt" -eq 5 ]; then
               exit 1
             fi
-            sleep $((attempt * 10))
+            sleep $((attempt * 20))
           done
 
       - name: Test
@@ -60,14 +60,14 @@ jobs:
 
       - name: Pull compose dependency images
         run: |
-          for attempt in 1 2 3; do
+          for attempt in 1 2 3 4 5; do
             if docker compose pull postgres blob-storage; then
               exit 0
             fi
-            if [ "$attempt" -eq 3 ]; then
+            if [ "$attempt" -eq 5 ]; then
               exit 1
             fi
-            sleep $((attempt * 10))
+            sleep $((attempt * 20))
           done
 
       - name: Test with alembic
