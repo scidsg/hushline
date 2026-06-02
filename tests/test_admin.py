@@ -374,6 +374,15 @@ def test_toggle_verified_username_not_found(app: Flask, client: FlaskClient) -> 
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
+def test_toggle_featured_username_not_found(client: FlaskClient) -> None:
+    response = client.post(
+        url_for("admin.toggle_featured_username", username_id=999999),
+        data={"is_featured": "true"},
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
 def test_toggle_admin_missing_bool_field_returns_bad_request(
     client: FlaskClient, user: User
 ) -> None:
