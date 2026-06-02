@@ -1728,6 +1728,10 @@ add_issue_to_project_status() {{
   printf 'project:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
 }}
 gh() {{
+  if [[ "${{1-}} ${{2-}}" == "issue list" ]]; then
+    printf '[]\\n'
+    return 0
+  fi
   if [[ "${{1-}} ${{2-}}" == "issue create" ]]; then
     local title=""
     local body_file=""
@@ -1779,6 +1783,143 @@ open_coverage_gap_issue_after_pr \\
     assert "`make test`" in body
     assert "hushline/email.py" in body
     assert "hushline/routes/profile.py" in body
+
+
+def test_open_coverage_gap_issue_after_pr_comments_on_existing_gap_issue(
+    tmp_path: Path,
+) -> None:
+    check_log = tmp_path / "check.log"
+    call_log = tmp_path / "calls.txt"
+    comment_copy = tmp_path / "comment.md"
+    check_log.write_text(
+        """
+Name                                             Stmts   Miss  Cover   Missing
+------------------------------------------------------------------------------
+hushline/email.py                                 109      1    99%   42
+hushline/routes/profile.py                        272     17    94%   105-106, 573
+TOTAL                                            8881     36    99%
+""",
+        encoding="utf-8",
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CHECK_LOG_FILE={shlex.quote(str(check_log))}
+add_issue_to_project_status() {{
+  printf 'project:%s:%s\\n' "$1" "$2" >> {shlex.quote(str(call_log))}
+}}
+gh() {{
+  if [[ "${{1-}} ${{2-}}" == "issue list" ]]; then
+    cat <<'EOF'
+[
+  {{
+    "number": 2002,
+    "url": "https://github.com/scidsg/hushline/issues/2002",
+    "title": "Close test coverage gaps from PR #1999"
+  }}
+]
+EOF
+    return 0
+  fi
+  if [[ "${{1-}} ${{2-}}" == "issue comment" ]]; then
+    local issue_number="$3"
+    local body_file=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --body-file)
+          body_file="$2"
+          shift
+          ;;
+      esac
+      shift || break
+    done
+    printf 'comment:%s\\n' "$issue_number" >> {shlex.quote(str(call_log))}
+    cp "$body_file" {shlex.quote(str(comment_copy))}
+    return 0
+  fi
+  if [[ "${{1-}} ${{2-}}" == "issue create" ]]; then
+    printf 'unexpected issue create\\n' >&2
+    return 99
+  fi
+  printf 'unexpected gh invocation: %s\\n' "$*" >&2
+  return 99
+}}
+open_coverage_gap_issue_after_pr \\
+  2000 \\
+  "https://github.com/scidsg/hushline/pull/2000" \\
+  1558 \\
+  "Fill coverage gaps" \\
+  "codex/daily-issue-1558"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert (
+        "Updated coverage gap issue: https://github.com/scidsg/hushline/issues/2002"
+        in result.stdout
+    )
+    assert call_log.read_text(encoding="utf-8").splitlines() == [
+        "comment:2002",
+        "project:2002:Agent Eligible",
+    ]
+    comment = comment_copy.read_text(encoding="utf-8")
+    assert "Additional Coverage Snapshot" in comment
+    assert "PR: https://github.com/scidsg/hushline/pull/2000" in comment
+    assert "Source issue: #1558 Fill coverage gaps" in comment
+    assert "hushline/email.py" in comment
+    assert "42" in comment
+    assert "hushline/routes/profile.py" in comment
+    assert "105-106, 573" in comment
+    assert "instead of opening another follow-up ticket" in comment
+
+
+def test_open_coverage_gap_issue_after_pr_skips_duplicate_when_lookup_fails(
+    tmp_path: Path,
+) -> None:
+    check_log = tmp_path / "check.log"
+    check_log.write_text(
+        """
+Name                                             Stmts   Miss  Cover
+--------------------------------------------------------------------
+hushline/email.py                                 109      1    99%
+TOTAL                                            8881      1    99%
+""",
+        encoding="utf-8",
+    )
+
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+CHECK_LOG_FILE={shlex.quote(str(check_log))}
+gh() {{
+  if [[ "${{1-}} ${{2-}}" == "issue list" ]]; then
+    return 1
+  fi
+  if [[ "${{1-}} ${{2-}}" == "issue create" ]]; then
+    printf 'unexpected issue create\\n' >&2
+    return 99
+  fi
+  if [[ "${{1-}} ${{2-}}" == "issue comment" ]]; then
+    printf 'unexpected issue comment\\n' >&2
+    return 99
+  fi
+  printf 'unexpected gh invocation: %s\\n' "$*" >&2
+  return 99
+}}
+open_coverage_gap_issue_after_pr \\
+  2000 \\
+  "https://github.com/scidsg/hushline/pull/2000" \\
+  1558 \\
+  "Fill coverage gaps" \\
+  "codex/daily-issue-1558"
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert "refusing to create a possible duplicate" in result.stderr
+    assert "Opened coverage gap issue" not in result.stdout
+    assert "Updated coverage gap issue" not in result.stdout
 
 
 def test_collect_issue_candidates_from_project_filters_open_issues_in_target_status() -> None:

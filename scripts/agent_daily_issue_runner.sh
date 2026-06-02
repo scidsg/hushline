@@ -2954,6 +2954,76 @@ ${coverage_snapshot}
 EOF
 }
 
+write_coverage_gap_issue_comment_body() {
+  local pr_number="$1"
+  local pr_url="$2"
+  local source_issue_number="$3"
+  local source_issue_title="$4"
+  local branch_name="$5"
+  local coverage_snapshot="$6"
+  local pr_label="the runner PR"
+
+  if [[ -n "$pr_number" ]]; then
+    pr_label="PR #${pr_number}"
+  fi
+
+  cat <<EOF
+## Additional Coverage Snapshot
+The daily runner opened ${pr_label} after local validation passed and found the line-specific test coverage gaps below. This comment adds the gaps to this existing coverage issue instead of opening another follow-up ticket.
+
+## Source
+- PR: ${pr_url:-unknown}
+- Source issue: #${source_issue_number} ${source_issue_title}
+- Branch: ${branch_name}
+
+## Coverage Gaps
+
+\`\`\`text
+${coverage_snapshot}
+\`\`\`
+
+## Acceptance Criteria
+- Add or adjust tests so every file in the coverage snapshot has \`0\` missed statements.
+- Run the full suite until the total coverage line reports \`100%\` and \`0\` missed statements.
+- Do not open a partial coverage PR that leaves a new coverage-gap issue for the next runner pass.
+- Do not change production behavior only to satisfy coverage.
+EOF
+}
+
+find_open_coverage_gap_issue() {
+  local response=""
+
+  response="$({
+    gh issue list \
+      --repo "$REPO_SLUG" \
+      --state open \
+      --search "Close test coverage gaps in:title" \
+      --json number,url,title \
+      --limit 20 2>/dev/null
+  } || true)"
+
+  if [[ -z "$response" ]]; then
+    echo "Warning: coverage gap issue lookup returned no response." >&2
+    return 1
+  fi
+
+  if ! printf '%s' "$response" | is_json_response; then
+    warn_non_json_response "coverage gap issue lookup" "$response"
+    return 1
+  fi
+
+  printf '%s' "$response" | node -e '
+    const fs = require("fs");
+    const issues = JSON.parse(fs.readFileSync(0, "utf8"));
+    const match = Array.isArray(issues)
+      ? issues.find((issue) => /^Close test coverage gaps\b/.test(String(issue.title || "")))
+      : null;
+    if (match && match.number && match.url) {
+      process.stdout.write(`${match.number}\t${match.url}\t${match.title || ""}`);
+    }
+  '
+}
+
 open_coverage_gap_issue_after_pr() {
   local pr_number="$1"
   local pr_url="$2"
@@ -2965,6 +3035,10 @@ open_coverage_gap_issue_after_pr() {
   local issue_title=""
   local issue_url=""
   local coverage_issue_number=""
+  local existing_issue=""
+  local existing_issue_number=""
+  local existing_issue_url=""
+  local existing_issue_title=""
 
   coverage_snapshot="$(coverage_gap_snapshot_from_log "$CHECK_LOG_FILE")"
   if [[ -z "$coverage_snapshot" ]]; then
@@ -2977,6 +3051,40 @@ open_coverage_gap_issue_after_pr() {
     issue_title="Close test coverage gaps from PR #${pr_number}"
   else
     issue_title="Close test coverage gaps from daily runner PR"
+  fi
+
+  if ! existing_issue="$(find_open_coverage_gap_issue)"; then
+    echo "Warning: skipped coverage gap issue update because the open issue lookup failed; refusing to create a possible duplicate." >&2
+    return 0
+  fi
+  if [[ -n "$existing_issue" ]]; then
+    IFS=$'\t' read -r existing_issue_number existing_issue_url existing_issue_title <<< "$existing_issue"
+    issue_body_file="$(mktemp)"
+    write_coverage_gap_issue_comment_body \
+      "$pr_number" \
+      "$pr_url" \
+      "$source_issue_number" \
+      "$source_issue_title" \
+      "$branch_name" \
+      "$coverage_snapshot" > "$issue_body_file"
+
+    if ! gh issue comment \
+      "$existing_issue_number" \
+      --repo "$REPO_SLUG" \
+      --body-file "$issue_body_file"; then
+      rm -f "$issue_body_file"
+      echo "Warning: failed to add coverage gaps to existing issue #${existing_issue_number} for ${pr_url:-PR #${pr_number}}." >&2
+      return 0
+    fi
+    rm -f "$issue_body_file"
+
+    echo "Updated coverage gap issue: $existing_issue_url"
+    run_step \
+      "Ensure coverage gap issue #${existing_issue_number} is in ${PROJECT_COLUMN}" \
+      add_issue_to_project_status \
+      "$existing_issue_number" \
+      "$PROJECT_COLUMN"
+    return 0
   fi
 
   write_coverage_gap_issue_body \
