@@ -11,6 +11,25 @@ def test_package_json_declares_node_20_plus() -> None:
     assert engines.get("node") == ">=20"
 
 
+def test_theme_select_rules_set_closed_control_text_color() -> None:
+    scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
+
+    assert re.search(
+        r"select\s*\{\s*appearance: none;\s*"
+        r'background-image: url\("\.\./img/dropdown\.png"\);\s*'
+        r"color: var\(--color-text\);\s*"
+        r"-webkit-text-fill-color: currentColor;",
+        scss,
+    )
+    assert re.search(
+        r"select\s*\{\s*appearance: none;\s*"
+        r'background-image: url\("\.\./img/dropdown-dm\.png"\);\s*'
+        r"color: var\(--color-text-dark\);\s*"
+        r"-webkit-text-fill-color: currentColor;",
+        scss,
+    )
+
+
 def test_webpack_compose_services_use_lockfile_guard_script() -> None:
     script = (ROOT / "scripts/webpack_dev_start.sh").read_text(encoding="utf-8")
 

@@ -249,6 +249,8 @@
   select {
     appearance: none;
     background-image: url("../img/dropdown.png");
+    color: var(--color-text);
+    -webkit-text-fill-color: currentColor;
   }
 
   .select-shell::after {
@@ -851,6 +853,8 @@
   select {
     appearance: none;
     background-image: url("../img/dropdown-dm.png");
+    color: var(--color-text-dark);
+    -webkit-text-fill-color: currentColor;
   }
 
   .select-shell::after {
