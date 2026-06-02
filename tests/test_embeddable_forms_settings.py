@@ -1355,24 +1355,18 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     assert "default-src 'self'" in csp
     assert "frame-ancestors https://tips.example" in csp
     assert "frame-ancestors *" not in csp
-    assert page.select_one(".embed-actions") is not None
-    open_link = page.find("a", string=lambda value: value and "Open on Hush Line" in value)
-    assert open_link is not None
-    assert open_link.get("href") == url_for("profile", username=user.primary_username.username)
-    assert open_link.get("target") == "_blank"
-    assert "noopener" in open_link.get("rel", [])
-    assert "noreferrer" in open_link.get("rel", [])
-    exit_link = page.find("a", attrs={"aria-label": "Emergency exit: Leave"})
-    assert exit_link is not None
-    assert exit_link.get("href") == "https://en.wikipedia.org/wiki/Main_Page"
-    assert exit_link.get("target") == "_top"
-    assert "noopener" in exit_link.get("rel", [])
-    assert "noreferrer" in exit_link.get("rel", [])
+    assert page.select_one(".skip-link") is None
+    assert page.select_one(".embed-actions") is None
+    assert page.find("a", string=lambda value: value and "Open on Hush Line" in value) is None
+    assert page.find("a", attrs={"aria-label": "Emergency exit: Leave"}) is None
     noscript = page.find("noscript")
     assert noscript is not None
     noscript_text = noscript.get_text(" ", strip=True)
     assert "server-side encrypted fallback" in noscript_text
-    assert "open the full Hush Line profile" in noscript_text
+    assert "open the full Hush Line profile" not in noscript_text
+    email_settings = page.find("div", attrs={"id": "userEmailSettings"})
+    assert email_settings is not None
+    assert email_settings.has_attr("hidden")
     assert page.find("label", attrs={"for": "captcha_answer"}) is not None
     assert page.find("input", attrs={"name": "csrf_token"}) is not None
     assert page.find("script", attrs={"id": "recipientPublicKeys"}) is not None
@@ -1391,12 +1385,17 @@ def test_embed_profile_layout_and_focus_styles_are_in_compiled_stylesheet_source
     stylesheet_source = Path("assets/scss/style.scss").read_text()
 
     assert "body.embed-page" in stylesheet_source
-    assert "body.embed-page *:not(button)" in stylesheet_source
-    assert "background-color: white;" in stylesheet_source
+    assert "body.embed-page *:not(button)" not in stylesheet_source
+    assert (
+        "body.embed-page {\n  align-items: stretch;\n  background-color:" not in stylesheet_source
+    )
     assert ".embed-shell" in stylesheet_source
-    assert "padding: 1.5rem 1.25rem;" in stylesheet_source
+    assert "padding: 2.5rem 2rem;" in stylesheet_source
     assert ".embed-profile-summary" not in stylesheet_source
-    assert ".embed-actions" in stylesheet_source
+    assert ".embed-actions" not in stylesheet_source
+    assert ".embed-page a,\n.embed-page a.meta" not in stylesheet_source
+    assert ".embed-page .badge {\n  border:" not in stylesheet_source
+    assert ".embed-page button {\n  background-color:" not in stylesheet_source
     assert "h2.submit+p {\n  margin-top: 1rem;" not in stylesheet_source
     assert "h2.submit:not(:has(+ p.bio))" not in stylesheet_source
     assert ".embed-error-summary" in stylesheet_source
@@ -1472,13 +1471,11 @@ def test_embed_profile_keyboard_flow_and_mobile_accessibility_chrome(
     assert response.status_code == 200
     page = BeautifulSoup(response.text, "html.parser")
     focusable_labels = _focusable_labels(page)
-    assert focusable_labels[0] == "Skip to message form"
-    assert "Open on Hush Line" in focusable_labels
-    assert "Leave" in focusable_labels
+    assert focusable_labels[0] == "field_0"
+    assert "Open on Hush Line" not in focusable_labels
+    assert "Leave" not in focusable_labels
     assert "captcha_answer" in focusable_labels
     assert "Send Message" in focusable_labels
-    assert focusable_labels.index("Open on Hush Line") < focusable_labels.index("field_0")
-    assert focusable_labels.index("Leave") < focusable_labels.index("field_0")
     assert focusable_labels.index("captcha_answer") < focusable_labels.index("Send Message")
     stylesheet_source = Path("assets/scss/style.scss").read_text()
     assert "@media (max-width: 28rem)" in stylesheet_source
@@ -1520,15 +1517,9 @@ def test_embed_profile_required_chrome_survives_recipient_branding_settings(
     badge_texts = _badge_texts(page)
     assert "⭐️ Verified" in badge_texts
     assert "🔒 End-to-End Encrypted" in badge_texts
-    assert page.select_one(".embed-actions") is not None
-    assert page.find("a", string=lambda value: value and "Open on Hush Line" in value) is not None
-    exit_link = page.find("a", attrs={"aria-label": "Emergency exit: Exit Now"})
-    assert exit_link is not None
-    assert exit_link.get_text(strip=True) == "Exit Now"
-    assert exit_link.get("href") == "https://example.org/safety"
-    assert exit_link.get("target") == "_top"
-    assert "noopener" in exit_link.get("rel", [])
-    assert "noreferrer" in exit_link.get("rel", [])
+    assert page.select_one(".embed-actions") is None
+    assert page.find("a", string=lambda value: value and "Open on Hush Line" in value) is None
+    assert page.find("a", attrs={"aria-label": "Emergency exit: Exit Now"}) is None
 
 
 def test_embed_profile_template_shows_caution_state(client: FlaskClient, user: User) -> None:

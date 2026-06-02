@@ -289,7 +289,6 @@ def register_profile_routes(app: Flask) -> None:
                 owner_guard_signature=owner_guard_signature,
                 is_embedded=is_embedded,
                 embed_captcha_token=embed_captcha_token,
-                open_profile_url=url_for("profile", username=uname.username),
             )
             if status_code is None:
                 return rendered

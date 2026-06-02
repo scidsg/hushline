@@ -21,7 +21,6 @@
     {% endif %}
   </head>
   <body class="embed-page">
-    <a class="skip-link" href="#messageForm">Skip to message form</a>
     <main class="embed-shell" id="main-content">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -139,31 +138,14 @@
         {% endif %}
       </section>
 
-      <nav class="embed-actions" aria-label="Embed safety actions">
-        <a href="{{ open_profile_url }}" target="_blank" rel="noopener noreferrer">
-          Open on Hush Line
-        </a>
-        <a
-          href="{{ guidance_exit_button_link }}"
-          target="_top"
-          rel="noopener noreferrer"
-          aria-label="Emergency exit: {{ guidance_exit_button_text }}"
-        >
-          {{ guidance_exit_button_text }}
-        </a>
-      </nav>
-
       <noscript>
         <div class="embed-noscript" role="status">
           JavaScript is disabled. Hush Line will use its server-side encrypted fallback
-          for encrypted fields, or you can
-          <a href="{{ open_profile_url }}" target="_blank" rel="noopener noreferrer">
-            open the full Hush Line profile
-          </a>.
+          for encrypted fields.
         </div>
       </noscript>
 
-      <div id="userEmailSettings" class="display-none">
+      <div id="userEmailSettings" class="display-none" hidden>
         {{ {
             "sendEmail": user.enable_email_notifications,
             "includeContents": user.email_include_message_content,

@@ -1362,8 +1362,6 @@ body.directory-page {
 
 body.embed-page {
   align-items: stretch;
-  background-color: white;
-  color: var(--color-text);
   display: block;
   padding: 0;
 }
@@ -3614,65 +3612,22 @@ p.bio+.extra-fields {
   padding-left: 1.5rem;
 }
 
-body.embed-page *,
-body.embed-page *::before,
-body.embed-page *::after {
-  box-sizing: border-box;
-}
-
-body.embed-page *:not(button),
-body.embed-page *:not(button)::before,
-body.embed-page *:not(button)::after {
-  background-color: white;
-}
-
 .embed-shell {
   display: flex;
   flex-direction: column;
   gap: 1rem;
   margin: 0 auto;
-  max-width: 44rem;
+  max-width: 860px;
   min-width: 0;
-  padding: 1.5rem 1.25rem;
+  padding: 2.5rem 2rem;
 }
 
 .embed-meta {
   margin: 0.25rem 0 0;
 }
 
-.embed-page a,
-.embed-page a.meta {
-  color: var(--color-brand-mid-contrast);
-}
-
-.embed-page .meta {
-  color: var(--color-text-light);
-}
-
 .embed-page .badgeContainer {
   flex-wrap: wrap;
-}
-
-.embed-page .badge {
-  border: 1px solid var(--color-brand-min-contrast);
-  color: var(--color-brand-mid-contrast);
-}
-
-.embed-page .badgeCaution {
-  border: 1px solid darkred;
-  color: darkred;
-}
-
-.embed-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.embed-actions a {
-  align-items: center;
-  display: inline-flex;
-  min-height: 2rem;
 }
 
 .embed-error-summary,
@@ -3694,28 +3649,6 @@ body.embed-page *:not(button)::after {
 
 .embed-noscript {
   background: #fff4f4;
-}
-
-.embed-page input,
-.embed-page textarea,
-.embed-page select,
-.embed-page button {
-  max-width: 100%;
-}
-
-.embed-page button {
-  background-color: var(--color-brand-mid-contrast);
-  border: var(--border);
-  box-shadow: none;
-  color: white;
-}
-
-.embed-page input,
-.embed-page textarea,
-.embed-page select {
-  background-color: white;
-  border: var(--border);
-  color: var(--color-text);
 }
 
 .embed-page select {
@@ -3773,12 +3706,14 @@ body.embed-page *:not(button)::after {
 }
 
 @media (max-width: 28rem) {
-  .embed-actions {
-    flex-direction: column;
-  }
-
   .embed-page button[type="submit"] {
     width: 100%;
+  }
+}
+
+@media only screen and (max-width: 800px) {
+  .embed-shell {
+    padding: 2rem 1.25rem;
   }
 }
 
