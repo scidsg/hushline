@@ -49,7 +49,9 @@ def embed_iframe_snippet(username: Username) -> str:
         'width="100%" '
         f'height="{EMBED_IFRAME_HEIGHT}" '
         f'style="width:100%;max-width:{EMBED_IFRAME_MAX_WIDTH}px;'
-        f'height:{EMBED_IFRAME_HEIGHT}px;border:0;"></iframe>'
+        f"height:{EMBED_IFRAME_HEIGHT}px;border:0;outline:1px solid rgba(0,0,0,0.18);"
+        "border-radius:0.25rem;"
+        'box-shadow:0px 4px 8px -4px rgba(0,0,0,0.15);"></iframe>'
     )
 
 
