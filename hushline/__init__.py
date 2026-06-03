@@ -99,6 +99,11 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
         if not (app.config.get("SERVER_NAME") or "").endswith(".onion"):
             response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubdomains"
 
+        if request.endpoint == "static":
+            filename = str((request.view_args or {}).get("filename", ""))
+            if filename.startswith("fonts/") and filename.endswith((".woff", ".woff2")):
+                response.headers["Access-Control-Allow-Origin"] = "*"
+
         return response
 
     # Add Onion-Location header to all responses
