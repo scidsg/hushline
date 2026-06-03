@@ -3685,7 +3685,7 @@ p.bio+.extra-fields {
   color: var(--theme-color);
 }
 
-.embed-page button,
+.embed-page button[type="submit"],
 .embed-page input[type="submit"] {
   background-color: var(--color-brand-bg);
   border: var(--border-button);
