@@ -2518,7 +2518,13 @@ img.alert {
 .featured-directory.is-enhanced .featured-directory-slide {
   flex: 0 0 calc(100% - (2 * var(--featured-carousel-peek)));
   grid-area: auto;
+  position: relative;
   visibility: visible;
+  z-index: 1;
+}
+
+.featured-directory.is-enhanced .featured-directory-slide.active {
+  z-index: 2;
 }
 
 .featured-directory.is-enhanced .featured-directory-slide:not(.active) {
