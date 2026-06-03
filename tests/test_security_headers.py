@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
@@ -90,6 +92,35 @@ def test_embed_profile_uses_allowed_origin_frame_ancestors(client: FlaskClient, 
     frame_ancestors = next(part for part in csp.split(";") if part.startswith("frame-ancestors "))
     assert frame_ancestors == "frame-ancestors https://tips.example https://newsroom.example:8443"
     assert "X-Frame-Options" not in response.headers
+
+
+def test_static_fonts_allow_cross_origin_embed_loading(
+    client: FlaskClient, app: Flask, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    font_path = tmp_path / "fonts" / "AtkinsonHyperlegible-Regular.woff2"
+    font_path.parent.mkdir()
+    font_path.write_bytes(b"test font")
+    monkeypatch.setattr(app, "static_folder", str(tmp_path))
+
+    response = client.get(url_for("static", filename="fonts/AtkinsonHyperlegible-Regular.woff2"))
+    assert response.status_code == 200
+
+    assert response.headers["Access-Control-Allow-Origin"] == "*"
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+
+
+def test_static_non_font_assets_do_not_enable_cors(
+    client: FlaskClient, app: Flask, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stylesheet_path = tmp_path / "css" / "style.css"
+    stylesheet_path.parent.mkdir()
+    stylesheet_path.write_text("body { color: black; }")
+    monkeypatch.setattr(app, "static_folder", str(tmp_path))
+
+    response = client.get(url_for("static", filename="css/style.css"))
+    assert response.status_code == 200
+
+    assert "Access-Control-Allow-Origin" not in response.headers
 
 
 def test_password_reset_pages_keep_csp_enforced(client: FlaskClient) -> None:

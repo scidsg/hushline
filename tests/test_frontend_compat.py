@@ -418,6 +418,17 @@ def test_directory_search_accessibility_hooks_exist() -> None:
         r"padding-bottom: var\(--featured-carousel-shadow-overflow\);",
         scss,
     )
+    assert re.search(
+        r"\.featured-directory\.is-enhanced \.featured-directory-slide \{[^}]*"
+        r"position: relative;[^}]*"
+        r"z-index: 1;",
+        scss,
+    )
+    assert re.search(
+        r"\.featured-directory\.is-enhanced \.featured-directory-slide\.active \{[^}]*"
+        r"z-index: 2;",
+        scss,
+    )
     assert "controller.countryLabelForValue = function (value) {" in directory_verified_static_js
     assert "replaceState" in directory_verified_static_js
     assert ".directory-sticky-shell" in scss
