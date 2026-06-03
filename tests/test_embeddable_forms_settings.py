@@ -1356,14 +1356,36 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     assert "frame-ancestors https://tips.example" in csp
     assert "frame-ancestors *" not in csp
     assert page.select_one(".skip-link") is None
-    assert page.select_one(".embed-actions") is None
-    assert page.find("a", string=lambda value: value and "Open on Hush Line" in value) is None
-    assert page.find("a", attrs={"aria-label": "Emergency exit: Leave"}) is None
+    embed_actions = page.select_one(".embed-actions")
+    assert embed_actions is not None
+    open_profile_link = embed_actions.find(
+        "a", string=lambda value: value and "Open on Hush Line" in value
+    )
+    assert open_profile_link is not None
+    assert open_profile_link.get("href") == url_for(
+        "profile", username=user.primary_username.username
+    )
+    assert open_profile_link.get("target") == "_blank"
+    assert open_profile_link.get("rel") == ["noopener", "noreferrer"]
+    exit_link = embed_actions.find("a", attrs={"aria-label": "Emergency exit: Leave"})
+    assert exit_link is not None
+    assert exit_link.get("href") == "https://en.wikipedia.org/wiki/Main_Page"
+    assert exit_link.get("target") == "_top"
+    assert exit_link.get("rel") == ["noopener", "noreferrer"]
     noscript = page.find("noscript")
     assert noscript is not None
     noscript_text = noscript.get_text(" ", strip=True)
     assert "server-side encrypted fallback" in noscript_text
-    assert "open the full Hush Line profile" not in noscript_text
+    assert "open the full Hush Line profile" in noscript_text
+    noscript_profile_link = noscript.find(
+        "a", string=lambda value: value and "open the full Hush Line profile" in value
+    )
+    assert noscript_profile_link is not None
+    assert noscript_profile_link.get("href") == url_for(
+        "profile", username=user.primary_username.username
+    )
+    assert noscript_profile_link.get("target") == "_blank"
+    assert noscript_profile_link.get("rel") == ["noopener", "noreferrer"]
     email_settings = page.find("div", attrs={"id": "userEmailSettings"})
     assert email_settings is not None
     assert email_settings.has_attr("hidden")
@@ -1394,7 +1416,7 @@ def test_embed_profile_layout_and_focus_styles_are_in_compiled_stylesheet_source
     assert "box-sizing: border-box;" in embed_shell_block
     assert "padding: 2.5rem 2rem;" in stylesheet_source
     assert ".embed-profile-summary" not in stylesheet_source
-    assert ".embed-actions" not in stylesheet_source
+    assert ".embed-actions" in stylesheet_source
     assert ".embed-page a,\n.embed-page a.meta" not in stylesheet_source
     assert ".embed-page .badge {\n  border:" not in stylesheet_source
     assert ".embed-page button {\n  background-color:" not in stylesheet_source
@@ -1473,11 +1495,12 @@ def test_embed_profile_keyboard_flow_and_mobile_accessibility_chrome(
     assert response.status_code == 200
     page = BeautifulSoup(response.text, "html.parser")
     focusable_labels = _focusable_labels(page)
-    assert focusable_labels[0] == "field_0"
-    assert "Open on Hush Line" not in focusable_labels
-    assert "Leave" not in focusable_labels
+    assert focusable_labels[0] == "Open on Hush Line"
+    assert focusable_labels[1] == "Leave"
+    assert "field_0" in focusable_labels
     assert "captcha_answer" in focusable_labels
     assert "Send Message" in focusable_labels
+    assert focusable_labels.index("Leave") < focusable_labels.index("field_0")
     assert focusable_labels.index("captcha_answer") < focusable_labels.index("Send Message")
     stylesheet_source = Path("assets/scss/style.scss").read_text()
     assert "@media (max-width: 28rem)" in stylesheet_source
@@ -1519,9 +1542,16 @@ def test_embed_profile_required_chrome_survives_recipient_branding_settings(
     badge_texts = _badge_texts(page)
     assert "⭐️ Verified" in badge_texts
     assert "🔒 End-to-End Encrypted" in badge_texts
-    assert page.select_one(".embed-actions") is None
-    assert page.find("a", string=lambda value: value and "Open on Hush Line" in value) is None
-    assert page.find("a", attrs={"aria-label": "Emergency exit: Exit Now"}) is None
+    embed_actions = page.select_one(".embed-actions")
+    assert embed_actions is not None
+    assert (
+        embed_actions.find("a", string=lambda value: value and "Open on Hush Line" in value)
+        is not None
+    )
+    exit_link = embed_actions.find("a", attrs={"aria-label": "Emergency exit: Exit Now"})
+    assert exit_link is not None
+    assert exit_link.get("href") == "https://example.org/safety"
+    assert exit_link.get("target") == "_top"
 
 
 def test_embed_profile_template_shows_caution_state(client: FlaskClient, user: User) -> None:
