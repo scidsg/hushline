@@ -1362,6 +1362,9 @@ body.directory-page {
 
 body.embed-page {
   align-items: stretch;
+  background-color: white;
+  color: var(--color-text);
+  color-scheme: light;
   display: block;
   padding: 0;
 }
@@ -3660,13 +3663,34 @@ p.bio+.extra-fields {
 }
 
 .embed-page select {
+  appearance: none;
+  background-color: white;
   background-image: url("../img/dropdown.png");
+  color: var(--color-text);
+  -webkit-text-fill-color: currentColor;
 }
 
 .embed-page textarea,
 .embed-page input:not([type="hidden"]),
 .embed-page select {
+  background-color: white;
+  border: var(--border);
+  color: var(--color-text);
+  color-scheme: light;
   width: 100%;
+}
+
+.embed-page a,
+.embed-page a.meta {
+  color: var(--theme-color);
+}
+
+.embed-page button,
+.embed-page input[type="submit"] {
+  background-color: var(--color-brand-bg);
+  border: var(--border-button);
+  color: var(--theme-color);
+  box-shadow: 0px 2px 0px 0px oklch(from var(--color-brand) l c h / 0.25);
 }
 
 .embed-page .captcha_container {
