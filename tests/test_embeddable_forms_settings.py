@@ -1311,7 +1311,8 @@ def test_primary_embed_settings_update_origins_and_render_iframe_snippet(
     expected_title_recipient = user.primary_username.display_name or user.primary_username.username
     assert expected_title_recipient in iframe["title"]
     assert iframe["width"] == "100%"
-    assert iframe["height"] == "700"
+    assert iframe["height"] == "1300"
+    assert "height:1300px" in iframe["style"]
     assert "max-width:720px" in iframe["style"]
     assert "outline:1px solid rgba(0,0,0,0.18)" in iframe["style"]
     assert "border-radius:0.25rem" in iframe["style"]
@@ -1387,8 +1388,10 @@ def test_embed_profile_layout_and_focus_styles_are_in_compiled_stylesheet_source
     assert "body.embed-page" in stylesheet_source
     assert "body.embed-page *:not(button)" not in stylesheet_source
     assert (
-        "body.embed-page {\n  align-items: stretch;\n  background-color:" not in stylesheet_source
+        "body.embed-page {\n  align-items: stretch;\n  background-color: white;"
+        in stylesheet_source
     )
+    assert "  color-scheme: light;" in stylesheet_source
     assert ".embed-shell" in stylesheet_source
     embed_shell_block = stylesheet_source.split(".embed-shell {", 1)[1].split("}", 1)[0]
     assert "box-sizing: border-box;" in embed_shell_block
@@ -1396,9 +1399,13 @@ def test_embed_profile_layout_and_focus_styles_are_in_compiled_stylesheet_source
     assert ".embed-meta {\n  font-family: var(--font-mono);" in stylesheet_source
     assert ".embed-profile-summary" not in stylesheet_source
     assert ".embed-actions" not in stylesheet_source
-    assert ".embed-page a,\n.embed-page a.meta" not in stylesheet_source
+    assert ".embed-page a,\n.embed-page a.meta" in stylesheet_source
     assert ".embed-page .badge {\n  border:" not in stylesheet_source
-    assert ".embed-page button {\n  background-color:" not in stylesheet_source
+    assert ".embed-page button,\n.embed-page input" not in stylesheet_source
+    assert (
+        '.embed-page button[type="submit"],\n.embed-page input[type="submit"] {'
+        in stylesheet_source
+    )
     assert "h2.submit+p {\n  margin-top: 1rem;" not in stylesheet_source
     assert "h2.submit:not(:has(+ p.bio))" not in stylesheet_source
     assert ".embed-error-summary" in stylesheet_source
@@ -1536,6 +1543,9 @@ def test_embed_profile_template_shows_caution_state(client: FlaskClient, user: U
     assert response.status_code == 200
     page = BeautifulSoup(response.text, "html.parser")
     assert "⚠️ Caution" in _badge_texts(page)
+    help_trigger = page.select_one("button.meta.badgeHelpTrigger")
+    assert help_trigger is not None
+    assert help_trigger["type"] == "button"
     assert "Visitors should be cautious of interacting with this account." in response.text
 
 

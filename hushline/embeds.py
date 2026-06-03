@@ -21,7 +21,7 @@ EMBED_IFRAME_SANDBOX = (
     "allow-forms allow-popups allow-popups-to-escape-sandbox "
     "allow-scripts allow-top-navigation-by-user-activation"
 )
-EMBED_IFRAME_HEIGHT = 700
+EMBED_IFRAME_HEIGHT = 1300
 EMBED_IFRAME_MAX_WIDTH = 720
 
 
