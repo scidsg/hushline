@@ -1389,7 +1389,7 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     assert "script-widget" not in response.text
 
 
-def test_embed_profile_layout_and_focus_styles_are_in_compiled_stylesheet_source() -> None:
+def test_embed_profile_layout_theme_and_focus_styles_are_in_compiled_stylesheet_source() -> None:
     stylesheet_source = Path("assets/scss/style.scss").read_text()
 
     assert "body.embed-page" in stylesheet_source
@@ -1418,6 +1418,25 @@ def test_embed_profile_layout_and_focus_styles_are_in_compiled_stylesheet_source
     assert ".embed-error-summary" in stylesheet_source
     assert ".embed-noscript" in stylesheet_source
     assert ".embed-page .captcha_container {\n  align-items: center;" in stylesheet_source
+    assert ".embed-page a,\n.embed-page a.meta {\n  color: var(--theme-color);" in stylesheet_source
+    assert (
+        '.embed-page button[type="submit"],\n.embed-page input[type="submit"] {'
+        in stylesheet_source
+    )
+    assert "background-color: var(--color-brand);" in stylesheet_source
+    assert "border: var(--border-button);" in stylesheet_source
+    assert (
+        "box-shadow: 0px 2px 0px 0px oklch(from var(--color-brand) l c h / 0.25);"
+        in stylesheet_source
+    )
+    assert "@media (prefers-color-scheme: dark)" in stylesheet_source
+    assert (
+        '.embed-page .icon.verifiedURL {\n    background-image: url("../img/icon-verified-lm.png");'
+        in stylesheet_source
+    )
+    assert ".embed-page h2.submit + .badgeContainer .badge {" in stylesheet_source
+    assert "border-color: var(--color-brand);" in stylesheet_source
+    assert ".embed-page #messageForm {\n    border-top: var(--border);" in stylesheet_source
     assert (
         "#messageForm {\n  position: relative;\n  padding-top: 1.5rem;\n  margin-top: 0;"
         in stylesheet_source
