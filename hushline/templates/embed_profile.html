@@ -47,8 +47,6 @@
 
       <section class="embed-profile-summary" aria-labelledby="embed-recipient-heading">
         <h2 id="embed-recipient-heading" class="submit">{{ display_name_or_username }}</h2>
-        <p class="meta embed-meta">@{{ username.username }}</p>
-
         <div
           class="badgeContainer"
           role="group"
@@ -205,7 +203,7 @@
 
         {% if not message_submission_block_reason %}
           <div class="captcha">
-            <p>Solve the math problem to submit your message.</p>
+            <p>🤖 Solve the math problem to submit your message.</p>
             <div class="captcha_container">
               <label for="captcha_answer">{{ math_problem }}</label>
               {{ form.captcha_answer(

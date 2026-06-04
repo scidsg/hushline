@@ -33,7 +33,7 @@ Critical compiled or runtime-sensitive dependencies already show Python 3.13 sup
 
 | Package          | Locked version | 3.13 signal                        | Notes                                                     |
 | ---------------- | -------------- | ---------------------------------- | --------------------------------------------------------- |
-| `aiohttp`        | `3.13.3`       | `cp313` wheels present             | Async HTTP stack appears ready.                           |
+| `aiohttp`        | `3.14.0`       | `cp313` wheels present             | Async HTTP stack appears ready.                           |
 | `SQLAlchemy`     | `2.0.37`       | `cp313` wheels present             | ORM layer appears ready.                                  |
 | `greenlet`       | `3.1.1`        | `cp313` wheels present             | Marker allows Python `<3.14`; acceptable for 3.13.        |
 | `psycopg-binary` | `3.2.4`        | `cp313` wheels present             | Postgres binary package appears ready.                    |

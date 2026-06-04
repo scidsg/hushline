@@ -256,7 +256,14 @@ def test_embed_profile_route_supports_alias(
     response = client.get(url_for("embed_profile", username=user_alias.username))
 
     assert response.status_code == 200
-    assert f"@{user_alias.username}" in response.text
+    page = BeautifulSoup(response.text, "html.parser")
+    heading = page.find("h2", attrs={"id": "embed-recipient-heading"})
+    assert heading is not None
+    assert heading.get_text(strip=True) == user_alias.username
+    assert page.find("p", class_="embed-meta") is None
+    assert page.find("form", attrs={"id": "messageForm"}).get("action") == url_for(
+        "embed_profile", username=user_alias.username
+    )
     assert "frame-ancestors https://alias.example" in response.headers["Content-Security-Policy"]
 
 
@@ -1345,7 +1352,7 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     assert "Powered by Hush Line" not in response.text
     assert "Sending to" not in response.text
     assert "Example Recipient" in response.text
-    assert f"@{user.primary_username.username}" in response.text
+    assert page.find("p", class_="embed-meta") is None
     badge_texts = _badge_texts(page)
     assert "⭐️ Verified" in badge_texts
     assert "🔒 End-to-End Encrypted" in badge_texts
@@ -1416,8 +1423,12 @@ def test_embed_profile_layout_and_focus_styles_are_in_compiled_stylesheet_source
         in stylesheet_source
     )
     assert ".embed-page a:focus-visible" in stylesheet_source
-    assert "outline: 3px solid var(--color-brand-min-contrast)" in stylesheet_source
+    assert "outline: 3px solid var(--color-brand)" in stylesheet_source
     assert "outline: 3px solid var(--theme-color-dark)" not in stylesheet_source
+    assert ".embed-page .meta {\n    color: var(--color-text-light);" in stylesheet_source
+    assert ".embed-page .icon.verifiedURL" in stylesheet_source
+    assert ".embed-page h2.submit + .badgeContainer .badge" in stylesheet_source
+    assert ".embed-page #messageForm" in stylesheet_source
 
 
 def test_embed_profile_renders_additional_profile_fields_like_full_profile(
@@ -1523,10 +1534,16 @@ def test_embed_profile_required_chrome_survives_recipient_branding_settings(
     assert not page.find(string=lambda value: value and "Hosted by Recipient Brand" in value)
     assert "Powered by Hush Line" not in response.text
     assert "Recipient Newsroom" in response.text
-    assert f"@{user.primary_username.username}" in response.text
+    heading = page.find("h2", attrs={"id": "embed-recipient-heading"})
+    assert heading is not None
+    assert heading.get_text(strip=True) == "Recipient Newsroom"
+    assert page.find("p", class_="embed-meta") is None
     badge_texts = _badge_texts(page)
     assert "⭐️ Verified" in badge_texts
     assert "🔒 End-to-End Encrypted" in badge_texts
+    assert page.find("form", attrs={"id": "messageForm"}).get("action") == url_for(
+        "embed_profile", username=user.primary_username.username
+    )
     assert page.select_one(".embed-actions") is None
     assert page.find("a", string=lambda value: value and "Open on Hush Line" in value) is None
     assert page.find("a", attrs={"aria-label": "Emergency exit: Exit Now"}) is None
