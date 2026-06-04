@@ -3662,6 +3662,17 @@ p.bio+.extra-fields {
   background: #fff4f4;
 }
 
+.embed-page input,
+.embed-page textarea,
+.embed-page select,
+.embed-page button {
+  max-width: 100%;
+}
+
+h2.submit#embed-recipient-heading {
+  margin-bottom: 0.5rem;
+}
+
 .embed-page select {
   appearance: none;
   background-color: white;
@@ -3693,6 +3704,26 @@ p.bio+.extra-fields {
   box-shadow: 0px 2px 0px 0px oklch(from var(--color-brand) l c h / 0.25);
 }
 
+@media (prefers-color-scheme: dark) {
+  .embed-page .meta {
+    color: var(--color-text-light);
+  }
+
+  .embed-page .icon.verifiedURL {
+    background-image: url("../img/icon-verified-lm.png");
+  }
+
+  .embed-page h2.submit + .badgeContainer .badge {
+    background-color: white;
+    border-color: var(--color-brand);
+    color: var(--color-brand);
+  }
+
+  .embed-page #messageForm {
+    border-top: var(--border);
+  }
+}
+
 .embed-page .captcha_container {
   align-items: center;
   flex-wrap: wrap;
@@ -3708,7 +3739,7 @@ p.bio+.extra-fields {
 .embed-page input:focus-visible,
 .embed-page textarea:focus-visible,
 .embed-page select:focus-visible {
-  outline: 3px solid var(--color-brand-min-contrast);
+  outline: 3px solid var(--color-brand);
   outline-offset: 3px;
 }
 
