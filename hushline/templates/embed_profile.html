@@ -12,7 +12,13 @@
     <script src="{{ url_for('static', filename='no-js.js') }}"></script>
     <style>
       :root {
-        --color-brand: oklch(from {{ brand_primary_color }} l c h);
+        --color-brand: {{ brand_primary_color }};
+      }
+
+      @supports (color: oklch(from #000000 l c h)) {
+        :root {
+          --color-brand: oklch(from {{ brand_primary_color }} l c h);
+        }
       }
     </style>
     {% if not message_submission_block_reason %}

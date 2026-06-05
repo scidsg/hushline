@@ -2390,7 +2390,11 @@ def test_update_brand_primary_color(client: FlaskClient, admin: User) -> None:
     styles = soup.find_all("style")
     assert styles  # sensibility check
     for style in styles:
-        if f"--color-brand: oklch(from {color} l c h);" in style.string:
+        style_text = style.get_text()
+        if (
+            f"--color-brand: {color};" in style_text
+            and f"--color-brand: oklch(from {color} l c h);" in style_text
+        ):
             break
     else:
         pytest.fail("Brand color CSS not updated in response <style>")

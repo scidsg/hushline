@@ -157,8 +157,14 @@
     <script defer src="{{ url_for('static', filename='js/global.js') }}"></script>
     <style>
       :root {
-        --color-brand: oklch(from {{ brand_primary_color }} l c h);
+        --color-brand: {{ brand_primary_color }};
         --theme-color-dark: {{ brand_primary_color_dark }};
+      }
+
+      @supports (color: oklch(from #000000 l c h)) {
+        :root {
+          --color-brand: oklch(from {{ brand_primary_color }} l c h);
+        }
       }
     </style>
   </head>

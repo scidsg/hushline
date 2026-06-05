@@ -125,7 +125,12 @@ document.addEventListener("DOMContentLoaded", function () {
   if (colorPicker) {
     for (const eventName of ["input", "change"]) {
       colorPicker.addEventListener(eventName, function (event) {
-        const brandColor = `oklch(from ${event.target.value} l c h)`;
+        const brandColor = CSS.supports(
+          "color",
+          `oklch(from ${event.target.value} l c h)`,
+        )
+          ? `oklch(from ${event.target.value} l c h)`
+          : event.target.value;
         document.documentElement.style.setProperty("--color-brand", brandColor);
       });
     }

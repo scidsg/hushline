@@ -3701,7 +3701,14 @@ h2.submit#embed-recipient-heading {
   background-color: var(--color-brand);
   border: var(--border-button);
   color: white;
+  box-shadow: 0px 2px 0px 0px rgba(0, 0, 0, 0.18);
   box-shadow: 0px 2px 0px 0px oklch(from var(--color-brand) l c h / 0.25);
+}
+
+.embed-page h2.submit + .badgeContainer .badge {
+  background-color: white;
+  border-color: var(--color-brand);
+  color: var(--color-brand);
 }
 
 @media (prefers-color-scheme: dark) {
