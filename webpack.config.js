@@ -10,6 +10,7 @@ modules = [
   "diceware-words",
   "directory",
   "directory_verified",
+  "embed-resize",
   "global",
   "inbox",
   "mailvelope",

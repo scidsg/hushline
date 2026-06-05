@@ -10,6 +10,11 @@
       href="{{ url_for('static', filename='css/style.css') }}"
     />
     <script src="{{ url_for('static', filename='no-js.js') }}"></script>
+    <script
+      defer
+      src="{{ url_for('static', filename='js/embed-resize.js') }}"
+      data-allowed-origins='{{ embed_allowed_origins | tojson }}'
+    ></script>
     <style>
       :root {
         --color-brand: oklch(from {{ brand_primary_color }} l c h);
