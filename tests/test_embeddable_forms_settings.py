@@ -1418,7 +1418,7 @@ def test_embed_profile_layout_theme_and_focus_styles_are_in_compiled_stylesheet_
     assert ".embed-error-summary" in stylesheet_source
     assert ".embed-noscript" in stylesheet_source
     assert ".embed-page .captcha_container {\n  align-items: center;" in stylesheet_source
-    assert ".embed-page a,\n.embed-page a.meta {\n  color: var(--theme-color);" in stylesheet_source
+    assert ".embed-page a,\n.embed-page a.meta {\n  color: var(--color-brand);" in stylesheet_source
     assert (
         '.embed-page button[type="submit"],\n.embed-page input[type="submit"] {'
         in stylesheet_source
