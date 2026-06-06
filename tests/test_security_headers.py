@@ -3,9 +3,20 @@ from pathlib import Path
 import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
+from werkzeug.datastructures import Headers
 
 from hushline.db import db
 from hushline.model import OrganizationSetting, StripeSubscriptionStatusEnum, User
+
+
+def _csp_directives(response_headers: Headers) -> dict[str, str]:
+    csp = response_headers["Content-Security-Policy"]
+    return {
+        directive: sources
+        for directive, sources in (
+            part.strip().split(" ", 1) for part in csp.split(";") if part.strip()
+        )
+    }
 
 
 def test_csp(client: FlaskClient) -> None:
@@ -73,7 +84,10 @@ def test_settings_profile_keeps_frame_restrictions(client: FlaskClient) -> None:
     assert response.headers["X-Frame-Options"] == "DENY"
 
 
-def test_embed_profile_uses_allowed_origin_frame_ancestors(client: FlaskClient, user: User) -> None:
+def test_embed_profile_uses_allowed_origins_for_frames_and_sandboxed_assets(
+    client: FlaskClient, app: Flask, user: User
+) -> None:
+    app.config["PUBLIC_BASE_URL"] = "https://tips.hushline.app"
     with open("tests/test_pgp_key.txt") as file:
         user.pgp_key = file.read().strip()
     user.set_business_tier()
@@ -88,10 +102,50 @@ def test_embed_profile_uses_allowed_origin_frame_ancestors(client: FlaskClient, 
     response = client.get(url_for("embed_profile", username=user.primary_username.username))
     assert response.status_code == 200
 
-    csp = (response.headers.get("Content-Security-Policy") or "").strip()
-    frame_ancestors = next(part for part in csp.split(";") if part.startswith("frame-ancestors "))
-    assert frame_ancestors == "frame-ancestors https://tips.example https://newsroom.example:8443"
+    directives = _csp_directives(response.headers)
+    assert directives["frame-ancestors"] == "https://tips.example https://newsroom.example:8443"
+    assert directives["style-src"] == "'self' 'unsafe-inline' https://tips.hushline.app"
+    assert directives["font-src"] == "'self' https://tips.hushline.app"
+    assert directives["script-src"] == (
+        "'self' https://js.stripe.com https://cdn.jsdelivr.net "
+        "'wasm-unsafe-eval' https://tips.hushline.app"
+    )
+    assert directives["script-src-elem"] == (
+        "'self' https://js.stripe.com https://cdn.jsdelivr.net https://tips.hushline.app"
+    )
     assert "X-Frame-Options" not in response.headers
+
+
+def test_non_embed_csp_does_not_add_canonical_asset_origin(client: FlaskClient, app: Flask) -> None:
+    app.config["PUBLIC_BASE_URL"] = "https://tips.hushline.app"
+
+    response = client.get(url_for("directory"))
+
+    assert response.status_code == 200
+    directives = _csp_directives(response.headers)
+    assert directives["style-src"] == "'self' 'unsafe-inline'"
+    assert directives["font-src"] == "'self'"
+    assert directives["script-src-elem"] == (
+        "'self' https://js.stripe.com https://cdn.jsdelivr.net"
+    )
+
+
+def test_denied_embed_csp_does_not_add_canonical_asset_origin(
+    client: FlaskClient, app: Flask
+) -> None:
+    app.config["PUBLIC_BASE_URL"] = "https://tips.hushline.app"
+
+    response = client.get(url_for("embed_profile", username="does-not-exist"))
+
+    assert response.status_code == 404
+    directives = _csp_directives(response.headers)
+    assert directives["frame-ancestors"] == "'none'"
+    assert directives["style-src"] == "'self' 'unsafe-inline'"
+    assert directives["font-src"] == "'self'"
+    assert directives["script-src-elem"] == (
+        "'self' https://js.stripe.com https://cdn.jsdelivr.net"
+    )
+    assert response.headers["X-Frame-Options"] == "DENY"
 
 
 def test_static_fonts_allow_cross_origin_embed_loading(

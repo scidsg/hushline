@@ -210,6 +210,7 @@ Embed responses should:
 - Avoid wildcard origins.
 - Avoid path-based trust; browsers enforce `frame-ancestors` at the origin level.
 - Omit `X-Frame-Options` on embed responses only if required for modern `frame-ancestors` compatibility, and test that normal pages still send `DENY`.
+- Include the exact canonical Hush Line origin in embed-only script, style, and font directives because sandboxed Safari frames may not treat `'self'` as the document URL origin.
 - Use a restrictive `sandbox` snippet recommendation such as `allow-forms allow-scripts allow-popups allow-popups-to-escape-sandbox`, adding `allow-same-origin` only if the implementation proves it is required for current client-side encryption and CSRF behavior.
 - Keep script sources limited to Hush Line-owned assets and existing approved dependencies.
 
