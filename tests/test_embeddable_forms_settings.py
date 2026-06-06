@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -96,7 +97,6 @@ def _iframe_from_snippet(response_text: str) -> BeautifulSoup:
     snippet = page.find("textarea", id="embed_iframe_snippet")
     assert snippet is not None
     snippet_text = snippet.get_text()
-    assert "<script" not in snippet_text.lower()
     return BeautifulSoup(snippet_text, "html.parser")
 
 
@@ -1015,6 +1015,28 @@ def test_embed_profile_has_no_postmessage_submission_path(client: FlaskClient, u
     assert "postMessage" not in Path("assets/js/message_success.js").read_text()
 
 
+def test_embed_resize_script_posts_only_bounded_height_metadata() -> None:
+    source = Path("assets/js/embed-resize.js").read_text()
+
+    assert 'const MESSAGE_TYPE = "hushline:embed:height";' in source
+    assert "const MIN_HEIGHT = 320;" in source
+    assert "const MAX_HEIGHT = 4096;" in source
+    assert "const HEIGHT_STEP = 32;" in source
+    assert 'JSON.parse(script?.dataset.allowedOrigins || "[]")' in source
+    assert 'document.querySelector(".embed-shell")' in source
+    assert "root.getBoundingClientRect()" in source
+    assert "Math.ceil(height / HEIGHT_STEP) * HEIGHT_STEP" in source
+    assert "window.parent.postMessage(message, origin)" in source
+    assert "ResizeObserver" in source
+    assert "MutationObserver" in source
+    assert "requestAnimationFrame" in source
+    assert "field_" not in source
+    assert "csrf" not in source.lower()
+    assert "cipher" not in source.lower()
+    assert "reply" not in source.lower()
+    assert "message_slug" not in source
+
+
 def test_profile_settings_do_not_render_embed_settings(client: FlaskClient, user: User) -> None:
     _make_message_capable(user)
     _configure_embed(user.primary_username)
@@ -1324,6 +1346,20 @@ def test_primary_embed_settings_update_origins_and_render_iframe_snippet(
     assert "outline:1px solid rgba(0,0,0,0.18)" in iframe["style"]
     assert "border-radius:0.25rem" in iframe["style"]
     assert "box-shadow:0px 4px 8px -4px rgba(0,0,0,0.15)" in iframe["style"]
+    scripts = snippet.find_all("script")
+    assert len(scripts) == 1
+    resize_listener = scripts[0].get_text()
+    assert "hushline:embed:height" in resize_listener
+    assert "event.source!==iframe.contentWindow" in resize_listener
+    assert 'event.origin!==origin&&event.origin!=="null"' in resize_listener
+    assert "Number.isInteger(height)" in resize_listener
+    assert "height<320" in resize_listener
+    assert "height>4096" in resize_listener
+    assert 'iframe.style.height=height+"px"' in resize_listener
+    assert "field_" not in resize_listener
+    assert "csrf" not in resize_listener.lower()
+    assert "cipher" not in resize_listener.lower()
+    assert "reply" not in resize_listener.lower()
 
 
 def test_embed_profile_template_has_compact_trust_chrome_and_form(
@@ -1387,6 +1423,10 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     script_sources = [script.get("src", "") for script in page.find_all("script")]
     assert url_for("static", filename="js/diceware-words.js") in script_sources
     assert url_for("static", filename="js/client-side-encryption.js") in script_sources
+    assert url_for("static", filename="js/embed-resize.js") in script_sources
+    resize_script = page.find("script", src=url_for("static", filename="js/embed-resize.js"))
+    assert resize_script is not None
+    assert json.loads(resize_script["data-allowed-origins"]) == ["https://tips.example"]
     assert not any("submit-message.js" in source for source in script_sources)
     assert page.find("iframe") is None
     assert "script-widget" not in response.text

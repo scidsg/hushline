@@ -289,6 +289,11 @@ def register_profile_routes(app: Flask) -> None:
                 owner_guard_signature=owner_guard_signature,
                 is_embedded=is_embedded,
                 embed_captcha_token=embed_captcha_token,
+                embed_allowed_origins=(
+                    Username.normalize_embed_allowed_origins(uname.embed_allowed_origins or [])
+                    if is_embedded
+                    else []
+                ),
             )
             if status_code is None:
                 return rendered
