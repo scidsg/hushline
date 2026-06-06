@@ -1,5 +1,6 @@
 import logging
 import math
+import urllib.parse
 from http import HTTPStatus
 from typing import Any, Mapping, Optional, Tuple, Union
 
@@ -15,6 +16,7 @@ from hushline.cli_reg import register_reg_commands
 from hushline.cli_stripe import register_stripe_commands
 from hushline.config import SPLASH_SCREEN_DURATION_MS, AliasMode, load_config
 from hushline.db import db, migrate
+from hushline.external_urls import canonical_external_url
 from hushline.md import md_to_html
 from hushline.model import OrganizationSetting, User
 from hushline.secure_session import EncryptedSessionInterface
@@ -56,25 +58,38 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
     @app.after_request
     def add_security_header(response: Response) -> Response:
         frame_ancestors = getattr(g, "embed_frame_ancestors", "'none'")
-        if (
-            request.endpoint in {"embed_profile", "embed_profile_legacy"}
-            and response.status_code == HTTPStatus.NOT_FOUND
-        ):
+        is_embed_route = request.endpoint in {"embed_profile", "embed_profile_legacy"}
+        if is_embed_route and response.status_code == HTTPStatus.NOT_FOUND:
             frame_ancestors = "'none'"
+        embed_asset_origin = ""
+        if is_embed_route and frame_ancestors != "'none'":
+            canonical_url = urllib.parse.urlsplit(canonical_external_url("directory"))
+            embed_asset_origin = urllib.parse.urlunsplit(
+                (canonical_url.scheme, canonical_url.netloc, "", "", "")
+            )
+        style_sources = ["'self'", "'unsafe-inline'"]
+        script_sources = [
+            "'self'",
+            "https://js.stripe.com",
+            "https://cdn.jsdelivr.net",
+            "'wasm-unsafe-eval'",
+        ]
+        script_element_sources = [
+            "'self'",
+            "https://js.stripe.com",
+            "https://cdn.jsdelivr.net",
+        ]
+        if embed_asset_origin:
+            style_sources.append(embed_asset_origin)
+            script_sources.append(embed_asset_origin)
+            script_element_sources.append(embed_asset_origin)
         response.headers["Content-Security-Policy"] = ";".join(
             f"{k} {v}"
             for (k, v) in {
                 "default-src": "'self'",
-                "style-src": "'self' 'unsafe-inline'",
-                "script-src": " ".join(
-                    [
-                        "'self'",
-                        "https://js.stripe.com",
-                        "https://cdn.jsdelivr.net",
-                        "'wasm-unsafe-eval'",
-                    ]
-                ),
-                "script-src-elem": "'self' https://js.stripe.com https://cdn.jsdelivr.net",
+                "style-src": " ".join(style_sources),
+                "script-src": " ".join(script_sources),
+                "script-src-elem": " ".join(script_element_sources),
                 "img-src": "'self' data: https:",
                 "media-src": "'self' data:",
                 "worker-src": "'self' blob:",
