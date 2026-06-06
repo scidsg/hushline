@@ -1381,7 +1381,10 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     assert stylesheet.get("href") == url_for("static", filename="css/style.css")
     runtime_style = page.find("style")
     assert runtime_style is not None
-    assert "--color-brand: oklch(from" in runtime_style.get_text()
+    runtime_style_text = runtime_style.get_text()
+    assert "--color-brand: #7d25c1;" in runtime_style_text
+    assert "@supports (color: oklch(from #000000 l c h))" in runtime_style_text
+    assert "--color-brand: oklch(from" in runtime_style_text
     assert "--theme-color-dark:" not in runtime_style.get_text()
     assert page.find(string="Secure Hush Line form") is None
     assert "Hosted by" not in response.text
@@ -1465,16 +1468,23 @@ def test_embed_profile_layout_theme_and_focus_styles_are_in_compiled_stylesheet_
     )
     assert "background-color: var(--color-brand);" in stylesheet_source
     assert "border: var(--border-button);" in stylesheet_source
+    assert "box-shadow: 0px 2px 0px 0px rgba(0, 0, 0, 0.18);" in stylesheet_source
     assert (
         "box-shadow: 0px 2px 0px 0px oklch(from var(--color-brand) l c h / 0.25);"
         in stylesheet_source
     )
+    assert (
+        ".embed-page h2.submit + .badgeContainer .badge:not(.badgeCaution) {" in stylesheet_source
+    )
+    assert "border-color: var(--color-brand);" in stylesheet_source
     assert "@media (prefers-color-scheme: dark)" in stylesheet_source
     assert (
         '.embed-page .icon.verifiedURL {\n    background-image: url("../img/icon-verified-lm.png");'
         in stylesheet_source
     )
-    assert ".embed-page h2.submit + .badgeContainer .badge {" in stylesheet_source
+    assert (
+        ".embed-page h2.submit + .badgeContainer .badge:not(.badgeCaution) {" in stylesheet_source
+    )
     assert "border-color: var(--color-brand);" in stylesheet_source
     assert ".embed-page #messageForm {\n    border-top: var(--border);" in stylesheet_source
     assert (
@@ -1486,7 +1496,7 @@ def test_embed_profile_layout_theme_and_focus_styles_are_in_compiled_stylesheet_
     assert "outline: 3px solid var(--theme-color-dark)" not in stylesheet_source
     assert ".embed-page .meta {\n    color: var(--color-text-light);" in stylesheet_source
     assert ".embed-page .icon.verifiedURL" in stylesheet_source
-    assert ".embed-page h2.submit + .badgeContainer .badge" in stylesheet_source
+    assert ".embed-page h2.submit + .badgeContainer .badge:not(.badgeCaution)" in stylesheet_source
     assert ".embed-page #messageForm" in stylesheet_source
 
 
@@ -1589,7 +1599,9 @@ def test_embed_profile_required_chrome_survives_recipient_branding_settings(
     assert page.find(string="Secure Hush Line form") is None
     runtime_style = page.find("style")
     assert runtime_style is not None
-    assert "--color-brand: oklch(from #005f73 l c h);" in runtime_style.get_text()
+    runtime_style_text = runtime_style.get_text()
+    assert "--color-brand: #005f73;" in runtime_style_text
+    assert "--color-brand: oklch(from #005f73 l c h);" in runtime_style_text
     assert not page.find(string=lambda value: value and "Hosted by Recipient Brand" in value)
     assert "Powered by Hush Line" not in response.text
     assert "Recipient Newsroom" in response.text
