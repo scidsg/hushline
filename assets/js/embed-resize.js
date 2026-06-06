@@ -26,14 +26,17 @@
     return Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, rounded));
   }
 
-  function documentHeight() {
-    const body = document.body;
-    const html = document.documentElement;
+  function contentRoot() {
+    return document.querySelector(".embed-shell") || document.body || document.documentElement;
+  }
+
+  function contentHeight() {
+    const root = contentRoot();
+    const rect = root.getBoundingClientRect();
+    const top = rect.top + window.scrollY;
     return Math.max(
-      body?.scrollHeight || 0,
-      body?.offsetHeight || 0,
-      html?.scrollHeight || 0,
-      html?.offsetHeight || 0,
+      rect.bottom + window.scrollY,
+      top + (root.scrollHeight || 0),
     );
   }
 
@@ -42,7 +45,7 @@
 
   function publishHeight() {
     pendingAnimationFrame = 0;
-    const height = boundedHeight(documentHeight());
+    const height = boundedHeight(contentHeight());
     if (height === lastHeight) {
       return;
     }
@@ -71,7 +74,7 @@
 
     if ("ResizeObserver" in window) {
       const resizeObserver = new ResizeObserver(queueHeightPublish);
-      resizeObserver.observe(document.documentElement);
+      resizeObserver.observe(contentRoot());
       if (document.body) {
         resizeObserver.observe(document.body);
       }

@@ -68,6 +68,8 @@ def test_embed_resize_bundle_is_declared_and_height_only() -> None:
     assert "const MIN_HEIGHT = 320;" in js
     assert "const MAX_HEIGHT = 4096;" in js
     assert "const HEIGHT_STEP = 32;" in js
+    assert 'document.querySelector(".embed-shell")' in js
+    assert "root.getBoundingClientRect()" in js
     assert "window.parent.postMessage(message, origin)" in js
     assert "ResizeObserver" in js
     assert "MutationObserver" in js

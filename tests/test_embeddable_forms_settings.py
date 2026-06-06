@@ -1023,6 +1023,8 @@ def test_embed_resize_script_posts_only_bounded_height_metadata() -> None:
     assert "const MAX_HEIGHT = 4096;" in source
     assert "const HEIGHT_STEP = 32;" in source
     assert 'JSON.parse(script?.dataset.allowedOrigins || "[]")' in source
+    assert 'document.querySelector(".embed-shell")' in source
+    assert "root.getBoundingClientRect()" in source
     assert "Math.ceil(height / HEIGHT_STEP) * HEIGHT_STEP" in source
     assert "window.parent.postMessage(message, origin)" in source
     assert "ResizeObserver" in source
