@@ -1433,14 +1433,18 @@ def test_embed_profile_layout_theme_and_focus_styles_are_in_compiled_stylesheet_
         "box-shadow: 0px 2px 0px 0px oklch(from var(--color-brand) l c h / 0.25);"
         in stylesheet_source
     )
-    assert ".embed-page h2.submit + .badgeContainer .badge {" in stylesheet_source
+    assert (
+        ".embed-page h2.submit + .badgeContainer .badge:not(.badgeCaution) {" in stylesheet_source
+    )
     assert "border-color: var(--color-brand);" in stylesheet_source
     assert "@media (prefers-color-scheme: dark)" in stylesheet_source
     assert (
         '.embed-page .icon.verifiedURL {\n    background-image: url("../img/icon-verified-lm.png");'
         in stylesheet_source
     )
-    assert ".embed-page h2.submit + .badgeContainer .badge {" in stylesheet_source
+    assert (
+        ".embed-page h2.submit + .badgeContainer .badge:not(.badgeCaution) {" in stylesheet_source
+    )
     assert "border-color: var(--color-brand);" in stylesheet_source
     assert ".embed-page #messageForm {\n    border-top: var(--border);" in stylesheet_source
     assert (
@@ -1452,7 +1456,7 @@ def test_embed_profile_layout_theme_and_focus_styles_are_in_compiled_stylesheet_
     assert "outline: 3px solid var(--theme-color-dark)" not in stylesheet_source
     assert ".embed-page .meta {\n    color: var(--color-text-light);" in stylesheet_source
     assert ".embed-page .icon.verifiedURL" in stylesheet_source
-    assert ".embed-page h2.submit + .badgeContainer .badge" in stylesheet_source
+    assert ".embed-page h2.submit + .badgeContainer .badge:not(.badgeCaution)" in stylesheet_source
     assert ".embed-page #messageForm" in stylesheet_source
 
 

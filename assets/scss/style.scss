@@ -3705,7 +3705,7 @@ h2.submit#embed-recipient-heading {
   box-shadow: 0px 2px 0px 0px oklch(from var(--color-brand) l c h / 0.25);
 }
 
-.embed-page h2.submit + .badgeContainer .badge {
+.embed-page h2.submit + .badgeContainer .badge:not(.badgeCaution) {
   background-color: white;
   border-color: var(--color-brand);
   color: var(--color-brand);
@@ -3720,7 +3720,7 @@ h2.submit#embed-recipient-heading {
     background-image: url("../img/icon-verified-lm.png");
   }
 
-  .embed-page h2.submit + .badgeContainer .badge {
+  .embed-page h2.submit + .badgeContainer .badge:not(.badgeCaution) {
     background-color: white;
     border-color: var(--color-brand);
     color: var(--color-brand);
