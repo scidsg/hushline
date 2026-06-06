@@ -105,6 +105,7 @@ def test_embed_profile_uses_allowed_origins_for_frames_and_sandboxed_assets(
     directives = _csp_directives(response.headers)
     assert directives["frame-ancestors"] == "https://tips.example https://newsroom.example:8443"
     assert directives["style-src"] == "'self' 'unsafe-inline' https://tips.hushline.app"
+    assert directives["font-src"] == "'self' https://tips.hushline.app"
     assert directives["script-src"] == (
         "'self' https://js.stripe.com https://cdn.jsdelivr.net "
         "'wasm-unsafe-eval' https://tips.hushline.app"
@@ -123,6 +124,7 @@ def test_non_embed_csp_does_not_add_canonical_asset_origin(client: FlaskClient, 
     assert response.status_code == 200
     directives = _csp_directives(response.headers)
     assert directives["style-src"] == "'self' 'unsafe-inline'"
+    assert directives["font-src"] == "'self'"
     assert directives["script-src-elem"] == (
         "'self' https://js.stripe.com https://cdn.jsdelivr.net"
     )
@@ -139,6 +141,7 @@ def test_denied_embed_csp_does_not_add_canonical_asset_origin(
     directives = _csp_directives(response.headers)
     assert directives["frame-ancestors"] == "'none'"
     assert directives["style-src"] == "'self' 'unsafe-inline'"
+    assert directives["font-src"] == "'self'"
     assert directives["script-src-elem"] == (
         "'self' https://js.stripe.com https://cdn.jsdelivr.net"
     )

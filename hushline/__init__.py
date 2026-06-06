@@ -68,6 +68,7 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
                 (canonical_url.scheme, canonical_url.netloc, "", "", "")
             )
         style_sources = ["'self'", "'unsafe-inline'"]
+        font_sources = ["'self'"]
         script_sources = [
             "'self'",
             "https://js.stripe.com",
@@ -81,6 +82,7 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
         ]
         if embed_asset_origin:
             style_sources.append(embed_asset_origin)
+            font_sources.append(embed_asset_origin)
             script_sources.append(embed_asset_origin)
             script_element_sources.append(embed_asset_origin)
         response.headers["Content-Security-Policy"] = ";".join(
@@ -88,6 +90,7 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
             for (k, v) in {
                 "default-src": "'self'",
                 "style-src": " ".join(style_sources),
+                "font-src": " ".join(font_sources),
                 "script-src": " ".join(script_sources),
                 "script-src-elem": " ".join(script_element_sources),
                 "img-src": "'self' data: https:",
