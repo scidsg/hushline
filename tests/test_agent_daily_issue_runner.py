@@ -43,6 +43,18 @@ printf '%s %s\\n' "$CODEX_MODEL" "$CODEX_REASONING_EFFORT"
     assert result.stdout.strip() == "gpt-5.5 high"
 
 
+def test_codex_model_status_label_formats_default_model_for_operators() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+codex_model_status_label
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "Codex 5.5 high"
+
+
 def test_runner_defaults_to_ten_minute_idle_polling() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
@@ -360,6 +372,7 @@ test -s "$CODEX_STATUS_IDLE_CHECK_STATE_FILE"
 
     assert result.returncode == 0, result.stderr
     assert "Hourly idle Codex /status check due" in result.stdout
+    assert "Codex model: Codex 5.5 high" in result.stdout
     assert "Codex /status: primary 300m window 51% used; 49% remaining" in result.stdout
 
 

@@ -267,6 +267,16 @@ codex_status_reached_type_blocks_issue_work() {
   esac
 }
 
+codex_model_status_label() {
+  local model_label="$CODEX_MODEL"
+
+  if [[ "$model_label" == gpt-* ]]; then
+    model_label="Codex ${model_label#gpt-}"
+  fi
+
+  printf '%s %s\n' "$model_label" "$CODEX_REASONING_EFFORT"
+}
+
 wait_for_codex_status_credit_window() {
   local status_json=""
   local status_rc=0
@@ -396,6 +406,7 @@ check_codex_status_once_for_idle_run() {
   record_codex_idle_status_check_attempt
   runner_status "Hourly idle Codex /status check due."
   echo "==> Check Codex /status usage limits"
+  echo "Codex model: $(codex_model_status_label)"
   if ! status_json="$(fetch_codex_status_json)"; then
     echo "Warning: idle Codex /status check failed; continuing idle exit." >&2
     return 0
