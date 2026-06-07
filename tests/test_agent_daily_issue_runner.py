@@ -55,6 +55,19 @@ codex_model_status_label
     assert result.stdout.strip() == "Codex 5.5 high"
 
 
+def test_parse_codex_account_label_uses_dynamic_chatgpt_email() -> None:
+    shell_script = f"""
+source {shlex.quote(str(RUNNER_SCRIPT))}
+printf '%s\\n' '{{"codexAccount":{{"type":"chatgpt","email":"runner@example.com","planType":"plus"}}}}' |
+  parse_codex_account_label
+"""
+
+    result = _run_bash(shell_script)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "runner@example.com"
+
+
 def test_runner_defaults_to_ten_minute_idle_polling() -> None:
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
@@ -363,7 +376,10 @@ source {shlex.quote(str(RUNNER_SCRIPT))}
 CODEX_STATUS_CHECK_ENABLED=1
 CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS=0
 CODEX_STATUS_IDLE_CHECK_STATE_FILE={shlex.quote(str(state_file))}
-HUSHLINE_DAILY_CODEX_STATUS_JSON='{{"rateLimits":{{"primary":{{"usedPercent":51,"windowDurationMins":300,"resetsAt":1779683479}},"secondary":null,"rateLimitReachedType":null}}}}'
+fetch_codex_status_json() {{
+  [[ "${{1:-}}" == "1" ]] || return 9
+  printf '%s\\n' '{{"rateLimits":{{"primary":{{"usedPercent":51,"windowDurationMins":300,"resetsAt":1779683479}},"secondary":null,"rateLimitReachedType":null}},"codexAccount":{{"type":"chatgpt","email":"runner@example.com","planType":"plus"}}}}'
+}}
 check_codex_status_once_for_idle_run
 test -s "$CODEX_STATUS_IDLE_CHECK_STATE_FILE"
 """
@@ -373,6 +389,7 @@ test -s "$CODEX_STATUS_IDLE_CHECK_STATE_FILE"
     assert result.returncode == 0, result.stderr
     assert "Hourly idle Codex /status check due" in result.stdout
     assert "Codex model: Codex 5.5 high" in result.stdout
+    assert "Codex account: runner@example.com" in result.stdout
     assert "Codex /status: primary 300m window 51% used; 49% remaining" in result.stdout
 
 
