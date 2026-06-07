@@ -134,22 +134,31 @@ epoch_to_local_time() {
 }
 
 fetch_codex_status_json() {
+  local include_account="${1:-0}"
+
   if [[ -n "${HUSHLINE_DAILY_CODEX_STATUS_JSON:-}" ]]; then
     printf '%s\n' "$HUSHLINE_DAILY_CODEX_STATUS_JSON"
     return 0
   fi
 
-  CODEX_STATUS_CHECK_TIMEOUT_SECONDS="$CODEX_STATUS_CHECK_TIMEOUT_SECONDS" node -e '
+  CODEX_STATUS_CHECK_TIMEOUT_SECONDS="$CODEX_STATUS_CHECK_TIMEOUT_SECONDS" \
+    CODEX_STATUS_INCLUDE_ACCOUNT="$include_account" \
+    node -e '
 const { spawn } = require("node:child_process");
 
 const timeoutSeconds = Number(process.env.CODEX_STATUS_CHECK_TIMEOUT_SECONDS || "15");
 const timeoutMs = Math.max(1, timeoutSeconds) * 1000;
+const includeAccount = process.env.CODEX_STATUS_INCLUDE_ACCOUNT === "1";
+const rateLimitsRequestId = includeAccount ? 3 : 2;
 const child = spawn("codex", ["app-server", "--listen", "stdio://"], {
   stdio: ["pipe", "pipe", "pipe"],
 });
 let completed = false;
 let stdoutBuffer = "";
 let stderrBuffer = "";
+let accountReadCompleted = !includeAccount;
+let account = null;
+let rateLimits = null;
 
 function isAuthFailure(text) {
   return /token[_ -]?(invalidated|reused)|refresh token|access token|unauthorized|sign in again|log out and sign in again/i.test(text || "");
@@ -161,6 +170,12 @@ function finish(code) {
   clearTimeout(timer);
   child.kill("SIGTERM");
   process.exit(code);
+}
+
+function finishIfComplete() {
+  if (!accountReadCompleted || rateLimits === null) return;
+  process.stdout.write(`${JSON.stringify({ ...rateLimits, codexAccount: account })}\n`);
+  finish(0);
 }
 
 const timer = setTimeout(() => {
@@ -181,14 +196,23 @@ child.stdout.on("data", (chunk) => {
     } catch {
       continue;
     }
-    if (message.id === 2) {
+    if (includeAccount && message.id === 2) {
+      accountReadCompleted = true;
+      if (message.error) {
+        console.error(`Codex account lookup failed: ${message.error.message || "unknown error"}`);
+      } else {
+        account = message.result?.account || null;
+      }
+      finishIfComplete();
+    }
+    if (message.id === rateLimitsRequestId) {
       if (message.error) {
         const errorMessage = message.error.message || "unknown error";
         console.error(`Codex /status rate limit check failed: ${errorMessage}`);
         finish(isAuthFailure(errorMessage) ? 3 : 2);
       }
-      process.stdout.write(`${JSON.stringify(message.result || {})}\n`);
-      finish(0);
+      rateLimits = message.result || {};
+      finishIfComplete();
     }
   }
 });
@@ -221,7 +245,17 @@ child.stdin.write(`${JSON.stringify({
   },
 })}\n`);
 child.stdin.write(`${JSON.stringify({ method: "initialized", params: {} })}\n`);
-child.stdin.write(`${JSON.stringify({ method: "account/rateLimits/read", id: 2 })}\n`);
+if (includeAccount) {
+  child.stdin.write(`${JSON.stringify({
+    method: "account/read",
+    id: 2,
+    params: { refreshToken: false },
+  })}\n`);
+}
+child.stdin.write(`${JSON.stringify({
+  method: "account/rateLimits/read",
+  id: rateLimitsRequestId,
+})}\n`);
 '
 }
 
@@ -265,6 +299,36 @@ codex_status_reached_type_blocks_issue_work() {
       return 0
       ;;
   esac
+}
+
+codex_model_status_label() {
+  local model_label="$CODEX_MODEL"
+
+  if [[ "$model_label" == gpt-* ]]; then
+    model_label="Codex ${model_label#gpt-}"
+  fi
+
+  printf '%s %s\n' "$model_label" "$CODEX_REASONING_EFFORT"
+}
+
+parse_codex_account_label() {
+  node -e '
+const fs = require("node:fs");
+const root = JSON.parse(fs.readFileSync(0, "utf8"));
+const account = root.codexAccount;
+
+if (!account || typeof account !== "object") {
+  process.stdout.write("unavailable");
+} else if (account.type === "chatgpt" && typeof account.email === "string") {
+  process.stdout.write(account.email.replace(/[\r\n\t]/g, ""));
+} else if (account.type === "apiKey") {
+  process.stdout.write("API key");
+} else if (account.type === "amazonBedrock") {
+  process.stdout.write("Amazon Bedrock");
+} else {
+  process.stdout.write(String(account.type || "unknown").replace(/[\r\n\t]/g, ""));
+}
+'
 }
 
 wait_for_codex_status_credit_window() {
@@ -388,6 +452,7 @@ check_codex_status_once_for_idle_run() {
   local reached_type=""
   local reset_label=""
   local remaining_percent=""
+  local account_label=""
 
   if ! codex_idle_status_check_due; then
     return 0
@@ -396,7 +461,7 @@ check_codex_status_once_for_idle_run() {
   record_codex_idle_status_check_attempt
   runner_status "Hourly idle Codex /status check due."
   echo "==> Check Codex /status usage limits"
-  if ! status_json="$(fetch_codex_status_json)"; then
+  if ! status_json="$(fetch_codex_status_json 1)"; then
     echo "Warning: idle Codex /status check failed; continuing idle exit." >&2
     return 0
   fi
@@ -406,6 +471,9 @@ check_codex_status_once_for_idle_run() {
     return 0
   fi
 
+  account_label="$(printf '%s\n' "$status_json" | parse_codex_account_label)"
+  echo "Codex model: $(codex_model_status_label)"
+  echo "Codex account: ${account_label}"
   IFS=$'\t' read -r used_percent window_duration_mins resets_at reached_type <<< "$parsed_status"
   reset_label="$(epoch_to_local_time "$resets_at")"
   remaining_percent=$((100 - used_percent))
