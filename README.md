@@ -80,7 +80,7 @@ Report security issues through GitHub Security Advisories when possible, or via:
 
 ## Agentic Coding Policy
 
-Hush Line uses a risk-based model for agentic software development. Canonical policy: [`docs/AGENTIC-CODE-POLICY.md`](./docs/AGENTIC-CODE-POLICY.md).
+Hush Line uses a risk-based model for agentic software development. Canonical policy: [`scidsg/hushline-agents`](https://github.com/scidsg/hushline-agents/blob/main/docs/AGENTIC-CODE-POLICY.md).
 
 Quick summary:
 

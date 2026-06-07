@@ -77,45 +77,14 @@ This file provides operating guidance for coding agents working in the Hush Line
 ## Local Commands
 
 - Start stack: `docker compose up`
-- Issue bootstrap (required before issue work): `./scripts/agent_issue_bootstrap.sh`
 - Lint: `make lint`
 - Tests: `make test`
 - Coverage (CI-style): `docker compose run --rm app poetry run pytest --cov hushline --cov-report term-missing -q --skip-local-only`
 
-## Automation Runners
+## Automation Ownership
 
-- Runner docs: `docs/AGENT_RUNNER.md`
-- Daily issue runner script: `scripts/agent_daily_issue_runner.sh`
-- Daily issue eligibility:
-  - Runner processes one open issue from the `Hush Line Roadmap` project column `Agent Eligible`, top to bottom.
-- Human-PR guard:
-  - Runner exits early if any open human-authored PR exists.
-- In-progress issue guard:
-  - Runner exits early if any issue is already in project status `In Progress`.
-- One-bot-PR guard:
-  - Runner exits early if any unrelated open PR exists from bot login (`HUSHLINE_BOT_LOGIN`, default `hushline-dev`).
-  - Exception: when the selected issue is a child of a GitHub parent epic, the runner may allow the long-lived epic PR plus the matching child issue PR, and should stop only for unrelated bot PRs.
-- Required runner behavior:
-  - The runner must acquire a local non-blocking lock before touching the repository or Docker; if another Hush Line code-agent run is active, exit without changing local state.
-  - After acquiring the runner lock, normalize the agent-only checkout by discarding local worktree changes and switching to the base branch.
-  - If no issue is available, or a cheap GitHub guard blocks work, exit before `git fetch`, Docker reset, or dev-data seeding.
-  - After an issue is selected and all cheap GitHub guards pass, sync the local base branch to `origin/main`.
-  - Before issue work starts, perform a full local environment reset and seed sequence:
-    - `docker compose down -v --remove-orphans`
-    - Stop/remove all Docker containers (`docker rm -f $(docker ps -aq)`)
-    - Kill listener processes on configured runner ports (`HUSHLINE_DAILY_KILL_PORTS`, default `4566 4571 5432 8080`)
-    - `docker compose up -d --build`
-    - `docker compose run --rm dev_data`
-  - Run required validation checks locally before opening PRs (`make lint`, `make test`).
-  - Persist per-run logs in `docs/agent-logs/` and include the log path in PR context.
-  - Use signed commits that verify on GitHub.
-  - If the selected issue is a child of a GitHub parent epic, create/update the child issue branch as usual, but target its PR at the shared epic branch instead of `main`.
-  - The shared epic branch should be the only long-lived PR that targets `main` for that epic.
-  - Move the selected issue's project status to `In Progress` while work is underway.
-  - Move the selected issue's project status to `Ready for Review` after the PR is open.
-  - For child PRs that target an epic branch, do not rely on GitHub auto-close keywords alone; the child issue must be explicitly closed when that PR is merged into the epic branch.
-  - Keep the PR branch checked out and poll the open PR for feedback every 10 minutes until it closes.
-  - Return to `main` only after that PR is closed.
+- Agent runner source, tests, policy, and operations documentation live in [`scidsg/hushline-agents`](https://github.com/scidsg/hushline-agents).
+- Historical files in `docs/agent-logs/` remain here as product release evidence. New runner logs must not be committed to this repository.
 
 ## Required Checks Before PR
 
@@ -182,12 +151,11 @@ This file provides operating guidance for coding agents working in the Hush Line
 ## Database / Docker Notes
 
 - If tests fail with Postgres shared memory or recovery-mode errors, run `docker compose down -v` and rerun tests on a fresh stack.
-- Before starting issue work, run `./scripts/agent_issue_bootstrap.sh`, which performs:
+- Before starting issue work, reset and seed the local environment:
   - `docker compose build`
   - `docker compose down -v --remove-orphans`
   - `docker compose up -d postgres blob-storage`
   - `docker compose run --rm dev_data`
-- On macOS, `agent_issue_bootstrap.sh` attempts to start Docker Desktop and waits up to `HUSHLINE_DOCKER_START_TIMEOUT_SECONDS` (default `180`).
 - `dev_data` container is expected to exit after seeding.
 
 ## Documentation
