@@ -56,9 +56,18 @@ codex_model_status_label
 
 
 def test_parse_codex_account_label_uses_dynamic_chatgpt_email() -> None:
+    account_json = json.dumps(
+        {
+            "codexAccount": {
+                "type": "chatgpt",
+                "email": "runner@example.com",
+                "planType": "plus",
+            }
+        }
+    )
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
-printf '%s\\n' '{{"codexAccount":{{"type":"chatgpt","email":"runner@example.com","planType":"plus"}}}}' |
+printf '%s\\n' {shlex.quote(account_json)} |
   parse_codex_account_label
 """
 
@@ -370,6 +379,24 @@ check_codex_status_once_for_idle_run
 
 def test_idle_codex_status_check_runs_when_due(tmp_path: Path) -> None:
     state_file = tmp_path / "last-check"
+    status_json = json.dumps(
+        {
+            "rateLimits": {
+                "primary": {
+                    "usedPercent": 51,
+                    "windowDurationMins": 300,
+                    "resetsAt": 1779683479,
+                },
+                "secondary": None,
+                "rateLimitReachedType": None,
+            },
+            "codexAccount": {
+                "type": "chatgpt",
+                "email": "runner@example.com",
+                "planType": "plus",
+            },
+        }
+    )
 
     shell_script = f"""
 source {shlex.quote(str(RUNNER_SCRIPT))}
@@ -378,7 +405,7 @@ CODEX_STATUS_IDLE_CHECK_INTERVAL_SECONDS=0
 CODEX_STATUS_IDLE_CHECK_STATE_FILE={shlex.quote(str(state_file))}
 fetch_codex_status_json() {{
   [[ "${{1:-}}" == "1" ]] || return 9
-  printf '%s\\n' '{{"rateLimits":{{"primary":{{"usedPercent":51,"windowDurationMins":300,"resetsAt":1779683479}},"secondary":null,"rateLimitReachedType":null}},"codexAccount":{{"type":"chatgpt","email":"runner@example.com","planType":"plus"}}}}'
+  printf '%s\\n' {shlex.quote(status_json)}
 }}
 check_codex_status_once_for_idle_run
 test -s "$CODEX_STATUS_IDLE_CHECK_STATE_FILE"
