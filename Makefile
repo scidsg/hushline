@@ -74,10 +74,6 @@ migrate-prod: ## Run prod env (alembic) migrations
 dev-data: migrate-dev ## Run dev env migrations, and add dev data
 	$(CMD) poetry run ./scripts/dev_data.py
 
-.PHONY: issue-bootstrap
-issue-bootstrap: ## Reset Docker state and reseed dev_data before issue work
-	./scripts/agent_issue_bootstrap.sh
-
 .PHONY: lint
 lint: ## Lint the code
 	$(CMD) poetry run ruff format --check && \
@@ -157,10 +153,6 @@ refresh-globaleaks-listings: ## Refresh GlobaLeaks instance artifact from public
 .PHONY: refresh-newsroom-listings
 refresh-newsroom-listings: ## Refresh newsroom directory artifact from public source pages
 	$(CMD) poetry run python ./scripts/refresh_newsroom_directory_listings.py $(REFRESH_NEWSROOM_ARGS)
-
-.PHONY: weekly-agent-report
-weekly-agent-report: ## Send the weekly local agent runner report with Mail.app
-	./scripts/weekly_hushline_code_agent_report_runner.py
 
 .PHONY: audit-python
 audit-python: ## Run Python dependency audit (CI-equivalent)

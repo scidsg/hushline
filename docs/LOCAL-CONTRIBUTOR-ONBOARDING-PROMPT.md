@@ -55,7 +55,10 @@ Repository commands to use:
   - `make test`
   - `docker compose down -v --remove-orphans`
 - if a clean bootstrap is needed:
-  - `./scripts/agent_issue_bootstrap.sh`
+  - `docker compose build`
+  - `docker compose down -v --remove-orphans`
+  - `docker compose up -d postgres blob-storage`
+  - `docker compose run --rm dev_data`
 
 Operating system guidance:
 - on macOS:
@@ -87,7 +90,9 @@ Use this process:
    - explain that Docker may download images and build containers during the first run
 7. If the app does not come up cleanly, use the reset/bootstrap path:
    - `docker compose down -v --remove-orphans`
-   - `./scripts/agent_issue_bootstrap.sh`
+   - `docker compose build`
+   - `docker compose up -d postgres blob-storage`
+   - `docker compose run --rm dev_data`
    - then rerun `docker compose up`
 8. Once the app is running, tell the user to open:
    - `http://localhost:8080`
