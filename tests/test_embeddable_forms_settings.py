@@ -1395,7 +1395,7 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     privacy_note = page.find("p", class_="embed-privacy-note")
     assert privacy_note is not None
     privacy_text = privacy_note.get_text(" ", strip=True)
-    assert "Privacy and retention" in privacy_text
+    assert "🔔 Privacy and retention" in privacy_text
     assert "limits operational data" in privacy_text
     assert "fields marked encrypted" in privacy_text
     assert "delete messages" in privacy_text
