@@ -3639,8 +3639,7 @@ p.bio+.extra-fields {
 
 .embed-privacy-note {
   color: var(--color-text-light);
-  font-family: var(--font-mono);
-  font-size: 0.875rem;
+  font-size: var(--font-size-smaller);
   line-height: 1.5;
   margin: 0;
 }
