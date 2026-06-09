@@ -1392,6 +1392,25 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     assert "Sending to" not in response.text
     assert "Example Recipient" in response.text
     assert page.find("p", class_="embed-meta") is None
+    privacy_note = page.find("p", class_="embed-privacy-note")
+    assert privacy_note is not None
+    privacy_text = privacy_note.get_text(" ", strip=True)
+    assert "Privacy and retention" in privacy_text
+    assert "limits operational data" in privacy_text
+    assert "fields marked encrypted" in privacy_text
+    assert "delete messages" in privacy_text
+    privacy_link = privacy_note.find(
+        "a", href="https://github.com/scidsg/hushline/blob/main/docs/PRIVACY.md"
+    )
+    assert privacy_link is not None
+    assert privacy_link.get_text(strip=True) == "Privacy Policy"
+    assert privacy_link.get("target") == "_blank"
+    assert privacy_link.get("rel") == ["noopener", "noreferrer"]
+    terms_link = privacy_note.find(
+        "a", href="https://github.com/scidsg/hushline/blob/main/docs/TERMS.md"
+    )
+    assert terms_link is not None
+    assert terms_link.get_text(strip=True) == "Terms"
     badge_texts = _badge_texts(page)
     assert "⭐️ Verified" in badge_texts
     assert "🔒 End-to-End Encrypted" in badge_texts
@@ -1400,6 +1419,7 @@ def test_embed_profile_template_has_compact_trust_chrome_and_form(
     assert "Client-side encryption enabled" not in visible_text
     csp = response.headers["Content-Security-Policy"]
     assert "default-src 'self'" in csp
+    assert "form-action 'self'" in csp
     assert "frame-ancestors https://tips.example" in csp
     assert "frame-ancestors *" not in csp
     assert page.select_one(".skip-link") is None
@@ -1447,6 +1467,8 @@ def test_embed_profile_layout_theme_and_focus_styles_are_in_compiled_stylesheet_
     assert "box-sizing: border-box;" in embed_shell_block
     assert "padding: 2.5rem 2rem;" in stylesheet_source
     assert ".embed-meta {\n  font-family: var(--font-mono);" in stylesheet_source
+    assert ".embed-privacy-note" in stylesheet_source
+    assert "  font-size: 0.875rem;" in stylesheet_source
     assert ".embed-profile-summary" not in stylesheet_source
     assert ".embed-actions" not in stylesheet_source
     assert ".embed-page a,\n.embed-page a.meta" in stylesheet_source

@@ -27,6 +27,7 @@ def test_csp(client: FlaskClient) -> None:
     assert csp
     assert "'unsafe-eval'" not in csp
     assert "img-src 'self' data: https:" in csp
+    assert "form-action 'self'" in csp
 
 
 def test_csp_script_src_elem_disallows_inline_scripts(client: FlaskClient) -> None:
@@ -104,6 +105,7 @@ def test_embed_profile_uses_allowed_origins_for_frames_and_sandboxed_assets(
 
     directives = _csp_directives(response.headers)
     assert directives["frame-ancestors"] == "https://tips.example https://newsroom.example:8443"
+    assert directives["form-action"] == "'self'"
     assert directives["style-src"] == "'self' 'unsafe-inline' https://tips.hushline.app"
     assert directives["font-src"] == "'self' https://tips.hushline.app"
     assert directives["script-src"] == (

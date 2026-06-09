@@ -97,6 +97,7 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
                 "media-src": "'self' data:",
                 "worker-src": "'self' blob:",
                 "frame-ancestors": frame_ancestors,
+                "form-action": "'self'",
                 "connect-src": "'self' https://api.stripe.com https://cdn.jsdelivr.net data:",
                 "child-src": "https://js.stripe.com",
                 "frame-src": "https://js.stripe.com",

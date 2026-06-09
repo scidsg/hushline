@@ -3637,6 +3637,14 @@ p.bio+.extra-fields {
   margin: 0.25rem 0 0;
 }
 
+.embed-privacy-note {
+  color: var(--color-text-light);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
 .embed-page .badgeContainer {
   flex-wrap: wrap;
 }
