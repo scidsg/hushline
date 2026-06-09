@@ -266,10 +266,33 @@ function buildScrollOffsets(scrollHeight, viewportHeight) {
   return offsets;
 }
 
-async function screenshotAtOffset(page, offsetY, filePath) {
+function buildScreenshotOptions(page, scene) {
+  if (
+    !Array.isArray(scene.screenshotMasks) ||
+    scene.screenshotMasks.length === 0
+  ) {
+    return {};
+  }
+
+  return {
+    mask: scene.screenshotMasks.map((selector) => page.locator(selector)),
+    maskColor: "#111827",
+  };
+}
+
+async function screenshotAtOffset(
+  page,
+  offsetY,
+  filePath,
+  screenshotOptions = {},
+) {
   await page.evaluate((y) => window.scrollTo(0, y), offsetY);
   await sleep(120);
-  await page.screenshot({ path: filePath, fullPage: false });
+  await page.screenshot({
+    path: filePath,
+    fullPage: false,
+    ...screenshotOptions,
+  });
 }
 
 async function hideFooters(page) {
@@ -598,6 +621,7 @@ async function main() {
             await page.screenshot({
               path: path.join(debugDir, debugFile),
               fullPage: false,
+              ...buildScreenshotOptions(page, scene),
             });
             throw new Error(
               `Scene ${scene.slug} (${viewport.id}, ${theme}) failed waiting for selector ${scene.waitForSelector}. Debug: ${sessionDir}/${debugFile}. ${err}`,
@@ -633,7 +657,12 @@ async function main() {
             if (!shouldCaptureFile(captureFiles, relativeFile)) {
               continue;
             }
-            await screenshotAtOffset(page, 0, path.join(targetDir, fileName));
+            await screenshotAtOffset(
+              page,
+              0,
+              path.join(targetDir, fileName),
+              buildScreenshotOptions(page, scene),
+            );
             files.push({
               mode: "fold",
               file: relativeFile,
@@ -670,6 +699,7 @@ async function main() {
                 page,
                 offsets[i],
                 path.join(targetDir, fileName),
+                buildScreenshotOptions(page, scene),
               );
               files.push({
                 mode: modeName,
@@ -692,6 +722,7 @@ async function main() {
               await page.screenshot({
                 path: path.join(targetDir, fileName),
                 fullPage: true,
+                ...buildScreenshotOptions(page, scene),
               });
               files.push({
                 mode: "full",
@@ -741,7 +772,9 @@ async function main() {
     const capturedFiles = new Set(
       captured.flatMap((item) => item.files.map((entry) => entry.file)),
     );
-    const missing = [...captureFiles].filter((file) => !capturedFiles.has(file));
+    const missing = [...captureFiles].filter(
+      (file) => !capturedFiles.has(file),
+    );
     if (missing.length > 0) {
       throw new Error(
         `Required screenshot captures were not produced: ${missing.join(", ")}`,

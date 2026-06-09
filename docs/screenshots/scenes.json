@@ -514,6 +514,7 @@
       "path": "/settings/auth",
       "session": "artvandelay",
       "waitForSelector": ".settings-tabs",
+      "screenshotMasks": [".qr", ".totp-secret"],
       "actions": [
         {
           "type": "click",
