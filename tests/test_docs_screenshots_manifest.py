@@ -164,6 +164,16 @@ def test_docs_screenshot_capture_filters_to_manifest_capture_files() -> None:
     assert "Required screenshot captures were not produced" in script
 
 
+def test_docs_screenshot_capture_supports_scene_masks() -> None:
+    script = CAPTURE_SCRIPT_PATH.read_text(encoding="utf-8")
+
+    assert "function buildScreenshotOptions(page, scene)" in script
+    assert "scene.screenshotMasks.map((selector) => page.locator(selector))" in script
+    assert 'maskColor: "#111827"' in script
+    assert "...buildScreenshotOptions(page, scene)" in script
+    assert "buildScreenshotOptions(page, scene)," in script
+
+
 def test_docs_screenshot_allowlist_resolves_only_referenced_images(tmp_path: Path) -> None:
     script = _load_allowlist_script()
     website_dir = tmp_path / "website"
@@ -232,6 +242,15 @@ def test_docs_screenshots_manifest_artvandelay_notifications_waits_for_third_rec
     assert artvandelay_notifications["session"] == "artvandelay"
     assert artvandelay_notifications["path"] == "/settings/notifications"
     assert artvandelay_notifications["waitForSelector"] == "a:has-text('board@vandelay.news')"
+
+
+def test_docs_screenshots_manifest_masks_artvandelay_2fa_secret() -> None:
+    scenes = _scene_map()
+
+    enable_2fa = scenes["auth-artvandelay-enable-2fa"]
+
+    assert enable_2fa["path"] == "/settings/auth"
+    assert enable_2fa["screenshotMasks"] == [".qr", ".totp-secret"]
 
 
 def test_docs_screenshots_manifest_guest_message_submission_skips_choice_list_fill() -> None:
