@@ -80,6 +80,14 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
             "https://js.stripe.com",
             "https://cdn.jsdelivr.net",
         ]
+        form_action_sources = ["'self'"]
+        if app.config.get("STRIPE_SECRET_KEY"):
+            form_action_sources.extend(
+                [
+                    "https://checkout.stripe.com",
+                    "https://billing.stripe.com",
+                ]
+            )
         if embed_asset_origin:
             style_sources.append(embed_asset_origin)
             font_sources.append(embed_asset_origin)
@@ -97,7 +105,7 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
                 "media-src": "'self' data:",
                 "worker-src": "'self' blob:",
                 "frame-ancestors": frame_ancestors,
-                "form-action": "'self'",
+                "form-action": " ".join(form_action_sources),
                 "connect-src": "'self' https://api.stripe.com https://cdn.jsdelivr.net data:",
                 "child-src": "https://js.stripe.com",
                 "frame-src": "https://js.stripe.com",

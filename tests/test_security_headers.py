@@ -30,6 +30,32 @@ def test_csp(client: FlaskClient) -> None:
     assert "form-action 'self'" in csp
 
 
+def test_csp_form_action_allows_stripe_redirect_hosts_when_premium_enabled(
+    client: FlaskClient, app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setitem(app.config, "STRIPE_SECRET_KEY", "sk_test_enabled")
+
+    response = client.get(url_for("directory"), follow_redirects=True)
+    assert response.status_code == 200
+
+    directives = _csp_directives(response.headers)
+    assert directives["form-action"] == (
+        "'self' https://checkout.stripe.com https://billing.stripe.com"
+    )
+
+
+def test_csp_form_action_omits_stripe_redirect_hosts_when_premium_disabled(
+    client: FlaskClient, app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setitem(app.config, "STRIPE_SECRET_KEY", "")
+
+    response = client.get(url_for("directory"), follow_redirects=True)
+    assert response.status_code == 200
+
+    directives = _csp_directives(response.headers)
+    assert directives["form-action"] == "'self'"
+
+
 def test_csp_script_src_elem_disallows_inline_scripts(client: FlaskClient) -> None:
     response = client.get(url_for("directory"), follow_redirects=True)
     assert response.status_code == 200
@@ -105,7 +131,9 @@ def test_embed_profile_uses_allowed_origins_for_frames_and_sandboxed_assets(
 
     directives = _csp_directives(response.headers)
     assert directives["frame-ancestors"] == "https://tips.example https://newsroom.example:8443"
-    assert directives["form-action"] == "'self'"
+    assert directives["form-action"] == (
+        "'self' https://checkout.stripe.com https://billing.stripe.com"
+    )
     assert directives["style-src"] == "'self' 'unsafe-inline' https://tips.hushline.app"
     assert directives["font-src"] == "'self' https://tips.hushline.app"
     assert directives["script-src"] == (
