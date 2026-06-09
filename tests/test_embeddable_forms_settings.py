@@ -1468,7 +1468,7 @@ def test_embed_profile_layout_theme_and_focus_styles_are_in_compiled_stylesheet_
     assert "padding: 2.5rem 2rem;" in stylesheet_source
     assert ".embed-meta {\n  font-family: var(--font-mono);" in stylesheet_source
     assert ".embed-privacy-note" in stylesheet_source
-    assert "  font-size: 0.875rem;" in stylesheet_source
+    assert "  font-size: var(--font-size-smaller);" in stylesheet_source
     assert ".embed-profile-summary" not in stylesheet_source
     assert ".embed-actions" not in stylesheet_source
     assert ".embed-page a,\n.embed-page a.meta" in stylesheet_source
