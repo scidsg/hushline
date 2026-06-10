@@ -651,7 +651,7 @@
       {% if verified_info_usernames %}
         <p class="label">📇 Info-Only Accounts</p>
         <div class="user-list">
-          {% for username in verified_info_usernames if not (username.is_featured | default(false)) %}
+          {% for username in verified_info_usernames %}
             {{ verified_user_card(username) }}
           {% endfor %}
         </div>
