@@ -168,8 +168,9 @@ def test_docs_screenshot_capture_supports_scene_masks() -> None:
     script = CAPTURE_SCRIPT_PATH.read_text(encoding="utf-8")
 
     assert "function buildScreenshotOptions(page, scene)" in script
-    assert "scene.screenshotMasks.map((selector) => page.locator(selector))" in script
-    assert 'maskColor: "#111827"' in script
+    assert "maskSelectors.join" in script
+    assert "filter: blur(14px) !important;" in script
+    assert "maskColor" not in script
     assert "...buildScreenshotOptions(page, scene)" in script
     assert "buildScreenshotOptions(page, scene)," in script
 
