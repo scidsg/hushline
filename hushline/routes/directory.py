@@ -464,16 +464,24 @@ def _featured_directory_usernames(usernames: Sequence[Username]) -> list[Usernam
         [
             username
             for username in usernames
-            if username.is_verified and bool(getattr(username, "is_featured", False))
+            if (
+                username.is_verified
+                and bool(getattr(username, "is_featured", False))
+                and _user_message_capable(username.user)
+            )
         ]
     )
+
+
+def _is_featured_directory_row(row: dict[str, object | None]) -> bool:
+    return row.get("is_featured") is True and row.get("message_capable") is True
 
 
 def _featured_directory_rows_first(
     rows: Sequence[dict[str, object | None]],
 ) -> list[dict[str, object | None]]:
-    featured_rows = [row for row in rows if row.get("is_featured") is True]
-    standard_rows = [row for row in rows if row.get("is_featured") is not True]
+    featured_rows = [row for row in rows if _is_featured_directory_row(row)]
+    standard_rows = [row for row in rows if not _is_featured_directory_row(row)]
     return [*_shuffle_featured_directory_items(featured_rows), *standard_rows]
 
 
