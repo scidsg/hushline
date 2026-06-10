@@ -267,6 +267,7 @@ function buildScrollOffsets(scrollHeight, viewportHeight) {
 }
 
 function buildScreenshotOptions(page, scene) {
+  void page;
   if (
     !Array.isArray(scene.screenshotMasks) ||
     scene.screenshotMasks.length === 0
@@ -274,9 +275,20 @@ function buildScreenshotOptions(page, scene) {
     return {};
   }
 
+  const maskSelectors = scene.screenshotMasks
+    .map((selector) => String(selector).trim())
+    .filter(Boolean);
+  if (maskSelectors.length === 0) {
+    return {};
+  }
+
   return {
-    mask: scene.screenshotMasks.map((selector) => page.locator(selector)),
-    maskColor: "#111827",
+    style: `
+${maskSelectors.join(", ")} {
+  filter: blur(14px) !important;
+  -webkit-filter: blur(14px) !important;
+}
+`,
   };
 }
 
