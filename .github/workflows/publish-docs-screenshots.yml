@@ -170,8 +170,7 @@ jobs:
 
           FILTERED_CURRENT_ROOT="$(mktemp -d)"
           python3 "${GITHUB_WORKSPACE}/scripts/resolve-doc-screenshot-allowlist.py" \
-            --hushline-dir "$GITHUB_WORKSPACE" \
-            --website-dir "$PWD" \
+            --refs-input "${ARTIFACT_DIR}/capture_files.json" \
             --screenshot-root "$WEBSITE_SCREENSHOT_ROOT" \
             --current-root "$CURRENT_ROOT" \
             --filtered-root "$FILTERED_CURRENT_ROOT"

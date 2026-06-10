@@ -16,6 +16,13 @@ on:
         required: false
         default: ""
         type: string
+    secrets:
+      HUSHLINE_DOCS_SCREENSHOTS_PAT:
+        required: false
+      HUSHLINE_WEBSITE_SCREENSHOTS_PAT:
+        required: false
+      SCREENSHOTS_PUSH_TOKEN:
+        required: false
   workflow_dispatch:
     inputs:
       release_key:
@@ -153,19 +160,36 @@ jobs:
         id: capture_manifest
         if: steps.manifest.outputs.enabled == 'true'
         env:
+          DOCS_REPOSITORY: scidsg/hushline-docs
+          DOCS_DEFAULT_BRANCH: main
           WEBSITE_REPOSITORY: scidsg/hushline-website
           WEBSITE_DEFAULT_BRANCH: main
+          DOCS_READ_TOKEN: ${{ secrets.HUSHLINE_DOCS_SCREENSHOTS_PAT || secrets.SCREENSHOTS_PUSH_TOKEN }}
           WEBSITE_READ_TOKEN: ${{ secrets.HUSHLINE_WEBSITE_SCREENSHOTS_PAT || secrets.SCREENSHOTS_PUSH_TOKEN }}
         run: |
           set -euo pipefail
+          DOCS_DIR="${RUNNER_TEMP}/hushline-docs"
           WEBSITE_DIR="${RUNNER_TEMP}/hushline-website"
           CAPTURE_MANIFEST="${RUNNER_TEMP}/docs-screenshot-capture-manifest.json"
           CAPTURE_FILES="${RUNNER_TEMP}/docs-screenshot-capture-files.json"
+
+          DOCS_CLONE_URL="https://github.com/${DOCS_REPOSITORY}.git"
+          if [ -n "${DOCS_READ_TOKEN:-}" ]; then
+            DOCS_CLONE_URL="https://x-access-token:${DOCS_READ_TOKEN}@github.com/${DOCS_REPOSITORY}.git"
+          fi
 
           CLONE_URL="https://github.com/${WEBSITE_REPOSITORY}.git"
           if [ -n "${WEBSITE_READ_TOKEN:-}" ]; then
             CLONE_URL="https://x-access-token:${WEBSITE_READ_TOKEN}@github.com/${WEBSITE_REPOSITORY}.git"
           fi
+
+          git clone \
+            --depth 1 \
+            --filter=blob:none \
+            --single-branch \
+            --branch "${DOCS_DEFAULT_BRANCH}" \
+            "$DOCS_CLONE_URL" \
+            "$DOCS_DIR"
 
           git clone \
             --depth 1 \
@@ -177,6 +201,7 @@ jobs:
 
           python3 .trusted-workflow/scripts/resolve-doc-screenshot-allowlist.py \
             --hushline-dir "$GITHUB_WORKSPACE" \
+            --docs-dir "$DOCS_DIR" \
             --website-dir "$WEBSITE_DIR" \
             --screenshot-root src/assets/img/screenshots \
             --manifest-in docs/screenshots/scenes.json \

@@ -65,9 +65,19 @@ def parse_args() -> argparse.Namespace:
         help="Website repository checkout to scan. Can be provided more than once.",
     )
     parser.add_argument(
+        "--docs-dir",
+        action="append",
+        default=[],
+        help="Docs repository checkout to scan. Can be provided more than once.",
+    )
+    parser.add_argument(
         "--hushline-dir",
         default=".",
         help="Hush Line repository checkout to scan for docs references.",
+    )
+    parser.add_argument(
+        "--refs-input",
+        help="Precomputed captureFiles JSON array to use instead of scanning source trees.",
     )
     parser.add_argument(
         "--screenshot-root",
@@ -193,6 +203,13 @@ def write_capture_manifest(manifest_in: Path, manifest_out: Path, refs: list[str
     manifest_out.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 
+def read_refs_input(refs_input: Path) -> list[str]:
+    refs = json.loads(refs_input.read_text(encoding="utf-8"))
+    if not isinstance(refs, list) or not all(isinstance(ref, str) for ref in refs):
+        raise SystemExit(f"Expected captureFiles JSON array at {refs_input}")
+    return sorted(set(refs))
+
+
 def copy_filtered_current(current_root: Path, filtered_root: Path, refs: list[str]) -> None:
     available = available_images(current_root)
     missing = sorted(set(refs) - available)
@@ -217,27 +234,38 @@ def main() -> int:
     screenshot_root = args.screenshot_root.strip("/")
     patterns = compile_reference_patterns(screenshot_root)
 
-    refs = set()
-    hushline_dir = Path(args.hushline_dir)
-    refs.update(
-        collect_references(
-            hushline_dir,
-            docs_only=True,
-            patterns=patterns,
-            screenshot_root=screenshot_root,
-        )
-    )
-    for website_dir in args.website_dir:
+    if args.refs_input:
+        ordered_refs = read_refs_input(Path(args.refs_input))
+    else:
+        refs = set()
+        hushline_dir = Path(args.hushline_dir)
         refs.update(
             collect_references(
-                Path(website_dir),
-                docs_only=False,
+                hushline_dir,
+                docs_only=True,
                 patterns=patterns,
                 screenshot_root=screenshot_root,
             )
         )
-
-    ordered_refs = sorted(refs)
+        for docs_dir in args.docs_dir:
+            refs.update(
+                collect_references(
+                    Path(docs_dir),
+                    docs_only=True,
+                    patterns=patterns,
+                    screenshot_root=screenshot_root,
+                )
+            )
+        for website_dir in args.website_dir:
+            refs.update(
+                collect_references(
+                    Path(website_dir),
+                    docs_only=False,
+                    patterns=patterns,
+                    screenshot_root=screenshot_root,
+                )
+            )
+        ordered_refs = sorted(refs)
 
     if args.output:
         output = Path(args.output)

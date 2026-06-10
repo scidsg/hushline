@@ -121,6 +121,10 @@ def test_screenshots_workflow_publishes_current_folder_to_website_directly() -> 
     assert "ref: ${{ job.workflow_sha }}" in trusted_checkout_section
     assert "ref: ${{ github.workflow_sha }}" not in trusted_checkout_section
     assert "Resolve screenshot capture manifest" in capture_workflow_text
+    assert "DOCS_REPOSITORY: scidsg/hushline-docs" in capture_workflow_text
+    assert 'DOCS_DIR="${RUNNER_TEMP}/hushline-docs"' in capture_workflow_text
+    assert '--branch "${DOCS_DEFAULT_BRANCH}"' in capture_workflow_text
+    assert '--docs-dir "$DOCS_DIR"' in capture_workflow_text
     assert '--manifest-out "$CAPTURE_MANIFEST"' in capture_workflow_text
     assert '--output "$CAPTURE_FILES"' in capture_workflow_text
     assert 'cp -R "$RELEASE_ROOT" "${ARTIFACT_ROOT}/screenshots/release"' in artifact_section
@@ -137,6 +141,7 @@ def test_screenshots_workflow_publishes_current_folder_to_website_directly() -> 
     assert 'LEGACY_CURRENT_ROOT="${ARTIFACT_DIR}/screenshots/current"' in website_section
     assert '--branch "${WEBSITE_DEFAULT_BRANCH}"' in website_section
     assert 'git sparse-checkout set "${WEBSITE_SCREENSHOT_ROOT}/current"' not in website_section
+    assert '--refs-input "${ARTIFACT_DIR}/capture_files.json"' in website_section
     assert '--current-root "$CURRENT_ROOT"' in website_section
     assert '--filtered-root "$FILTERED_CURRENT_ROOT"' in website_section
     assert 'mkdir -p "${WEBSITE_SCREENSHOT_ROOT}/current"' in website_section
