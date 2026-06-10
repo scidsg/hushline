@@ -177,8 +177,10 @@ def test_docs_screenshot_capture_supports_scene_masks() -> None:
 def test_docs_screenshot_allowlist_resolves_only_referenced_images(tmp_path: Path) -> None:
     script = _load_allowlist_script()
     website_dir = tmp_path / "website"
+    docs_dir = tmp_path / "docs_repo"
     hushline_dir = tmp_path / "hushline"
     (website_dir / "src" / "pages").mkdir(parents=True)
+    (docs_dir / "docs" / "docs" / "getting-started").mkdir(parents=True)
     (hushline_dir / "docs" / "screenshots").mkdir(parents=True)
 
     (website_dir / "src" / "pages" / "index.astro").write_text(
@@ -188,6 +190,12 @@ def test_docs_screenshot_allowlist_resolves_only_referenced_images(tmp_path: Pat
                 'import img from "../assets/img/screenshots/current/admin/imported.png";',
             ]
         ),
+        encoding="utf-8",
+    )
+    (docs_dir / "docs" / "docs" / "getting-started" / "secure-your-account.md").write_text(
+        "![Scan QR](https://github.com/scidsg/hushline-screenshots/blob/main/"
+        "releases/latest/artvandelay/auth-artvandelay-enable-2fa-desktop-light-fold.png"
+        "?raw=true)",
         encoding="utf-8",
     )
     (hushline_dir / "README.md").write_text(
@@ -201,20 +209,30 @@ def test_docs_screenshot_allowlist_resolves_only_referenced_images(tmp_path: Pat
     )
 
     patterns = script.compile_reference_patterns("src/assets/img/screenshots")
-    refs = script.collect_references(
-        website_dir,
-        docs_only=False,
-        patterns=patterns,
-        screenshot_root="src/assets/img/screenshots",
-    ) | script.collect_references(
-        hushline_dir,
-        docs_only=True,
-        patterns=patterns,
-        screenshot_root="src/assets/img/screenshots",
+    refs = (
+        script.collect_references(
+            website_dir,
+            docs_only=False,
+            patterns=patterns,
+            screenshot_root="src/assets/img/screenshots",
+        )
+        | script.collect_references(
+            docs_dir,
+            docs_only=True,
+            patterns=patterns,
+            screenshot_root="src/assets/img/screenshots",
+        )
+        | script.collect_references(
+            hushline_dir,
+            docs_only=True,
+            patterns=patterns,
+            screenshot_root="src/assets/img/screenshots",
+        )
     )
 
     assert refs == {
         "admin/imported.png",
+        "artvandelay/auth-artvandelay-enable-2fa-desktop-light-fold.png",
         "guest/used-from-website.png",
         "newman/used-from-docs.png",
     }
@@ -232,6 +250,27 @@ def test_docs_screenshot_allowlist_filters_current_tree(tmp_path: Path) -> None:
 
     assert (filtered_root / "guest" / "used.png").read_bytes() == b"used"
     assert not (filtered_root / "guest" / "unused.png").exists()
+
+
+def test_docs_screenshot_allowlist_can_reuse_capture_files_artifact(tmp_path: Path) -> None:
+    script = _load_allowlist_script()
+    refs_input = tmp_path / "capture_files.json"
+
+    refs_input.write_text(
+        json.dumps(
+            [
+                "guest/used.png",
+                "guest/used.png",
+                "artvandelay/auth-artvandelay-enable-2fa-desktop-light-fold.png",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    assert script.read_refs_input(refs_input) == [
+        "artvandelay/auth-artvandelay-enable-2fa-desktop-light-fold.png",
+        "guest/used.png",
+    ]
 
 
 def test_docs_screenshots_manifest_artvandelay_notifications_waits_for_third_recipient() -> None:
