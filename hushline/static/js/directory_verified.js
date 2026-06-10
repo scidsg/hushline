@@ -591,6 +591,7 @@
         tab === "verified" &&
         user.is_featured &&
         user.is_verified &&
+        user.has_pgp_key &&
         !user.is_public_record &&
         !user.is_globaleaks &&
         !user.is_newsroom &&

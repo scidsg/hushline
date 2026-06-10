@@ -375,6 +375,77 @@ def test_directory_verified_tab_promotes_featured_users_first(
     assert normal_card_heading.get_text(strip=True) == "Admin User"
 
 
+def test_directory_verified_tab_keeps_featured_info_only_accounts_in_info_only_section(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    featured_info_only_user = _directory_username(
+        username="featured-info-only-user",
+        display_name="Featured Info Only User",
+        is_verified=True,
+        is_featured=True,
+        pgp_key="",
+    )
+    featured_message_capable_user = _directory_username(
+        username="featured-message-capable-user",
+        display_name="Featured Message Capable User",
+        is_verified=True,
+        is_featured=True,
+    )
+    standard_user = _directory_username(
+        username="standard-user",
+        display_name="Standard User",
+        is_verified=True,
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames",
+        lambda: (
+            featured_info_only_user,
+            featured_message_capable_user,
+            standard_user,
+        ),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
+    monkeypatch.setattr(
+        directory_routes,
+        "_shuffle_featured_directory_items",
+        lambda items: list(items),
+    )
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    verified_panel = soup.find(id="verified")
+    assert verified_panel is not None
+
+    featured_section = verified_panel.select_one("[data-featured-carousel]")
+    assert featured_section is not None
+    featured_headings = [
+        heading.get_text(strip=True)
+        for heading in featured_section.select("[data-featured-slide] h3")
+    ]
+    assert featured_headings == ["Featured Message Capable User"]
+
+    info_label = verified_panel.find("p", class_="label", string="📇 Info-Only Accounts")
+    assert info_label is not None
+    info_list = info_label.find_next_sibling("div", class_="user-list")
+    assert info_list is not None
+    info_headings = [heading.get_text(strip=True) for heading in info_list.select("h3")]
+    assert info_headings == ["Featured Info Only User"]
+
+    users_response = client.get(url_for("directory_users", tab="verified"))
+    assert users_response.status_code == 200
+    rows = users_response.json or []
+    assert [row["primary_username"] for row in rows] == [
+        "featured-message-capable-user",
+        "featured-info-only-user",
+        "standard-user",
+    ]
+    assert rows[1]["has_pgp_key"] is False
+
+
 def test_directory_randomizes_featured_user_order(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
