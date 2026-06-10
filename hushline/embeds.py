@@ -22,10 +22,7 @@ EMBED_IFRAME_SANDBOX = (
     "allow-scripts allow-top-navigation-by-user-activation"
 )
 EMBED_IFRAME_HEIGHT = 1300
-EMBED_IFRAME_MIN_HEIGHT = 320
-EMBED_IFRAME_MAX_HEIGHT = 4096
 EMBED_IFRAME_MAX_WIDTH = 720
-EMBED_RESIZE_MESSAGE_TYPE = "hushline:embed:height"
 
 
 @dataclass(frozen=True)
@@ -45,7 +42,7 @@ def embed_iframe_snippet(username: Username) -> str:
     title = html.escape(
         f"Send a secure Hush Line message to {username.display_name or username.username}"
     )
-    iframe = (
+    return (
         f'<iframe src="{src}" '
         f'title="{title}" '
         f'sandbox="{EMBED_IFRAME_SANDBOX}" '
@@ -57,27 +54,6 @@ def embed_iframe_snippet(username: Username) -> str:
         "border-radius:0.25rem;"
         'box-shadow:0px 4px 8px -4px rgba(0,0,0,0.15);"></iframe>'
     )
-    resize_script = (
-        "<script>(function(){"
-        "var iframe=document.currentScript&&document.currentScript.previousElementSibling;"
-        'if(!iframe||iframe.tagName!=="IFRAME")return;'
-        "var origin;"
-        "try{origin=new URL(iframe.src).origin;}catch(error){return;}"
-        'window.addEventListener("message",function(event){'
-        "if(event.source!==iframe.contentWindow)return;"
-        'if(event.origin!==origin&&event.origin!=="null")return;'
-        "var data=event.data||{};"
-        f'if(data.type!=="{EMBED_RESIZE_MESSAGE_TYPE}"||data.version!==1)return;'
-        "var height=Number(data.height);"
-        "if(!Number.isInteger(height)"
-        f"||height<{EMBED_IFRAME_MIN_HEIGHT}"
-        f"||height>{EMBED_IFRAME_MAX_HEIGHT})return;"
-        "iframe.height=String(height);"
-        'iframe.style.height=height+"px";'
-        "});"
-        "})();</script>"
-    )
-    return iframe + resize_script
 
 
 def _embed_hmac(value: str) -> str:

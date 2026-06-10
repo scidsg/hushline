@@ -59,24 +59,11 @@ def test_static_js_bundles_avoid_eval_wrappers() -> None:
         assert "webpack://" not in bundle, static_js.name
 
 
-def test_embed_resize_bundle_is_declared_and_height_only() -> None:
+def test_embed_resize_bundle_is_not_declared() -> None:
     webpack_config = (ROOT / "webpack.config.js").read_text(encoding="utf-8")
-    js = (ROOT / "assets/js/embed-resize.js").read_text(encoding="utf-8")
 
-    assert '"embed-resize",' in webpack_config
-    assert 'const MESSAGE_TYPE = "hushline:embed:height";' in js
-    assert "const MIN_HEIGHT = 320;" in js
-    assert "const MAX_HEIGHT = 4096;" in js
-    assert "const HEIGHT_STEP = 32;" in js
-    assert 'document.querySelector(".embed-shell")' in js
-    assert "root.getBoundingClientRect()" in js
-    assert "window.parent.postMessage(message, origin)" in js
-    assert "ResizeObserver" in js
-    assert "MutationObserver" in js
-    assert "field_" not in js
-    assert "csrf" not in js.lower()
-    assert "cipher" not in js.lower()
-    assert "reply" not in js.lower()
+    assert '"embed-resize",' not in webpack_config
+    assert not (ROOT / "assets/js/embed-resize.js").exists()
 
 
 def test_client_side_encryption_has_platform_guards() -> None:

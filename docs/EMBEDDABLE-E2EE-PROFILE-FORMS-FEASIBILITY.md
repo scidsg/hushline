@@ -1,6 +1,6 @@
 # Embeddable E2EE Profile Forms Feasibility Study
 
-Last updated: 2026-05-03
+Last updated: 2026-06-10
 
 This study evaluates whether Hush Line should support embeddable profile forms on recipient-controlled websites. It is a feasibility study only. It is not approval to implement embeds, relax Hush Line's current framing protections, or trust arbitrary third-party JavaScript with plaintext disclosure content.
 
@@ -8,7 +8,7 @@ This study evaluates whether Hush Line should support embeddable profile forms o
 
 Recommendation: `Proceed with a restricted hosted iframe embed`, gated behind explicit administrator controls and recipient opt-in for eligible profiles.
 
-The preferred path is a Hush Line-hosted embed endpoint that renders a minimal intake form in a sandboxed iframe. The form, JavaScript, CSRF token, CAPTCHA, custom fields, client-side E2EE bundle, submission POST, success state, and no-JS fallback should all remain served by Hush Line. The embedding site should receive only the iframe URL, a fallback fixed-size container, and an optional bounded height-only resize listener.
+The preferred path is a Hush Line-hosted embed endpoint that renders a minimal intake form in a sandboxed iframe. The form, JavaScript, CSRF token, CAPTCHA, custom fields, client-side E2EE bundle, submission POST, success state, and no-JS fallback should all remain served by Hush Line. The embedding site should receive only the iframe URL and a fixed-size container.
 
 Reject script widgets, static generated forms, and any model where the parent website owns the form DOM or submission JavaScript. Those approaches let the embedding site observe or alter plaintext disclosure content before Hush Line encryption can run.
 
@@ -35,7 +35,7 @@ Shape:
 - The parent site receives an `<iframe>` snippet, not a script snippet.
 - The iframe uses `sandbox` attributes that allow forms and scripts but do not grant same-origin access to the parent.
 - The iframe owns the form DOM, CSRF token, CAPTCHA, recipient public keys JSON, client-side encryption bundle, and POST target.
-- The iframe may publish bounded, quantized height updates to configured parent origins so the parent can fit the frame without learning submission data.
+- The iframe should use a fixed-size container instead of publishing dynamic height updates to parent pages.
 - The iframe success state should show the reply link inside Hush Line-controlled UI and include a clear option to open the reply page in a new top-level Hush Line tab.
 - Hush Line should continue to support server-side encryption fallback when JavaScript is unavailable, but the embed should clearly indicate when the sender should open the full Hush Line profile for the strongest experience.
 
@@ -48,7 +48,7 @@ Why this is viable:
 
 Main limits:
 
-- The parent site can still observe that a visitor loaded the page, the iframe size, coarse timing, scroll context, and whether the iframe URL was requested.
+- The parent site can still observe that a visitor loaded the page, the fixed iframe size, coarse timing, scroll context, and whether the iframe URL was requested.
 - The parent site can overlay or visually surround the iframe in misleading ways unless Hush Line requires visible Hush Line trust chrome inside the iframe.
 - Browser privacy features, tracker blocking, iframe sandboxing, and third-party cookie behavior vary. The embed should not depend on third-party cookies for unauthenticated submission.
 
@@ -178,7 +178,7 @@ The iframe model can preserve client-side E2EE because the encryption code, reci
 - Recipient public keys are loaded from Hush Line, not from parent-page attributes.
 - Parent pages cannot pass replacement keys into the iframe.
 - `postMessage` is not used for plaintext, ciphertext, keys, field definitions, reply slugs, validation errors, parent-page metadata, or arbitrary submission state.
-- Any `postMessage` resize payload is limited to a message type, protocol version, and bounded rounded height.
+- `postMessage` is not used for resize telemetry because even bounded height changes can reveal submission outcomes or layout-dependent form state to the parent page.
 - The server-side fallback remains available for no-JS or failed-client-crypto submissions, matching current behavior.
 - Existing padding behavior for encrypted fields remains in place to reduce field-length inference.
 
@@ -223,8 +223,7 @@ An embed cannot make sender activity invisible to the parent site. The parent ca
 - Treat parent cooperation as helpful but not sufficient; a hostile or modified parent page can remove the iframe attribute.
 - Avoid putting usernames, field names, disclosure subjects, campaign names, or sender-specific values in query strings.
 - Do not send parent URL, title, analytics IDs, or arbitrary metadata to Hush Line.
-- Use a fixed fallback height and bounded, quantized iframe resize messages so height changes do not reveal exact form state.
-- Send resize messages only to configured embed origins and have the parent listener accept them only from the matching iframe window.
+- Use a fixed iframe height so parent pages cannot infer submission outcomes or layout-dependent form state from resize messages.
 - Do not expose reply slugs to the parent page.
 
 ### Logging and Analytics
