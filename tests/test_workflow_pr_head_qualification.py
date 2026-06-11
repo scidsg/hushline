@@ -366,3 +366,38 @@ def test_workflow_pr_head_guard_rejects_missing_head_value_with_repo() -> None:
     command = "gh pr create --repo owner/repo --head"
 
     assert workflow_guard.is_unqualified_head(command) is True
+
+
+def test_staging_release_branch_resets_to_trusted_base_before_auto_merge() -> None:
+    workflow_text = _workflow_text(".github/workflows/bump-staging-after-release.yml")
+    reset_section = workflow_text.split(
+        "      - name: Reset release branch to trusted infra base",
+        1,
+    )[1].split("      - name: Update staging version branch reference", 1)[0]
+    commit_section = workflow_text.split("      - name: Commit infra branch", 1)[1].split(
+        "      - name: Verify only the staging tag changed",
+        1,
+    )[0]
+    verify_section = workflow_text.split(
+        "      - name: Verify only the staging tag changed",
+        1,
+    )[1].split("      - name: Push infra branch", 1)[0]
+    push_section = workflow_text.split("      - name: Push infra branch", 1)[1].split(
+        "      - name: Create or update staging PR",
+        1,
+    )[0]
+
+    assert 'git fetch origin "$INFRA_BRANCH":"refs/remotes/origin/$INFRA_BRANCH"' in reset_section
+    assert 'git checkout -B "$INFRA_BRANCH" "origin/$INFRA_BASE_REF"' in reset_section
+    assert 'git checkout -B "$INFRA_BRANCH" "origin/$INFRA_BRANCH"' not in reset_section
+    assert (
+        'git push --force-with-lease=refs/heads/"$INFRA_BRANCH" origin "$INFRA_BRANCH"'
+        not in commit_section
+    )
+    assert "changed_lines != tag_changes" in verify_section
+    assert "len(tag_changes) != 2" in verify_section
+    assert "expected_added_tag.match(tag_changes[1])" in verify_section
+    assert (
+        'git push --force-with-lease=refs/heads/"$INFRA_BRANCH" origin "$INFRA_BRANCH"'
+        in push_section
+    )
