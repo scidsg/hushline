@@ -209,7 +209,9 @@ def test_docs_screenshot_release_tag_is_validated_before_shell_use() -> None:
     assert "EVENT_RELEASE_TAG: ${{ github.event.release.tag_name }}" in validate_section
     assert 'os.environ["EVENT_RELEASE_TAG"].strip()' in validate_section
     assert 're.fullmatch(r"v[0-9]+\\.[0-9]+\\.[0-9]+", release_tag)' in validate_section
+    assert 'RELEASE_KEY="${{ inputs.release_key }}"' not in resolve_section
     assert 'RELEASE_KEY="${{ github.event.release.tag_name }}"' not in resolve_section
+    assert 'RELEASE_KEY="${INPUT_RELEASE_KEY:-}"' in resolve_section
     assert 'RELEASE_KEY="${EVENT_RELEASE_TAG:-}"' in resolve_section
     assert "INPUT_RELEASE_KEY: ${{ inputs.release_key }}" in resolve_section
     assert "EVENT_RELEASE_TAG: ${{ github.event.release.tag_name }}" in resolve_section
