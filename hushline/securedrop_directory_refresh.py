@@ -220,9 +220,35 @@ def fetch_securedrop_directory_rows(
     return [dict(item) for item in payload]
 
 
+_MARKDOWN_SPECIAL_CHARS = r"`*_{}[]()#+-.!|>"
+
+
+def _sanitize_summary_markdown_text(value: object) -> str:
+    normalized = unicodedata.normalize("NFKC", str(value).strip())
+    without_controls = "".join(
+        " " if unicodedata.category(char)[0] == "C" else char for char in normalized
+    )
+    collapsed = re.sub(r"\s+", " ", without_controls).strip()
+    escaped = collapsed.replace("\\", "\\\\")
+    escaped = re.sub(
+        f"([{re.escape(_MARKDOWN_SPECIAL_CHARS)}])",
+        r"\\\1",
+        escaped,
+    )
+    return escaped.replace("@", "@\u200b")
+
+
+def _sanitize_summary_code_text(value: object) -> str:
+    normalized = unicodedata.normalize("NFKC", str(value).strip())
+    without_controls = "".join(
+        " " if unicodedata.category(char)[0] == "C" else char for char in normalized
+    )
+    return re.sub(r"\s+", " ", without_controls).strip().replace("`", "'")
+
+
 def _summary_row_label(row: Mapping[str, object]) -> str:
-    row_id = str(row.get("id", "")).strip()
-    name = str(row.get("name", "")).strip()
+    row_id = _sanitize_summary_code_text(row.get("id", ""))
+    name = _sanitize_summary_markdown_text(row.get("name", ""))
     if name and row_id:
         return f"{name} (`{row_id}`)"
     if name:
