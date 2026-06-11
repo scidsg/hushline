@@ -43,6 +43,22 @@ jobs:
   capture:
     runs-on: ubuntu-latest
     steps:
+      - name: Validate release tag
+        if: ${{ github.event_name == 'release' }}
+        env:
+          EVENT_RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          import re
+          import sys
+
+          release_tag = os.environ["EVENT_RELEASE_TAG"].strip()
+          if not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", release_tag):
+              sys.exit(f"Unexpected docs screenshot release tag: {release_tag!r}")
+          PY
+
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           ref: ${{ inputs.release_ref != '' && inputs.release_ref || github.event_name == 'release' && github.event.release.tag_name || inputs.release_key != '' && inputs.release_key || github.sha }}
@@ -142,12 +158,12 @@ jobs:
         if: steps.manifest.outputs.enabled == 'true'
         env:
           INPUT_RELEASE_KEY: ${{ inputs.release_key }}
-          RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
+          EVENT_RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
-          RELEASE_KEY="$INPUT_RELEASE_KEY"
+          RELEASE_KEY="${INPUT_RELEASE_KEY:-}"
           if [ -z "$RELEASE_KEY" ]; then
-            RELEASE_KEY="$RELEASE_TAG_NAME"
+            RELEASE_KEY="${EVENT_RELEASE_TAG:-}"
           fi
           if [ -z "$RELEASE_KEY" ]; then
             RELEASE_KEY="$(git tag --points-at HEAD | rg '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1 || true)"

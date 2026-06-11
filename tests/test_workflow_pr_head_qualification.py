@@ -1,6 +1,13 @@
+import importlib.util
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+SCRIPT_PATH = REPO_ROOT / "scripts" / "check_workflow_pr_head_qualification.py"
+spec = importlib.util.spec_from_file_location("check_workflow_pr_head_qualification", SCRIPT_PATH)
+assert spec is not None
+workflow_guard = importlib.util.module_from_spec(spec)
+assert spec.loader is not None
+spec.loader.exec_module(workflow_guard)
 
 
 def _workflow_text(relative_path: str) -> str:
@@ -190,18 +197,24 @@ def test_screenshots_workflow_publishes_current_folder_to_website_directly() -> 
     assert "${WEBSITE_SCREENSHOT_ROOT}/releases" not in website_section
 
 
-def test_docs_screenshots_release_key_input_is_passed_through_environment() -> None:
+def test_docs_screenshot_release_tag_is_validated_before_shell_use() -> None:
     workflow_text = _workflow_text(".github/workflows/docs-screenshots.yml")
+    validate_section = workflow_text.split("      - name: Validate release tag", 1)[1].split(
+        "      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5", 1
+    )[0]
     resolve_section = workflow_text.split("      - name: Resolve release key", 1)[1].split(
         "      - name: Resolve screenshot capture manifest", 1
     )[0]
 
-    assert "INPUT_RELEASE_KEY: ${{ inputs.release_key }}" in resolve_section
-    assert "RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}" in resolve_section
-    assert 'RELEASE_KEY="$INPUT_RELEASE_KEY"' in resolve_section
-    assert 'RELEASE_KEY="$RELEASE_TAG_NAME"' in resolve_section
+    assert "EVENT_RELEASE_TAG: ${{ github.event.release.tag_name }}" in validate_section
+    assert 'os.environ["EVENT_RELEASE_TAG"].strip()' in validate_section
+    assert 're.fullmatch(r"v[0-9]+\\.[0-9]+\\.[0-9]+", release_tag)' in validate_section
     assert 'RELEASE_KEY="${{ inputs.release_key }}"' not in resolve_section
     assert 'RELEASE_KEY="${{ github.event.release.tag_name }}"' not in resolve_section
+    assert 'RELEASE_KEY="${INPUT_RELEASE_KEY:-}"' in resolve_section
+    assert 'RELEASE_KEY="${EVENT_RELEASE_TAG:-}"' in resolve_section
+    assert "INPUT_RELEASE_KEY: ${{ inputs.release_key }}" in resolve_section
+    assert "EVENT_RELEASE_TAG: ${{ github.event.release.tag_name }}" in resolve_section
 
 
 def test_docs_screenshot_capture_manifest_does_not_persist_read_tokens() -> None:
@@ -286,3 +299,33 @@ def test_epic_child_close_workflow_uses_trusted_head_branch_not_pr_body() -> Non
     assert "const issueNumber = Number(headMatch[1]);" in workflow_text
     assert "context.payload.pull_request.body" not in workflow_text
     assert "Linked issue:" not in workflow_text
+
+
+def test_workflow_pr_head_guard_rejects_unqualified_long_head_with_equals() -> None:
+    command = "gh pr list --repo owner/repo --head=feature-branch"
+
+    assert workflow_guard.is_unqualified_head(command) is True
+
+
+def test_workflow_pr_head_guard_allows_qualified_long_head_with_equals() -> None:
+    command = "gh pr list --repo owner/repo --head=owner:feature-branch"
+
+    assert workflow_guard.is_unqualified_head(command) is False
+
+
+def test_workflow_pr_head_guard_rejects_unqualified_short_head() -> None:
+    command = "gh pr create --repo owner/repo -H feature-branch"
+
+    assert workflow_guard.is_unqualified_head(command) is True
+
+
+def test_workflow_pr_head_guard_allows_qualified_short_head_with_equals() -> None:
+    command = "gh pr create --repo owner/repo -H=owner:feature-branch"
+
+    assert workflow_guard.is_unqualified_head(command) is False
+
+
+def test_workflow_pr_head_guard_rejects_missing_head_value_with_repo() -> None:
+    command = "gh pr create --repo owner/repo --head"
+
+    assert workflow_guard.is_unqualified_head(command) is True
