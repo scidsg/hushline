@@ -80,6 +80,31 @@ def test_show_directory_caution_badge_honors_explicit_cautious_override() -> Non
     )
 
 
+@pytest.mark.parametrize(
+    ("display_name", "expected"),
+    [
+        ("Ｈｕｓｈ Ｌｉｎｅ", "hushline"),
+        ("Ａｄｍｉｎ", "admin"),
+        ("𝙃𝙪𝙨𝙝 𝙇𝙞𝙣𝙚", "hushline"),
+        ("Αdmin", "admin"),
+        ("Нush Line", "hushline"),
+        ("һuѕһ ӏіոе", "hushline"),
+    ],
+)
+def test_normalized_directory_display_name_handles_unicode_confusables(
+    display_name: str, expected: str
+) -> None:
+    assert routes_common.normalized_directory_display_name(display_name) == expected
+    assert (
+        routes_common.show_directory_caution_badge(
+            display_name,
+            is_admin=False,
+            is_verified=False,
+        )
+        is True
+    )
+
+
 def test_do_send_email_returns_early_without_enabled_notifications(
     user: User, monkeypatch: pytest.MonkeyPatch
 ) -> None:

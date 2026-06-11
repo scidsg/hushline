@@ -106,10 +106,11 @@ def test_profile_accepts_case_insensitive_username(
     assert user_alias.username in response.text
 
 
+@pytest.mark.parametrize("display_name", ["Admin of Hush Line", "Ｈｕｓｈ Ｌｉｎｅ"])
 def test_profile_shows_caution_badge_for_suspicious_non_admin_display_name(
-    client: FlaskClient, user: User
+    client: FlaskClient, user: User, display_name: str
 ) -> None:
-    user.primary_username.display_name = "Admin of Hush Line"
+    user.primary_username.display_name = display_name
     user.primary_username.is_verified = False
     user.is_admin = False
     db.session.commit()
