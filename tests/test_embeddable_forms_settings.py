@@ -100,6 +100,10 @@ def _iframe_from_snippet(response_text: str) -> BeautifulSoup:
     return BeautifulSoup(snippet_text, "html.parser")
 
 
+def _embed_post_headers(**extra_headers: str) -> dict[str, str]:
+    return {"Origin": "http://localhost:8080", **extra_headers}
+
+
 def _embed_submission_data(response_text: str) -> dict[str, str]:
     page = BeautifulSoup(response_text, "html.parser")
     label = page.find("label", attrs={"for": "captcha_answer"})
@@ -296,6 +300,7 @@ def test_embed_profile_submission_does_not_require_session_cookie(
                     "field_1": "Embedded sessionless message",
                     **submission_data,
                 },
+                headers=_embed_post_headers(),
             )
 
         assert post_response.status_code == 200, post_response.text
@@ -349,6 +354,7 @@ def test_embed_profile_submission_accepts_client_encrypted_fields(
             ),
             **submission_data,
         },
+        headers=_embed_post_headers(),
     )
 
     assert post_response.status_code == 200, post_response.text
@@ -407,9 +413,9 @@ def test_embed_submission_operational_counters_exclude_sensitive_request_data(
                 "analytics_id": "analytics-secret-123",
                 **submission_data,
             },
-            headers={
-                "Referer": "https://publisher.example/investigation?source=confidential",
-            },
+            headers=_embed_post_headers(
+                Referer="https://publisher.example/investigation?source=confidential",
+            ),
             environ_base={"REMOTE_ADDR": "203.0.113.42"},
         )
 
@@ -457,6 +463,7 @@ def test_embed_profile_rate_limit_throttles_per_profile_without_payload_storage(
             **first_submission_data,
         },
         environ_base={"REMOTE_ADDR": "203.0.113.10"},
+        headers=_embed_post_headers(),
     )
     assert first_post.status_code == 200, first_post.text
 
@@ -470,6 +477,7 @@ def test_embed_profile_rate_limit_throttles_per_profile_without_payload_storage(
             **second_submission_data,
         },
         environ_base={"REMOTE_ADDR": "198.51.100.10"},
+        headers=_embed_post_headers(),
     )
 
     assert second_post.status_code == 429
@@ -500,6 +508,7 @@ def test_embed_profile_rate_limit_throttles_per_source_bucket_across_profiles(
             **first_submission_data,
         },
         environ_base={"REMOTE_ADDR": "203.0.113.42"},
+        headers=_embed_post_headers(),
     )
     assert first_post.status_code == 200, first_post.text
 
@@ -513,6 +522,7 @@ def test_embed_profile_rate_limit_throttles_per_source_bucket_across_profiles(
             **second_submission_data,
         },
         environ_base={"REMOTE_ADDR": "203.0.113.99"},
+        headers=_embed_post_headers(),
     )
 
     assert second_post.status_code == 429
@@ -660,6 +670,7 @@ def test_embed_profile_submission_requires_embed_form_token(
             "field_1": "Embedded message",
             **submission_data,
         },
+        headers=_embed_post_headers(),
     )
 
     assert post_response.status_code == 400
@@ -685,10 +696,60 @@ def test_embed_profile_submission_rejects_invalid_csrf_token(
             "field_1": "Embedded message",
             **submission_data,
         },
+        headers=_embed_post_headers(),
     )
 
     assert post_response.status_code == 400
     assert "Invalid embed form token" in post_response.text
+    assert _first_message_for(user.primary_username) is None
+
+
+def test_embed_profile_submission_rejects_missing_origin(client: FlaskClient, user: User) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "Embedded Signal contact",
+            "field_1": "Embedded message",
+            **submission_data,
+        },
+    )
+
+    assert post_response.status_code == 400
+    assert "Invalid embed request origin" in post_response.text
+    assert _first_message_for(user.primary_username) is None
+
+
+def test_embed_profile_submission_rejects_cross_site_replayed_tokens(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    harvested_submission_data = _embed_submission_data(response.text)
+
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "Embedded Signal contact",
+            "field_1": "Embedded message",
+            **harvested_submission_data,
+        },
+        headers={"Origin": "https://evil.example"},
+    )
+
+    assert post_response.status_code == 400
+    assert "Invalid embed request origin" in post_response.text
     assert _first_message_for(user.primary_username) is None
 
 
@@ -711,6 +772,7 @@ def test_embed_profile_submission_rejects_owner_guard_mismatch(
             "field_1": "Embedded message",
             **submission_data,
         },
+        headers=_embed_post_headers(),
     )
 
     assert post_response.status_code == 400
@@ -735,6 +797,7 @@ def test_embed_profile_submission_rejects_captcha_failure(client: FlaskClient, u
             "field_1": "Embedded message",
             **submission_data,
         },
+        headers=_embed_post_headers(),
     )
 
     assert post_response.status_code == 400
@@ -768,6 +831,7 @@ def test_embed_profile_submission_rejects_missing_required_field(
             "field_0": "Embedded Signal contact",
             **submission_data,
         },
+        headers=_embed_post_headers(),
     )
 
     assert post_response.status_code == 400
@@ -796,6 +860,7 @@ def test_embed_profile_submission_rejects_stale_form_after_suspension(
             "field_1": "Embedded message",
             **submission_data,
         },
+        headers=_embed_post_headers(),
     )
 
     _assert_safe_embed_denial(post_response)
@@ -822,6 +887,7 @@ def test_embed_profile_submission_rejects_stale_form_after_recipient_key_removed
             "field_1": "Embedded message",
             **submission_data,
         },
+        headers=_embed_post_headers(),
     )
 
     _assert_safe_embed_denial(post_response)
@@ -882,6 +948,7 @@ def test_embed_profile_submission_uses_same_enabled_custom_fields(
             "field_1": armored_details,
             **submission_data,
         },
+        headers=_embed_post_headers(),
     )
 
     assert post_response.status_code == 200, post_response.text
@@ -929,6 +996,7 @@ def test_embed_profile_malformed_recipient_ciphertexts_use_generic_notification_
             "encrypted_email_fields_by_recipient": "not-json",
             **submission_data,
         },
+        headers=_embed_post_headers(),
     )
 
     assert post_response.status_code == 200, post_response.text
@@ -982,6 +1050,7 @@ def test_embed_profile_invalid_recipient_ciphertexts_use_generic_notification_bo
             "encrypted_email_fields_by_recipient": recipient_ciphertexts,
             **submission_data,
         },
+        headers=_embed_post_headers(),
     )
 
     assert post_response.status_code == 200, post_response.text
@@ -1006,6 +1075,7 @@ def test_embed_profile_has_no_postmessage_submission_path(client: FlaskClient, u
             "field_1": "Embedded message",
             **submission_data,
         },
+        headers=_embed_post_headers(),
     )
 
     assert post_response.status_code == 200, post_response.text
