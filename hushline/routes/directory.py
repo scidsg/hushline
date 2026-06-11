@@ -14,6 +14,7 @@ from flask import (
 from unidecode import unidecode
 from werkzeug.wrappers.response import Response
 
+from hushline.db import db
 from hushline.model import (
     AccountCategory,
     GlobaLeaksDirectoryListing,
@@ -21,6 +22,7 @@ from hushline.model import (
     OrganizationSetting,
     PublicRecordListing,
     SecureDropDirectoryListing,
+    User,
     Username,
     get_globaleaks_directory_listing,
     get_globaleaks_directory_listings,
@@ -453,6 +455,25 @@ def _directory_user_row(username: Username) -> dict[str, object | None]:
     }
 
 
+def _directory_correction_contact_username() -> Username | None:
+    admin_usernames = db.session.scalars(
+        db.select(Username)
+        .join(User)
+        .where(
+            User.is_admin.is_(True),
+            User.is_suspended.is_(False),
+            Username.is_primary.is_(True),
+        )
+        .order_by(Username.id)
+    ).all()
+
+    for username in admin_usernames:
+        if _user_message_capable(username.user):
+            return username
+
+    return None
+
+
 def _shuffle_featured_directory_items(items: Sequence[_FeaturedItem]) -> list[_FeaturedItem]:
     shuffled_items = list(items)
     random.shuffle(shuffled_items)
@@ -863,6 +884,12 @@ def register_directory_routes(app: Flask) -> None:
                 *[_directory_user_row(username) for username in usernames],
             ]
         filtered_all_directory_entries.sort(key=_all_directory_entry_sort_key)
+        correction_contact_username = _directory_correction_contact_username()
+        correction_contact_url = (
+            url_for("profile", username=correction_contact_username.username)
+            if correction_contact_username is not None
+            else None
+        )
         return render_template(
             "directory.html",
             intro_text=OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO_TEXT),
@@ -902,6 +929,7 @@ def register_directory_routes(app: Flask) -> None:
             truncate_directory_bio=_directory_card_bio,
             user_message_capable=_user_message_capable,
             logged_in=logged_in,
+            correction_contact_url=correction_contact_url,
         )
 
     @app.route("/directory/public-records/<slug>")
