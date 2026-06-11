@@ -940,7 +940,7 @@ def test_refresh_public_record_rows_flags_and_drops_link_failures() -> None:
     assert checked_urls
 
 
-def test_refresh_public_record_rows_keeps_rows_on_transient_link_failures() -> None:
+def test_refresh_public_record_rows_drops_exhausted_link_failures() -> None:
     rows = [
         _row(
             id_value="seed-healthy",
@@ -960,7 +960,7 @@ def test_refresh_public_record_rows_keeps_rows_on_transient_link_failures() -> N
 
     def checker(url: str) -> LinkCheckResult:
         if url == "https://transient.example":
-            return LinkCheckResult(ok=False, reason="HTTP 503")
+            return LinkCheckResult(ok=False, reason="HTTP 503", definitive_failure=True)
         return LinkCheckResult(ok=True)
 
     result = refresh_public_record_rows(
@@ -972,10 +972,10 @@ def test_refresh_public_record_rows_keeps_rows_on_transient_link_failures() -> N
         drop_failed_links=True,
     )
 
-    assert [row["id"] for row in result.rows] == ["seed-healthy", "seed-transient"]
+    assert [row["id"] for row in result.rows] == ["seed-healthy"]
     assert len(result.link_failures) == 1
     assert result.link_failures[0].listing_id == "seed-transient"
-    assert result.dropped_record_ids == []
+    assert result.dropped_record_ids == ["seed-transient"]
 
 
 def test_refresh_public_record_rows_rejects_legacy_self_reported_source_label() -> None:
@@ -1315,7 +1315,7 @@ def test_build_requests_link_checker_returns_last_server_error_after_retries() -
 
     assert result.ok is False
     assert result.reason == "HTTP 500"
-    assert result.definitive_failure is False
+    assert result.definitive_failure is True
 
 
 def test_build_requests_link_checker_returns_last_request_exception_reason() -> None:
@@ -1336,7 +1336,7 @@ def test_build_requests_link_checker_returns_last_request_exception_reason() -> 
 
     assert result.ok is False
     assert result.reason == "network timeout"
-    assert result.definitive_failure is False
+    assert result.definitive_failure is True
 
 
 def test_render_refresh_summary_includes_dropped_ids_and_link_failures() -> None:
