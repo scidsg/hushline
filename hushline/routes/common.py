@@ -37,8 +37,65 @@ def _dir_sort_key(u: Username) -> str:
     return s.casefold()
 
 
+_DIRECTORY_CONFUSABLE_ASCII = str.maketrans(
+    {
+        # The caution badge only protects names resembling these ASCII terms:
+        # "admin" and "hushline". Normalize common Unicode homoglyphs for
+        # those letters before transliteration so spoofed names are not missed.
+        "Α": "a",
+        "А": "a",
+        "а": "a",
+        "Ꭺ": "a",
+        "ꓮ": "a",
+        "ԁ": "d",
+        "Ꭰ": "d",
+        "Η": "h",
+        "Н": "h",
+        "н": "h",
+        "Һ": "h",
+        "һ": "h",
+        "Ꮋ": "h",
+        "Ꮒ": "h",
+        "Ι": "i",
+        "І": "i",
+        "і": "i",
+        "Ӏ": "l",
+        "ӏ": "l",
+        "ı": "i",
+        "Ꭵ": "i",
+        "ⅼ": "l",
+        "Ⲓ": "l",
+        "ⲓ": "l",
+        "Μ": "m",
+        "М": "m",
+        "м": "m",
+        "Ꮇ": "m",
+        "ꓟ": "m",
+        "Ν": "n",
+        "п": "n",
+        "ո": "n",
+        "Ꮑ": "n",
+        "Ѕ": "s",
+        "ѕ": "s",
+        "Ꮪ": "s",
+        "ꓢ": "s",
+        "υ": "u",
+        "Ս": "u",
+        "ս": "u",
+        "⋃": "u",
+        "Ε": "e",
+        "Е": "e",
+        "е": "e",
+        "Ꭼ": "e",
+    }
+)
+
+
 def normalized_directory_display_name(value: str | None) -> str:
-    return re.sub(r"[^a-z0-9]+", "", (value or "").casefold())
+    normalized_value = unicodedata.normalize("NFKC", value or "")
+    skeleton = normalized_value.translate(_DIRECTORY_CONFUSABLE_ASCII)
+    transliterated = unidecode(skeleton)
+    return re.sub(r"[^a-z0-9]+", "", transliterated.casefold())
 
 
 def show_directory_caution_badge(
