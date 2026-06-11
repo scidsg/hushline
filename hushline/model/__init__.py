@@ -1,6 +1,7 @@
 # ruff: noqa: F401
 
 from hushline.model.authentication_log import AuthenticationLog
+from hushline.model.chat_key import ChatKey
 from hushline.model.conversation import (
     Conversation,
     ConversationMessage,

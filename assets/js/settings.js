@@ -219,3 +219,126 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 });
+
+function bytesToBase64(bytes) {
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary);
+}
+
+async function provisionChatKey(form) {
+  const passwordInput = form.querySelector("#chat-key-password");
+  const status = document.getElementById("chat-key-provision-status");
+  const submitButton = form.querySelector('button[type="submit"]');
+  if (!passwordInput || !status || !submitButton) return;
+
+  if (!window.crypto?.subtle) {
+    status.textContent = "This browser cannot create a chat key.";
+    return;
+  }
+
+  submitButton.disabled = true;
+  status.textContent = "Creating chat key...";
+  let privateJwk = null;
+
+  try {
+    const textEncoder = new TextEncoder();
+    const salt = window.crypto.getRandomValues(new Uint8Array(16));
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const keyPair = await window.crypto.subtle.generateKey(
+      {
+        name: "ECDH",
+        namedCurve: "P-256",
+      },
+      true,
+      ["deriveBits"],
+    );
+    const publicJwk = await window.crypto.subtle.exportKey(
+      "jwk",
+      keyPair.publicKey,
+    );
+    privateJwk = await window.crypto.subtle.exportKey("jwk", keyPair.privateKey);
+    const passwordKey = await window.crypto.subtle.importKey(
+      "raw",
+      textEncoder.encode(passwordInput.value),
+      "PBKDF2",
+      false,
+      ["deriveKey"],
+    );
+    const wrappingKey = await window.crypto.subtle.deriveKey(
+      {
+        name: "PBKDF2",
+        salt,
+        iterations: 310000,
+        hash: "SHA-256",
+      },
+      passwordKey,
+      {
+        name: "AES-GCM",
+        length: 256,
+      },
+      false,
+      ["encrypt"],
+    );
+    const encryptedBytes = new Uint8Array(
+      await window.crypto.subtle.encrypt(
+        {
+          name: "AES-GCM",
+          iv,
+        },
+        wrappingKey,
+        textEncoder.encode(JSON.stringify(privateJwk)),
+      ),
+    );
+    const payload = {
+      public_key: JSON.stringify(publicJwk),
+      encrypted_private_key: JSON.stringify({
+        algorithm: "AES-GCM",
+        iv: bytesToBase64(iv),
+        ciphertext: bytesToBase64(encryptedBytes),
+      }),
+      kdf_algorithm: "PBKDF2-SHA-256",
+      kdf_params: {
+        iterations: 310000,
+        hash: "SHA-256",
+      },
+      kdf_salt: bytesToBase64(salt),
+      wrapping_algorithm: "AES-GCM",
+    };
+    const headers = {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    };
+    if (form.dataset.csrfToken) {
+      headers["X-CSRFToken"] = form.dataset.csrfToken;
+    }
+
+    const response = await fetch(form.dataset.chatKeyUrl, {
+      method: "POST",
+      credentials: "same-origin",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      throw new Error("Chat key creation failed");
+    }
+    status.textContent = "Chat key created.";
+    form.hidden = true;
+  } catch (error) {
+    status.textContent = "Chat key creation failed.";
+  } finally {
+    privateJwk = null;
+    passwordInput.value = "";
+    submitButton.disabled = false;
+  }
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  const chatKeyForm = document.getElementById("chat-key-provision-form");
+  chatKeyForm?.addEventListener("submit", function (event) {
+    event.preventDefault();
+    provisionChatKey(event.currentTarget);
+  });
+});
