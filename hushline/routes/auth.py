@@ -30,7 +30,6 @@ from hushline.auth import (
     set_session_user,
 )
 from hushline.db import db
-from hushline.external_urls import canonical_external_url
 from hushline.model import (
     AuthenticationLog,
     InviteCode,
@@ -45,7 +44,7 @@ from hushline.password_hasher import (
     emit_password_rehash_on_auth_telemetry,
     prepare_password_rehash_on_auth,
 )
-from hushline.routes.common import send_email_to_user_recipients, validate_captcha
+from hushline.routes.common import validate_captcha
 from hushline.routes.forms import (
     LoginForm,
     PasswordResetForm,
@@ -157,25 +156,24 @@ def _invalidate_password_reset_tokens(user: User, *, used_at: datetime) -> None:
 
 
 def _eligible_password_reset_user(identifier: str) -> User | None:
+    """Return a reset-eligible user only when a verified recovery factor exists.
+
+    Notification recipients can be shared/team-controlled mailboxes, so they must not be
+    treated as password reset authorities. Until a dedicated verified recovery address is
+    available, public reset requests remain generic and do not create reset tokens.
+    """
     username = _find_primary_username(identifier)
     if username is None:
         return None
 
     user = username.user
-    if not user.enable_email_notifications or not user.enabled_notification_recipients:
-        return None
-    return user
-
-
-def _send_password_reset_email(user: User, raw_token: str) -> None:
-    reset_url = canonical_external_url("reset_password", token=raw_token)
-    body = (
-        "A password reset was requested for your Hush Line account.\n\n"
-        f"Use this link to set a new password: {reset_url}\n\n"
-        "This link expires quickly and can only be used once. "
-        "If you did not request this reset, ignore this email."
-    )
-    send_email_to_user_recipients(user, "Hush Line password reset", body)
+    if user.enable_email_notifications and user.enabled_notification_recipients:
+        current_app.logger.info(
+            "Skipping password reset for account with notification recipients but no verified "
+            "recovery address",
+            extra={"user_id": user.id},
+        )
+    return None
 
 
 def _load_active_password_reset_token(raw_token: str) -> PasswordResetToken | None:
@@ -473,16 +471,7 @@ def register_auth_routes(app: Flask) -> None:
                 flash("⏲️ Please wait before requesting another password reset.")
                 return render_template("password_reset_requested.html"), 429
 
-            if user := _eligible_password_reset_user(identifier):
-                now = _now()
-                _invalidate_password_reset_tokens(user, used_at=now)
-                reset_token, raw_token = PasswordResetToken.create_for_user(
-                    user.id,
-                    ttl=_password_reset_ttl(),
-                )
-                db.session.add(reset_token)
-                db.session.commit()
-                _send_password_reset_email(user, raw_token)
+            _eligible_password_reset_user(identifier)
 
             return render_template("password_reset_requested.html")
 
