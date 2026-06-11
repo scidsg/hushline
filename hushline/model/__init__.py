@@ -1,6 +1,12 @@
 # ruff: noqa: F401
 
 from hushline.model.authentication_log import AuthenticationLog
+from hushline.model.conversation import (
+    Conversation,
+    ConversationMessage,
+    ConversationMessageCopy,
+    ConversationParticipant,
+)
 from hushline.model.embed_rate_limit_attempt import EmbedRateLimitAttempt
 from hushline.model.enums import (
     AccountCategory,
