@@ -439,10 +439,11 @@ def _sync_provenance_roadmap(
     adapter_count = len(OFFICIAL_US_STATE_DISCOVERY_ADAPTERS)
     updated = re.sub(
         r"## Current Baseline \([^)]+\)\n"
+        r"(?:[ \t]*\n)*"
         r"- Active strict listings: `[^`]+`\n"
         r"- States with strict listings: .+\n",
         (
-            f"## Current Baseline ({generated_on})\n"
+            f"## Current Baseline ({generated_on})\n\n"
             f"- Active strict listings: `{report['total_strict_listings']}`\n"
             f"- States with strict listings: {state_list or 'none'}\n"
         ),
@@ -538,8 +539,17 @@ def main() -> int:
             generated_on=datetime.now().astimezone().date().isoformat(),
         )
 
+    unresolved_link_failures = [
+        failure
+        for failure in refresh_result.link_failures
+        if failure.listing_id not in refresh_result.dropped_record_ids
+    ]
     link_failures_detected = bool(refresh_result.link_failures)
-    if link_failures_detected and not args.allow_link_failures and not args.drop_failing_records:
+    if (
+        link_failures_detected
+        and not args.allow_link_failures
+        and (not args.drop_failing_records or unresolved_link_failures)
+    ):
         raise PublicRecordRefreshError(
             "Broken links detected during refresh. "
             "Use --allow-link-failures to flag only, or --drop-failing-records to remove them."

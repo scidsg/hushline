@@ -598,9 +598,17 @@ def build_requests_link_checker(
                 definitive_failure=True,
             )
         if last_status_code is not None and last_status_code >= _HTTP_SERVER_ERROR_MIN_STATUS:
-            return LinkCheckResult(ok=False, reason=f"HTTP {last_status_code}")
+            return LinkCheckResult(
+                ok=False,
+                reason=f"HTTP {last_status_code}",
+                definitive_failure=True,
+            )
         if last_error is not None and last_status_code is None:
-            return LinkCheckResult(ok=False, reason=str(last_error))
+            return LinkCheckResult(
+                ok=False,
+                reason=str(last_error),
+                definitive_failure=True,
+            )
         return LinkCheckResult(ok=True)
 
     return check_url
