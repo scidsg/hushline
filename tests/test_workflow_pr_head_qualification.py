@@ -63,6 +63,9 @@ def test_public_directory_weekly_report_refreshes_stats_branch_lease_before_push
 
 def test_screenshots_archive_workflow_publishes_directly_without_pr_flow() -> None:
     workflow_text = _workflow_text(".github/workflows/publish-docs-screenshots.yml")
+    source_section = workflow_text.split("      - name: Verify trusted source run", 1)[1].split(
+        "      - name: Download screenshot artifact", 1
+    )[0]
     artifact_section = workflow_text.split("      - name: Download screenshot artifact", 1)[
         1
     ].split("      - name: Publish screenshots to hushline-screenshots", 1)[0]
@@ -70,7 +73,16 @@ def test_screenshots_archive_workflow_publishes_directly_without_pr_flow() -> No
         "      - name: Publish screenshots to hushline-screenshots", 1
     )[1].split("      - name: Publish current screenshots to hushline-website", 1)[0]
 
+    assert 'run.get("event") != "release"' in source_section
+    assert 'run.get("path") != ".github/workflows/docs-screenshots.yml"' in source_section
+    assert 'head_repository.get("full_name") != os.environ["GITHUB_REPOSITORY"]' in source_section
+    assert 'run.get("conclusion") != "success"' in source_section
     assert "rm -f /tmp/docs-screenshots-artifact/artifact.zip" in artifact_section
+    assert "path.is_symlink()" in artifact_section
+    assert 'is_current_image = relative.parts[:2] == ("screenshots", "current")' in artifact_section
+    assert 'is_release_image = relative.parts[:2] == ("screenshots", "release")' in artifact_section
+    assert "is_legacy_release_image = relative.parts[:3]" in artifact_section
+    assert "path.suffix.lower() in image_extensions" in artifact_section
     assert "SCREENSHOTS_DEFAULT_BRANCH: main" in archive_section
     assert 'SCREENSHOT_ROOT="${ARTIFACT_DIR}/screenshots/release"' in archive_section
     assert (
@@ -102,6 +114,7 @@ def test_screenshots_archive_workflow_publishes_directly_without_pr_flow() -> No
 def test_screenshots_workflow_publishes_current_folder_to_website_directly() -> None:
     capture_workflow_text = _workflow_text(".github/workflows/docs-screenshots.yml")
     publish_workflow_text = _workflow_text(".github/workflows/publish-docs-screenshots.yml")
+    publish_job_section = capture_workflow_text.split("  publish-release:", 1)[1]
     artifact_section = capture_workflow_text.split("      - name: Prepare publish artifact", 1)[
         1
     ].split("      - name: Upload screenshot artifacts", 1)[0]
@@ -115,6 +128,8 @@ def test_screenshots_workflow_publishes_current_folder_to_website_directly() -> 
         "      - name: Publish current screenshots to hushline-website", 1
     )[1]
 
+    assert "if: ${{ github.event_name == 'release' }}" in publish_job_section
+    assert "if: ${{ github.event_name != 'workflow_call' }}" not in capture_workflow_text
     assert "fetch-depth: 1" in checkout_section
     assert "fetch-depth: 0" not in checkout_section
     assert "repository: ${{ job.workflow_repository }}" in trusted_checkout_section

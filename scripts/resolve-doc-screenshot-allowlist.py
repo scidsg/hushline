@@ -207,7 +207,13 @@ def read_refs_input(refs_input: Path) -> list[str]:
     refs = json.loads(refs_input.read_text(encoding="utf-8"))
     if not isinstance(refs, list) or not all(isinstance(ref, str) for ref in refs):
         raise SystemExit(f"Expected captureFiles JSON array at {refs_input}")
-    return sorted(set(refs))
+    normalized_refs = []
+    for ref in refs:
+        normalized = normalize_ref(ref)
+        if normalized != ref:
+            raise SystemExit(f"Unexpected captureFiles screenshot path: {ref!r}")
+        normalized_refs.append(normalized)
+    return sorted(set(normalized_refs))
 
 
 def copy_filtered_current(current_root: Path, filtered_root: Path, refs: list[str]) -> None:
