@@ -130,7 +130,7 @@ If local audit commands are blocked by network/tooling availability, document th
 - Local contributor onboarding prompt: [`docs/LOCAL-CONTRIBUTOR-ONBOARDING-PROMPT.md`](./docs/LOCAL-CONTRIBUTOR-ONBOARDING-PROMPT.md)
 - Developer notes: [`docs/DEV.md`](./docs/DEV.md)
 - Architecture: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)
-- Runner automation: [`docs/AGENT_RUNNER.md`](./docs/AGENT_RUNNER.md)
+- Runner automation: [Agent automation and policy](https://github.com/scidsg/hushline-agents)
 - Terms: [`docs/TERMS.md`](./docs/TERMS.md)
 
 ## Latest Screenshots
