@@ -76,9 +76,18 @@ def test_screenshots_archive_workflow_publishes_directly_without_pr_flow() -> No
     assert 'run.get("event") != "release"' in source_section
     assert 'run.get("path") != ".github/workflows/docs-screenshots.yml"' in source_section
     assert 'head_repository.get("full_name") != os.environ["GITHUB_REPOSITORY"]' in source_section
-    assert 'run.get("conclusion") != "success"' in source_section
+    assert (
+        'JOBS_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/jobs")"'
+        in source_section
+    )
+    assert "capture_succeeded = any(" in source_section
+    assert 'job.get("name") == "capture"' in source_section
+    assert 'job.get("conclusion") == "success"' in source_section
+    assert 'run.get("conclusion") != "success" and not capture_succeeded' in source_section
     assert "rm -f /tmp/docs-screenshots-artifact/artifact.zip" in artifact_section
     assert "path.is_symlink()" in artifact_section
+    assert 'Path("screenshots/release/README.md")' in artifact_section
+    assert 'Path("screenshots", "releases", release_key, "README.md")' in artifact_section
     assert 'is_current_image = relative.parts[:2] == ("screenshots", "current")' in artifact_section
     assert 'is_release_image = relative.parts[:2] == ("screenshots", "release")' in artifact_section
     assert "is_legacy_release_image = relative.parts[:3]" in artifact_section
