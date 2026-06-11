@@ -76,7 +76,7 @@ The app and public directory support more than individual profiles. Current disc
 | Visitor       | Use an invite code when registrations are gated                                | I can still join approved deployments                                                                    | Registration with invite-code support                 |
 | Visitor       | Complete a CAPTCHA during registration                                         | The platform can reduce low-effort automated abuse                                                       | Registration CAPTCHA                                  |
 | Existing user | Log in and complete a TOTP challenge                                           | I can access my account securely                                                                         | Login and 2FA verification                            |
-| Existing user | Reset my password if I already enabled notification email                      | I can recover account access without making email mandatory for everyone                                 | Password reset flow                                   |
+| Existing user | Request password reset help without exposing whether my username exists        | I receive a generic response while Hush Line avoids treating notification recipients as recovery factors | Password reset flow                                   |
 
 ### Authenticated Recipients: All Users
 

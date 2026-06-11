@@ -19,7 +19,13 @@ from hushline.auth import (
 )
 from hushline.config import PASSWORD_HASH_REHASH_ON_AUTH_ENABLED
 from hushline.db import db
-from hushline.model import InviteCode, OrganizationSetting, PasswordResetToken, User
+from hushline.model import (
+    InviteCode,
+    NotificationRecipient,
+    OrganizationSetting,
+    PasswordResetToken,
+    User,
+)
 from hushline.routes.auth import (
     PASSWORD_RESET_CONFIRMATION_MESSAGE,
     PASSWORD_RESET_INVALID_LINK_MESSAGE,
@@ -301,16 +307,9 @@ def _enable_password_reset_email(user: User) -> None:
     db.session.commit()
 
 
-def _extract_reset_token(email_body: str) -> str:
-    marker = "/password-reset/"
-    assert marker in email_body
-    return email_body.split(marker, 1)[1].split()[0]
-
-
-def test_password_reset_request_is_generic_and_sends_only_for_eligible_account(
-    app: Flask, client: FlaskClient, user: User, user2: User
+def test_password_reset_request_is_generic_and_does_not_send_to_notification_recipients(
+    client: FlaskClient, user: User, user2: User
 ) -> None:
-    app.config["PUBLIC_BASE_URL"] = "https://safe.example"
     user2.enable_email_notifications = False
     user2.email = "ineligible@example.com"
     _enable_password_reset_email(user)
@@ -319,52 +318,35 @@ def test_password_reset_request_is_generic_and_sends_only_for_eligible_account(
     assert response.status_code == 200
     assert url_for("request_password_reset") in response.text
 
-    with patch("hushline.routes.auth.send_email_to_user_recipients") as send_email_mock:
-        unknown_captcha = get_captcha_from_session_password_reset(client)
-        unknown_response = client.post(
-            url_for("request_password_reset"),
-            data={"username": "not-a-real-user", "captcha_answer": unknown_captcha},
-        )
-        ineligible_captcha = get_captcha_from_session_password_reset(client)
-        ineligible_response = client.post(
-            url_for("request_password_reset"),
-            data={
-                "username": user2.primary_username.username,
-                "captcha_answer": ineligible_captcha,
-            },
-        )
-        eligible_captcha = get_captcha_from_session_password_reset(client)
-        eligible_response = client.post(
-            url_for("request_password_reset"),
-            data={
-                "username": user.primary_username.username.upper(),
-                "captcha_answer": eligible_captcha,
-            },
-        )
+    unknown_captcha = get_captcha_from_session_password_reset(client)
+    unknown_response = client.post(
+        url_for("request_password_reset"),
+        data={"username": "not-a-real-user", "captcha_answer": unknown_captcha},
+    )
+    ineligible_captcha = get_captcha_from_session_password_reset(client)
+    ineligible_response = client.post(
+        url_for("request_password_reset"),
+        data={
+            "username": user2.primary_username.username,
+            "captcha_answer": ineligible_captcha,
+        },
+    )
+    notification_recipient_captcha = get_captcha_from_session_password_reset(client)
+    notification_recipient_response = client.post(
+        url_for("request_password_reset"),
+        data={
+            "username": user.primary_username.username.upper(),
+            "captcha_answer": notification_recipient_captcha,
+        },
+    )
 
     assert unknown_response.status_code == 200
     assert ineligible_response.status_code == 200
-    assert eligible_response.status_code == 200
+    assert notification_recipient_response.status_code == 200
     assert PASSWORD_RESET_CONFIRMATION_MESSAGE in unknown_response.text
     assert PASSWORD_RESET_CONFIRMATION_MESSAGE in ineligible_response.text
-    assert PASSWORD_RESET_CONFIRMATION_MESSAGE in eligible_response.text
-    send_email_mock.assert_called_once()
-    sent_user, subject, body = send_email_mock.call_args.args
-    assert sent_user == user
-    assert subject == "Hush Line password reset"
-    assert "https://safe.example/password-reset/" in body
-    assert "localhost" not in body
-    raw_token = _extract_reset_token(body)
-    token_hash = PasswordResetToken.hash_password_reset_token(raw_token)
-    token_count = db.session.scalar(
-        db.select(db.func.count())
-        .select_from(PasswordResetToken)
-        .where(
-            PasswordResetToken.user_id == user.id,
-            PasswordResetToken.token_hash == token_hash,
-        )
-    )
-    assert token_count == 1
+    assert PASSWORD_RESET_CONFIRMATION_MESSAGE in notification_recipient_response.text
+    assert db.session.scalar(db.select(db.func.count()).select_from(PasswordResetToken)) == 0
 
 
 def test_find_primary_username_returns_none_and_logs_when_query_is_ambiguous(app: Flask) -> None:
@@ -389,17 +371,13 @@ def test_find_primary_username_returns_none_and_logs_when_query_is_ambiguous(app
 def test_password_reset_sets_new_password_and_consumes_token(
     client: FlaskClient, user: User, user_password: str
 ) -> None:
-    _enable_password_reset_email(user)
     original_session_id = user.session_id
-
-    with patch("hushline.routes.auth.send_email_to_user_recipients") as send_email_mock:
-        captcha_answer = get_captcha_from_session_password_reset(client)
-        client.post(
-            url_for("request_password_reset"),
-            data={"username": user.primary_username.username, "captcha_answer": captcha_answer},
-        )
-
-    raw_token = _extract_reset_token(send_email_mock.call_args.args[2])
+    reset_token, raw_token = PasswordResetToken.create_for_user(
+        user.id,
+        ttl=timedelta(hours=1),
+    )
+    db.session.add(reset_token)
+    db.session.commit()
 
     invalid_response = client.post(
         url_for("reset_password", token=raw_token),
@@ -435,6 +413,30 @@ def test_password_reset_sets_new_password_and_consumes_token(
     assert reused_response.status_code == 200
     assert PASSWORD_RESET_INVALID_LINK_MESSAGE in reused_response.text
     assert "Reset Password" in reused_response.text
+
+
+def test_password_reset_request_never_emails_shared_notification_recipients(
+    client: FlaskClient, user: User
+) -> None:
+    user.enable_email_notifications = True
+    user.email = "owner@example.com"
+    shared_recipient = NotificationRecipient(
+        enabled=True,
+        position=user.next_notification_recipient_position,
+    )
+    shared_recipient.email = "shared-alerts@example.com"
+    user.notification_recipients.append(shared_recipient)
+    db.session.commit()
+
+    captcha_answer = get_captcha_from_session_password_reset(client)
+    response = client.post(
+        url_for("request_password_reset"),
+        data={"username": user.primary_username.username, "captcha_answer": captcha_answer},
+    )
+
+    assert response.status_code == 200
+    assert PASSWORD_RESET_CONFIRMATION_MESSAGE in response.text
+    assert db.session.scalar(db.select(db.func.count()).select_from(PasswordResetToken)) == 0
 
 
 def test_password_reset_get_renders_form_for_active_token(client: FlaskClient, user: User) -> None:
@@ -483,22 +485,21 @@ def test_password_reset_request_rate_limits_repeated_identifier(
     app.config["PASSWORD_RESET_RATE_LIMIT_IP_MAX"] = 100
     _enable_password_reset_email(user)
 
-    with patch("hushline.routes.auth.send_email_to_user_recipients") as send_email_mock:
-        first_captcha = get_captcha_from_session_password_reset(client)
-        first = client.post(
-            url_for("request_password_reset"),
-            data={"username": user.primary_username.username, "captcha_answer": first_captcha},
-        )
-        second_captcha = get_captcha_from_session_password_reset(client)
-        second = client.post(
-            url_for("request_password_reset"),
-            data={"username": user.primary_username.username, "captcha_answer": second_captcha},
-        )
+    first_captcha = get_captcha_from_session_password_reset(client)
+    first = client.post(
+        url_for("request_password_reset"),
+        data={"username": user.primary_username.username, "captcha_answer": first_captcha},
+    )
+    second_captcha = get_captcha_from_session_password_reset(client)
+    second = client.post(
+        url_for("request_password_reset"),
+        data={"username": user.primary_username.username, "captcha_answer": second_captcha},
+    )
 
     assert first.status_code == 200
     assert second.status_code == 429
     assert PASSWORD_RESET_CONFIRMATION_MESSAGE in second.text
-    send_email_mock.assert_called_once()
+    assert db.session.scalar(db.select(db.func.count()).select_from(PasswordResetToken)) == 0
 
 
 def test_password_reset_request_rejects_incorrect_captcha(client: FlaskClient, user: User) -> None:
@@ -508,15 +509,14 @@ def test_password_reset_request_rejects_incorrect_captcha(client: FlaskClient, u
     assert response.status_code == 200
     assert "Solve the math problem to request reset instructions." in response.text
 
-    with patch("hushline.routes.auth.send_email_to_user_recipients") as send_email_mock:
-        response = client.post(
-            url_for("request_password_reset"),
-            data={"username": user.primary_username.username, "captcha_answer": "9999"},
-        )
+    response = client.post(
+        url_for("request_password_reset"),
+        data={"username": user.primary_username.username, "captcha_answer": "9999"},
+    )
 
     assert response.status_code == 200
     assert "⛔️ Incorrect CAPTCHA. Please try again." in response.text
-    send_email_mock.assert_not_called()
+    assert db.session.scalar(db.select(db.func.count()).select_from(PasswordResetToken)) == 0
 
 
 def test_stash_post_auth_redirect_skips_logout_and_preserves_session(app: Flask) -> None:
