@@ -190,6 +190,20 @@ def test_screenshots_workflow_publishes_current_folder_to_website_directly() -> 
     assert "${WEBSITE_SCREENSHOT_ROOT}/releases" not in website_section
 
 
+def test_docs_screenshots_release_key_input_is_passed_through_environment() -> None:
+    workflow_text = _workflow_text(".github/workflows/docs-screenshots.yml")
+    resolve_section = workflow_text.split("      - name: Resolve release key", 1)[1].split(
+        "      - name: Resolve screenshot capture manifest", 1
+    )[0]
+
+    assert "INPUT_RELEASE_KEY: ${{ inputs.release_key }}" in resolve_section
+    assert "RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}" in resolve_section
+    assert 'RELEASE_KEY="$INPUT_RELEASE_KEY"' in resolve_section
+    assert 'RELEASE_KEY="$RELEASE_TAG_NAME"' in resolve_section
+    assert 'RELEASE_KEY="${{ inputs.release_key }}"' not in resolve_section
+    assert 'RELEASE_KEY="${{ github.event.release.tag_name }}"' not in resolve_section
+
+
 def test_docs_screenshot_capture_manifest_does_not_persist_read_tokens() -> None:
     workflow_text = _workflow_text(".github/workflows/docs-screenshots.yml")
     manifest_section = workflow_text.split("      - name: Resolve screenshot capture manifest", 1)[

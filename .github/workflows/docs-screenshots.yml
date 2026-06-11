@@ -140,11 +140,14 @@ jobs:
       - name: Resolve release key
         id: vars
         if: steps.manifest.outputs.enabled == 'true'
+        env:
+          INPUT_RELEASE_KEY: ${{ inputs.release_key }}
+          RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
-          RELEASE_KEY="${{ inputs.release_key }}"
+          RELEASE_KEY="$INPUT_RELEASE_KEY"
           if [ -z "$RELEASE_KEY" ]; then
-            RELEASE_KEY="${{ github.event.release.tag_name }}"
+            RELEASE_KEY="$RELEASE_TAG_NAME"
           fi
           if [ -z "$RELEASE_KEY" ]; then
             RELEASE_KEY="$(git tag --points-at HEAD | rg '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1 || true)"
