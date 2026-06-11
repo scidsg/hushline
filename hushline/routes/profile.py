@@ -201,21 +201,6 @@ def register_profile_routes(app: Flask) -> None:
 
         return True
 
-    def _embed_form_token_belongs_to_profile(uname: Username, token: str) -> bool:
-        try:
-            payload: dict[str, Any] = _embed_captcha_serializer().loads(
-                token,
-                max_age=EMBED_CAPTCHA_MAX_AGE_SECONDS,
-            )
-        except (BadData, SignatureExpired):
-            return False
-
-        return (
-            payload.get("v") == 1
-            and payload.get("username") == uname.username
-            and payload.get("user_id") == uname.user_id
-        )
-
     def _embed_post_origin_is_valid(uname: Username) -> bool:
         origin = request.headers.get("Origin", "").strip()
         if not origin:
@@ -225,10 +210,7 @@ def register_profile_routes(app: Flask) -> None:
                 origin = f"{parsed_referer.scheme}://{parsed_referer.netloc}"
 
         if not origin or origin == "null":
-            return _embed_form_token_belongs_to_profile(
-                uname,
-                request.form.get("embed_captcha_token", ""),
-            )
+            return False
 
         parsed_origin = urlsplit(origin)
         parsed_host = urlsplit(request.host_url)
