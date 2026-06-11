@@ -159,6 +159,7 @@ def test_sync_provenance_roadmap_updates_baseline_and_adapter_count(tmp_path: Pa
                 "# Public Record Provenance Roadmap (U.S.)",
                 "",
                 "## Current Baseline (March 10, 2026)",
+                "",
                 "- Active strict listings: `58`",
                 "- States with strict listings: `AK`",
                 "",
@@ -180,6 +181,7 @@ def test_sync_provenance_roadmap_updates_baseline_and_adapter_count(tmp_path: Pa
 
     updated = roadmap_path.read_text(encoding="utf-8")
     assert "## Current Baseline (2026-03-11)" in updated
+    assert "## Current Baseline (2026-03-11)\n\n- Active strict listings" in updated
     assert "- Active strict listings: `2`" in updated
     assert "- States with strict listings: `CA`, `WA`" in updated
     assert "- Explicit state adapter entries in discovery code: 50 / 50." in updated
@@ -194,6 +196,7 @@ def test_sync_provenance_roadmap_preserves_eu_planning_section(tmp_path: Path) -
                 "# Public Record Provenance Roadmap (U.S.)",
                 "",
                 "## Current Baseline (March 10, 2026)",
+                "",
                 "- Active strict listings: `58`",
                 "- States with strict listings: `AK`",
                 "",
