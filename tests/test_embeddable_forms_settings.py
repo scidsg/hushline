@@ -704,7 +704,7 @@ def test_embed_profile_submission_rejects_invalid_csrf_token(
     assert _first_message_for(user.primary_username) is None
 
 
-def test_embed_profile_submission_allows_sandboxed_null_origin(
+def test_embed_profile_submission_rejects_sandboxed_null_origin(
     client: FlaskClient, user: User
 ) -> None:
     _enable_embeds_globally()
@@ -725,13 +725,12 @@ def test_embed_profile_submission_allows_sandboxed_null_origin(
         headers={"Origin": "null"},
     )
 
-    assert post_response.status_code == 200, post_response.text
-    assert _first_message_for(user.primary_username) is not None
+    assert post_response.status_code == 400
+    assert "Invalid embed request origin" in post_response.text
+    assert _first_message_for(user.primary_username) is None
 
 
-def test_embed_profile_submission_allows_token_bound_missing_origin(
-    client: FlaskClient, user: User
-) -> None:
+def test_embed_profile_submission_rejects_missing_origin(client: FlaskClient, user: User) -> None:
     _enable_embeds_globally()
     _make_message_capable(user)
     _configure_embed(user.primary_username)
@@ -749,8 +748,9 @@ def test_embed_profile_submission_allows_token_bound_missing_origin(
         },
     )
 
-    assert post_response.status_code == 200, post_response.text
-    assert _first_message_for(user.primary_username) is not None
+    assert post_response.status_code == 400
+    assert "Invalid embed request origin" in post_response.text
+    assert _first_message_for(user.primary_username) is None
 
 
 def test_embed_profile_submission_rejects_missing_origin_without_embed_form_token(
