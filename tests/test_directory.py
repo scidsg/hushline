@@ -44,7 +44,7 @@ def _configure_directory_correction_admin(admin_user: User, username: str = "sit
     admin_user.primary_username.username = username
     admin_user.pgp_key = Path("tests/test_pgp_key.txt").read_text()
     db.session.commit()
-    return url_for("profile", username=username)
+    return url_for("profile", username=username, _external=False)
 
 
 def _first_public_record_listing_or_skip() -> PublicRecordListing:
