@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import importlib.util
 import re
+import sys
 from pathlib import Path
 from typing import Any
+
+import pytest
 
 from hushline.public_record_refresh import (
     LinkValidationFailure,
@@ -89,6 +92,61 @@ def test_refresh_public_record_corrections_make_target_matches_workflow_semantic
     )
     assert "--drop-failing-records" in target_section
     assert "--allow-link-failures" in target_section
+
+
+def test_refresh_script_drop_failing_records_rejects_unresolved_failures(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    refresh_script = _load_refresh_script_module()
+    output_path = tmp_path / "public_record_law_firms.json"
+    output_path.write_text("[]\n", encoding="utf-8")
+    unresolved_row = _public_record_row("seed-unresolved", "CA")
+
+    monkeypatch.setattr(refresh_script, "_load_rows", lambda _path: [])
+
+    def fake_refresh_public_record_rows(*_args: Any, **kwargs: Any) -> PublicRecordRefreshResult:
+        assert kwargs["drop_failed_links"] is True
+        return PublicRecordRefreshResult(
+            rows=[unresolved_row],
+            region_counts={"US": 1},
+            checked_url_count=1,
+            link_failures=[
+                LinkValidationFailure(
+                    listing_id="seed-unresolved",
+                    listing_name="Seed Unresolved",
+                    field="website",
+                    url="https://unresolved.example",
+                    reason="network timeout",
+                )
+            ],
+            dropped_record_ids=[],
+        )
+
+    monkeypatch.setattr(
+        refresh_script,
+        "refresh_public_record_rows",
+        fake_refresh_public_record_rows,
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "refresh_public_record_law_firms.py",
+            "--input",
+            str(output_path),
+            "--output",
+            str(output_path),
+            "--regions",
+            "US",
+            "--region-target",
+            "US=1",
+            "--no-link-validation",
+            "--drop-failing-records",
+        ],
+    )
+
+    with pytest.raises(refresh_script.PublicRecordRefreshError, match="Broken links detected"):
+        refresh_script.main()
 
 
 def test_refresh_report_matches_structured_values() -> None:
