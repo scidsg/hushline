@@ -21,6 +21,7 @@ from hushline.model import (
     PublicRecordListing,
     SecureDropDirectoryListing,
     User,
+    Username,
     get_globaleaks_directory_listings,
     get_newsroom_directory_listings,
     get_public_record_listings,
@@ -988,6 +989,29 @@ def test_directory_users_json_includes_normalized_user_location(
     assert row["subdivision"] == "Illinois"
     assert row["subdivision_code"] == "IL"
     assert row["countries"] == ["United States"]
+
+
+def test_directory_users_json_excludes_account_location_from_alias_rows(
+    client: FlaskClient, user: User, user_alias: Username
+) -> None:
+    user.country = "US"
+    user.city = "Chicago"
+    user.subdivision = "IL"
+    user.primary_username.show_in_directory = False
+    user_alias.show_in_directory = True
+    db.session.commit()
+
+    response = client.get(url_for("directory_users"))
+    assert response.status_code == 200
+
+    rows = response.json or []
+    assert all(row["primary_username"] != user.primary_username.username for row in rows)
+    row = next(row for row in rows if row["primary_username"] == user_alias.username)
+    assert row["city"] is None
+    assert row["country"] is None
+    assert row["subdivision"] is None
+    assert row["subdivision_code"] is None
+    assert row["countries"] == []
 
 
 def test_directory_users_json_includes_legacy_account_category_label(

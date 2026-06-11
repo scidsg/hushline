@@ -380,6 +380,9 @@ def _geography_fields(
 
 
 def _username_geography(username: Username) -> DirectoryListingGeography:
+    if not username.is_primary:
+        return build_directory_geography()
+
     user = username.user
     return build_directory_geography(
         city=getattr(user, "city", None),
