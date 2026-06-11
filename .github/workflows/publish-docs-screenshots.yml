@@ -41,12 +41,14 @@ jobs:
         run: |
           set -euo pipefail
           RUN_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}")"
-          RUN_JSON="$RUN_JSON" CURRENT_RUN_ID="$CURRENT_RUN_ID" python3 - <<'PY'
+          JOBS_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/jobs")"
+          RUN_JSON="$RUN_JSON" JOBS_JSON="$JOBS_JSON" CURRENT_RUN_ID="$CURRENT_RUN_ID" python3 - <<'PY'
           import json
           import os
           import sys
 
           run = json.loads(os.environ["RUN_JSON"])
+          jobs = json.loads(os.environ["JOBS_JSON"])
           current_run_id = os.environ["CURRENT_RUN_ID"]
           errors = []
 
@@ -62,8 +64,16 @@ jobs:
                   "source run repository must match "
                   f"{os.environ['GITHUB_REPOSITORY']}, got {head_repository.get('full_name')!r}"
               )
-          if str(run.get("id")) != current_run_id and run.get("conclusion") != "success":
-              errors.append("completed source runs must have a successful conclusion")
+          is_current_run = str(run.get("id")) == current_run_id
+          capture_succeeded = any(
+              job.get("name") == "capture" and job.get("conclusion") == "success"
+              for job in jobs.get("jobs", [])
+          )
+          if not is_current_run and run.get("conclusion") != "success" and not capture_succeeded:
+              errors.append(
+                  "completed source runs must have a successful conclusion or a successful "
+                  "capture job"
+              )
 
           if errors:
               for error in errors:
@@ -114,6 +124,7 @@ jobs:
               Path("release_key.txt"),
               Path("capture_files.json"),
               Path("screenshots/README.md"),
+              Path("screenshots/release/README.md"),
           }
 
           def fail(message: str) -> None:
@@ -152,6 +163,8 @@ jobs:
                   "releases",
                   release_key,
               )
+              if relative == Path("screenshots", "releases", release_key, "README.md"):
+                  continue
               if (is_current_image or is_release_image or is_legacy_release_image) and (
                   path.suffix.lower() in image_extensions
               ):
