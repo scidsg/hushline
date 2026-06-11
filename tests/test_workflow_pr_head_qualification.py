@@ -89,6 +89,9 @@ def test_screenshots_archive_workflow_publishes_directly_without_pr_flow() -> No
         'git checkout -B "${SCREENSHOTS_DEFAULT_BRANCH}" "origin/${SCREENSHOTS_DEFAULT_BRANCH}"'
         in archive_section
     )
+    assert 'GIT_ASKPASS="${RUNNER_TEMP}/hushline-screenshots-git-askpass.sh"' in archive_section
+    assert '"https://github.com/${SCREENSHOTS_REPOSITORY}.git"' in archive_section
+    assert "x-access-token:${SCREENSHOTS_PUSH_TOKEN}@github.com" not in archive_section
     assert 'git push origin "HEAD:${SCREENSHOTS_DEFAULT_BRANCH}"' in archive_section
     assert (
         "Published screenshot archive directly to "
@@ -144,6 +147,9 @@ def test_screenshots_workflow_publishes_current_folder_to_website_directly() -> 
     assert 'CURRENT_ROOT="${ARTIFACT_DIR}/screenshots/release"' in website_section
     assert 'LEGACY_CURRENT_ROOT="${ARTIFACT_DIR}/screenshots/current"' in website_section
     assert '--branch "${WEBSITE_DEFAULT_BRANCH}"' in website_section
+    assert 'GIT_ASKPASS="${RUNNER_TEMP}/hushline-website-git-askpass.sh"' in website_section
+    assert '"https://github.com/${WEBSITE_REPOSITORY}.git"' in website_section
+    assert "x-access-token:${WEBSITE_PUSH_TOKEN}@github.com" not in website_section
     assert 'git sparse-checkout set "${WEBSITE_SCREENSHOT_ROOT}/current"' not in website_section
     assert '--refs-input "${ARTIFACT_DIR}/capture_files.json"' in website_section
     assert '--current-root "$CURRENT_ROOT"' in website_section
