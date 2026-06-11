@@ -249,3 +249,17 @@ def test_securedrop_refresh_summary_uses_checked_random_github_output_delimiter(
     assert 'delimiter="SECUREDROP_SUMMARY_$(uuidgen)"' in summary_section
     assert 'grep -Fxq "$delimiter" "$payload_path"' in summary_section
     assert 'delimiter="SECUREDROP_SUMMARY_$(date +%s)"' not in summary_section
+
+
+def test_epic_child_close_workflow_uses_trusted_head_branch_not_pr_body() -> None:
+    workflow_text = _workflow_text(".github/workflows/close-epic-child-issue-on-merge.yml")
+
+    assert "pull_request_target:" in workflow_text
+    assert "issues: write" in workflow_text
+    assert "pullRequest.head.repo?.full_name" in workflow_text
+    assert "headRepo !== expectedRepo" in workflow_text
+    assert "baseRef.match(/^codex\\/epic-(\\d+)$/)" in workflow_text
+    assert "headRef.match(/^codex\\/daily-issue-(\\d+)$/)" in workflow_text
+    assert "const issueNumber = Number(headMatch[1]);" in workflow_text
+    assert "context.payload.pull_request.body" not in workflow_text
+    assert "Linked issue:" not in workflow_text
