@@ -480,9 +480,8 @@ def register_profile_routes(app: Flask) -> None:
                         if uname.user.email_encrypt_entire_body:
                             encrypted_email_body = (form.encrypted_email_body.data or "").strip()
                             client_body_is_armored = _is_armored_pgp_message(encrypted_email_body)
-                            can_trust_client_encrypted_body = (
-                                client_body_is_armored
-                                and notification_encryption_target is not None
+                            can_trust_client_encrypted_body = client_body_is_armored and isinstance(
+                                notification_encryption_target, str
                             )
                             if can_trust_client_encrypted_body:
                                 email_body = encrypted_email_body
