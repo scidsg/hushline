@@ -601,13 +601,13 @@ def build_requests_link_checker(
             return LinkCheckResult(
                 ok=False,
                 reason=f"HTTP {last_status_code}",
-                definitive_failure=True,
+                definitive_failure=False,
             )
         if last_error is not None and last_status_code is None:
             return LinkCheckResult(
                 ok=False,
                 reason=str(last_error),
-                definitive_failure=True,
+                definitive_failure=False,
             )
         return LinkCheckResult(ok=True)
 
