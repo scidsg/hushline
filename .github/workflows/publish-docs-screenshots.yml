@@ -32,6 +32,50 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      - name: Verify trusted source run
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.source_run_id }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          RUN_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}")"
+          RUN_JSON="$RUN_JSON" CURRENT_RUN_ID="$CURRENT_RUN_ID" python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          run = json.loads(os.environ["RUN_JSON"])
+          current_run_id = os.environ["CURRENT_RUN_ID"]
+          errors = []
+
+          if str(run.get("id")) != os.environ["RUN_ID"]:
+              errors.append("source run ID mismatch")
+          if run.get("event") != "release":
+              errors.append(f"source run event must be release, got {run.get('event')!r}")
+          if run.get("path") != ".github/workflows/docs-screenshots.yml":
+              errors.append(f"source run workflow path is unexpected: {run.get('path')!r}")
+          head_repository = run.get("head_repository") or {}
+          if head_repository.get("full_name") != os.environ["GITHUB_REPOSITORY"]:
+              errors.append(
+                  "source run repository must match "
+                  f"{os.environ['GITHUB_REPOSITORY']}, got {head_repository.get('full_name')!r}"
+              )
+          if str(run.get("id")) != current_run_id and run.get("conclusion") != "success":
+              errors.append("completed source runs must have a successful conclusion")
+
+          if errors:
+              for error in errors:
+                  print(f"::error::{error}")
+              sys.exit(1)
+
+          print(
+              "Trusted docs screenshot source run verified: "
+              f"id={run.get('id')} event={run.get('event')} path={run.get('path')}"
+          )
+          PY
+
       - name: Download screenshot artifact
         id: artifact
         env:
@@ -57,6 +101,64 @@ jobs:
             -o /tmp/docs-screenshots-artifact/artifact.zip
           unzip -q /tmp/docs-screenshots-artifact/artifact.zip -d /tmp/docs-screenshots-artifact/unpacked
           rm -f /tmp/docs-screenshots-artifact/artifact.zip
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          import re
+          import sys
+
+          artifact_root = Path("/tmp/docs-screenshots-artifact/unpacked")
+          image_extensions = {".avif", ".gif", ".jpeg", ".jpg", ".png", ".webp"}
+          allowed_exact = {
+              Path("release_key.txt"),
+              Path("capture_files.json"),
+              Path("screenshots/README.md"),
+          }
+
+          def fail(message: str) -> None:
+              print(f"::error::{message}")
+              sys.exit(1)
+
+          release_key_path = artifact_root / "release_key.txt"
+          refs_path = artifact_root / "capture_files.json"
+          release_root = artifact_root / "screenshots" / "release"
+          if not release_key_path.is_file():
+              fail("docs screenshot artifact is missing release_key.txt")
+          if not refs_path.is_file():
+              fail("docs screenshot artifact is missing capture_files.json")
+          if not release_root.is_dir():
+              fail("docs screenshot artifact is missing screenshots/release")
+
+          release_key = release_key_path.read_text(encoding="utf-8").strip()
+          if not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", release_key):
+              fail(f"Unexpected docs screenshot release key: {release_key!r}")
+          refs = json.loads(refs_path.read_text(encoding="utf-8"))
+          if not isinstance(refs, list) or not all(isinstance(ref, str) for ref in refs):
+              fail("capture_files.json must contain a JSON array of screenshot paths")
+
+          for path in artifact_root.rglob("*"):
+              relative = path.relative_to(artifact_root)
+              if path.is_symlink():
+                  fail(f"docs screenshot artifact must not contain symlinks: {relative}")
+              if path.is_dir():
+                  continue
+              if relative in allowed_exact:
+                  continue
+              is_current_image = relative.parts[:2] == ("screenshots", "current")
+              is_release_image = relative.parts[:2] == ("screenshots", "release")
+              is_legacy_release_image = relative.parts[:3] == (
+                  "screenshots",
+                  "releases",
+                  release_key,
+              )
+              if (is_current_image or is_release_image or is_legacy_release_image) and (
+                  path.suffix.lower() in image_extensions
+              ):
+                  continue
+              fail(f"Unexpected docs screenshot artifact file: {relative}")
+          PY
+
           echo "found=true" >> "$GITHUB_OUTPUT"
           echo "artifact_dir=/tmp/docs-screenshots-artifact/unpacked" >> "$GITHUB_OUTPUT"
 

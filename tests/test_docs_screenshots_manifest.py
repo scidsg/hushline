@@ -299,6 +299,19 @@ def test_docs_screenshot_allowlist_can_reuse_capture_files_artifact(tmp_path: Pa
     ]
 
 
+def test_docs_screenshot_allowlist_rejects_unsafe_capture_files_artifact(tmp_path: Path) -> None:
+    script = _load_allowlist_script()
+    refs_input = tmp_path / "capture_files.json"
+
+    refs_input.write_text(
+        json.dumps(["guest/used.png", "../escape.png", "guest/script.js"]),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SystemExit, match="Unexpected captureFiles screenshot path"):
+        script.read_refs_input(refs_input)
+
+
 def test_docs_screenshots_manifest_artvandelay_notifications_waits_for_third_recipient() -> None:
     scenes = _scene_map()
 
