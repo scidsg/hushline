@@ -62,7 +62,7 @@ jobs:
           token: ${{ secrets.PERSONAL_SERVER_VERSION_BUMP }}
           path: hushline-personal-server
 
-      - name: Check out or create release branch in hushline-personal-server
+      - name: Create clean release branch in hushline-personal-server
         working-directory: hushline-personal-server
         shell: bash
         run: |
@@ -70,10 +70,9 @@ jobs:
 
           if git ls-remote --exit-code --heads origin "$PERSONAL_SERVER_BRANCH" >/dev/null 2>&1; then
             git fetch origin "$PERSONAL_SERVER_BRANCH":"refs/remotes/origin/$PERSONAL_SERVER_BRANCH"
-            git checkout -B "$PERSONAL_SERVER_BRANCH" "origin/$PERSONAL_SERVER_BRANCH"
-          else
-            git checkout -B "$PERSONAL_SERVER_BRANCH"
           fi
+
+          git checkout -B "$PERSONAL_SERVER_BRANCH" "origin/$PERSONAL_SERVER_BASE_REF"
 
       - name: Update personal server package and image references
         id: update_personal_server
@@ -129,16 +128,8 @@ jobs:
           PY
 
           if git diff --quiet -- "$PERSONAL_SERVER_PACKAGE_FILE" "$PERSONAL_SERVER_COMPOSE_FILE"; then
-            if git diff --quiet "origin/$PERSONAL_SERVER_BASE_REF...HEAD" -- \
-              "$PERSONAL_SERVER_PACKAGE_FILE" \
-              "$PERSONAL_SERVER_COMPOSE_FILE"; then
-              echo "changed=false" >> "$GITHUB_OUTPUT"
-              echo "Personal server already points at $RELEASE_TAG"
-              exit 0
-            fi
-
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "Personal server branch already contains the $RELEASE_TAG bump; continuing with PR and merge checks"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Personal server already points at $RELEASE_TAG"
             exit 0
           fi
 
@@ -146,6 +137,7 @@ jobs:
 
       - name: Commit and push personal server branch
         if: steps.update_personal_server.outputs.changed == 'true'
+        id: commit_personal_server
         working-directory: hushline-personal-server
         shell: bash
         run: |
@@ -160,8 +152,9 @@ jobs:
           fi
           git commit -m "Bump personal server to $RELEASE_TAG"
           git push --force-with-lease=refs/heads/"$PERSONAL_SERVER_BRANCH" origin "$PERSONAL_SERVER_BRANCH"
+          echo "head_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Verify only the personal server version files changed
+      - name: Verify only the generated personal server version diff changed
         if: steps.update_personal_server.outputs.changed == 'true'
         working-directory: hushline-personal-server
         shell: bash
@@ -238,6 +231,7 @@ jobs:
             --repo "$PERSONAL_SERVER_REPOSITORY" \
             --squash \
             --delete-branch \
+            --match-head-commit "${{ steps.commit_personal_server.outputs.head_sha }}" \
             "$PR_URL" >"$merge_output_file" 2>&1; then
             cat "$merge_output_file"
             exit 0
