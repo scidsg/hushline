@@ -15,7 +15,7 @@ from hushline.model.message_status_text import MessageStatusText
 if TYPE_CHECKING:
     from flask_sqlalchemy.model import Model
 
-    from hushline.model import FieldValue, Username
+    from hushline.model import Conversation, FieldValue, Username
 else:
     Model = db.Model
 
@@ -36,6 +36,13 @@ class Message(Model):
     )
     username_id: Mapped[int] = mapped_column(db.ForeignKey("usernames.id"), nullable=False)
     username: Mapped["Username"] = relationship(uselist=False)
+    conversation_id: Mapped[int | None] = mapped_column(
+        db.ForeignKey("conversations.id", ondelete="SET NULL"), unique=True
+    )
+    conversation: Mapped["Conversation | None"] = relationship(
+        "Conversation",
+        back_populates="initial_message",
+    )
     reply_slug: Mapped[str] = mapped_column(index=True, nullable=False)
     status: Mapped[MessageStatus] = mapped_column(
         SQLAlchemyEnum(MessageStatus), default=MessageStatus.PENDING, nullable=False

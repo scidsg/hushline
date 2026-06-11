@@ -27,6 +27,7 @@ from hushline.password_hasher import hash_password, verify_password
 if TYPE_CHECKING:
     from flask_sqlalchemy.model import Model
 
+    from hushline.model.conversation import ConversationParticipant
     from hushline.model.message import Message
     from hushline.model.notification_recipient import NotificationRecipient
     from hushline.model.password_reset_token import PasswordResetToken
@@ -89,6 +90,11 @@ class User(Model):
         back_populates="user",
         cascade="all, delete-orphan",
         order_by="PasswordResetToken.id.desc()",
+    )
+    conversation_participants: Mapped[list["ConversationParticipant"]] = relationship(
+        back_populates="user",
+        order_by="ConversationParticipant.id.asc()",
+        passive_deletes=True,
     )
     messages: Mapped[list["Message"]] = relationship(
         secondary="usernames",
