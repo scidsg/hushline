@@ -43,6 +43,43 @@ def test_cross_repo_auto_merge_workflows_use_owner_qualified_pr_heads() -> None:
         assert workflow_text.count(head_filter) == expected_count
 
 
+def test_personal_server_bump_workflow_rebuilds_release_branch_from_main() -> None:
+    workflow_text = _workflow_text(".github/workflows/bump-personal-server-after-release.yml")
+    branch_section = workflow_text.split(
+        "      - name: Create clean release branch in hushline-personal-server", 1
+    )[1].split("      - name: Update personal server package and image references", 1)[0]
+    update_section = workflow_text.split(
+        "      - name: Update personal server package and image references", 1
+    )[1].split("      - name: Commit and push personal server branch", 1)[0]
+    commit_section = workflow_text.split("      - name: Commit and push personal server branch", 1)[
+        1
+    ].split("      - name: Verify only the generated personal server version diff changed", 1)[0]
+    merge_section = workflow_text.split(
+        "      - name: Merge personal server PR if immediately allowed", 1
+    )[1]
+
+    assert 'git ls-remote --exit-code --heads origin "$PERSONAL_SERVER_BRANCH"' in branch_section
+    assert (
+        'git fetch origin "$PERSONAL_SERVER_BRANCH":'
+        '"refs/remotes/origin/$PERSONAL_SERVER_BRANCH"' in branch_section
+    )
+    assert (
+        'git checkout -B "$PERSONAL_SERVER_BRANCH" "origin/$PERSONAL_SERVER_BASE_REF"'
+        in branch_section
+    )
+    assert (
+        'git checkout -B "$PERSONAL_SERVER_BRANCH" "origin/$PERSONAL_SERVER_BRANCH"'
+        not in branch_section
+    )
+    assert "origin/$PERSONAL_SERVER_BASE_REF...HEAD" not in update_section
+    assert "branch already contains" not in update_section
+    assert 'echo "head_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"' in commit_section
+    assert (
+        '--match-head-commit "${{ steps.commit_personal_server.outputs.head_sha }}"'
+        in merge_section
+    )
+
+
 def test_public_directory_weekly_report_refreshes_stats_branch_lease_before_push() -> None:
     workflow_text = _workflow_text(".github/workflows/public-directory-weekly-report.yml")
     build_section = workflow_text.split("      - name: Build weekly directory report", 1)[1].split(
@@ -329,3 +366,38 @@ def test_workflow_pr_head_guard_rejects_missing_head_value_with_repo() -> None:
     command = "gh pr create --repo owner/repo --head"
 
     assert workflow_guard.is_unqualified_head(command) is True
+
+
+def test_staging_release_branch_resets_to_trusted_base_before_auto_merge() -> None:
+    workflow_text = _workflow_text(".github/workflows/bump-staging-after-release.yml")
+    reset_section = workflow_text.split(
+        "      - name: Reset release branch to trusted infra base",
+        1,
+    )[1].split("      - name: Update staging version branch reference", 1)[0]
+    commit_section = workflow_text.split("      - name: Commit infra branch", 1)[1].split(
+        "      - name: Verify only the staging tag changed",
+        1,
+    )[0]
+    verify_section = workflow_text.split(
+        "      - name: Verify only the staging tag changed",
+        1,
+    )[1].split("      - name: Push infra branch", 1)[0]
+    push_section = workflow_text.split("      - name: Push infra branch", 1)[1].split(
+        "      - name: Create or update staging PR",
+        1,
+    )[0]
+
+    assert 'git fetch origin "$INFRA_BRANCH":"refs/remotes/origin/$INFRA_BRANCH"' in reset_section
+    assert 'git checkout -B "$INFRA_BRANCH" "origin/$INFRA_BASE_REF"' in reset_section
+    assert 'git checkout -B "$INFRA_BRANCH" "origin/$INFRA_BRANCH"' not in reset_section
+    assert (
+        'git push --force-with-lease=refs/heads/"$INFRA_BRANCH" origin "$INFRA_BRANCH"'
+        not in commit_section
+    )
+    assert "changed_lines != tag_changes" in verify_section
+    assert "len(tag_changes) != 2" in verify_section
+    assert "expected_added_tag.match(tag_changes[1])" in verify_section
+    assert (
+        'git push --force-with-lease=refs/heads/"$INFRA_BRANCH" origin "$INFRA_BRANCH"'
+        in push_section
+    )
