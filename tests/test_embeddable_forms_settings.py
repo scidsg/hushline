@@ -704,7 +704,9 @@ def test_embed_profile_submission_rejects_invalid_csrf_token(
     assert _first_message_for(user.primary_username) is None
 
 
-def test_embed_profile_submission_rejects_missing_origin(client: FlaskClient, user: User) -> None:
+def test_embed_profile_submission_allows_sandboxed_null_origin(
+    client: FlaskClient, user: User
+) -> None:
     _enable_embeds_globally()
     _make_message_capable(user)
     _configure_embed(user.primary_username)
@@ -720,6 +722,83 @@ def test_embed_profile_submission_rejects_missing_origin(client: FlaskClient, us
             "field_1": "Embedded message",
             **submission_data,
         },
+        headers={"Origin": "null"},
+    )
+
+    assert post_response.status_code == 200, post_response.text
+    assert _first_message_for(user.primary_username) is not None
+
+
+def test_embed_profile_submission_allows_token_bound_missing_origin(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "Embedded Signal contact",
+            "field_1": "Embedded message",
+            **submission_data,
+        },
+    )
+
+    assert post_response.status_code == 200, post_response.text
+    assert _first_message_for(user.primary_username) is not None
+
+
+def test_embed_profile_submission_rejects_missing_origin_without_embed_form_token(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    submission_data.pop("embed_captcha_token")
+
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "Embedded Signal contact",
+            "field_1": "Embedded message",
+            **submission_data,
+        },
+    )
+
+    assert post_response.status_code == 400
+    assert "Invalid embed request origin" in post_response.text
+    assert _first_message_for(user.primary_username) is None
+
+
+def test_embed_profile_submission_rejects_null_origin_without_embed_form_token(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    submission_data.pop("embed_captcha_token")
+
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "Embedded Signal contact",
+            "field_1": "Embedded message",
+            **submission_data,
+        },
+        headers={"Origin": "null"},
     )
 
     assert post_response.status_code == 400
