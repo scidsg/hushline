@@ -172,6 +172,32 @@ def test_build_markdown_report_reports_added_and_removed_usernames() -> None:
     }
 
 
+def test_build_markdown_report_escapes_user_controlled_listing_markdown() -> None:
+    module = _load_module()
+
+    current_snapshot = [
+        {
+            "primary_username": "newuser",
+            "display_name": "Trusted User\n## Forged Heading [track](https://example.test)",
+            "profile_url": "/to/newuser\n![pixel](https://example.test/pixel.png)",
+            "is_verified": False,
+            "has_pgp_key": True,
+        },
+    ]
+
+    report, _summary = module.build_markdown_report(current_snapshot, [], [])
+
+    assert "## Forged Heading" not in report
+    assert "[track](https://example.test)" not in report
+    assert "![pixel](https://example.test/pixel.png)" not in report
+    assert (
+        r"- `newuser` "
+        r"(Trusted User \#\# Forged Heading "
+        r"\[track\]\(https\://example\.test\)) - "
+        r"/to/newuser \!\[pixel\]\(https\://example\.test/pixel\.png\)"
+    ) in report
+
+
 def test_build_readme_report_renders_natural_language_and_history_table() -> None:
     module = _load_module()
 
