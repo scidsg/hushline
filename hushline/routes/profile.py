@@ -4,6 +4,7 @@ import re
 import secrets
 from hashlib import sha256
 from typing import Any
+from urllib.parse import urlsplit
 
 from flask import (
     Flask,
@@ -200,6 +201,24 @@ def register_profile_routes(app: Flask) -> None:
 
         return True
 
+    def _embed_post_origin_is_valid() -> bool:
+        origin = request.headers.get("Origin", "").strip()
+        if not origin:
+            referer = request.headers.get("Referer", "").strip()
+            if referer:
+                parsed_referer = urlsplit(referer)
+                origin = f"{parsed_referer.scheme}://{parsed_referer.netloc}"
+
+        if not origin or origin == "null":
+            return False
+
+        parsed_origin = urlsplit(origin)
+        parsed_host = urlsplit(request.host_url)
+        return (parsed_origin.scheme, parsed_origin.netloc) == (
+            parsed_host.scheme,
+            parsed_host.netloc,
+        )
+
     def _message_submission_block_reason(uname: Username) -> str | None:
         if bool(getattr(uname.user, "is_suspended", False)):
             return "suspended"
@@ -307,6 +326,10 @@ def register_profile_routes(app: Flask) -> None:
 
             embed_rate_limit_result = None
             if is_embedded:
+                if not _embed_post_origin_is_valid():
+                    flash("⛔️ Invalid embed request origin. Please reload.")
+                    return _render_profile(400)
+
                 embed_rate_limit_result = check_embed_rate_limit(uname)
                 emit_embed_abuse_counter(
                     EMBED_SUBMISSION_ATTEMPT_COUNTER,
