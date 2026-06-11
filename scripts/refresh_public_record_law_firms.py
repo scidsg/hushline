@@ -539,8 +539,17 @@ def main() -> int:
             generated_on=datetime.now().astimezone().date().isoformat(),
         )
 
+    unresolved_link_failures = [
+        failure
+        for failure in refresh_result.link_failures
+        if failure.listing_id not in refresh_result.dropped_record_ids
+    ]
     link_failures_detected = bool(refresh_result.link_failures)
-    if link_failures_detected and not args.allow_link_failures and not args.drop_failing_records:
+    if (
+        link_failures_detected
+        and not args.allow_link_failures
+        and (not args.drop_failing_records or unresolved_link_failures)
+    ):
         raise PublicRecordRefreshError(
             "Broken links detected during refresh. "
             "Use --allow-link-failures to flag only, or --drop-failing-records to remove them."
