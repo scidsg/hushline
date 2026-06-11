@@ -352,6 +352,7 @@ def register_profile_routes(app: Flask) -> None:
                 ),
                 current_user_id=session.get("user_id"),
                 recipient_public_keys=uname.user.message_recipient_keys,
+                recipient_chat_public_key=uname.user.chat_public_key,
                 recipient_public_key_entries=(
                     notification_recipient_public_key_entries(uname.user)
                     if (
