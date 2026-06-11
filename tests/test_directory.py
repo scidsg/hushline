@@ -822,6 +822,12 @@ def test_directory_users_json_includes_display_name_fallback_and_flags(
         "hush line admin",
         "admin of hush line",
         "The Hush-Line Admin",
+        "Ｈｕｓｈ Ｌｉｎｅ",
+        "Ａｄｍｉｎ",
+        "𝙃𝙪𝙨𝙝 𝙇𝙞𝙣𝙚",
+        "Αdmin",
+        "Нush Line",
+        "һuѕһ ӏіոе",
     ],
 )
 def test_directory_users_json_flags_suspicious_non_verified_non_admin_display_names_for_caution(
@@ -4133,6 +4139,13 @@ def test_directory_all_tab_moves_caution_accounts_to_bottom(
             is_verified=False,
             user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
         ),
+        SimpleNamespace(
+            username="unicode-spoof",
+            display_name="Ｈｕｓｈ Ｌｉｎｅ",
+            bio="unicode spoof bio",
+            is_verified=False,
+            user=SimpleNamespace(is_admin=False, pgp_key="pgp-key"),
+        ),
     )
 
     monkeypatch.setattr(
@@ -4151,6 +4164,7 @@ def test_directory_all_tab_moves_caution_accounts_to_bottom(
         "Alpha Witness",
         "Zulu Witness",
         "Admin of Hush Line",
+        "Ｈｕｓｈ Ｌｉｎｅ",
     ]
 
 
