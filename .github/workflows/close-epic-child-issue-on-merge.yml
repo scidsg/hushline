@@ -18,24 +18,39 @@ jobs:
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         with:
           script: |
-            const body = String(context.payload.pull_request.body || "");
-            const match = body.match(/(?:^|\n)Linked issue:\s*#(\d+)\b/i);
-
-            if (!match) {
-              core.info("No linked child issue marker found in PR body.");
-              return;
-            }
-
-            const issueNumber = Number(match[1]);
-            if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
-              core.info("Linked child issue marker did not contain a valid issue number.");
-              return;
-            }
-
+            const pullRequest = context.payload.pull_request;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const prNumber = context.payload.pull_request.number;
-            const baseRef = String(context.payload.pull_request.base.ref || "");
+            const prNumber = pullRequest.number;
+            const baseRef = String(pullRequest.base.ref || "");
+            const headRef = String(pullRequest.head.ref || "");
+            const headRepo = String(pullRequest.head.repo?.full_name || "");
+            const expectedRepo = `${owner}/${repo}`;
+
+            if (headRepo !== expectedRepo) {
+              core.info(`Skipping PR #${prNumber}: head repository ${headRepo} is not ${expectedRepo}.`);
+              return;
+            }
+
+            const baseMatch = baseRef.match(/^codex\/epic-(\d+)$/);
+            if (!baseMatch) {
+              core.info(`Skipping PR #${prNumber}: base branch ${baseRef} is not an epic branch.`);
+              return;
+            }
+
+            // Do not trust mutable PR body text to choose an issue to close.
+            // Agent-created child PRs use same-repository heads named codex/daily-issue-<issue>.
+            const headMatch = headRef.match(/^codex\/daily-issue-(\d+)$/);
+            if (!headMatch) {
+              core.info(`Skipping PR #${prNumber}: head branch ${headRef} is not an agent child branch.`);
+              return;
+            }
+
+            const issueNumber = Number(headMatch[1]);
+            if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
+              core.info("Agent child branch did not contain a valid issue number.");
+              return;
+            }
             const issue = await github.rest.issues.get({
               owner,
               repo,
