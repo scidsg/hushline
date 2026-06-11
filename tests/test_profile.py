@@ -43,6 +43,10 @@ def _configure_embed(username: Username, origin: str = "https://tips.example") -
     username.set_embed_allowed_origins([origin])
 
 
+def _embed_post_headers(**extra_headers: str) -> dict[str, str]:
+    return {"Origin": "http://localhost:8080", **extra_headers}
+
+
 def _embed_submission_data(response_text: str) -> dict[str, str]:
     page = BeautifulSoup(response_text, "html.parser")
     label = page.find("label", attrs={"for": "captcha_answer"})
@@ -311,6 +315,7 @@ def test_embed_profile_rejects_non_numeric_captcha(client: FlaskClient, user: Us
             "field_1": msg_content,
             **submission_data,
         },
+        headers=_embed_post_headers(),
     )
 
     assert response.status_code == 400
@@ -339,6 +344,7 @@ def test_embed_profile_rejects_expired_captcha_token(client: FlaskClient, user: 
                 "field_1": msg_content,
                 **submission_data,
             },
+            headers=_embed_post_headers(),
         )
 
     assert response.status_code == 400
@@ -367,6 +373,7 @@ def test_embed_profile_rejects_bad_captcha_token(client: FlaskClient, user: User
                 "field_1": msg_content,
                 **submission_data,
             },
+            headers=_embed_post_headers(),
         )
 
     assert response.status_code == 400
@@ -406,6 +413,7 @@ def test_embed_profile_rejects_captcha_token_for_different_profile(
             "field_1": msg_content,
             **submission_data,
         },
+        headers=_embed_post_headers(),
     )
 
     assert response.status_code == 400
@@ -440,6 +448,7 @@ def test_embed_profile_post_404s_if_account_is_suspended_after_render(
                 "field_1": msg_content,
                 **submission_data,
             },
+            headers=_embed_post_headers(),
         )
 
     assert response.status_code == 404
@@ -483,6 +492,7 @@ def test_embed_profile_rejects_if_account_is_suspended_during_submission(
                 "field_1": msg_content,
                 **submission_data,
             },
+            headers=_embed_post_headers(),
         )
 
     assert response.status_code == 400
@@ -534,6 +544,7 @@ def test_embed_profile_rejects_if_recipient_keys_are_removed_during_submission(
                 "field_1": msg_content,
                 **submission_data,
             },
+            headers=_embed_post_headers(),
         )
 
     assert response.status_code == 400
