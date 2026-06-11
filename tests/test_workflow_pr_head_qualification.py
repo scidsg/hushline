@@ -1,6 +1,13 @@
+import importlib.util
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+SCRIPT_PATH = REPO_ROOT / "scripts" / "check_workflow_pr_head_qualification.py"
+spec = importlib.util.spec_from_file_location("check_workflow_pr_head_qualification", SCRIPT_PATH)
+assert spec is not None
+workflow_guard = importlib.util.module_from_spec(spec)
+assert spec.loader is not None
+spec.loader.exec_module(workflow_guard)
 
 
 def _workflow_text(relative_path: str) -> str:
@@ -272,3 +279,33 @@ def test_epic_child_close_workflow_uses_trusted_head_branch_not_pr_body() -> Non
     assert "const issueNumber = Number(headMatch[1]);" in workflow_text
     assert "context.payload.pull_request.body" not in workflow_text
     assert "Linked issue:" not in workflow_text
+
+
+def test_workflow_pr_head_guard_rejects_unqualified_long_head_with_equals() -> None:
+    command = "gh pr list --repo owner/repo --head=feature-branch"
+
+    assert workflow_guard.is_unqualified_head(command) is True
+
+
+def test_workflow_pr_head_guard_allows_qualified_long_head_with_equals() -> None:
+    command = "gh pr list --repo owner/repo --head=owner:feature-branch"
+
+    assert workflow_guard.is_unqualified_head(command) is False
+
+
+def test_workflow_pr_head_guard_rejects_unqualified_short_head() -> None:
+    command = "gh pr create --repo owner/repo -H feature-branch"
+
+    assert workflow_guard.is_unqualified_head(command) is True
+
+
+def test_workflow_pr_head_guard_allows_qualified_short_head_with_equals() -> None:
+    command = "gh pr create --repo owner/repo -H=owner:feature-branch"
+
+    assert workflow_guard.is_unqualified_head(command) is False
+
+
+def test_workflow_pr_head_guard_rejects_missing_head_value_with_repo() -> None:
+    command = "gh pr create --repo owner/repo --head"
+
+    assert workflow_guard.is_unqualified_head(command) is True
