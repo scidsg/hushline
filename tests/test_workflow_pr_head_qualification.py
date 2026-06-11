@@ -126,7 +126,11 @@ def test_screenshots_workflow_publishes_current_folder_to_website_directly() -> 
     assert "Resolve screenshot capture manifest" in capture_workflow_text
     assert "DOCS_REPOSITORY: scidsg/hushline-docs" in capture_workflow_text
     assert 'DOCS_DIR="${RUNNER_TEMP}/hushline-docs"' in capture_workflow_text
-    assert '--branch "${DOCS_DEFAULT_BRANCH}"' in capture_workflow_text
+    assert '--branch "$branch"' in capture_workflow_text
+    assert (
+        'clone_with_optional_token "$DOCS_REPOSITORY" "$DOCS_DEFAULT_BRANCH"'
+        in capture_workflow_text
+    )
     assert '--docs-dir "$DOCS_DIR"' in capture_workflow_text
     assert '--manifest-out "$CAPTURE_MANIFEST"' in capture_workflow_text
     assert '--output "$CAPTURE_FILES"' in capture_workflow_text
@@ -160,6 +164,22 @@ def test_screenshots_workflow_publishes_current_folder_to_website_directly() -> 
     assert "gh pr create \\" not in website_section
     assert 'gh pr merge "$pr_url" \\' not in website_section
     assert "${WEBSITE_SCREENSHOT_ROOT}/releases" not in website_section
+
+
+def test_docs_screenshot_capture_manifest_does_not_persist_read_tokens() -> None:
+    workflow_text = _workflow_text(".github/workflows/docs-screenshots.yml")
+    manifest_section = workflow_text.split("      - name: Resolve screenshot capture manifest", 1)[
+        1
+    ].split("      - name: Capture screenshots", 1)[0]
+
+    assert "DOCS_READ_TOKEN:" in manifest_section
+    assert "WEBSITE_READ_TOKEN:" in manifest_section
+    assert "GIT_ASKPASS_HELPER=" in manifest_section
+    assert 'GIT_ASKPASS_TOKEN="$token"' in manifest_section
+    assert 'git -C "$destination" remote set-url origin "$clone_url"' in manifest_section
+    assert "https://x-access-token:${DOCS_READ_TOKEN}" not in manifest_section
+    assert "https://x-access-token:${WEBSITE_READ_TOKEN}" not in manifest_section
+    assert "DOCS_CLONE_URL=" not in manifest_section
 
 
 def test_dev_deploy_workflow_generates_session_fernet_key_for_terraform_runs() -> None:

@@ -173,31 +173,51 @@ jobs:
           CAPTURE_MANIFEST="${RUNNER_TEMP}/docs-screenshot-capture-manifest.json"
           CAPTURE_FILES="${RUNNER_TEMP}/docs-screenshot-capture-files.json"
 
-          DOCS_CLONE_URL="https://github.com/${DOCS_REPOSITORY}.git"
-          if [ -n "${DOCS_READ_TOKEN:-}" ]; then
-            DOCS_CLONE_URL="https://x-access-token:${DOCS_READ_TOKEN}@github.com/${DOCS_REPOSITORY}.git"
-          fi
+          GIT_ASKPASS_HELPER="${RUNNER_TEMP}/git-askpass-doc-screenshots.sh"
+          cat > "$GIT_ASKPASS_HELPER" <<'EOF'
+          #!/usr/bin/env sh
+          case "$1" in
+            *Username*) printf '%s\n' "x-access-token" ;;
+            *Password*) printf '%s\n' "${GIT_ASKPASS_TOKEN:?}" ;;
+            *) printf '\n' ;;
+          esac
+          EOF
+          chmod 700 "$GIT_ASKPASS_HELPER"
+          trap 'rm -f "$GIT_ASKPASS_HELPER"' EXIT
 
-          CLONE_URL="https://github.com/${WEBSITE_REPOSITORY}.git"
-          if [ -n "${WEBSITE_READ_TOKEN:-}" ]; then
-            CLONE_URL="https://x-access-token:${WEBSITE_READ_TOKEN}@github.com/${WEBSITE_REPOSITORY}.git"
-          fi
+          clone_with_optional_token() {
+            local repository="$1"
+            local branch="$2"
+            local destination="$3"
+            local token="${4:-}"
+            local clone_url="https://github.com/${repository}.git"
 
-          git clone \
-            --depth 1 \
-            --filter=blob:none \
-            --single-branch \
-            --branch "${DOCS_DEFAULT_BRANCH}" \
-            "$DOCS_CLONE_URL" \
-            "$DOCS_DIR"
+            if [ -n "$token" ]; then
+              GIT_TERMINAL_PROMPT=0 \
+                GIT_ASKPASS="$GIT_ASKPASS_HELPER" \
+                GIT_ASKPASS_TOKEN="$token" \
+                git clone \
+                  --depth 1 \
+                  --filter=blob:none \
+                  --single-branch \
+                  --branch "$branch" \
+                  "$clone_url" \
+                  "$destination"
+            else
+              git clone \
+                --depth 1 \
+                --filter=blob:none \
+                --single-branch \
+                --branch "$branch" \
+                "$clone_url" \
+                "$destination"
+            fi
 
-          git clone \
-            --depth 1 \
-            --filter=blob:none \
-            --single-branch \
-            --branch "${WEBSITE_DEFAULT_BRANCH}" \
-            "$CLONE_URL" \
-            "$WEBSITE_DIR"
+            git -C "$destination" remote set-url origin "$clone_url"
+          }
+
+          clone_with_optional_token "$DOCS_REPOSITORY" "$DOCS_DEFAULT_BRANCH" "$DOCS_DIR" "${DOCS_READ_TOKEN:-}"
+          clone_with_optional_token "$WEBSITE_REPOSITORY" "$WEBSITE_DEFAULT_BRANCH" "$WEBSITE_DIR" "${WEBSITE_READ_TOKEN:-}"
 
           python3 .trusted-workflow/scripts/resolve-doc-screenshot-allowlist.py \
             --hushline-dir "$GITHUB_WORKSPACE" \
