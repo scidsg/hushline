@@ -167,6 +167,44 @@ def _snapshot_map(rows: list[dict[str, object]]) -> dict[str, dict[str, object]]
     return {str(row["primary_username"]): row for row in rows}
 
 
+def _single_line_text(value: object, fallback: str = "") -> str:
+    if not isinstance(value, str):
+        return fallback
+    normalized = " ".join(value.split())
+    return normalized or fallback
+
+
+def _markdown_escape_text(value: object, fallback: str = "") -> str:
+    text = _single_line_text(value, fallback)
+    return "".join(f"\\{char}" if char in r"\`*_{}[]()#+-.!:|<>" else char for char in text)
+
+
+def _markdown_code_span(value: object, fallback: str = "") -> str:
+    text = _single_line_text(value, fallback)
+    if not text:
+        return ""
+
+    longest_backtick_run = 0
+    current_run = 0
+    for char in text:
+        if char == "`":
+            current_run += 1
+            longest_backtick_run = max(longest_backtick_run, current_run)
+        else:
+            current_run = 0
+    delimiter = "`" * (longest_backtick_run + 1)
+    if text.startswith("`") or text.endswith("`"):
+        text = f" {text} "
+    return f"{delimiter}{text}{delimiter}"
+
+
+def _format_report_listing(row: Mapping[str, object]) -> str:
+    username = _markdown_code_span(row.get("primary_username"), "unknown")
+    display_name = _markdown_escape_text(row.get("display_name"), "unknown")
+    profile_url = _markdown_escape_text(row.get("profile_url"), "profile URL unavailable")
+    return f"- {username} ({display_name}) - {profile_url}"
+
+
 def _build_diff_summary(
     current_snapshot: list[dict[str, object]],
     baseline_snapshot: list[dict[str, object]],
@@ -251,11 +289,7 @@ def _append_diff_section(
     if diff["new_usernames"]:
         for username in cast(list[str], diff["new_usernames"]):
             row = current_map[str(username)]
-            lines.append(
-                f"- `{username}`"
-                f" ({row['display_name']})"
-                f" - {row['profile_url'] or 'profile URL unavailable'}"
-            )
+            lines.append(_format_report_listing(row))
     else:
         lines.append("- none")
 
@@ -263,11 +297,7 @@ def _append_diff_section(
     if diff["removed_usernames"]:
         for username in cast(list[str], diff["removed_usernames"]):
             row = baseline_map[str(username)]
-            lines.append(
-                f"- `{username}`"
-                f" ({row['display_name']})"
-                f" - {row['profile_url'] or 'profile URL unavailable'}"
-            )
+            lines.append(_format_report_listing(row))
     else:
         lines.append("- none")
     return diff
