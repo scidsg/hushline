@@ -37,6 +37,13 @@
     <p class="meta">
       {{ message.created_at.date() }}
     </p>
+    {% if message.conversation %}
+      <p>
+        <a href="{{ url_for('conversation', conversation_id=message.conversation.id) }}">
+          Open conversation
+        </a>
+      </p>
+    {% endif %}
   </div>
   <article class="message">
     {% for field_value in message.field_values %}
