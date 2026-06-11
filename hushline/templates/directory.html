@@ -676,7 +676,7 @@
     >
       <p class="meta dirMeta">
         🧪 Beta: This tab includes self-reported attorneys and automated listings pulled from public records.
-        <a href="/to/admin">Request a correction</a>.
+        {% if correction_contact_url %}<a href="{{ correction_contact_url }}">Request a correction</a>.{% endif %}
       </p>
 
       {% if attorney_usernames or public_record_all_listings %}
@@ -737,7 +737,7 @@
   {% if directory_verified_tab_enabled %}
     <div id="newsrooms" class="tab-content" role="tabpanel" aria-labelledby="newsrooms-tab">
       <p class="meta dirMeta">
-        🧪 Beta: This tab includes self-reported journalists, self-reported newsrooms, and automated listings from public journalism directories{% if newsroom_automated_sources %}, including {% for source in newsroom_automated_sources %}<a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">{{ source.label }}</a>{% if not loop.last %}{% if loop.revindex0 == 1 %} and {% else %}, {% endif %}{% endif %}{% endfor %}{% endif %}. <a href="/to/admin">Request a correction</a>.
+        🧪 Beta: This tab includes self-reported journalists, self-reported newsrooms, and automated listings from public journalism directories{% if newsroom_automated_sources %}, including {% for source in newsroom_automated_sources %}<a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">{{ source.label }}</a>{% if not loop.last %}{% if loop.revindex0 == 1 %} and {% else %}, {% endif %}{% endif %}{% endfor %}{% endif %}. {% if correction_contact_url %}<a href="{{ correction_contact_url }}">Request a correction</a>.{% endif %}
       </p>
 
       {% if journalism_usernames or newsroom_listings %}
@@ -799,7 +799,7 @@
     <div id="globaleaks" class="tab-content" role="tabpanel" aria-labelledby="globaleaks-tab">
       <p class="meta dirMeta">
         🧪 Beta: This list contains manual and automated entries and should not be considered exhaustive or authoritative.
-        <a href="/to/admin">Request a correction</a>.
+        {% if correction_contact_url %}<a href="{{ correction_contact_url }}">Request a correction</a>.{% endif %}
       </p>
 
       {% if globaleaks_listings %}
@@ -830,7 +830,7 @@
       <p class="meta dirMeta">
         🧪 Beta: These listings are automated from the Freedom of the Press Foundation's public
         <a href="https://securedrop.org/api/v1/directory/?format=json">SecureDrop API</a>.
-        <a href="/to/admin">Request a correction</a>.
+        {% if correction_contact_url %}<a href="{{ correction_contact_url }}">Request a correction</a>.{% endif %}
       </p>
 
       {% if securedrop_listings %}
@@ -866,7 +866,7 @@
     {% if directory_verified_tab_enabled %}
       <p class="meta dirMeta">
         🧪 Beta: This list contains automated entries.
-        <a href="/to/admin">Request a correction</a>.
+        {% if correction_contact_url %}<a href="{{ correction_contact_url }}">Request a correction</a>.{% endif %}
       </p>
     {% endif %}
     {% if not directory_verified_tab_enabled %}

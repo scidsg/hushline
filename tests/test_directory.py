@@ -40,6 +40,13 @@ _JOURNALISM_ACCOUNT_CATEGORIES = {
 }
 
 
+def _configure_directory_correction_admin(admin_user: User, username: str = "site-admin") -> str:
+    admin_user.primary_username.username = username
+    admin_user.pgp_key = Path("tests/test_pgp_key.txt").read_text()
+    db.session.commit()
+    return url_for("profile", username=username)
+
+
 def _first_public_record_listing_or_skip() -> PublicRecordListing:
     listings = _strict_public_record_listings()
     if not listings:
@@ -552,7 +559,10 @@ def test_directory_randomizes_featured_user_order(
     assert usernames[:3] == ["second-featured-user", "featured-user", "admin-user"]
 
 
-def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> None:
+def test_directory_public_record_banner_links_to_admin(
+    client: FlaskClient, admin_user: User
+) -> None:
+    correction_url = _configure_directory_correction_admin(admin_user)
     response = client.get(url_for("directory"))
     assert response.status_code == 200
 
@@ -565,7 +575,7 @@ def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> N
     banner_link = banner.select_one("a")
     assert banner_link is not None
     assert banner_link.text.strip() == "Request a correction"
-    assert banner_link.get("href") == "/to/admin"
+    assert banner_link.get("href") == correction_url
     banner_text = " ".join(banner.get_text(" ", strip=True).split())
     assert (
         "Beta: This tab includes self-reported attorneys and automated listings pulled from "
@@ -575,8 +585,9 @@ def test_directory_public_record_banner_links_to_admin(client: FlaskClient) -> N
 
 
 def test_directory_securedrop_banner_links_to_admin_without_tor_copy(
-    client: FlaskClient,
+    client: FlaskClient, admin_user: User
 ) -> None:
+    correction_url = _configure_directory_correction_admin(admin_user)
     response = client.get(url_for("directory"))
     assert response.status_code == 200
 
@@ -589,7 +600,7 @@ def test_directory_securedrop_banner_links_to_admin_without_tor_copy(
     banner_links = banner.select("a")
     links_by_text = {link.text.strip().rstrip("."): link.get("href") for link in banner_links}
     assert links_by_text["SecureDrop API"] == "https://securedrop.org/api/v1/directory/?format=json"
-    assert links_by_text["Request a correction"] == "/to/admin"
+    assert links_by_text["Request a correction"] == correction_url
     banner_text = " ".join(banner.get_text(" ", strip=True).split())
     assert banner_text.startswith("🧪 Beta:")
     assert (
@@ -603,8 +614,9 @@ def test_directory_securedrop_banner_links_to_admin_without_tor_copy(
 
 
 def test_directory_globaleaks_banner_links_to_admin_without_tor_copy(
-    client: FlaskClient,
+    client: FlaskClient, admin_user: User
 ) -> None:
+    correction_url = _configure_directory_correction_admin(admin_user)
     response = client.get(url_for("directory"))
     assert response.status_code == 200
 
@@ -619,7 +631,7 @@ def test_directory_globaleaks_banner_links_to_admin_without_tor_copy(
         link.text.replace("\u2060", "").strip().rstrip("."): link.get("href")
         for link in banner_links
     }
-    assert links_by_text["Request a correction"] == "/to/admin"
+    assert links_by_text["Request a correction"] == correction_url
     assert "Tor Browser" not in links_by_text
     banner_text = " ".join(banner.get_text(" ", strip=True).split())
     assert banner_text.startswith("🧪 Beta:")
@@ -632,8 +644,9 @@ def test_directory_globaleaks_banner_links_to_admin_without_tor_copy(
 
 
 def test_directory_newsrooms_banner_links_to_admin(
-    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch, admin_user: User
 ) -> None:
+    correction_url = _configure_directory_correction_admin(admin_user)
     monkeypatch.setattr(
         "hushline.routes.directory.get_newsroom_directory_listings",
         lambda: (_sample_newsroom_listing(), _sample_european_network_listing()),
@@ -658,7 +671,7 @@ def test_directory_newsrooms_banner_links_to_admin(
         links_by_text["Directory of European Journalism Networks"]
         == "https://journalismdirectory.org/search-networks/"
     )
-    assert links_by_text["Request a correction"] == "/to/admin"
+    assert links_by_text["Request a correction"] == correction_url
     banner_text = " ".join(banner.get_text(" ", strip=True).split())
     assert banner_text.startswith("🧪 Beta:")
     assert "self-reported journalists, self-reported newsrooms, and automated listings" in (
@@ -677,7 +690,8 @@ def test_directory_newsrooms_banner_links_to_admin(
     assert "Find Your News directory . Request a correction." not in rendered_banner_text
 
 
-def test_directory_all_tab_banner_links_to_admin(client: FlaskClient) -> None:
+def test_directory_all_tab_banner_links_to_admin(client: FlaskClient, admin_user: User) -> None:
+    correction_url = _configure_directory_correction_admin(admin_user)
     response = client.get(url_for("directory"))
     assert response.status_code == 200
 
@@ -690,11 +704,32 @@ def test_directory_all_tab_banner_links_to_admin(client: FlaskClient) -> None:
     banner_link = banner.select_one("a")
     assert banner_link is not None
     assert banner_link.text.strip() == "Request a correction"
-    assert banner_link.get("href") == "/to/admin"
+    assert banner_link.get("href") == correction_url
     banner_text = " ".join(banner.get_text(" ", strip=True).split())
     assert banner_text.startswith("🧪 Beta:")
     assert "This list contains automated entries." in banner_text
     assert "Request a correction" in banner_text
+
+
+def test_directory_correction_links_ignore_non_admin_admin_username(
+    client: FlaskClient, user: User, admin_user: User
+) -> None:
+    user.primary_username.username = "admin"
+    user.pgp_key = Path("tests/test_pgp_key.txt").read_text()
+    correction_url = _configure_directory_correction_admin(admin_user, "verified-site-admin")
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    correction_links = [
+        link.get("href")
+        for link in soup.select(".dirMeta a")
+        if link.get_text(strip=True) == "Request a correction"
+    ]
+    assert correction_links
+    assert set(correction_links) == {correction_url}
+    assert "/to/admin" not in correction_links
 
 
 def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient) -> None:
