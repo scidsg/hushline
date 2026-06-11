@@ -23,6 +23,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import MultipleResultsFound
 from werkzeug.wrappers.response import Response
 
+from hushline.auth import get_session_user
 from hushline.crypto import encrypt_message
 from hushline.db import db
 from hushline.embeds import (
@@ -35,11 +36,16 @@ from hushline.embeds import (
 )
 from hushline.external_urls import canonical_external_url
 from hushline.model import (
+    Conversation,
+    ConversationMessage,
+    ConversationMessageCopy,
+    ConversationParticipant,
     FieldDefinition,
     FieldValue,
     Message,
     NotificationRecipient,
     OrganizationSetting,
+    User,
     Username,
 )
 from hushline.routes.common import (
@@ -225,6 +231,59 @@ def register_profile_routes(app: Flask) -> None:
         if not uname.user.message_encryption_target:
             return "missing_recipient_keys"
         return None
+
+    def _authenticated_sender() -> User | None:
+        if not session.get("is_authenticated", False):
+            return None
+        return get_session_user()
+
+    def _create_initial_conversation(
+        *,
+        message: Message,
+        sender: User,
+        recipient: User,
+        raw_extracted_fields: list[tuple[str, str]],
+    ) -> Conversation | None:
+        if sender.id == recipient.id:
+            return None
+
+        recipient_encryption_target = recipient.message_encryption_target
+        if not recipient_encryption_target:
+            return None
+
+        sender_encryption_target = sender.message_encryption_target
+        conversation = Conversation()
+        sender_participant = ConversationParticipant()
+        sender_participant.conversation = conversation
+        sender_participant.user = sender
+        sender_participant.has_usable_public_key = False
+        recipient_participant = ConversationParticipant()
+        recipient_participant.conversation = conversation
+        recipient_participant.user = recipient
+        recipient_participant.has_usable_public_key = True
+        conversation_message = ConversationMessage()
+        conversation_message.conversation = conversation
+        conversation_message.sender_participant = sender_participant
+        body = format_message_email_fields(raw_extracted_fields)
+        if sender_encryption_target:
+            try:
+                encrypted_payload = encrypt_message(body, sender_encryption_target)
+            except (RuntimeError, TypeError, ValueError):
+                current_app.logger.warning("Failed to encrypt conversation copy for sender.")
+            else:
+                sender_copy = ConversationMessageCopy()
+                sender_copy.recipient_participant = sender_participant
+                sender_copy.encrypted_payload = encrypted_payload
+                sender_participant.has_usable_public_key = True
+                conversation_message.encrypted_copies.append(sender_copy)
+        recipient_payload = encrypt_message(body, recipient_encryption_target)
+        recipient_copy = ConversationMessageCopy()
+        recipient_copy.recipient_participant = recipient_participant
+        recipient_copy.encrypted_payload = recipient_payload
+        conversation_message.encrypted_copies.append(recipient_copy)
+        message.conversation = conversation
+        db.session.add(conversation)
+        return conversation
 
     @app.route("/to/<username>", methods=["GET", "POST"])
     def profile(username: str) -> Response | str | tuple[str, int]:
@@ -466,6 +525,16 @@ def register_profile_routes(app: Flask) -> None:
                     db.session.flush()
                     extracted_fields.append((field_definition.label, field_value.value or ""))
 
+                conversation = None
+                sender = _authenticated_sender()
+                if sender:
+                    conversation = _create_initial_conversation(
+                        message=message,
+                        sender=sender,
+                        recipient=uname.user,
+                        raw_extracted_fields=raw_extracted_fields,
+                    )
+
                 db.session.commit()
 
                 plaintext_new_message_body = (
@@ -580,6 +649,9 @@ def register_profile_routes(app: Flask) -> None:
                     )
 
                 flash("👍 Message submitted successfully.")
+                if conversation is not None:
+                    current_app.logger.debug("Message sent and now redirecting to conversation")
+                    return redirect(url_for("conversation", conversation_id=conversation.id))
                 session["reply_slug"] = message.reply_slug
                 current_app.logger.debug("Message sent and now redirecting")
                 return redirect(url_for("submission_success"))

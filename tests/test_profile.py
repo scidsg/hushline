@@ -14,6 +14,8 @@ from werkzeug.exceptions import NotFound
 from hushline.db import db
 from hushline.model import (
     AccountCategory,
+    Conversation,
+    ConversationMessageCopy,
     Message,
     NotificationRecipient,
     OrganizationSetting,
@@ -27,6 +29,18 @@ msg_content = "This is a test message."
 suspended_message = "This account is suspended. New messages cannot be sent at this time."
 
 pgp_message_sig = "-----BEGIN PGP MESSAGE-----\n\n"
+
+
+def _set_pgp_key(user: User) -> None:
+    user.pgp_key = Path("tests/test_pgp_key.txt").read_text()
+
+
+def _authenticate_as(client: FlaskClient, user: User) -> None:
+    with client.session_transaction() as session:
+        session["user_id"] = user.id
+        session["session_id"] = user.session_id
+        session["username"] = user.primary_username.username
+        session["is_authenticated"] = True
 
 
 def _make_current_paid_super_user(user: User) -> None:
@@ -226,6 +240,182 @@ def test_profile_submit_message(client: FlaskClient, user: User) -> None:
     response = client.get(url_for("message", public_id=message.public_id), follow_redirects=True)
     assert response.status_code == 200
     assert pgp_message_sig in response.text, response.text
+
+
+@pytest.mark.usefixtures("_pgp_user")
+def test_anonymous_profile_submit_message_keeps_reply_success_flow(
+    client: FlaskClient, user: User
+) -> None:
+    response = client.post(
+        url_for("profile", username=user.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            **get_profile_submission_data(client, user.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200, response.text
+    assert "Message submitted successfully." in response.text
+    assert "Reply Address" in response.text
+
+    message = db.session.scalars(
+        db.select(Message).filter_by(username_id=user.primary_username.id)
+    ).one()
+    assert message.conversation is None
+    assert db.session.scalars(db.select(Conversation)).all() == []
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_logged_in_profile_submit_message_creates_conversation_for_distinct_recipient(
+    client: FlaskClient, user: User, user2: User, admin_user: User
+) -> None:
+    _set_pgp_key(user)
+    _set_pgp_key(user2)
+    db.session.commit()
+
+    response = client.post(
+        url_for("profile", username=user2.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            **get_profile_submission_data(client, user2.primary_username.username),
+        },
+        follow_redirects=False,
+    )
+
+    message = db.session.scalars(
+        db.select(Message).filter_by(username_id=user2.primary_username.id)
+    ).one()
+    conversation = message.conversation
+    assert conversation is not None
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(
+        url_for("conversation", conversation_id=conversation.id)
+    )
+    assert {participant.user_id for participant in conversation.participants} == {
+        user.id,
+        user2.id,
+    }
+    participants_by_user_id = {
+        participant.user_id: participant for participant in conversation.participants
+    }
+    assert participants_by_user_id[user.id].has_usable_public_key is True
+    assert participants_by_user_id[user2.id].has_usable_public_key is True
+    [conversation_message] = conversation.messages
+    assert conversation_message.sender_participant.user_id == user.id
+    assert len(conversation_message.encrypted_copies) == 2
+    for encrypted_copy in conversation_message.encrypted_copies:
+        assert pgp_message_sig in encrypted_copy.encrypted_payload
+
+    sender_response = client.get(
+        url_for("conversation", conversation_id=conversation.id), follow_redirects=True
+    )
+    assert sender_response.status_code == 200
+    assert pgp_message_sig in sender_response.text
+
+    _authenticate_as(client, user2)
+    recipient_response = client.get(url_for("conversation", conversation_id=conversation.id))
+    assert recipient_response.status_code == 200
+    assert pgp_message_sig in recipient_response.text
+    message_response = client.get(url_for("message", public_id=message.public_id))
+    assert url_for("conversation", conversation_id=conversation.id) in message_response.text
+
+    _authenticate_as(client, admin_user)
+    other_response = client.get(url_for("conversation", conversation_id=conversation.id))
+    assert other_response.status_code == 404
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_logged_in_profile_submit_message_creates_conversation_without_sender_key(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    _set_pgp_key(user2)
+    db.session.commit()
+
+    response = client.post(
+        url_for("profile", username=user2.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            **get_profile_submission_data(client, user2.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200, response.text
+    assert "No encrypted copy is available for your account." in response.text
+
+    message = db.session.scalars(
+        db.select(Message).filter_by(username_id=user2.primary_username.id)
+    ).one()
+    conversation = message.conversation
+    assert conversation is not None
+    assert {participant.user_id for participant in conversation.participants} == {
+        user.id,
+        user2.id,
+    }
+    participants_by_user_id = {
+        participant.user_id: participant for participant in conversation.participants
+    }
+    assert participants_by_user_id[user.id].has_usable_public_key is False
+    assert participants_by_user_id[user2.id].has_usable_public_key is True
+    copies = db.session.scalars(db.select(ConversationMessageCopy)).all()
+    assert len(copies) == 1
+    assert copies[0].recipient_participant.user_id == user2.id
+    assert pgp_message_sig in copies[0].encrypted_payload
+
+    _authenticate_as(client, user2)
+    recipient_response = client.get(url_for("conversation", conversation_id=conversation.id))
+    assert recipient_response.status_code == 200
+    assert pgp_message_sig in recipient_response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+def test_self_profile_submit_message_keeps_reply_success_flow(
+    client: FlaskClient, user: User
+) -> None:
+    response = client.post(
+        url_for("profile", username=user.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            **get_profile_submission_data(client, user.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200, response.text
+    assert "Reply Address" in response.text
+
+    message = db.session.scalars(
+        db.select(Message).filter_by(username_id=user.primary_username.id)
+    ).one()
+    assert message.conversation is None
+    assert db.session.scalars(db.select(Conversation)).all() == []
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_logged_in_profile_submit_message_requires_recipient_encryption_target(
+    client: FlaskClient, user2: User
+) -> None:
+    response = client.post(
+        url_for("profile", username=user2.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            **get_profile_submission_data(client, user2.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 400
+    assert "do not have any usable recipient PGP keys" in response.text
+    assert (
+        db.session.scalars(
+            db.select(Message).filter_by(username_id=user2.primary_username.id)
+        ).first()
+        is None
+    )
+    assert db.session.scalars(db.select(Conversation)).all() == []
 
 
 @pytest.mark.usefixtures("_authenticated_user")

@@ -18,6 +18,7 @@ from hushline.crypto import encrypt_message
 from hushline.db import db
 from hushline.forms import DeleteMessageForm, ResendMessageForm, UpdateMessageStatusForm
 from hushline.model import (
+    Conversation,
     FieldValue,
     Message,
     User,
@@ -59,6 +60,42 @@ def register_message_routes(app: Flask) -> None:
             update_status_form=update_status_form,
             delete_message_form=delete_message_form,
             resend_message_form=resend_message_form,
+        )
+
+    @app.route("/conversation/<int:conversation_id>")
+    @authentication_required
+    def conversation(conversation_id: int) -> str:
+        user = db.session.get(User, session["user_id"])
+        if not user:
+            abort(404)
+
+        thread = db.session.scalars(
+            Conversation.for_user_id(user.id).where(Conversation.id == conversation_id)
+        ).one_or_none()
+        if not thread:
+            abort(404)
+
+        participant = thread.participant_for_user_id(user.id)
+        if not participant:
+            abort(404)
+
+        message_copies = []
+        for conversation_message in thread.messages:
+            copy = next(
+                (
+                    encrypted_copy
+                    for encrypted_copy in conversation_message.encrypted_copies
+                    if encrypted_copy.recipient_participant_id == participant.id
+                ),
+                None,
+            )
+            message_copies.append((conversation_message, copy))
+
+        return render_template(
+            "conversation.html",
+            conversation=thread,
+            participant=participant,
+            message_copies=message_copies,
         )
 
     @app.route("/reply/<slug>")

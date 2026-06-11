@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Conversation{% endblock %}
+
+{% block content %}
+<div class="message-header">
+  <h1>Conversation</h1>
+</div>
+
+<div class="message-container">
+  <div class="message-meta">
+    {% if conversation.initial_message %}
+      <p>
+        To:
+        <a href="{{ url_for('profile', username=conversation.initial_message.username.username) }}">
+          {{
+            conversation.initial_message.username.display_name
+            or conversation.initial_message.username.username
+          }}
+        </a>
+      </p>
+    {% endif %}
+  </div>
+  <article class="message">
+    {% for conversation_message, encrypted_copy in message_copies %}
+      <div class="field-value encrypted">
+        <div class="label">
+          {{ conversation_message.created_at.date() }}
+        </div>
+        {% if encrypted_copy %}
+          <pre class="encrypted-value">{{ encrypted_copy.encrypted_payload }}</pre>
+        {% else %}
+          <p>No encrypted copy is available for your account.</p>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </article>
+</div>
+{% endblock %}
