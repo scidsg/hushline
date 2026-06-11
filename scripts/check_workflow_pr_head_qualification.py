@@ -4,12 +4,18 @@
 from __future__ import annotations
 
 import re
+import shlex
 import sys
 from pathlib import Path
 
 WORKFLOW_DIR = Path(".github/workflows")
 COMMAND_RE = re.compile(r"\bgh pr (list|create)\b")
-HEAD_RE = re.compile(r"--head\s+(?P<token>\"[^\"]+\"|'[^']+'|\S+)")
+FLAG_TOKEN_RE = re.compile(
+    r"(?<!\S)(?P<flag>--head|--repo|-H|-R)(?:(?P<equals>=)|\s+)"
+    r'(?P<token>"[^"]*"|\'[^\']*\'|\S+)',
+)
+HEAD_FLAG_RE = re.compile(r"(?<!\S)(?:--head|-H)(?:=|\s|$)")
+REPO_FLAG_RE = re.compile(r"(?<!\S)(?:--repo|-R)(?:=|\s|$)")
 
 
 def iter_command_blocks(text: str) -> list[tuple[int, str]]:
@@ -39,16 +45,28 @@ def iter_command_blocks(text: str) -> list[tuple[int, str]]:
     return blocks
 
 
+def extract_flag_values(command: str, flags: set[str]) -> list[str]:
+    values: list[str] = []
+    for match in FLAG_TOKEN_RE.finditer(command):
+        if match.group("flag") not in flags:
+            continue
+        token = match.group("token")
+        try:
+            values.append(shlex.split(token)[0])
+        except ValueError:
+            values.append(token.strip("\"'"))
+    return values
+
+
 def is_unqualified_head(command: str) -> bool:
-    if "--repo" not in command or "--head" not in command:
+    if not REPO_FLAG_RE.search(command) or not HEAD_FLAG_RE.search(command):
         return False
 
-    match = HEAD_RE.search(command)
-    if match is None:
-        return False
+    head_values = extract_flag_values(command, {"--head", "-H"})
+    if not head_values:
+        return True
 
-    token = match.group("token").strip("\"'")
-    return ":" not in token
+    return any(":" not in token for token in head_values)
 
 
 def main() -> int:
