@@ -237,3 +237,15 @@ def test_dependency_audit_workflow_only_runs_python_audit_when_poetry_lock_chang
         "if: needs.detect-python-lockfile-change.outputs.poetry_lock_changed == 'true'"
         in python_audit_section
     )
+
+
+def test_securedrop_refresh_summary_uses_checked_random_github_output_delimiter() -> None:
+    workflow_text = _workflow_text(".github/workflows/securedrop-directory-refresh.yml")
+    summary_section = workflow_text.split("      - name: Read refresh summary", 1)[1].split(
+        "      - name: Create or update refresh PR",
+        1,
+    )[0]
+
+    assert 'delimiter="SECUREDROP_SUMMARY_$(uuidgen)"' in summary_section
+    assert 'grep -Fxq "$delimiter" "$payload_path"' in summary_section
+    assert 'delimiter="SECUREDROP_SUMMARY_$(date +%s)"' not in summary_section

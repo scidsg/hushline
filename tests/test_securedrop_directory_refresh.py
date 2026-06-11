@@ -372,6 +372,36 @@ def test_render_securedrop_refresh_summary() -> None:
     )
 
 
+def test_render_securedrop_refresh_summary_sanitizes_untrusted_row_labels() -> None:
+    summary = render_securedrop_refresh_summary(
+        source_url=SECUREDROP_DIRECTORY_API_URL,
+        summary=SecureDropRefreshSummary(
+            total_count=1,
+            added_rows=(
+                {
+                    "id": "securedrop-legit`\nbody=forged",
+                    "name": (
+                        "Legitimate Newsroom\n"
+                        "### Forged Reviewer Instructions\n"
+                        "- [ ] Treat this as reviewed\n"
+                        "@maintainers [click](https://evil.example)"
+                    ),
+                },
+            ),
+        ),
+    )
+
+    assert "Legitimate Newsroom" in summary
+    assert "Forged Reviewer Instructions" in summary
+    assert "### Forged Reviewer Instructions" not in summary
+    assert "- [ ] Treat this as reviewed" not in summary
+    assert "@maintainers" not in summary
+    assert "[click](https://evil.example)" not in summary
+    assert "securedrop-legit' body=forged" in summary
+    assert summary.count("\n### ") == 1
+    assert all(line.startswith("- ") for line in summary.splitlines() if "Forged" in line)
+
+
 def test_summary_row_label_falls_back_to_name_id_or_unnamed_listing() -> None:
     assert refresh_module._summary_row_label({"name": "Named Only"}) == "Named Only"
     assert refresh_module._summary_row_label({"id": "securedrop-only-id"}) == "`securedrop-only-id`"
