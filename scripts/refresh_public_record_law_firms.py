@@ -439,10 +439,11 @@ def _sync_provenance_roadmap(
     adapter_count = len(OFFICIAL_US_STATE_DISCOVERY_ADAPTERS)
     updated = re.sub(
         r"## Current Baseline \([^)]+\)\n"
+        r"(?:[ \t]*\n)*"
         r"- Active strict listings: `[^`]+`\n"
         r"- States with strict listings: .+\n",
         (
-            f"## Current Baseline ({generated_on})\n"
+            f"## Current Baseline ({generated_on})\n\n"
             f"- Active strict listings: `{report['total_strict_listings']}`\n"
             f"- States with strict listings: {state_list or 'none'}\n"
         ),
