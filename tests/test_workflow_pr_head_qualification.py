@@ -190,6 +190,24 @@ def test_screenshots_workflow_publishes_current_folder_to_website_directly() -> 
     assert "${WEBSITE_SCREENSHOT_ROOT}/releases" not in website_section
 
 
+def test_docs_screenshot_release_tag_is_validated_before_shell_use() -> None:
+    workflow_text = _workflow_text(".github/workflows/docs-screenshots.yml")
+    validate_section = workflow_text.split("      - name: Validate release tag", 1)[1].split(
+        "      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5", 1
+    )[0]
+    resolve_section = workflow_text.split("      - name: Resolve release key", 1)[1].split(
+        "      - name: Resolve screenshot capture manifest", 1
+    )[0]
+
+    assert "EVENT_RELEASE_TAG: ${{ github.event.release.tag_name }}" in validate_section
+    assert 'os.environ["EVENT_RELEASE_TAG"].strip()' in validate_section
+    assert 're.fullmatch(r"v[0-9]+\\.[0-9]+\\.[0-9]+", release_tag)' in validate_section
+    assert 'RELEASE_KEY="${{ github.event.release.tag_name }}"' not in resolve_section
+    assert 'RELEASE_KEY="${EVENT_RELEASE_TAG:-}"' in resolve_section
+    assert "INPUT_RELEASE_KEY: ${{ inputs.release_key }}" in resolve_section
+    assert "EVENT_RELEASE_TAG: ${{ github.event.release.tag_name }}" in resolve_section
+
+
 def test_docs_screenshot_capture_manifest_does_not_persist_read_tokens() -> None:
     workflow_text = _workflow_text(".github/workflows/docs-screenshots.yml")
     manifest_section = workflow_text.split("      - name: Resolve screenshot capture manifest", 1)[
