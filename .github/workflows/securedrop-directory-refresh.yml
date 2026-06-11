@@ -30,24 +30,39 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          delimiter="SECUREDROP_SUMMARY_$(date +%s)"
+
+          write_summary_output() {
+            local payload_path="$1"
+            local delimiter
+
+            for _ in {1..10}; do
+              delimiter="SECUREDROP_SUMMARY_$(uuidgen)"
+              if ! grep -Fxq "$delimiter" "$payload_path"; then
+                {
+                  echo "body<<${delimiter}"
+                  cat "$payload_path"
+                  echo "${delimiter}"
+                } >> "$GITHUB_OUTPUT"
+                return 0
+              fi
+            done
+
+            echo "Unable to find a safe GitHub output delimiter" >&2
+            return 1
+          }
 
           if [ -f /tmp/securedrop-refresh.md ]; then
-            {
-              echo "body<<${delimiter}"
-              cat /tmp/securedrop-refresh.md
-              echo "${delimiter}"
-            } >> "$GITHUB_OUTPUT"
+            write_summary_output /tmp/securedrop-refresh.md
             exit 0
           fi
 
-          {
-            echo "body<<${delimiter}"
-            echo "## SecureDrop Directory Refresh Summary"
-            echo
-            echo "- Refresh completed."
-            echo "${delimiter}"
-          } >> "$GITHUB_OUTPUT"
+          fallback_summary="$(mktemp)"
+          cat > "$fallback_summary" <<'SUMMARY'
+          ## SecureDrop Directory Refresh Summary
+
+          - Refresh completed.
+          SUMMARY
+          write_summary_output "$fallback_summary"
 
       - name: Create or update refresh PR
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676
