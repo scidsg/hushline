@@ -7,6 +7,7 @@ import argparse
 import json
 import re
 import shutil
+import stat
 import sys
 from pathlib import Path
 
@@ -184,13 +185,29 @@ def collect_references(
     return refs
 
 
+def is_regular_file_under_root(path: Path, root: Path) -> bool:
+    try:
+        root_resolved = root.resolve(strict=True)
+        path_resolved = path.resolve(strict=True)
+        path_resolved.relative_to(root_resolved)
+        path_stat = path.stat(follow_symlinks=False)
+    except (FileNotFoundError, OSError, RuntimeError, ValueError):
+        return False
+    return stat.S_ISREG(path_stat.st_mode)
+
+
 def available_images(root: Path) -> set[str]:
-    if not root.exists():
+    try:
+        root_stat = root.stat(follow_symlinks=False)
+    except FileNotFoundError:
         return set()
+    if not stat.S_ISDIR(root_stat.st_mode):
+        return set()
+
     return {
         str(path.relative_to(root))
         for path in root.rglob("*")
-        if path.is_file()
+        if is_regular_file_under_root(path, root)
         and path.suffix.lower() in IMAGE_EXTENSIONS
         and not path.name.endswith("-debug.png")
     }
@@ -231,8 +248,10 @@ def copy_filtered_current(current_root: Path, filtered_root: Path, refs: list[st
     for ref in refs:
         src = current_root / ref
         dst = filtered_root / ref
+        if not is_regular_file_under_root(src, current_root):
+            raise SystemExit(f"Refusing to copy unsafe screenshot artifact path: {ref}")
         dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dst)
+        shutil.copy2(src, dst, follow_symlinks=False)
 
 
 def main() -> int:

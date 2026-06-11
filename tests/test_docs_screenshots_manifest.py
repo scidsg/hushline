@@ -255,6 +255,29 @@ def test_docs_screenshot_allowlist_filters_current_tree(tmp_path: Path) -> None:
     assert not (filtered_root / "guest" / "unused.png").exists()
 
 
+def test_docs_screenshot_allowlist_rejects_symlinked_current_images(
+    tmp_path: Path,
+) -> None:
+    script = _load_allowlist_script()
+    current_root = tmp_path / "current"
+    filtered_root = tmp_path / "filtered"
+    sensitive_file = tmp_path / "hushline-website" / ".git" / "config"
+    (current_root / "guest").mkdir(parents=True)
+    sensitive_file.parent.mkdir(parents=True)
+    sensitive_file.write_text(
+        "url = https://x-access-token:SECRET@example.invalid\n", encoding="utf-8"
+    )
+    (current_root / "guest" / "used.png").symlink_to(sensitive_file)
+
+    assert script.available_images(current_root) == set()
+
+    with pytest.raises(SystemExit) as exc_info:
+        script.copy_filtered_current(current_root, filtered_root, ["guest/used.png"])
+
+    assert exc_info.value.code == 1
+    assert not (filtered_root / "guest" / "used.png").exists()
+
+
 def test_docs_screenshot_allowlist_can_reuse_capture_files_artifact(tmp_path: Path) -> None:
     script = _load_allowlist_script()
     refs_input = tmp_path / "capture_files.json"

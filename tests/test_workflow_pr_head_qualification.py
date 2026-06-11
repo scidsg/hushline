@@ -101,6 +101,9 @@ def test_screenshots_archive_workflow_publishes_directly_without_pr_flow() -> No
         'git checkout -B "${SCREENSHOTS_DEFAULT_BRANCH}" "origin/${SCREENSHOTS_DEFAULT_BRANCH}"'
         in archive_section
     )
+    assert 'GIT_ASKPASS="${RUNNER_TEMP}/hushline-screenshots-git-askpass.sh"' in archive_section
+    assert '"https://github.com/${SCREENSHOTS_REPOSITORY}.git"' in archive_section
+    assert "x-access-token:${SCREENSHOTS_PUSH_TOKEN}@github.com" not in archive_section
     assert 'git push origin "HEAD:${SCREENSHOTS_DEFAULT_BRANCH}"' in archive_section
     assert (
         "Published screenshot archive directly to "
@@ -138,7 +141,11 @@ def test_screenshots_workflow_publishes_current_folder_to_website_directly() -> 
     assert "Resolve screenshot capture manifest" in capture_workflow_text
     assert "DOCS_REPOSITORY: scidsg/hushline-docs" in capture_workflow_text
     assert 'DOCS_DIR="${RUNNER_TEMP}/hushline-docs"' in capture_workflow_text
-    assert '--branch "${DOCS_DEFAULT_BRANCH}"' in capture_workflow_text
+    assert '--branch "$branch"' in capture_workflow_text
+    assert (
+        'clone_with_optional_token "$DOCS_REPOSITORY" "$DOCS_DEFAULT_BRANCH"'
+        in capture_workflow_text
+    )
     assert '--docs-dir "$DOCS_DIR"' in capture_workflow_text
     assert '--manifest-out "$CAPTURE_MANIFEST"' in capture_workflow_text
     assert '--output "$CAPTURE_FILES"' in capture_workflow_text
@@ -155,6 +162,9 @@ def test_screenshots_workflow_publishes_current_folder_to_website_directly() -> 
     assert 'CURRENT_ROOT="${ARTIFACT_DIR}/screenshots/release"' in website_section
     assert 'LEGACY_CURRENT_ROOT="${ARTIFACT_DIR}/screenshots/current"' in website_section
     assert '--branch "${WEBSITE_DEFAULT_BRANCH}"' in website_section
+    assert 'GIT_ASKPASS="${RUNNER_TEMP}/hushline-website-git-askpass.sh"' in website_section
+    assert '"https://github.com/${WEBSITE_REPOSITORY}.git"' in website_section
+    assert "x-access-token:${WEBSITE_PUSH_TOKEN}@github.com" not in website_section
     assert 'git sparse-checkout set "${WEBSITE_SCREENSHOT_ROOT}/current"' not in website_section
     assert '--refs-input "${ARTIFACT_DIR}/capture_files.json"' in website_section
     assert '--current-root "$CURRENT_ROOT"' in website_section
@@ -169,6 +179,22 @@ def test_screenshots_workflow_publishes_current_folder_to_website_directly() -> 
     assert "gh pr create \\" not in website_section
     assert 'gh pr merge "$pr_url" \\' not in website_section
     assert "${WEBSITE_SCREENSHOT_ROOT}/releases" not in website_section
+
+
+def test_docs_screenshot_capture_manifest_does_not_persist_read_tokens() -> None:
+    workflow_text = _workflow_text(".github/workflows/docs-screenshots.yml")
+    manifest_section = workflow_text.split("      - name: Resolve screenshot capture manifest", 1)[
+        1
+    ].split("      - name: Capture screenshots", 1)[0]
+
+    assert "DOCS_READ_TOKEN:" in manifest_section
+    assert "WEBSITE_READ_TOKEN:" in manifest_section
+    assert "GIT_ASKPASS_HELPER=" in manifest_section
+    assert 'GIT_ASKPASS_TOKEN="$token"' in manifest_section
+    assert 'git -C "$destination" remote set-url origin "$clone_url"' in manifest_section
+    assert "https://x-access-token:${DOCS_READ_TOKEN}" not in manifest_section
+    assert "https://x-access-token:${WEBSITE_READ_TOKEN}" not in manifest_section
+    assert "DOCS_CLONE_URL=" not in manifest_section
 
 
 def test_dev_deploy_workflow_generates_session_fernet_key_for_terraform_runs() -> None:
