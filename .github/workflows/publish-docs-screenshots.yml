@@ -95,12 +95,25 @@ jobs:
             exit 1
           fi
 
+          export HUSHLINE_GIT_PUSH_TOKEN="$SCREENSHOTS_PUSH_TOKEN"
+          GIT_ASKPASS="${RUNNER_TEMP}/hushline-screenshots-git-askpass.sh"
+          cat > "$GIT_ASKPASS" <<'EOF'
+          #!/bin/sh
+          case "$1" in
+            Username*) printf '%s\n' 'x-access-token' ;;
+            Password*) printf '%s\n' "${HUSHLINE_GIT_PUSH_TOKEN:?}" ;;
+            *) printf '\n' ;;
+          esac
+          EOF
+          chmod 700 "$GIT_ASKPASS"
+          export GIT_ASKPASS GIT_TERMINAL_PROMPT=0
+
           git clone \
             --depth 1 \
             --filter=blob:none \
             --single-branch \
             --branch "${SCREENSHOTS_DEFAULT_BRANCH}" \
-            "https://x-access-token:${SCREENSHOTS_PUSH_TOKEN}@github.com/${SCREENSHOTS_REPOSITORY}.git" \
+            "https://github.com/${SCREENSHOTS_REPOSITORY}.git" \
             /tmp/hushline-screenshots
           cd /tmp/hushline-screenshots
           git sparse-checkout init --no-cone
@@ -158,12 +171,25 @@ jobs:
             exit 1
           fi
 
+          export HUSHLINE_GIT_PUSH_TOKEN="$WEBSITE_PUSH_TOKEN"
+          GIT_ASKPASS="${RUNNER_TEMP}/hushline-website-git-askpass.sh"
+          cat > "$GIT_ASKPASS" <<'EOF'
+          #!/bin/sh
+          case "$1" in
+            Username*) printf '%s\n' 'x-access-token' ;;
+            Password*) printf '%s\n' "${HUSHLINE_GIT_PUSH_TOKEN:?}" ;;
+            *) printf '\n' ;;
+          esac
+          EOF
+          chmod 700 "$GIT_ASKPASS"
+          export GIT_ASKPASS GIT_TERMINAL_PROMPT=0
+
           git clone \
             --depth 1 \
             --filter=blob:none \
             --single-branch \
             --branch "${WEBSITE_DEFAULT_BRANCH}" \
-            "https://x-access-token:${WEBSITE_PUSH_TOKEN}@github.com/${WEBSITE_REPOSITORY}.git" \
+            "https://github.com/${WEBSITE_REPOSITORY}.git" \
             /tmp/hushline-website
           cd /tmp/hushline-website
           git checkout -B "${WEBSITE_DEFAULT_BRANCH}" "origin/${WEBSITE_DEFAULT_BRANCH}"
