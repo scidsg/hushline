@@ -10,7 +10,8 @@
       <p class="meta">@{{ username.username }}</p>
     {% endif %}
     {% set is_featured = username.is_featured | default(false) %}
-    {% if is_featured or username.is_verified or username.user.is_admin %}
+    {% set is_cautious = username.user.is_cautious | default(false) %}
+    {% if is_featured or username.is_verified or username.user.is_admin or is_cautious %}
       <div class="badgeContainer">
         {% if is_featured %}
           <span class="badge" role="img" aria-label="Featured account">💎 Featured</span>
@@ -20,6 +21,9 @@
         {% endif %}
         {% if username.is_verified %}
           <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
+        {% endif %}
+        {% if is_cautious %}
+          <span class="badge badgeCaution" role="img" aria-label="Caution: display name may be mistaken for admin">⚠️ Caution</span>
         {% endif %}
       </div>
     {% endif %}
@@ -43,7 +47,8 @@
       <p class="meta">@{{ username.username }}</p>
     {% endif %}
     {% set is_featured = username.is_featured | default(false) %}
-    {% if is_featured or username.is_verified or username.user.is_admin %}
+    {% set is_cautious = username.user.is_cautious | default(false) %}
+    {% if is_featured or username.is_verified or username.user.is_admin or is_cautious %}
       <div class="badgeContainer">
         {% if is_featured %}
           <span class="badge" role="img" aria-label="Featured account">💎 Featured</span>
@@ -53,6 +58,9 @@
         {% endif %}
         {% if username.is_verified %}
           <span class="badge" role="img" aria-label="Verified account">⭐️ Verified</span>
+        {% endif %}
+        {% if is_cautious %}
+          <span class="badge badgeCaution" role="img" aria-label="Caution: display name may be mistaken for admin">⚠️ Caution</span>
         {% endif %}
       </div>
     {% endif %}

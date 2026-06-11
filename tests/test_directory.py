@@ -152,6 +152,7 @@ def _directory_username(  # noqa: PLR0913
     is_verified: bool = False,
     is_featured: bool = False,
     is_admin: bool = False,
+    is_cautious: bool = False,
     pgp_key: str = "pgp-key",
     account_category: str | None = None,
     country: str | None = None,
@@ -166,7 +167,7 @@ def _directory_username(  # noqa: PLR0913
         is_featured=is_featured,
         user=SimpleNamespace(
             is_admin=is_admin,
-            is_cautious=False,
+            is_cautious=is_cautious,
             pgp_key=pgp_key,
             account_category=account_category,
             account_category_label=None,
@@ -373,6 +374,61 @@ def test_directory_verified_tab_promotes_featured_users_first(
     normal_card_heading = normal_cards[0].select_one("h3")
     assert normal_card_heading is not None
     assert normal_card_heading.get_text(strip=True) == "Admin User"
+
+
+def test_directory_verified_tab_shows_caution_badges_for_cautious_accounts(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    featured_user = _directory_username(
+        username="featured-cautious-user",
+        display_name="Featured Cautious User",
+        is_verified=True,
+        is_featured=True,
+        is_cautious=True,
+    )
+    pgp_user = _directory_username(
+        username="pgp-cautious-user",
+        display_name="PGP Cautious User",
+        is_verified=True,
+        is_cautious=True,
+    )
+    info_only_user = _directory_username(
+        username="info-cautious-user",
+        display_name="Info Cautious User",
+        is_verified=True,
+        is_cautious=True,
+        pgp_key="",
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames",
+        lambda: (featured_user, pgp_user, info_only_user),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_newsroom_directory_listings", lambda: ())
+    monkeypatch.setattr(
+        directory_routes,
+        "_shuffle_featured_directory_items",
+        lambda items: list(items),
+    )
+
+    response = client.get(url_for("directory"))
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    verified_panel = soup.find(id="verified")
+
+    for display_name in (
+        "Featured Cautious User",
+        "PGP Cautious User",
+        "Info Cautious User",
+    ):
+        card = _find_directory_card(verified_panel, display_name)
+        caution_badge = card.select_one(
+            '.badge.badgeCaution[aria-label="Caution: display name may be mistaken for admin"]'
+        )
+        assert caution_badge is not None
+        assert caution_badge.get_text(strip=True) == "⚠️ Caution"
 
 
 def test_directory_verified_tab_keeps_featured_info_only_accounts_in_info_only_section(
