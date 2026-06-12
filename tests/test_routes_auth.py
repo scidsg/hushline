@@ -33,6 +33,7 @@ from hushline.routes.auth import (
     _find_primary_username,
     _lock_first_user_registration,
     _password_hash_digest,
+    _password_reset_ttl,
 )
 from tests.helpers import (
     get_captcha_from_session_password_reset,
@@ -508,6 +509,13 @@ def test_password_reset_rejects_expired_and_unknown_tokens(client: FlaskClient, 
     assert response.status_code == 200
     assert PASSWORD_RESET_INVALID_LINK_MESSAGE in response.text
     assert "Reset Password" in response.text
+
+
+def test_password_reset_ttl_uses_configured_minutes(app: Flask) -> None:
+    app.config["PASSWORD_RESET_TOKEN_TTL_MINUTES"] = 7
+
+    with app.app_context():
+        assert _password_reset_ttl() == timedelta(minutes=7)
 
 
 def test_password_reset_request_rate_limits_repeated_identifier(

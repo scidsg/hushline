@@ -395,6 +395,41 @@ def test_embed_profile_submission_accepts_canonical_public_origin_behind_proxy(
     assert len(message.field_values) == 2
 
 
+def test_embed_profile_submission_accepts_same_origin_referer_without_origin(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "Embedded Signal contact",
+            "field_1": "Embedded message",
+            **submission_data,
+        },
+        headers={
+            "Referer": (
+                "http://localhost:8080"
+                + url_for("embed_profile", username=user.primary_username.username)
+            )
+        },
+    )
+
+    assert post_response.status_code == 200, post_response.text
+    message = _first_message_for(user.primary_username)
+    assert message is not None
+    assert len(message.field_values) == 2
+    for field_value in message.field_values:
+        assert "-----BEGIN PGP MESSAGE-----" in (field_value.value or "")
+        assert "Embedded message" not in (field_value.value or "")
+
+
 def test_embed_submission_operational_counters_exclude_sensitive_request_data(
     app: Flask, client: FlaskClient, user: User
 ) -> None:
