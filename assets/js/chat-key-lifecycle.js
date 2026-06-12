@@ -165,6 +165,104 @@
     }
   }
 
+  async function importPublicKey(publicKeyValue) {
+    const publicJwk = typeof publicKeyValue === "string"
+      ? JSON.parse(publicKeyValue)
+      : publicKeyValue;
+    return window.crypto.subtle.importKey(
+      "jwk",
+      publicJwk,
+      {
+        name: "ECDH",
+        namedCurve: publicJwk.crv || "P-256",
+      },
+      false,
+      [],
+    );
+  }
+
+  async function deriveChatMessageKey(publicKey, privateKey, usages) {
+    return window.crypto.subtle.deriveKey(
+      {
+        name: "ECDH",
+        public: publicKey,
+      },
+      privateKey,
+      {
+        name: "AES-GCM",
+        length: 256,
+      },
+      false,
+      usages,
+    );
+  }
+
+  async function encryptForPublicKey(plaintext, publicKeyValue) {
+    assertCryptoSupport();
+    const recipientPublicKey = await importPublicKey(publicKeyValue);
+    const ephemeralKeyPair = await window.crypto.subtle.generateKey(
+      {
+        name: "ECDH",
+        namedCurve: "P-256",
+      },
+      true,
+      ["deriveKey"],
+    );
+    const messageKey = await deriveChatMessageKey(
+      recipientPublicKey,
+      ephemeralKeyPair.privateKey,
+      ["encrypt"],
+    );
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const ciphertext = new Uint8Array(
+      await window.crypto.subtle.encrypt(
+        {
+          name: "AES-GCM",
+          iv,
+        },
+        messageKey,
+        textEncoder.encode(plaintext),
+      ),
+    );
+    const ephemeralPublicJwk = await window.crypto.subtle.exportKey(
+      "jwk",
+      ephemeralKeyPair.publicKey,
+    );
+
+    return JSON.stringify({
+      algorithm: "ECDH-P256-AES-GCM",
+      ephemeral_public_key: JSON.stringify(ephemeralPublicJwk),
+      iv: bytesToBase64(iv),
+      ciphertext: bytesToBase64(ciphertext),
+    });
+  }
+
+  async function decryptChatCiphertext(encryptedPayload) {
+    if (!unlockedChatPrivateKey) {
+      throw new Error("Chat key is locked.");
+    }
+    assertCryptoSupport();
+    const envelope = JSON.parse(encryptedPayload);
+    if (envelope.algorithm !== "ECDH-P256-AES-GCM") {
+      throw new Error("Unsupported chat ciphertext.");
+    }
+    const ephemeralPublicKey = await importPublicKey(envelope.ephemeral_public_key);
+    const messageKey = await deriveChatMessageKey(
+      ephemeralPublicKey,
+      unlockedChatPrivateKey,
+      ["decrypt"],
+    );
+    const plaintextBytes = await window.crypto.subtle.decrypt(
+      {
+        name: "AES-GCM",
+        iv: base64ToBytes(envelope.iv),
+      },
+      messageKey,
+      base64ToBytes(envelope.ciphertext),
+    );
+    return textDecoder.decode(plaintextBytes);
+  }
+
   async function fetchChatKey(chatKeyUrl) {
     const response = await fetch(chatKeyUrl, {
       credentials: "same-origin",
@@ -200,6 +298,164 @@
 
   function chatKeyUrlFromCurrentOrigin() {
     return new URL("/settings/chat-key.json", window.location.origin).toString();
+  }
+
+  function jsonFromScript(id, fallback) {
+    const script = document.getElementById(id);
+    if (!script?.textContent) {
+      return fallback;
+    }
+
+    try {
+      return JSON.parse(script.textContent);
+    } catch (error) {
+      return fallback;
+    }
+  }
+
+  function setConversationStatus(message) {
+    const status = document.getElementById("conversation-chat-status");
+    if (status) {
+      status.textContent = message;
+    }
+  }
+
+  async function decryptConversationMessages() {
+    const copies = jsonFromScript("conversationMessageCopies", []);
+    for (const copy of copies) {
+      if (!copy.encrypted_payload) {
+        continue;
+      }
+
+      const messageElement = document.querySelector(
+        `[data-conversation-message-id="${copy.message_id}"] .conversation-message-body`,
+      );
+      if (!messageElement) {
+        continue;
+      }
+
+      try {
+        messageElement.textContent = await decryptChatCiphertext(copy.encrypted_payload);
+      } catch (error) {
+        messageElement.textContent = "This message cannot be decrypted in this browser.";
+      }
+    }
+  }
+
+  function setConversationComposeEnabled(enabled) {
+    const form = document.getElementById("conversation-compose-form");
+    const body = document.getElementById("conversation-compose-body");
+    const submit = document.getElementById("conversation-compose-submit");
+    if (!form) {
+      return;
+    }
+
+    if (body) {
+      body.disabled = !enabled;
+    }
+    if (submit) {
+      submit.disabled = !enabled;
+    }
+  }
+
+  async function unlockConversationFromPassword() {
+    const passwordInput = document.getElementById("conversation-chat-password");
+    if (!passwordInput?.value) {
+      setConversationStatus("Enter your account password to unlock your chat key.");
+      return;
+    }
+
+    setConversationStatus("Unlocking chat key...");
+    try {
+      const chatKey = await fetchChatKey(chatKeyUrlFromCurrentOrigin());
+      if (!chatKey) {
+        setConversationStatus("Create a Hush Line chat key before reading this conversation.");
+        return;
+      }
+      const unlocked = await unlockFromPassword(chatKey, passwordInput.value);
+      if (!unlocked) {
+        setConversationStatus("Chat key unlock failed.");
+        return;
+      }
+      await decryptConversationMessages();
+      const root = document.getElementById("conversation-chat");
+      setConversationComposeEnabled(root?.dataset.canCompose === "true");
+      setConversationStatus("Chat key unlocked in this browser.");
+      passwordInput.value = "";
+    } catch (error) {
+      setConversationStatus("Chat key unlock failed.");
+    }
+  }
+
+  async function handleConversationSubmit(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const root = document.getElementById("conversation-chat");
+    const body = document.getElementById("conversation-compose-body");
+    const plaintext = body?.value.trim();
+    const participantKeys = jsonFromScript("conversationParticipantPublicKeys", []);
+    if (!root?.dataset.messageUrl || !plaintext) {
+      return;
+    }
+    if (state.status !== "unlocked") {
+      setConversationStatus("Unlock your chat key before replying.");
+      return;
+    }
+
+    setConversationStatus("Encrypting reply...");
+    try {
+      const encryptedCopies = {};
+      for (const participantKey of participantKeys) {
+        encryptedCopies[String(participantKey.participant_id)] = await encryptForPublicKey(
+          plaintext,
+          participantKey.public_key,
+        );
+      }
+      const csrfToken = form.querySelector("input[name='csrf_token']")?.value;
+      const response = await fetch(root.dataset.messageUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken || "",
+        },
+        body: JSON.stringify({
+          encrypted_copies: encryptedCopies,
+        }),
+      });
+      if (!response.ok) {
+        setConversationStatus("Reply could not be saved.");
+        return;
+      }
+      body.value = "";
+      window.location.reload();
+    } catch (error) {
+      setConversationStatus("Reply could not be encrypted.");
+    }
+  }
+
+  function bindConversation() {
+    const root = document.getElementById("conversation-chat");
+    if (!root) {
+      return;
+    }
+
+    document
+      .getElementById("conversation-chat-unlock")
+      ?.addEventListener("click", unlockConversationFromPassword);
+
+    const form = document.getElementById("conversation-compose-form");
+    if (form && form.dataset.bound !== "true") {
+      form.dataset.bound = "true";
+      form.addEventListener("submit", handleConversationSubmit);
+    }
+
+    if (state.status === "unlocked") {
+      decryptConversationMessages();
+      setConversationComposeEnabled(root.dataset.canCompose === "true");
+      setConversationStatus("Chat key unlocked in this browser.");
+    }
   }
 
   async function handleLoginSubmit(event) {
@@ -301,6 +557,7 @@
       .querySelector("form[action*='password-reset']")
       ?.addEventListener("submit", clearChatKeyMaterial);
     bindLogoutCleanup();
+    bindConversation();
   }
 
   window.HushLineChatKeys = {
@@ -309,6 +566,8 @@
     get state() {
       return { ...state };
     },
+    decryptChatCiphertext,
+    encryptForPublicKey,
     rewrapForPasswordChange,
     unlockFromPassword,
   };

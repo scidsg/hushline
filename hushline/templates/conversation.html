@@ -21,19 +21,75 @@
       </p>
     {% endif %}
   </div>
-  <article class="message">
-    {% for conversation_message, encrypted_copy in message_copies %}
-      <div class="field-value encrypted">
-        <div class="label">
-          {{ conversation_message.created_at.date() }}
+
+  {% set append_message_url = url_for('append_conversation_message', conversation_id=conversation.id) %}
+  <section
+    id="conversation-chat"
+    data-message-url="{{ append_message_url }}"
+    data-can-compose="{{ 'true' if can_compose else 'false' }}"
+  >
+    <div id="conversation-key-locked" class="message">
+      <h2>Chat Key Locked</h2>
+      <p>
+        Unlock your Hush Line chat key with your account password to read and reply.
+        Do not upload or paste any external private key.
+      </p>
+      <label for="conversation-chat-password">Account Password</label>
+      <input
+        id="conversation-chat-password"
+        name="conversation_chat_password"
+        type="password"
+        autocomplete="current-password"
+      />
+      <button id="conversation-chat-unlock" type="button">Unlock Chat</button>
+      <p id="conversation-chat-status" class="meta" role="status">
+        Transcript content is hidden until your chat key is unlocked in this browser.
+      </p>
+    </div>
+
+    <script id="conversationParticipantPublicKeys" type="application/json">
+      {{ participant_public_keys | tojson }}
+    </script>
+    <script id="conversationMessageCopies" type="application/json">
+      {{ message_copy_payloads | tojson }}
+    </script>
+
+    <article class="message" aria-live="polite">
+      {% for conversation_message, encrypted_copy in message_copies %}
+        <div
+          class="field-value encrypted"
+          data-conversation-message-id="{{ conversation_message.id }}"
+        >
+          <div class="label">
+            {{ conversation_message.created_at.date() }}
+          </div>
+          {% if encrypted_copy %}
+            <p class="conversation-message-body">Locked until your chat key is unlocked.</p>
+          {% else %}
+            <p>No encrypted copy is available for your account.</p>
+          {% endif %}
         </div>
-        {% if encrypted_copy %}
-          <pre class="encrypted-value">{{ encrypted_copy.encrypted_payload }}</pre>
-        {% else %}
-          <p>No encrypted copy is available for your account.</p>
-        {% endif %}
-      </div>
-    {% endfor %}
-  </article>
+      {% endfor %}
+    </article>
+
+    <form id="conversation-compose-form">
+      {{ conversation_message_form.hidden_tag() }}
+      <label for="conversation-compose-body">Reply</label>
+      <textarea
+        id="conversation-compose-body"
+        name="message"
+        rows="5"
+        maxlength="50000"
+        disabled="disabled"
+        required
+      ></textarea>
+      {{ conversation_message_form.submit(id="conversation-compose-submit", disabled="disabled") }}
+      {% if not can_compose %}
+        <p class="meta">
+          Replies are unavailable until every participant has an active Hush Line chat key.
+        </p>
+      {% endif %}
+    </form>
+  </section>
 </div>
 {% endblock %}

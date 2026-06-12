@@ -1,24 +1,36 @@
 import re
 from datetime import UTC, datetime
+from typing import Any
 
 from flask import (
     Flask,
     abort,
     current_app,
     flash,
+    jsonify,
     redirect,
     render_template,
+    request,
     session,
     url_for,
 )
+from flask_wtf.csrf import validate_csrf
 from werkzeug.wrappers.response import Response
+from wtforms.validators import ValidationError
 
 from hushline.auth import authentication_required
 from hushline.crypto import encrypt_message
 from hushline.db import db
-from hushline.forms import DeleteMessageForm, ResendMessageForm, UpdateMessageStatusForm
+from hushline.forms import (
+    ConversationMessageForm,
+    DeleteMessageForm,
+    ResendMessageForm,
+    UpdateMessageStatusForm,
+)
 from hushline.model import (
     Conversation,
+    ConversationMessage,
+    ConversationMessageCopy,
     FieldValue,
     Message,
     User,
@@ -26,6 +38,7 @@ from hushline.model import (
 )
 from hushline.routes.common import do_send_email, notification_email_encryption_target
 
+_CHAT_CIPHERTEXT_MAX_LENGTH = 200_000
 _ARMORED_PGP_MESSAGE_PATTERN = re.compile(
     r"^\s*-----BEGIN PGP MESSAGE-----\r?\n"
     r"(?:[!-~]+: .*\r?\n)*\r?\n?[\s\S]*\r?\n"
@@ -35,6 +48,39 @@ _ARMORED_PGP_MESSAGE_PATTERN = re.compile(
 
 def _is_armored_pgp_message(value: str) -> bool:
     return bool(_ARMORED_PGP_MESSAGE_PATTERN.fullmatch(value))
+
+
+def _validate_json_csrf() -> str | None:
+    if current_app.config.get("WTF_CSRF_ENABLED") is False:
+        return None
+
+    token = request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token")
+    try:
+        validate_csrf(token)
+    except ValidationError:
+        return "Invalid CSRF token."
+    return None
+
+
+def _is_chat_ciphertext_envelope(value: object) -> bool:
+    if not isinstance(value, str) or not value or len(value) > _CHAT_CIPHERTEXT_MAX_LENGTH:
+        return False
+
+    try:
+        envelope = current_app.json.loads(value)
+    except ValueError:
+        return False
+
+    if not isinstance(envelope, dict):
+        return False
+
+    return (
+        all(
+            isinstance(envelope.get(field), str) and envelope[field]
+            for field in ("algorithm", "ephemeral_public_key", "iv", "ciphertext")
+        )
+        and envelope["algorithm"] == "ECDH-P256-AES-GCM"
+    )
 
 
 def register_message_routes(app: Flask) -> None:
@@ -80,6 +126,7 @@ def register_message_routes(app: Flask) -> None:
             abort(404)
 
         message_copies = []
+        message_copy_payloads = []
         for conversation_message in thread.messages:
             copy = next(
                 (
@@ -90,12 +137,99 @@ def register_message_routes(app: Flask) -> None:
                 None,
             )
             message_copies.append((conversation_message, copy))
+            message_copy_payloads.append(
+                {
+                    "message_id": conversation_message.id,
+                    "created_at": conversation_message.created_at.isoformat(),
+                    "sender_participant_id": conversation_message.sender_participant_id,
+                    "encrypted_payload": copy.encrypted_payload if copy else None,
+                }
+            )
+
+        participant_public_keys = [
+            {
+                "participant_id": thread_participant.id,
+                "public_key": thread_participant.user.chat_public_key,
+            }
+            for thread_participant in thread.participants
+            if thread_participant.user and thread_participant.user.chat_public_key
+        ]
+        can_compose = len(participant_public_keys) == len(thread.participants)
+        conversation_message_form = ConversationMessageForm()
 
         return render_template(
             "conversation.html",
             conversation=thread,
             participant=participant,
             message_copies=message_copies,
+            message_copy_payloads=message_copy_payloads,
+            participant_public_keys=participant_public_keys,
+            can_compose=can_compose,
+            conversation_message_form=conversation_message_form,
+        )
+
+    @app.route("/conversation/<int:conversation_id>/messages", methods=["POST"])
+    @authentication_required
+    def append_conversation_message(conversation_id: int) -> tuple[Response, int]:
+        user = db.session.get(User, session["user_id"])
+        if not user:
+            abort(404)
+
+        thread = db.session.scalars(
+            Conversation.for_user_id(user.id).where(Conversation.id == conversation_id)
+        ).one_or_none()
+        if not thread:
+            abort(404)
+
+        participant = thread.participant_for_user_id(user.id)
+        if not participant:
+            abort(404)
+
+        csrf_error = _validate_json_csrf()
+        if csrf_error:
+            return jsonify({"error": csrf_error}), 400
+
+        payload: Any = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify({"error": "Invalid encrypted message payload."}), 400
+
+        encrypted_copies = payload.get("encrypted_copies")
+        if not isinstance(encrypted_copies, dict):
+            return jsonify({"error": "Invalid encrypted message payload."}), 400
+
+        participant_public_keys = {
+            str(thread_participant.id): thread_participant.user.chat_public_key
+            for thread_participant in thread.participants
+            if thread_participant.user and thread_participant.user.chat_public_key
+        }
+        if len(participant_public_keys) != len(thread.participants):
+            return jsonify({"error": "Conversation replies are unavailable."}), 400
+
+        if set(encrypted_copies.keys()) != set(participant_public_keys.keys()):
+            return jsonify({"error": "Invalid encrypted message payload."}), 400
+
+        if not all(_is_chat_ciphertext_envelope(value) for value in encrypted_copies.values()):
+            return jsonify({"error": "Invalid encrypted message payload."}), 400
+
+        conversation_message = ConversationMessage()
+        conversation_message.conversation = thread
+        conversation_message.sender_participant = participant
+        for recipient_participant in thread.participants:
+            encrypted_copy = ConversationMessageCopy()
+            encrypted_copy.recipient_participant = recipient_participant
+            encrypted_copy.encrypted_payload = encrypted_copies[str(recipient_participant.id)]
+            conversation_message.encrypted_copies.append(encrypted_copy)
+        db.session.add(conversation_message)
+        db.session.commit()
+
+        return (
+            jsonify(
+                {
+                    "message_id": conversation_message.id,
+                    "created_at": conversation_message.created_at.isoformat(),
+                }
+            ),
+            201,
         )
 
     @app.route("/reply/<slug>")
