@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -14,6 +15,7 @@ from werkzeug.exceptions import NotFound
 from hushline.db import db
 from hushline.model import (
     AccountCategory,
+    ChatKey,
     Conversation,
     ConversationMessageCopy,
     Message,
@@ -29,10 +31,37 @@ msg_content = "This is a test message."
 suspended_message = "This account is suspended. New messages cannot be sent at this time."
 
 pgp_message_sig = "-----BEGIN PGP MESSAGE-----\n\n"
+chat_message_algorithm = "ECDH-P256-AES-GCM"
 
 
 def _set_pgp_key(user: User) -> None:
     user.pgp_key = Path("tests/test_pgp_key.txt").read_text()
+
+
+def _add_chat_key(user: User, public_key: str) -> None:
+    db.session.add(
+        ChatKey(
+            user=user,
+            key_version=1,
+            public_key=public_key,
+            encrypted_private_key="wrapped-private-chat-key",
+            kdf_algorithm="PBKDF2-SHA-256",
+            kdf_params={"iterations": 310000, "hash": "SHA-256"},
+            kdf_salt="salt",
+            wrapping_algorithm="AES-GCM",
+        )
+    )
+
+
+def _chat_ciphertext(label: str) -> str:
+    return json.dumps(
+        {
+            "algorithm": chat_message_algorithm,
+            "ephemeral_public_key": '{"kty":"EC","crv":"P-256","x":"ephemeral","y":"key"}',
+            "iv": f"iv-{label}",
+            "ciphertext": f"ciphertext-{label}",
+        }
+    )
 
 
 def _authenticate_as(client: FlaskClient, user: User) -> None:
@@ -272,6 +301,8 @@ def test_logged_in_profile_submit_message_creates_conversation_for_distinct_reci
 ) -> None:
     _set_pgp_key(user)
     _set_pgp_key(user2)
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
     db.session.commit()
 
     response = client.post(
@@ -279,6 +310,12 @@ def test_logged_in_profile_submit_message_creates_conversation_for_distinct_reci
         data={
             "field_0": msg_contact_method,
             "field_1": msg_content,
+            "encrypted_conversation_copies": json.dumps(
+                {
+                    "sender": _chat_ciphertext("sender-initial"),
+                    "recipient": _chat_ciphertext("recipient-initial"),
+                }
+            ),
             **get_profile_submission_data(client, user2.primary_username.username),
         },
         follow_redirects=False,
@@ -306,7 +343,10 @@ def test_logged_in_profile_submit_message_creates_conversation_for_distinct_reci
     assert conversation_message.sender_participant.user_id == user.id
     assert len(conversation_message.encrypted_copies) == 2
     for encrypted_copy in conversation_message.encrypted_copies:
-        assert pgp_message_sig in encrypted_copy.encrypted_payload
+        assert chat_message_algorithm in encrypted_copy.encrypted_payload
+        assert msg_contact_method not in encrypted_copy.encrypted_payload
+        assert msg_content not in encrypted_copy.encrypted_payload
+        assert "wrapped-private-chat-key" not in encrypted_copy.encrypted_payload
 
     sender_response = client.get(
         url_for("conversation", conversation_id=conversation.id), follow_redirects=True
@@ -333,6 +373,7 @@ def test_logged_in_profile_submit_message_creates_conversation_without_sender_ke
     client: FlaskClient, user: User, user2: User
 ) -> None:
     _set_pgp_key(user2)
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
     db.session.commit()
 
     response = client.post(
@@ -340,6 +381,9 @@ def test_logged_in_profile_submit_message_creates_conversation_without_sender_ke
         data={
             "field_0": msg_contact_method,
             "field_1": msg_content,
+            "encrypted_conversation_copies": json.dumps(
+                {"recipient": _chat_ciphertext("recipient-initial")}
+            ),
             **get_profile_submission_data(client, user2.primary_username.username),
         },
         follow_redirects=True,
@@ -364,13 +408,54 @@ def test_logged_in_profile_submit_message_creates_conversation_without_sender_ke
     copies = db.session.scalars(db.select(ConversationMessageCopy)).all()
     assert len(copies) == 1
     assert copies[0].recipient_participant.user_id == user2.id
-    assert pgp_message_sig in copies[0].encrypted_payload
+    assert chat_message_algorithm in copies[0].encrypted_payload
+    assert msg_contact_method not in copies[0].encrypted_payload
+    assert msg_content not in copies[0].encrypted_payload
 
     _authenticate_as(client, user2)
     recipient_response = client.get(url_for("conversation", conversation_id=conversation.id))
     assert recipient_response.status_code == 200
     assert "Unlock your Hush Line chat key" in recipient_response.text
     assert "Locked until your chat key is unlocked." in recipient_response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_logged_in_profile_submit_message_with_invalid_chat_ciphertext_skips_conversation(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    _set_pgp_key(user)
+    _set_pgp_key(user2)
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    db.session.commit()
+
+    response = client.post(
+        url_for("profile", username=user2.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            "encrypted_conversation_copies": json.dumps(
+                {
+                    "recipient": msg_content,
+                    "private_key": "plain-private-key",
+                    "derived_wrapping_key": "plain-derived-key",
+                }
+            ),
+            **get_profile_submission_data(client, user2.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200, response.text
+    assert "Message submitted successfully." in response.text
+    message = db.session.scalars(
+        db.select(Message).filter_by(username_id=user2.primary_username.id)
+    ).one()
+    assert message.conversation is None
+    assert db.session.scalars(db.select(Conversation)).all() == []
+    assert db.session.scalars(db.select(ConversationMessageCopy)).all() == []
+    assert "plain-private-key" not in response.text
+    assert "plain-derived-key" not in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")

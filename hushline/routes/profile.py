@@ -59,6 +59,7 @@ from hushline.routes.common import (
     validate_captcha,
 )
 from hushline.routes.forms import DynamicMessageForm
+from hushline.routes.message import _is_chat_ciphertext_envelope
 from hushline.safe_template import safe_render_template
 
 EMBED_CAPTCHA_MAX_AGE_SECONDS = 60 * 60
@@ -129,6 +130,27 @@ def register_profile_routes(app: Flask) -> None:
                 and _is_armored_pgp_message(field_value)
             }
         return encrypted_fields
+
+    def _client_encrypted_conversation_copies(value: str) -> dict[str, str]:
+        if not value:
+            return {}
+
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+
+        if not isinstance(parsed, dict):
+            return {}
+
+        encrypted_copies: dict[str, str] = {}
+        for role in ("sender", "recipient"):
+            encrypted_payload = parsed.get(role)
+            if isinstance(encrypted_payload, str) and _is_chat_ciphertext_envelope(
+                encrypted_payload
+            ):
+                encrypted_copies[role] = encrypted_payload
+        return encrypted_copies
 
     def _new_math_problem() -> tuple[str, str]:
         num1 = secrets.randbelow(10) + 1
@@ -242,21 +264,27 @@ def register_profile_routes(app: Flask) -> None:
         message: Message,
         sender: User,
         recipient: User,
-        raw_extracted_fields: list[tuple[str, str]],
+        encrypted_conversation_copies: dict[str, str],
     ) -> Conversation | None:
         if sender.id == recipient.id:
             return None
 
-        recipient_encryption_target = recipient.message_encryption_target
-        if not recipient_encryption_target:
+        if not recipient.chat_public_key:
             return None
 
-        sender_encryption_target = sender.message_encryption_target
+        recipient_payload = encrypted_conversation_copies.get("recipient")
+        if not recipient_payload:
+            return None
+
+        sender_payload = encrypted_conversation_copies.get("sender")
+        if sender.chat_public_key and not sender_payload:
+            return None
+
         conversation = Conversation()
         sender_participant = ConversationParticipant()
         sender_participant.conversation = conversation
         sender_participant.user = sender
-        sender_participant.has_usable_public_key = False
+        sender_participant.has_usable_public_key = sender_payload is not None
         recipient_participant = ConversationParticipant()
         recipient_participant.conversation = conversation
         recipient_participant.user = recipient
@@ -264,19 +292,11 @@ def register_profile_routes(app: Flask) -> None:
         conversation_message = ConversationMessage()
         conversation_message.conversation = conversation
         conversation_message.sender_participant = sender_participant
-        body = format_message_email_fields(raw_extracted_fields)
-        if sender_encryption_target:
-            try:
-                encrypted_payload = encrypt_message(body, sender_encryption_target)
-            except (RuntimeError, TypeError, ValueError):
-                current_app.logger.warning("Failed to encrypt conversation copy for sender.")
-            else:
-                sender_copy = ConversationMessageCopy()
-                sender_copy.recipient_participant = sender_participant
-                sender_copy.encrypted_payload = encrypted_payload
-                sender_participant.has_usable_public_key = True
-                conversation_message.encrypted_copies.append(sender_copy)
-        recipient_payload = encrypt_message(body, recipient_encryption_target)
+        if sender_payload:
+            sender_copy = ConversationMessageCopy()
+            sender_copy.recipient_participant = sender_participant
+            sender_copy.encrypted_payload = sender_payload
+            conversation_message.encrypted_copies.append(sender_copy)
         recipient_copy = ConversationMessageCopy()
         recipient_copy.recipient_participant = recipient_participant
         recipient_copy.encrypted_payload = recipient_payload
@@ -330,6 +350,7 @@ def register_profile_routes(app: Flask) -> None:
 
         def _render_profile(status_code: int | None = None) -> Response | str | tuple[str, int]:
             message_submission_block_reason = _message_submission_block_reason(uname)
+            sender = _authenticated_sender()
             owner_guard_nonce = secrets.token_urlsafe(16)
             owner_guard_signature = _owner_guard_signature(
                 uname.username,
@@ -353,6 +374,11 @@ def register_profile_routes(app: Flask) -> None:
                 current_user_id=session.get("user_id"),
                 recipient_public_keys=uname.user.message_recipient_keys,
                 recipient_chat_public_key=uname.user.chat_public_key,
+                sender_chat_public_key=(
+                    sender.chat_public_key
+                    if sender is not None and sender.id != uname.user_id
+                    else None
+                ),
                 recipient_public_key_entries=(
                     notification_recipient_public_key_entries(uname.user)
                     if (
@@ -533,7 +559,9 @@ def register_profile_routes(app: Flask) -> None:
                         message=message,
                         sender=sender,
                         recipient=uname.user,
-                        raw_extracted_fields=raw_extracted_fields,
+                        encrypted_conversation_copies=_client_encrypted_conversation_copies(
+                            form.encrypted_conversation_copies.data or ""
+                        ),
                     )
 
                 db.session.commit()
