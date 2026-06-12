@@ -213,7 +213,7 @@ def register_profile_routes(app: Flask) -> None:
             return False
 
         parsed_origin = urlsplit(origin)
-        parsed_host = urlsplit(request.host_url)
+        parsed_host = urlsplit(canonical_external_url("embed_profile", username=uname.username))
         return (parsed_origin.scheme, parsed_origin.netloc) == (
             parsed_host.scheme,
             parsed_host.netloc,
