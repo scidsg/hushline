@@ -53,7 +53,7 @@
           <code>{{ "yes" if report.dkim_overview.key_advertised_in_dns else "no" }}</code>
         </li>
         <li>
-          DNSSEC-validated DNS answer:
+          DNSSEC independently validated by Hush Line:
           <code>{{ "yes" if report.dkim_overview.dnssec_validated else "no" }}</code>
         </li>
       </ul>
@@ -138,7 +138,7 @@
               {% if item.has_public_key %}
                 (public key present)
               {% endif %}
-              (dnssec validated: <code>{{ "yes" if item.dnssec_validated else "no" }}</code>)
+              (dnssec independently validated: <code>{{ "yes" if item.dnssec_validated else "no" }}</code>)
               {% if item.error %}
                 - {{ item.error }}
               {% endif %}
