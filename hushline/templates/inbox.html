@@ -41,7 +41,12 @@
               aria-labelledby="{{ title_id }}"
             >
               {% if item.has_unread %}
-                <span class="badge" aria-label="Unread conversation">Unread</span>
+                <span
+                  class="conversation-unread-dot"
+                  role="img"
+                  aria-label="Unread conversation"
+                  title="Unread conversation"
+                ></span>
               {% endif %}
               <h4 id="{{ title_id }}">
                 Conversation with
