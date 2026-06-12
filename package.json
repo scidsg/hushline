@@ -8,6 +8,7 @@
   "scripts": {
     "build:dev": "webpack --config webpack.config.js --watch",
     "build:prod": "webpack --config webpack.config.js",
+    "playwright:e2ee": "playwright test --config=playwright.e2ee.config.js",
     "playwright:visual": "playwright test --config=playwright.visual.config.js",
     "playwright:visual:update": "playwright test --config=playwright.visual.config.js --update-snapshots"
   },
