@@ -23,6 +23,21 @@ from hushline.secure_session import EncryptedSessionInterface
 from hushline.storage import public_store
 from hushline.version import __version__
 
+PERMISSIONS_POLICY = ", ".join(
+    (
+        "geolocation=()",
+        "midi=()",
+        "sync-xhr=()",
+        "microphone=()",
+        "camera=()",
+        "magnetometer=()",
+        "gyroscope=()",
+        "fullscreen=()",
+        "payment=()",
+        "interest-cohort=()",
+    )
+)
+
 
 def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
     app = Flask(__name__)
@@ -116,9 +131,7 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
         else:
             response.headers.pop("X-Frame-Options", None)
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["Permissions-Policy"] = (
-            "geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=();"  # noqa: E501
-        )
+        response.headers["Permissions-Policy"] = PERMISSIONS_POLICY
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["X-XSS-Protection"] = "1; mode=block"
 

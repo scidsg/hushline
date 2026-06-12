@@ -5,6 +5,7 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 from werkzeug.datastructures import Headers
 
+from hushline import PERMISSIONS_POLICY
 from hushline.db import db
 from hushline.model import OrganizationSetting, StripeSubscriptionStatusEnum, User
 
@@ -244,9 +245,11 @@ def test_x_content_type_options(client: FlaskClient) -> None:
 def test_permissions_policy(client: FlaskClient) -> None:
     response = client.get(url_for("directory"), follow_redirects=True)
     assert response.status_code == 200
-    assert response.headers["Permissions-Policy"] == (
-        "geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=();"  # noqa: E501
-    )
+    assert response.headers["Permissions-Policy"] == PERMISSIONS_POLICY
+    assert not response.headers["Permissions-Policy"].endswith(";")
+    assert ";," not in response.headers["Permissions-Policy"]
+    for unsupported_feature in ("notifications", "push", "speaker", "vibrate"):
+        assert f"{unsupported_feature}=()" not in response.headers["Permissions-Policy"]
 
 
 def test_referrer_policy(client: FlaskClient) -> None:
