@@ -322,7 +322,7 @@ def test_login_password_step_for_2fa_does_not_revoke_existing_sessions(
         )
 
     assert response.status_code == 302
-    assert response.headers["Location"].endswith(url_for("verify_2fa_login"))
+    assert response.headers["Location"] == url_for("verify_2fa_login", _external=False)
     db.session.refresh(user)
     assert user.session_id == original_session_id
 
