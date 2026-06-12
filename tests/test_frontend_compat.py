@@ -102,6 +102,12 @@ def test_client_side_encryption_has_platform_guards() -> None:
     assert "const encryptedEmailFieldsByRecipient = {};" in js
     assert "encrypted_email_fields_by_recipient" in js
     assert "assertClientCryptoSupport();" in js
+    assert "async function submitEncryptedForm(form)" in js
+    assert "body: new FormData(form)" in js
+    assert 'credentials: "same-origin"' in js
+    assert 'Accept: "text/html"' in js
+    assert "document.write(html);" in js
+    assert "form.submit();" not in js
 
 
 def test_profile_template_avoids_inline_submit_handlers() -> None:

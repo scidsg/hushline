@@ -768,7 +768,7 @@ def test_embed_profile_submission_rejects_invalid_csrf_token(
     assert _first_message_for(user.primary_username) is None
 
 
-def test_embed_profile_submission_accepts_sandboxed_null_origin_with_signed_form_token(
+def test_embed_profile_submission_rejects_harvested_null_origin_form_token_replay(
     client: FlaskClient, user: User
 ) -> None:
     _enable_embeds_globally()
@@ -778,26 +778,34 @@ def test_embed_profile_submission_accepts_sandboxed_null_origin_with_signed_form
     response = client.get(url_for("embed_profile", username=user.primary_username.username))
     assert response.status_code == 200
     submission_data = _embed_submission_data(response.text)
-    armored_contact = "-----BEGIN PGP MESSAGE-----\n\ncontact ciphertext\n-----END PGP MESSAGE-----"
-    armored_message = "-----BEGIN PGP MESSAGE-----\n\nmessage ciphertext\n-----END PGP MESSAGE-----"
 
-    post_response = client.post(
+    explicit_cross_site_response = client.post(
         url_for("embed_profile", username=user.primary_username.username),
         data={
-            "field_0": armored_contact,
-            "field_1": armored_message,
+            "field_0": "Harvested token contact",
+            "field_1": "Harvested token message",
             **submission_data,
         },
-        headers={"Origin": "null"},
+        headers={"Origin": "https://evil.example"},
     )
 
-    assert post_response.status_code == 200, post_response.text
-    message = _first_message_for(user.primary_username)
-    assert message is not None
-    assert [field_value.value for field_value in message.field_values] == [
-        armored_contact,
-        armored_message,
-    ]
+    assert explicit_cross_site_response.status_code == 400
+    assert "Invalid embed request origin" in explicit_cross_site_response.text
+
+    for _ in range(2):
+        null_origin_response = client.post(
+            url_for("embed_profile", username=user.primary_username.username),
+            data={
+                "field_0": "Harvested token contact",
+                "field_1": "Harvested token message",
+                **submission_data,
+            },
+            headers={"Origin": "null"},
+        )
+        assert null_origin_response.status_code == 400
+        assert "Invalid embed request origin" in null_origin_response.text
+
+    assert _message_count_for(user.primary_username) == 0
 
 
 def test_embed_profile_submission_rejects_null_origin_with_mismatched_form_token(
