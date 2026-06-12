@@ -23,9 +23,12 @@
   </div>
 
   {% set append_message_url = url_for('append_conversation_message', conversation_id=conversation.id) %}
+  {% set presence_url = url_for('conversation_presence', conversation_id=conversation.id) %}
   <section
     id="conversation-chat"
     data-message-url="{{ append_message_url }}"
+    data-presence-url="{{ presence_url }}"
+    data-presence-interval-ms="{{ conversation_presence_interval_ms }}"
     data-can-compose="{{ 'true' if can_compose else 'false' }}"
   >
     <div id="conversation-key-locked" class="message">

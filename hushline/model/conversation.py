@@ -73,6 +73,7 @@ class ConversationParticipant(Model):
         db.DateTime(timezone=True), server_default=text("NOW()"), nullable=False
     )
     last_read_at: Mapped[datetime | None] = mapped_column(db.DateTime(timezone=True))
+    last_active_at: Mapped[datetime | None] = mapped_column(db.DateTime(timezone=True))
     has_usable_public_key: Mapped[bool] = mapped_column(
         db.Boolean,
         nullable=False,

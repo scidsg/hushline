@@ -86,15 +86,20 @@ def test_participant_read_state_and_key_defaults(app: Flask, user: User, user2: 
 
     assert participant.has_usable_public_key is True
     assert participant.last_read_at is None
+    assert participant.last_active_at is None
     assert participant2.has_usable_public_key is False
     assert participant2.last_read_at is None
+    assert participant2.last_active_at is None
 
     read_at = datetime.now(timezone.utc)
+    active_at = datetime.now(timezone.utc)
     participant2.last_read_at = read_at
+    participant2.last_active_at = active_at
     db.session.add(conversation)
     db.session.commit()
 
     assert participant2.last_read_at == read_at
+    assert participant2.last_active_at == active_at
 
 
 def test_initial_message_can_link_to_conversation(

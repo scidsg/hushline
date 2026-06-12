@@ -1,6 +1,6 @@
 import re
 import smtplib
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from flask import (
@@ -45,6 +45,8 @@ from hushline.routes.common import (
 )
 
 _CHAT_CIPHERTEXT_MAX_LENGTH = 200_000
+_CONVERSATION_ACTIVITY_TIMEOUT_SECONDS = 120
+_CONVERSATION_PRESENCE_HEARTBEAT_SECONDS = 60
 _CONVERSATION_NOTIFICATION_BODY = (
     "You have new Hush Line conversation activity. "
     "Log in and unlock your Hush Line chat key to read it."
@@ -64,6 +66,50 @@ def _conversation_latest_message(thread: Conversation) -> ConversationMessage | 
         thread.messages,
         key=lambda message: (message.created_at, message.id),
     )
+
+
+def _conversation_activity_timeout() -> timedelta:
+    configured_seconds = current_app.config.get(
+        "CONVERSATION_ACTIVITY_TIMEOUT_SECONDS", _CONVERSATION_ACTIVITY_TIMEOUT_SECONDS
+    )
+    try:
+        seconds = int(configured_seconds)
+    except (TypeError, ValueError):
+        seconds = _CONVERSATION_ACTIVITY_TIMEOUT_SECONDS
+    return timedelta(seconds=max(1, seconds))
+
+
+def _conversation_presence_heartbeat_ms() -> int:
+    configured_seconds = current_app.config.get(
+        "CONVERSATION_PRESENCE_HEARTBEAT_SECONDS", _CONVERSATION_PRESENCE_HEARTBEAT_SECONDS
+    )
+    try:
+        seconds = int(configured_seconds)
+    except (TypeError, ValueError):
+        seconds = _CONVERSATION_PRESENCE_HEARTBEAT_SECONDS
+    return max(1, seconds) * 1000
+
+
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
+def _mark_conversation_participant_active(
+    participant: ConversationParticipant, now: datetime | None = None
+) -> None:
+    participant.last_active_at = now or datetime.now(UTC)
+
+
+def _conversation_participant_is_active(
+    participant: ConversationParticipant, now: datetime | None = None
+) -> bool:
+    if participant.last_active_at is None:
+        return False
+    active_at = _as_utc(participant.last_active_at)
+    current_time = now or datetime.now(UTC)
+    return current_time - active_at <= _conversation_activity_timeout()
 
 
 def _is_armored_pgp_message(value: str) -> bool:
@@ -131,6 +177,8 @@ def _notify_conversation_participants(
             continue
         if not recipient_user.enable_email_notifications:
             continue
+        if _conversation_participant_is_active(recipient_participant):
+            continue
 
         try:
             send_email_to_user_recipients(
@@ -189,12 +237,13 @@ def register_message_routes(app: Flask) -> None:
         if not participant:
             abort(404)
 
+        _mark_conversation_participant_active(participant)
         latest_message = _conversation_latest_message(thread)
         if latest_message and (
             participant.last_read_at is None or latest_message.created_at > participant.last_read_at
         ):
             participant.last_read_at = latest_message.created_at
-            db.session.commit()
+        db.session.commit()
 
         message_copies = []
         message_copy_payloads = []
@@ -236,8 +285,34 @@ def register_message_routes(app: Flask) -> None:
             message_copy_payloads=message_copy_payloads,
             participant_public_keys=participant_public_keys,
             can_compose=can_compose,
+            conversation_presence_interval_ms=_conversation_presence_heartbeat_ms(),
             conversation_message_form=conversation_message_form,
         )
+
+    @app.route("/conversation/<int:conversation_id>/presence", methods=["POST"])
+    @authentication_required
+    def conversation_presence(conversation_id: int) -> tuple[Response, int]:
+        user = db.session.get(User, session["user_id"])
+        if not user:
+            abort(404)
+
+        thread = db.session.scalars(
+            Conversation.for_user_id(user.id).where(Conversation.id == conversation_id)
+        ).one_or_none()
+        if not thread:
+            abort(404)
+
+        participant = thread.participant_for_user_id(user.id)
+        if not participant:
+            abort(404)
+
+        csrf_error = _validate_json_csrf()
+        if csrf_error:
+            return jsonify({"error": csrf_error}), 400
+
+        _mark_conversation_participant_active(participant)
+        db.session.commit()
+        return jsonify({"ok": True}), 200
 
     @app.route("/conversation/<int:conversation_id>/messages", methods=["POST"])
     @authentication_required
@@ -285,6 +360,7 @@ def register_message_routes(app: Flask) -> None:
         conversation_message = ConversationMessage()
         conversation_message.conversation = thread
         conversation_message.sender_participant = participant
+        _mark_conversation_participant_active(participant)
         for recipient_participant in thread.participants:
             encrypted_copy = ConversationMessageCopy()
             encrypted_copy.recipient_participant = recipient_participant
