@@ -18,27 +18,89 @@
             {% set count = total_messages %}
             {% set url = url_for('inbox') %}
           {% endif %}
-          {% set is_active = (pair and pair[0] == status_filter) or (pair is none and not status_filter) %}
+          {% set is_active =
+            (pair and pair[0] == status_filter) or (pair is none and not status_filter)
+          %}
           <li class="tab{% if is_active %} active{% endif %}">
-            <a href="{{ url }}"{% if is_active %} aria-current="page"{% endif %}>{{ display_str }}</a>
+            <a href="{{ url }}"{% if is_active %} aria-current="page"{% endif %}>
+              {{ display_str }}
+            </a>
             <span class="badge">{{ count }}</span>
           </li>
         {% endfor %}
       </ul>
     </nav>
     <div class="message-list">
+      {% if conversations %}
+        <section class="conversation-list" aria-labelledby="conversation-list-heading">
+          <h3 id="conversation-list-heading">Conversations</h3>
+          {% for item in conversations %}
+            {% set title_id = "conversation-title-" ~ item.conversation.id %}
+            <article
+              class="message encrypted conversation-summary"
+              aria-labelledby="{{ title_id }}"
+            >
+              {% if item.has_unread %}
+                <span class="badge" aria-label="Unread conversation">Unread</span>
+              {% endif %}
+              <h4 id="{{ title_id }}">
+                Conversation with
+                {% if item.other_participant_names %}
+                  {{ item.other_participant_names | join(", ") }}
+                {% else %}
+                  your account
+                {% endif %}
+              </h4>
+              {% if item.conversation.initial_message %}
+                <p>To: @{{ item.conversation.initial_message.username.username }}</p>
+              {% endif %}
+              <p>{{ item.latest_at.date() }}</p>
+              <p>
+                {{ item.message_count }} encrypted
+                {{ "message" if item.message_count == 1 else "messages" }}
+              </p>
+              {% if item.has_available_copy %}
+                <p class="meta" role="status">
+                  Locked: unlock your Hush Line chat key to read this thread.
+                </p>
+              {% else %}
+                <p class="meta" role="status">
+                  Key unavailable: no encrypted copy is available for this account.
+                </p>
+              {% endif %}
+              <p>
+                <a
+                  class="stretched-link"
+                  href="{{ url_for('conversation', conversation_id=item.conversation.id) }}"
+                >
+                  Open conversation
+                </a>
+              </p>
+            </article>
+          {% endfor %}
+        </section>
+      {% endif %}
       {% if messages %}
         {% for message in messages %}
           <article
             class="message encrypted"
-            aria-label="Message with {{ message.username.display_name or message.username.username }}"
+            aria-label="Message with {{
+              message.username.display_name or message.username.username
+            }}"
           >
             <p>To: @{{ message.username.username }}</p>
             <p>{{ message.created_at.date() }}</p>
-            <p><a class="stretched-link" href="{{ url_for('message', public_id=message.public_id) }}">Go to message</a></p>
+            <p>
+              <a
+                class="stretched-link"
+                href="{{ url_for('message', public_id=message.public_id) }}"
+              >
+                Go to message
+              </a>
+            </p>
           </article>
         {% endfor %}
-      {% else %}
+      {% elif not conversations %}
         <div class="emptyState">
           <img
             class="empty"

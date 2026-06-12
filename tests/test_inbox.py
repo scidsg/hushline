@@ -1,10 +1,55 @@
+import json
+from pathlib import Path
+
 import pytest
 from flask import url_for
 from flask.testing import FlaskClient
+from helpers import get_profile_submission_data
 
 from hushline import auth
 from hushline.db import db
-from hushline.model import FieldValue, Message, MessageStatus, User, Username
+from hushline.model import ChatKey, FieldValue, Message, MessageStatus, User, Username
+
+MSG_CONTACT_METHOD = "I prefer Signal."
+MSG_CONTENT = "This is a test message."
+
+
+def _authenticate_as(client: FlaskClient, user: User) -> None:
+    with client.session_transaction() as session:
+        session["user_id"] = user.id
+        session["session_id"] = user.session_id
+        session["username"] = user.primary_username.username
+        session["is_authenticated"] = True
+
+
+def _set_pgp_key(user: User) -> None:
+    user.pgp_key = Path("tests/test_pgp_key.txt").read_text()
+
+
+def _add_chat_key(user: User, public_key: str) -> None:
+    db.session.add(
+        ChatKey(
+            user=user,
+            key_version=1,
+            public_key=public_key,
+            encrypted_private_key="wrapped-private-chat-key",
+            kdf_algorithm="PBKDF2-SHA-256",
+            kdf_params={"iterations": 310000, "hash": "SHA-256"},
+            kdf_salt="salt",
+            wrapping_algorithm="AES-GCM",
+        )
+    )
+
+
+def _chat_ciphertext(label: str) -> str:
+    return json.dumps(
+        {
+            "algorithm": "ECDH-P256-AES-GCM",
+            "ephemeral_public_key": '{"kty":"EC","crv":"P-256","x":"ephemeral","y":"key"}',
+            "iv": f"iv-{label}",
+            "ciphertext": f"ciphertext-{label}",
+        }
+    )
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -119,6 +164,72 @@ def test_filter_on_status(client: FlaskClient, user: User, user_alias: Username)
                 assert (
                     f'href="{url_for("message", public_id=other_msg.public_id)}"' not in resp.text
                 )
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_inbox_lists_conversation_for_sender_and_recipient_after_submission(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _set_pgp_key(user2)
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    db.session.commit()
+
+    response = client.post(
+        url_for("profile", username=user2.primary_username.username),
+        data={
+            "field_0": MSG_CONTACT_METHOD,
+            "field_1": MSG_CONTENT,
+            "encrypted_conversation_copies": json.dumps(
+                {
+                    "sender": _chat_ciphertext("sender-initial"),
+                    "recipient": _chat_ciphertext("recipient-initial"),
+                }
+            ),
+            **get_profile_submission_data(client, user2.primary_username.username),
+        },
+        follow_redirects=False,
+    )
+
+    message = db.session.scalars(
+        db.select(Message).filter_by(username_id=user2.primary_username.id)
+    ).one()
+    assert message.conversation is not None
+    conversation_url = url_for("conversation", conversation_id=message.conversation.id)
+    message_url = url_for("message", public_id=message.public_id)
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(conversation_url)
+
+    sender_response = client.get(url_for("inbox"))
+    assert sender_response.status_code == 200
+    assert conversation_url in sender_response.text
+    assert f"@{user2.primary_username.username}" in sender_response.text
+    assert MSG_CONTACT_METHOD not in sender_response.text
+    assert MSG_CONTENT not in sender_response.text
+    assert "Proton" not in sender_response.text
+    assert "PGP" not in sender_response.text
+
+    message.status = MessageStatus.ARCHIVED
+    db.session.commit()
+    _authenticate_as(client, user2)
+    recipient_response = client.get(url_for("inbox"))
+    assert recipient_response.status_code == 200
+    assert conversation_url in recipient_response.text
+    assert f"@{user.primary_username.username}" in recipient_response.text
+    assert MSG_CONTACT_METHOD not in recipient_response.text
+    assert MSG_CONTENT not in recipient_response.text
+
+    pending_response = client.get(url_for("inbox", status=MessageStatus.PENDING.value))
+    assert pending_response.status_code == 200
+    assert conversation_url in pending_response.text
+    assert f'href="{message_url}"' not in pending_response.text
+
+    archived_response = client.get(url_for("inbox", status=MessageStatus.ARCHIVED.value))
+    assert archived_response.status_code == 200
+    assert conversation_url in archived_response.text
+    assert f'href="{message_url}"' in archived_response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")

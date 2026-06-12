@@ -4,7 +4,49 @@ from flask import url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import OrganizationSetting
+from hushline.model import (
+    Conversation,
+    ConversationMessage,
+    ConversationMessageCopy,
+    ConversationParticipant,
+    OrganizationSetting,
+    User,
+)
+
+
+def _make_inbox_conversation(
+    user: User,
+    user2: User,
+    *,
+    user_has_copy: bool,
+    sender_is_other_user: bool,
+) -> Conversation:
+    conversation = Conversation()
+    user_participant = ConversationParticipant()
+    user_participant.conversation = conversation
+    user_participant.user = user
+    user_participant.has_usable_public_key = user_has_copy
+    other_participant = ConversationParticipant()
+    other_participant.conversation = conversation
+    other_participant.user = user2
+    other_participant.has_usable_public_key = True
+    conversation_message = ConversationMessage()
+    conversation_message.conversation = conversation
+    conversation_message.sender_participant = (
+        other_participant if sender_is_other_user else user_participant
+    )
+    if user_has_copy:
+        user_copy = ConversationMessageCopy()
+        user_copy.recipient_participant = user_participant
+        user_copy.encrypted_payload = "encrypted-for-current-user"
+        conversation_message.encrypted_copies.append(user_copy)
+    other_copy = ConversationMessageCopy()
+    other_copy.recipient_participant = other_participant
+    other_copy.encrypted_payload = "encrypted-for-other-user"
+    conversation_message.encrypted_copies.append(other_copy)
+    db.session.add(conversation)
+    db.session.commit()
+    return conversation
 
 
 def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
@@ -166,6 +208,68 @@ def test_inbox_filter_nav_marks_current_page(client: FlaskClient) -> None:
     assert inbox_nav is not None
     assert current is not None
     assert current.text.strip() == "All"
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_inbox_conversation_rows_have_accessible_status_and_unread_state(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    locked_conversation = _make_inbox_conversation(
+        user,
+        user2,
+        user_has_copy=True,
+        sender_is_other_user=False,
+    )
+    unavailable_conversation = _make_inbox_conversation(
+        user,
+        user2,
+        user_has_copy=False,
+        sender_is_other_user=True,
+    )
+
+    response = client.get(url_for("inbox"), follow_redirects=True)
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    conversation_section = soup.find("section", {"aria-labelledby": "conversation-list-heading"})
+    conversation_heading = soup.find(id="conversation-list-heading")
+    conversation_rows = soup.select("article.conversation-summary")
+    unread_badge = soup.select_one("article.conversation-summary .badge")
+    status_messages = [
+        status.get_text(" ", strip=True)
+        for status in soup.select("article.conversation-summary p[role='status']")
+    ]
+
+    assert conversation_section is not None
+    assert conversation_heading is not None
+    assert conversation_heading.get_text(" ", strip=True) == "Conversations"
+    assert len(conversation_rows) == 2
+    for row in conversation_rows:
+        title_id = row.get("aria-labelledby")
+        assert title_id
+        assert soup.find(id=title_id) is not None
+
+    assert unread_badge is not None
+    assert unread_badge.get("aria-label") == "Unread conversation"
+    assert unread_badge.get_text(" ", strip=True) == "Unread"
+    assert "Locked: unlock your Hush Line chat key to read this thread." in status_messages
+    assert "Key unavailable: no encrypted copy is available for this account." in status_messages
+    assert (
+        soup.find(
+            "a",
+            href=url_for("conversation", conversation_id=locked_conversation.id),
+        )
+        is not None
+    )
+    assert (
+        soup.find(
+            "a",
+            href=url_for("conversation", conversation_id=unavailable_conversation.id),
+        )
+        is not None
+    )
 
 
 def test_guidance_modal_has_accessible_attributes(client: FlaskClient) -> None:
