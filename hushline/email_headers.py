@@ -14,6 +14,9 @@ import dns.flags
 import dns.resolver
 
 _AUTH_RESULTS_RE = re.compile(r"\b(dkim|spf|dmarc)\s*=\s*([a-zA-Z0-9_-]+)")
+_MAX_EMAIL_HEADER_COUNT = 250
+_MAX_DKIM_SIGNATURE_HEADERS = 20
+_MAX_DKIM_KEY_LOOKUPS = 10
 
 
 def _parse_tag_value_pairs(value: str) -> dict[str, str]:
@@ -70,7 +73,11 @@ def _lookup_dkim_key(
             "dnssec_validated": False,
             "error": "No DKIM key found at this DNS name.",
         }
-    except (dns.resolver.NoAnswer, dns.resolver.NoNameservers, dns.exception.Timeout) as e:
+    except (
+        dns.resolver.NoAnswer,
+        dns.resolver.NoNameservers,
+        dns.exception.Timeout,
+    ) as e:
         return {
             "selector": selector,
             "domain": domain,
@@ -393,11 +400,24 @@ def analyze_raw_email_headers(raw_headers: str) -> dict[str, Any]:
     return_path_domain = _domain_from_address(return_path_header)
     reply_to_domain = _domain_from_address(reply_to_header)
 
+    header_count = len(message.items())
+    if header_count > _MAX_EMAIL_HEADER_COUNT:
+        raise ValueError(
+            "Too many email headers detected. Paste a smaller header block and try again."
+        )
+
     auth_results = _extract_authentication_results(message.get_all("Authentication-Results", []))
     dkim_headers = message.get_all("DKIM-Signature", [])
+    if len(dkim_headers) > _MAX_DKIM_SIGNATURE_HEADERS:
+        raise ValueError(
+            "Too many DKIM-Signature headers detected. Paste a smaller header block and try again."
+        )
 
     dkim_signatures: list[dict[str, Any]] = []
     dkim_key_lookups: list[dict[str, Any]] = []
+    dkim_lookup_cache: dict[tuple[str, str], dict[str, Any]] = {}
+    resolver: dns.resolver.Resolver | None = None
+    dkim_lookup_limit_reached = False
     for dkim_header in dkim_headers:
         tags = _parse_tag_value_pairs(dkim_header)
         selector = tags.get("s", "")
@@ -407,7 +427,7 @@ def analyze_raw_email_headers(raw_headers: str) -> dict[str, Any]:
             "canonicalization": tags.get("c", ""),
             "selector": selector,
             "domain": domain,
-            "query_name": f"{selector}._domainkey.{domain}" if selector and domain else None,
+            "query_name": (f"{selector}._domainkey.{domain}" if selector and domain else None),
             "body_hash_present": bool(tags.get("bh")),
             "signature_present": bool(tags.get("b")),
             "signed_headers": [
@@ -416,7 +436,18 @@ def analyze_raw_email_headers(raw_headers: str) -> dict[str, Any]:
         }
         dkim_signatures.append(signature)
         if selector and domain:
-            dkim_key_lookups.append(_lookup_dkim_key(selector=selector, domain=domain))
+            cache_key = (selector.lower(), domain.lower())
+            if cache_key in dkim_lookup_cache:
+                continue
+            if len(dkim_lookup_cache) >= _MAX_DKIM_KEY_LOOKUPS:
+                dkim_lookup_limit_reached = True
+                continue
+            if resolver is None:
+                resolver = dns.resolver.Resolver()
+            dkim_lookup_cache[cache_key] = _lookup_dkim_key(
+                selector=selector, domain=domain, resolver=resolver
+            )
+            dkim_key_lookups.append(dkim_lookup_cache[cache_key])
 
     alignment = {
         "from_matches_return_path": bool(
@@ -433,6 +464,10 @@ def analyze_raw_email_headers(raw_headers: str) -> dict[str, Any]:
         warnings.append("From header does not contain a parseable email domain.")
     if dkim_headers and not dkim_key_lookups:
         warnings.append("DKIM signature found, but selector/domain tags were incomplete.")
+    if dkim_lookup_limit_reached:
+        warnings.append(
+            "DKIM key lookup limit reached; additional signatures were parsed without DNS lookups."
+        )
     if auth_results.get("dkim") not in {"pass", "bestguesspass"} and dkim_headers:
         warnings.append("DKIM did not show a pass result in Authentication-Results.")
     if auth_results.get("spf") and auth_results["spf"] != "pass":

@@ -34,6 +34,17 @@ class _FakeResolver:
         return [_FakeTXTRecord("v=DKIM1; k=rsa; p=MIIB12345")]
 
 
+class _CountingResolver:
+    def __init__(self) -> None:
+        self.timeout = 0.0
+        self.lifetime = 0.0
+        self.queries: list[tuple[str, str]] = []
+
+    def resolve(self, qname: str, rdtype: str) -> list[_FakeTXTRecord]:
+        self.queries.append((qname, rdtype))
+        return [_FakeTXTRecord("v=DKIM1; k=rsa; p=MIIB12345")]
+
+
 class _RaisingResolver:
     def __init__(self, exc: Exception) -> None:
         self._exc = exc
@@ -46,7 +57,9 @@ class _RaisingResolver:
         raise self._exc
 
 
-def test_analyze_raw_email_headers_extracts_auth_results_and_dkim_key(mocker: MockFixture) -> None:
+def test_analyze_raw_email_headers_extracts_auth_results_and_dkim_key(
+    mocker: MockFixture,
+) -> None:
     mocker.patch("hushline.email_headers.dns.resolver.Resolver", return_value=_FakeResolver())
     raw_headers = (
         "From: Alerts <alerts@example.org>\n"
@@ -69,7 +82,11 @@ def test_analyze_raw_email_headers_extracts_auth_results_and_dkim_key(mocker: Mo
     assert report["dkim_key_lookups"][0]["has_public_key"] is True
     assert report["dkim_key_lookups"][0]["dnssec_validated"] is False
     assert report["dkim_overview"]["key_advertised_in_dns"] is True
-    assert report["dkim_signatures"][0]["signed_headers"] == ["from", "subject", "sender"]
+    assert report["dkim_signatures"][0]["signed_headers"] == [
+        "from",
+        "subject",
+        "sender",
+    ]
     assert report["executive_summary"]["verdict"] == "looks valid"
 
 
@@ -192,6 +209,69 @@ def test_analyze_raw_email_headers_with_header_body_mix_parses_headers_only() ->
     assert report["auth_results"]["dkim"] == "pass"
 
 
+def test_analyze_raw_email_headers_rejects_excessive_header_count() -> None:
+    raw_headers = "From: Alerts <alerts@example.org>\n" + "".join(
+        f"X-Filler-{index}: value\n" for index in range(251)
+    )
+
+    with pytest.raises(ValueError, match="Too many email headers detected"):
+        analyze_raw_email_headers(raw_headers)
+
+
+def test_analyze_raw_email_headers_rejects_excessive_dkim_signature_count() -> None:
+    raw_headers = "From: Alerts <alerts@example.org>\n" + "".join(
+        "DKIM-Signature: v=1; a=rsa-sha256; d=example.org; " f"s=selector{index}; bh=abc=; b=def=\n"
+        for index in range(21)
+    )
+
+    with pytest.raises(ValueError, match="Too many DKIM-Signature headers detected"):
+        analyze_raw_email_headers(raw_headers)
+
+
+def test_analyze_raw_email_headers_caches_duplicate_dkim_key_lookups(
+    mocker: MockFixture,
+) -> None:
+    resolver = _CountingResolver()
+    resolver_factory = mocker.patch(
+        "hushline.email_headers.dns.resolver.Resolver", return_value=resolver
+    )
+    raw_headers = (
+        "From: Alerts <alerts@example.org>\n"
+        "DKIM-Signature: v=1; a=rsa-sha256; d=example.org; "
+        "s=selector1; bh=abc=; b=def=\n"
+        "DKIM-Signature: v=1; a=rsa-sha256; d=example.org; "
+        "s=selector1; bh=abc=; b=def=\n"
+    )
+
+    report = analyze_raw_email_headers(raw_headers)
+
+    resolver_factory.assert_called_once_with()
+    assert resolver.queries == [("selector1._domainkey.example.org", "TXT")]
+    assert len(report["dkim_signatures"]) == 2
+    assert len(report["dkim_key_lookups"]) == 1
+
+
+def test_analyze_raw_email_headers_caps_unique_dkim_key_lookups(
+    mocker: MockFixture,
+) -> None:
+    resolver = _CountingResolver()
+    mocker.patch("hushline.email_headers.dns.resolver.Resolver", return_value=resolver)
+    raw_headers = "From: Alerts <alerts@example.org>\n" + "".join(
+        "DKIM-Signature: v=1; a=rsa-sha256; d=example.org; " f"s=selector{index}; bh=abc=; b=def=\n"
+        for index in range(11)
+    )
+
+    report = analyze_raw_email_headers(raw_headers)
+
+    assert len(resolver.queries) == 10
+    assert len(report["dkim_signatures"]) == 11
+    assert len(report["dkim_key_lookups"]) == 10
+    assert (
+        "DKIM key lookup limit reached; additional signatures were parsed without DNS lookups."
+        in report["warnings"]
+    )
+
+
 def test_analyze_raw_email_headers_warns_on_unparseable_from_and_incomplete_dkim() -> None:
     raw_headers = (
         "From: not-an-address\n"
@@ -216,10 +296,14 @@ def test_analyze_raw_email_headers_warns_on_unparseable_from_and_incomplete_dkim
     ],
 )
 def test_analyze_raw_email_headers_handles_dns_lookup_errors(
-    mocker: MockFixture, raised: Exception, expected_status: str, expected_error_snippet: str
+    mocker: MockFixture,
+    raised: Exception,
+    expected_status: str,
+    expected_error_snippet: str,
 ) -> None:
     mocker.patch(
-        "hushline.email_headers.dns.resolver.Resolver", return_value=_RaisingResolver(raised)
+        "hushline.email_headers.dns.resolver.Resolver",
+        return_value=_RaisingResolver(raised),
     )
     raw_headers = (
         "From: Alerts <alerts@example.org>\n"
@@ -232,7 +316,9 @@ def test_analyze_raw_email_headers_handles_dns_lookup_errors(
     assert expected_error_snippet in (lookup["error"] or "")
 
 
-def test_create_evidence_zip_contains_pdf_json_and_valid_checksums(mocker: MockFixture) -> None:
+def test_create_evidence_zip_contains_pdf_json_and_valid_checksums(
+    mocker: MockFixture,
+) -> None:
     mocker.patch("hushline.email_headers.dns.resolver.Resolver", return_value=_FakeResolver())
     raw_headers = (
         "From: Alerts <alerts@example.org>\n"
@@ -292,7 +378,9 @@ def test_email_headers_export_zip_contains_evidence_artifacts(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-def test_email_headers_post_invalid_form_shows_validation_flash(client: FlaskClient) -> None:
+def test_email_headers_post_invalid_form_shows_validation_flash(
+    client: FlaskClient,
+) -> None:
     response = client.post(
         url_for("email_headers"),
         data={"raw_headers": ""},
@@ -349,7 +437,9 @@ def test_email_headers_missing_csrf_preserves_invalid_post_behavior(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-def test_email_headers_export_invalid_form_redirects_with_flash(client: FlaskClient) -> None:
+def test_email_headers_export_invalid_form_redirects_with_flash(
+    client: FlaskClient,
+) -> None:
     response = client.post(
         url_for("email_headers_evidence_zip"),
         data={"raw_headers": ""},
@@ -476,7 +566,10 @@ def test_render_report_pdf_includes_none_sections_and_warnings_block() -> None:
         "from_domain": None,
         "return_path_domain": None,
         "reply_to_domain": None,
-        "alignment": {"from_matches_return_path": False, "from_matches_any_dkim_domain": False},
+        "alignment": {
+            "from_matches_return_path": False,
+            "from_matches_any_dkim_domain": False,
+        },
         "auth_results": {},
         "dkim_signatures": [],
         "dkim_key_lookups": [],
