@@ -358,6 +358,55 @@
     }
   }
 
+  function conversationCsrfToken() {
+    return document
+      .getElementById("conversation-compose-form")
+      ?.querySelector("input[name='csrf_token']")
+      ?.value;
+  }
+
+  async function sendConversationPresence() {
+    const root = document.getElementById("conversation-chat");
+    if (!root?.dataset.presenceUrl) {
+      return;
+    }
+
+    try {
+      await fetch(root.dataset.presenceUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "X-CSRFToken": conversationCsrfToken() || "",
+        },
+      });
+    } catch (error) {
+      return;
+    }
+  }
+
+  function bindConversationPresence(root) {
+    if (root.dataset.presenceBound === "true") {
+      return;
+    }
+    root.dataset.presenceBound = "true";
+
+    const configuredInterval = Number.parseInt(root.dataset.presenceIntervalMs, 10);
+    const intervalMs = Number.isFinite(configuredInterval)
+      ? Math.max(15000, configuredInterval)
+      : 60000;
+    const sendIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        void sendConversationPresence();
+      }
+    };
+
+    sendIfVisible();
+    window.setInterval(sendIfVisible, intervalMs);
+    document.addEventListener("visibilitychange", sendIfVisible);
+    window.addEventListener("focus", sendIfVisible);
+  }
+
   async function unlockConversationFromPassword() {
     const passwordInput = document.getElementById("conversation-chat-password");
     if (!passwordInput?.value) {
@@ -440,6 +489,8 @@
     if (!root) {
       return;
     }
+
+    bindConversationPresence(root);
 
     document
       .getElementById("conversation-chat-unlock")

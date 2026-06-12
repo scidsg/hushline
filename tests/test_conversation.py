@@ -192,6 +192,75 @@ def test_conversation_view_shows_locked_chat_key_state(
     assert "Do not upload or paste any external private key." in response.text
     assert "Proton" not in response.text
     assert "PGP" not in response.text
+    assert url_for("conversation_presence", conversation_id=conversation.id) in response.text
+
+
+def test_conversation_view_marks_participant_active(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    conversation = _make_conversation(user, user2)
+    participant = _participant_for(conversation, user)
+    _authenticate_as(client, user)
+
+    response = client.get(url_for("conversation", conversation_id=conversation.id))
+
+    assert response.status_code == 200
+    db.session.refresh(participant)
+    assert participant.last_active_at is not None
+
+
+def test_conversation_presence_requires_participant(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+    admin_user: User,
+) -> None:
+    conversation = _make_conversation(user, user2)
+    participant = _participant_for(conversation, user)
+    _authenticate_as(client, admin_user)
+
+    response = client.post(url_for("conversation_presence", conversation_id=conversation.id))
+
+    assert response.status_code == 404
+    db.session.refresh(participant)
+    assert participant.last_active_at is None
+
+
+def test_conversation_presence_heartbeat_marks_participant_active(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    conversation = _make_conversation(user, user2)
+    participant = _participant_for(conversation, user)
+    _authenticate_as(client, user)
+
+    response = client.post(url_for("conversation_presence", conversation_id=conversation.id))
+
+    assert response.status_code == 200
+    db.session.refresh(participant)
+    assert participant.last_active_at is not None
+
+
+def test_conversation_presence_requires_csrf_when_enabled(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+    prior_setting = app.config.get("WTF_CSRF_ENABLED")
+    app.config["WTF_CSRF_ENABLED"] = True
+    try:
+        response = client.post(url_for("conversation_presence", conversation_id=conversation.id))
+    finally:
+        app.config["WTF_CSRF_ENABLED"] = prior_setting
+
+    assert response.status_code == 400
+    assert "Invalid CSRF token." in response.text
 
 
 def test_participant_can_append_encrypted_conversation_message(
@@ -265,6 +334,94 @@ def test_append_conversation_message_sends_generic_notification_to_other_partici
     assert all(
         call.args[0].id != user.id for call in mock_send_email_to_user_recipients.call_args_list
     )
+
+
+@patch("hushline.routes.message.send_email_to_user_recipients")
+def test_append_conversation_message_suppresses_notification_for_active_recipient(
+    mock_send_email_to_user_recipients: MagicMock,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _enable_conversation_notifications(
+        user2,
+        email="recipient@example.com",
+        include_content=False,
+        encrypt_entire_body=False,
+    )
+    conversation = _make_conversation(user, user2)
+    recipient_participant = _participant_for(conversation, user2)
+    recipient_participant.last_active_at = datetime.now(timezone.utc)
+    db.session.commit()
+    _authenticate_as(client, user)
+
+    response = client.post(
+        url_for("append_conversation_message", conversation_id=conversation.id),
+        json={"encrypted_copies": _copies_for(conversation, "active-recipient")},
+    )
+
+    assert response.status_code == 201
+    mock_send_email_to_user_recipients.assert_not_called()
+
+
+@patch("hushline.routes.message.send_email_to_user_recipients")
+def test_append_conversation_message_notifies_after_stale_recipient_activity(
+    mock_send_email_to_user_recipients: MagicMock,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _enable_conversation_notifications(
+        user2,
+        email="recipient@example.com",
+        include_content=False,
+        encrypt_entire_body=False,
+    )
+    conversation = _make_conversation(user, user2)
+    recipient_participant = _participant_for(conversation, user2)
+    recipient_participant.last_active_at = datetime.now(timezone.utc) - timedelta(minutes=10)
+    db.session.commit()
+    _authenticate_as(client, user)
+
+    response = client.post(
+        url_for("append_conversation_message", conversation_id=conversation.id),
+        json={"encrypted_copies": _copies_for(conversation, "stale-recipient")},
+    )
+
+    assert response.status_code == 201
+    mock_send_email_to_user_recipients.assert_called_once()
+    assert mock_send_email_to_user_recipients.call_args.args[0].id == user2.id
+
+
+@patch("hushline.routes.message.send_email_to_user_recipients")
+def test_append_conversation_message_does_not_notify_sender(
+    mock_send_email_to_user_recipients: MagicMock,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _enable_conversation_notifications(
+        user,
+        email="sender@example.com",
+        include_content=False,
+        encrypt_entire_body=False,
+    )
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+
+    response = client.post(
+        url_for("append_conversation_message", conversation_id=conversation.id),
+        json={"encrypted_copies": _copies_for(conversation, "sender-notification")},
+    )
+
+    assert response.status_code == 201
+    mock_send_email_to_user_recipients.assert_not_called()
 
 
 @patch("hushline.routes.message.encrypt_message")

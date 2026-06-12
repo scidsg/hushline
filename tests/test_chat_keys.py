@@ -260,6 +260,8 @@ def test_chat_key_lifecycle_js_exposes_unlock_rewrap_and_cleanup() -> None:
     assert "unlockFromPassword" in lifecycle_js
     assert "rewrapForPasswordChange" in lifecycle_js
     assert "clearChatKeyMaterial" in lifecycle_js
+    assert "sendConversationPresence" in lifecycle_js
+    assert 'document.visibilityState === "visible"' in lifecycle_js
     assert "document.body?.dataset.authenticated" in lifecycle_js
     assert "Chat key unlock failed." in lifecycle_js
 
