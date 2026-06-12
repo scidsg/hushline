@@ -201,30 +201,6 @@ def register_profile_routes(app: Flask) -> None:
 
         return True
 
-    def _embed_form_token_belongs_to_profile(uname: Username) -> bool:
-        embed_captcha_token = request.form.get("embed_captcha_token", "")
-        csrf_token = request.form.get("csrf_token", "")
-        if (
-            not embed_captcha_token
-            or not csrf_token
-            or not hmac.compare_digest(embed_captcha_token, csrf_token)
-        ):
-            return False
-
-        try:
-            payload: dict[str, Any] = _embed_captcha_serializer().loads(
-                embed_captcha_token,
-                max_age=EMBED_CAPTCHA_MAX_AGE_SECONDS,
-            )
-        except (BadData, SignatureExpired):
-            return False
-
-        return (
-            payload.get("v") == 1
-            and payload.get("username") == uname.username
-            and payload.get("user_id") == uname.user_id
-        )
-
     def _embed_post_origin_is_valid(uname: Username) -> bool:
         origin = request.headers.get("Origin", "").strip()
         if not origin:
@@ -233,10 +209,7 @@ def register_profile_routes(app: Flask) -> None:
                 parsed_referer = urlsplit(referer)
                 origin = f"{parsed_referer.scheme}://{parsed_referer.netloc}"
 
-        if origin == "null":
-            return _embed_form_token_belongs_to_profile(uname)
-
-        if not origin:
+        if not origin or origin == "null":
             return False
 
         parsed_origin = urlsplit(origin)

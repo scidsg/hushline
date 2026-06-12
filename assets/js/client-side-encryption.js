@@ -173,6 +173,21 @@ function getMessageFields() {
   }));
 }
 
+async function submitEncryptedForm(form) {
+  const response = await fetch(form.action, {
+    method: form.method || "POST",
+    body: new FormData(form),
+    credentials: "same-origin",
+    headers: {
+      Accept: "text/html",
+    },
+  });
+  const html = await response.text();
+  document.open();
+  document.write(html);
+  document.close();
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById("messageForm");
   if (!form) {
@@ -306,7 +321,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       // Wait for all encryption operations to complete before submitting
       await Promise.all(encryptionPromises);
-      form.submit();
+      await submitEncryptedForm(form);
     } catch (error) {
       console.error("Encryption error:", error);
       alert(
