@@ -366,6 +366,35 @@ def test_embed_profile_submission_accepts_client_encrypted_fields(
     ]
 
 
+def test_embed_profile_submission_accepts_canonical_public_origin_behind_proxy(
+    app: Flask, client: FlaskClient, user: User
+) -> None:
+    app.config["PUBLIC_BASE_URL"] = "https://tips.example"
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username, "https://publisher.example")
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "Embedded Signal contact",
+            "field_1": "Embedded message",
+            **submission_data,
+        },
+        base_url="http://internal-app:8080",
+        headers={"Origin": "https://tips.example"},
+    )
+
+    assert post_response.status_code == 200, post_response.text
+    message = _first_message_for(user.primary_username)
+    assert message is not None
+    assert len(message.field_values) == 2
+
+
 def test_embed_submission_operational_counters_exclude_sensitive_request_data(
     app: Flask, client: FlaskClient, user: User
 ) -> None:
