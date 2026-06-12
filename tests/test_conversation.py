@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock, patch
 
 from flask import Flask, url_for
 from flask.testing import FlaskClient
@@ -11,6 +12,7 @@ from hushline.model import (
     ConversationMessage,
     ConversationMessageCopy,
     ConversationParticipant,
+    NotificationRecipient,
     User,
 )
 
@@ -36,6 +38,24 @@ def _add_chat_key(user: User, public_key: str) -> None:
             wrapping_algorithm="AES-GCM",
         )
     )
+
+
+def _enable_conversation_notifications(
+    user: User,
+    *,
+    email: str,
+    include_content: bool,
+    encrypt_entire_body: bool,
+    pgp_key: str = "notification-pgp-key",
+) -> None:
+    recipient = NotificationRecipient(position=user.next_notification_recipient_position)
+    recipient.email = email
+    recipient.pgp_key = pgp_key
+    recipient.enabled = True
+    user.notification_recipients.append(recipient)
+    user.enable_email_notifications = True
+    user.email_include_message_content = include_content
+    user.email_encrypt_entire_body = encrypt_entire_body
 
 
 def _ciphertext(label: str) -> str:
@@ -202,6 +222,163 @@ def test_participant_can_append_encrypted_conversation_message(
     for encrypted_copy in messages[-1].encrypted_copies:
         assert "ECDH-P256-AES-GCM" in encrypted_copy.encrypted_payload
         assert plaintext not in encrypted_copy.encrypted_payload
+
+
+@patch("hushline.routes.message.send_email_to_user_recipients")
+def test_append_conversation_message_sends_generic_notification_to_other_participant(
+    mock_send_email_to_user_recipients: MagicMock,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _enable_conversation_notifications(
+        user,
+        email="sender@example.com",
+        include_content=False,
+        encrypt_entire_body=False,
+    )
+    _enable_conversation_notifications(
+        user2,
+        email="recipient@example.com",
+        include_content=False,
+        encrypt_entire_body=False,
+    )
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+
+    response = client.post(
+        url_for("append_conversation_message", conversation_id=conversation.id),
+        json={"encrypted_copies": _copies_for(conversation, "generic-notification")},
+    )
+
+    assert response.status_code == 201
+    mock_send_email_to_user_recipients.assert_called_once()
+    notified_user, subject, body = mock_send_email_to_user_recipients.call_args.args
+    assert notified_user.id == user2.id
+    assert subject == "New Hush Line Conversation Activity"
+    assert body == (
+        "You have new Hush Line conversation activity. "
+        "Log in and unlock your Hush Line chat key to read it."
+    )
+    assert all(
+        call.args[0].id != user.id for call in mock_send_email_to_user_recipients.call_args_list
+    )
+
+
+@patch("hushline.routes.message.encrypt_message")
+@patch("hushline.routes.message.send_email_to_user_recipients")
+def test_append_conversation_message_include_content_mode_still_sends_safe_generic_body(
+    mock_send_email_to_user_recipients: MagicMock,
+    mock_encrypt_message: MagicMock,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _enable_conversation_notifications(
+        user2,
+        email="recipient@example.com",
+        include_content=True,
+        encrypt_entire_body=False,
+    )
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+    encrypted_copies = _copies_for(conversation, "include-content")
+
+    response = client.post(
+        url_for("append_conversation_message", conversation_id=conversation.id),
+        json={"encrypted_copies": encrypted_copies},
+    )
+
+    assert response.status_code == 201
+    mock_send_email_to_user_recipients.assert_called_once()
+    body = mock_send_email_to_user_recipients.call_args.args[2]
+    assert body == (
+        "You have new Hush Line conversation activity. "
+        "Log in and unlock your Hush Line chat key to read it."
+    )
+    assert "ciphertext-include-content" not in body
+    assert "ECDH-P256-AES-GCM" not in body
+    mock_encrypt_message.assert_not_called()
+
+
+@patch("hushline.routes.message.encrypt_message")
+@patch("hushline.routes.message.send_email_to_user_recipients")
+def test_append_conversation_message_encrypts_generic_body_for_full_body_mode(
+    mock_send_email_to_user_recipients: MagicMock,
+    mock_encrypt_message: MagicMock,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _enable_conversation_notifications(
+        user2,
+        email="recipient@example.com",
+        include_content=True,
+        encrypt_entire_body=True,
+        pgp_key="recipient-notification-pgp-key",
+    )
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+    encrypted_body = (
+        "-----BEGIN PGP MESSAGE-----\n\nencrypted generic body\n-----END PGP MESSAGE-----"
+    )
+    mock_encrypt_message.return_value = encrypted_body
+
+    response = client.post(
+        url_for("append_conversation_message", conversation_id=conversation.id),
+        json={"encrypted_copies": _copies_for(conversation, "full-body")},
+    )
+
+    assert response.status_code == 201
+    mock_encrypt_message.assert_called_once_with(
+        (
+            "You have new Hush Line conversation activity. "
+            "Log in and unlock your Hush Line chat key to read it."
+        ),
+        "recipient-notification-pgp-key",
+    )
+    mock_send_email_to_user_recipients.assert_called_once()
+    assert mock_send_email_to_user_recipients.call_args.args[2] == encrypted_body
+
+
+@patch("hushline.routes.message.send_email_to_user_recipients")
+def test_append_conversation_message_notification_failure_does_not_rollback_message(
+    mock_send_email_to_user_recipients: MagicMock,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _enable_conversation_notifications(
+        user2,
+        email="recipient@example.com",
+        include_content=False,
+        encrypt_entire_body=False,
+    )
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+    mock_send_email_to_user_recipients.side_effect = RuntimeError("smtp unavailable")
+
+    response = client.post(
+        url_for("append_conversation_message", conversation_id=conversation.id),
+        json={"encrypted_copies": _copies_for(conversation, "failed-notification")},
+    )
+
+    assert response.status_code == 201
+    messages = db.session.scalars(
+        db.select(ConversationMessage)
+        .where(ConversationMessage.conversation_id == conversation.id)
+        .order_by(ConversationMessage.id.asc())
+    ).all()
+    assert len(messages) == 2
+    assert messages[-1].sender_participant.user_id == user.id
 
 
 def test_append_conversation_message_rejects_invalid_payload_without_leaking_content(
