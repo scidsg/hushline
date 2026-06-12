@@ -400,7 +400,6 @@ def register_auth_routes(app: Flask) -> None:
                     form.password.data,
                     password_rehash_source_hash,
                 )
-                rotate_user_session_id(user)
 
                 # 2FA enabled?
                 if user.totp_secret:
@@ -418,6 +417,7 @@ def register_auth_routes(app: Flask) -> None:
                         raise
                     return redirect(url_for("verify_2fa_login"))
 
+                rotate_user_session_id(user)
                 set_session_user(user=user, username=username.username, is_authenticated=True)
 
                 auth_log = AuthenticationLog(user_id=user.id, successful=True)
@@ -568,6 +568,8 @@ def register_auth_routes(app: Flask) -> None:
                     user_id=user.id, successful=True, otp_code=verification_code, timecode=timecode
                 )
                 db.session.add(auth_log)
+                rotate_user_session_id(user)
+                session["session_id"] = user.session_id
                 session["is_authenticated"] = True
                 password_rehash_source_hash = user.password_hash
                 has_pending_password_rehash = PENDING_PASSWORD_REHASH_SESSION_KEY in session
