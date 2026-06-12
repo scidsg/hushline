@@ -768,7 +768,7 @@ def test_embed_profile_submission_rejects_invalid_csrf_token(
     assert _first_message_for(user.primary_username) is None
 
 
-def test_embed_profile_submission_rejects_sandboxed_null_origin(
+def test_embed_profile_submission_accepts_sandboxed_null_origin_with_signed_form_token(
     client: FlaskClient, user: User
 ) -> None:
     _enable_embeds_globally()
@@ -778,6 +778,67 @@ def test_embed_profile_submission_rejects_sandboxed_null_origin(
     response = client.get(url_for("embed_profile", username=user.primary_username.username))
     assert response.status_code == 200
     submission_data = _embed_submission_data(response.text)
+    armored_contact = "-----BEGIN PGP MESSAGE-----\n\ncontact ciphertext\n-----END PGP MESSAGE-----"
+    armored_message = "-----BEGIN PGP MESSAGE-----\n\nmessage ciphertext\n-----END PGP MESSAGE-----"
+
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": armored_contact,
+            "field_1": armored_message,
+            **submission_data,
+        },
+        headers={"Origin": "null"},
+    )
+
+    assert post_response.status_code == 200, post_response.text
+    message = _first_message_for(user.primary_username)
+    assert message is not None
+    assert [field_value.value for field_value in message.field_values] == [
+        armored_contact,
+        armored_message,
+    ]
+
+
+def test_embed_profile_submission_rejects_null_origin_with_mismatched_form_token(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    submission_data["csrf_token"] = "tampered-token"
+
+    post_response = client.post(
+        url_for("embed_profile", username=user.primary_username.username),
+        data={
+            "field_0": "Embedded Signal contact",
+            "field_1": "Embedded message",
+            **submission_data,
+        },
+        headers={"Origin": "null"},
+    )
+
+    assert post_response.status_code == 400
+    assert "Invalid embed request origin" in post_response.text
+    assert _first_message_for(user.primary_username) is None
+
+
+def test_embed_profile_submission_rejects_null_origin_with_malformed_form_token(
+    client: FlaskClient, user: User
+) -> None:
+    _enable_embeds_globally()
+    _make_message_capable(user)
+    _configure_embed(user.primary_username)
+
+    response = client.get(url_for("embed_profile", username=user.primary_username.username))
+    assert response.status_code == 200
+    submission_data = _embed_submission_data(response.text)
+    submission_data["embed_captcha_token"] = "malformed-token"
+    submission_data["csrf_token"] = "malformed-token"
 
     post_response = client.post(
         url_for("embed_profile", username=user.primary_username.username),
