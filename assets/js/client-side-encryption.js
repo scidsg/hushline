@@ -1,5 +1,7 @@
 import * as openpgp from "openpgp";
 
+const textEncoder = new TextEncoder();
+
 function assertClientCryptoSupport() {
   // OpenPGP.js v6 requires secure context + SubtleCrypto + Web Streams + BigInt.
   if (!window.isSecureContext) {
@@ -90,6 +92,91 @@ function isArmoredMessage(value) {
   );
 }
 
+function bytesToBase64(bytes) {
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary);
+}
+
+function jsonFromScript(id, fallback) {
+  const script = document.getElementById(id);
+  if (!script?.textContent) {
+    return fallback;
+  }
+
+  try {
+    return JSON.parse(script.textContent);
+  } catch (error) {
+    return fallback;
+  }
+}
+
+async function importChatPublicKey(publicKeyValue) {
+  const publicJwk =
+    typeof publicKeyValue === "string"
+      ? JSON.parse(publicKeyValue)
+      : publicKeyValue;
+  return window.crypto.subtle.importKey(
+    "jwk",
+    publicJwk,
+    {
+      name: "ECDH",
+      namedCurve: publicJwk.crv || "P-256",
+    },
+    false,
+    [],
+  );
+}
+
+async function encryptForChatPublicKey(plaintext, publicKeyValue) {
+  const recipientPublicKey = await importChatPublicKey(publicKeyValue);
+  const ephemeralKeyPair = await window.crypto.subtle.generateKey(
+    {
+      name: "ECDH",
+      namedCurve: "P-256",
+    },
+    true,
+    ["deriveKey"],
+  );
+  const messageKey = await window.crypto.subtle.deriveKey(
+    {
+      name: "ECDH",
+      public: recipientPublicKey,
+    },
+    ephemeralKeyPair.privateKey,
+    {
+      name: "AES-GCM",
+      length: 256,
+    },
+    false,
+    ["encrypt"],
+  );
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = new Uint8Array(
+    await window.crypto.subtle.encrypt(
+      {
+        name: "AES-GCM",
+        iv,
+      },
+      messageKey,
+      textEncoder.encode(plaintext),
+    ),
+  );
+  const ephemeralPublicJwk = await window.crypto.subtle.exportKey(
+    "jwk",
+    ephemeralKeyPair.publicKey,
+  );
+
+  return JSON.stringify({
+    algorithm: "ECDH-P256-AES-GCM",
+    ephemeral_public_key: JSON.stringify(ephemeralPublicJwk),
+    iv: bytesToBase64(iv),
+    ciphertext: bytesToBase64(ciphertext),
+  });
+}
+
 function getFieldValue(field) {
   if (
     field.tagName === "INPUT" ||
@@ -164,6 +251,11 @@ function getRecipientPublicKeyEntries() {
   }
 }
 
+function getChatPublicKey(id) {
+  const publicKey = jsonFromScript(id, null);
+  return typeof publicKey === "string" && publicKey.trim() ? publicKey : null;
+}
+
 function getMessageFields() {
   return Array.from(document.querySelectorAll(".form-field")).map((field) => ({
     name: field.name || field.querySelector("input")?.name,
@@ -171,6 +263,41 @@ function getMessageFields() {
     value: getFieldValue(field),
     encrypted: field.classList.contains("encrypted-field"),
   }));
+}
+
+function conversationBodyFromFields(messageFields) {
+  return messageFields
+    .map((field) => `${field.label}\n\n${field.value}\n\n==============`)
+    .join("\n\n")
+    .trim();
+}
+
+async function buildEncryptedConversationCopies(messageFields) {
+  const recipientChatPublicKey = getChatPublicKey("recipientChatPublicKey");
+  if (!recipientChatPublicKey) {
+    return {};
+  }
+
+  try {
+    const conversationBody = conversationBodyFromFields(messageFields);
+    const encryptedCopies = {
+      recipient: await encryptForChatPublicKey(
+        conversationBody,
+        recipientChatPublicKey,
+      ),
+    };
+    const senderChatPublicKey = getChatPublicKey("senderChatPublicKey");
+    if (senderChatPublicKey) {
+      encryptedCopies.sender = await encryptForChatPublicKey(
+        conversationBody,
+        senderChatPublicKey,
+      );
+    }
+    return encryptedCopies;
+  } catch (error) {
+    console.error("Chat transcript encryption failed.");
+    return {};
+  }
 }
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -255,6 +382,15 @@ document.addEventListener("DOMContentLoaded", function () {
       if (encryptedEmailFieldsEl) {
         encryptedEmailFieldsEl.value = JSON.stringify(
           encryptedEmailFieldsByRecipient,
+        );
+      }
+
+      const encryptedConversationCopiesEl = document.getElementById(
+        "encrypted_conversation_copies",
+      );
+      if (encryptedConversationCopiesEl) {
+        encryptedConversationCopiesEl.value = JSON.stringify(
+          await buildEncryptedConversationCopies(messageFields),
         );
       }
 

@@ -104,6 +104,24 @@ def test_client_side_encryption_has_platform_guards() -> None:
     assert "assertClientCryptoSupport();" in js
 
 
+def test_client_side_encryption_prepares_chat_conversation_copies() -> None:
+    js = (ROOT / "assets/js/client-side-encryption.js").read_text(encoding="utf-8")
+    profile_template = (ROOT / "hushline/templates/profile.html").read_text(encoding="utf-8")
+    embed_template = (ROOT / "hushline/templates/embed_profile.html").read_text(encoding="utf-8")
+
+    assert "function encryptForChatPublicKey(plaintext, publicKeyValue)" in js
+    assert 'algorithm: "ECDH-P256-AES-GCM"' in js
+    assert 'getChatPublicKey("recipientChatPublicKey")' in js
+    assert 'getChatPublicKey("senderChatPublicKey")' in js
+    assert "recipient: await encryptForChatPublicKey(" in js
+    assert "encryptedCopies.sender = await encryptForChatPublicKey(" in js
+    assert "encrypted_conversation_copies" in js
+    assert "private_key" not in js
+    assert "derived wrapping key" not in js.lower()
+    assert 'id="senderChatPublicKey"' in profile_template
+    assert 'id="senderChatPublicKey"' in embed_template
+
+
 def test_profile_template_avoids_inline_submit_handlers() -> None:
     template = (ROOT / "hushline/templates/profile.html").read_text(encoding="utf-8")
     scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")

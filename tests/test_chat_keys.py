@@ -283,5 +283,6 @@ def test_profile_exposes_public_chat_key_only(client: FlaskClient, user: User) -
 
     assert response.status_code == 200
     assert 'id="recipientChatPublicKey"' in response.text
+    assert 'id="senderChatPublicKey"' in response.text
     assert "public-chat-key" in response.text
     assert "wrapped-private-chat-key" not in response.text
