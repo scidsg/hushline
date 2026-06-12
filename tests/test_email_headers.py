@@ -4,6 +4,7 @@ import zipfile
 from datetime import UTC, datetime
 
 import dns.exception
+import dns.flags
 import dns.resolver
 import pytest
 from bs4 import BeautifulSoup
@@ -23,15 +24,22 @@ class _FakeTXTRecord:
         return f'"{self._text}"'
 
 
+class _FakeAnswer(list[_FakeTXTRecord]):
+    def __init__(self, records: list[_FakeTXTRecord], flags: int = 0) -> None:
+        super().__init__(records)
+        self.response = type("FakeResponse", (), {"flags": flags})()
+
+
 class _FakeResolver:
-    def __init__(self) -> None:
+    def __init__(self, flags: int = 0) -> None:
+        self._flags = flags
         self.timeout = 0.0
         self.lifetime = 0.0
 
-    def resolve(self, qname: str, rdtype: str) -> list[_FakeTXTRecord]:
+    def resolve(self, qname: str, rdtype: str) -> _FakeAnswer:
         assert qname == "selector1._domainkey.example.org"
         assert rdtype == "TXT"
-        return [_FakeTXTRecord("v=DKIM1; k=rsa; p=MIIB12345")]
+        return _FakeAnswer([_FakeTXTRecord("v=DKIM1; k=rsa; p=MIIB12345")], self._flags)
 
 
 class _RaisingResolver:
@@ -71,6 +79,35 @@ def test_analyze_raw_email_headers_extracts_auth_results_and_dkim_key(mocker: Mo
     assert report["dkim_overview"]["key_advertised_in_dns"] is True
     assert report["dkim_signatures"][0]["signed_headers"] == ["from", "subject", "sender"]
     assert report["executive_summary"]["verdict"] == "looks valid"
+
+
+def test_analyze_raw_email_headers_does_not_trust_resolver_ad_flag(
+    mocker: MockFixture,
+) -> None:
+    mocker.patch(
+        "hushline.email_headers.dns.resolver.Resolver",
+        return_value=_FakeResolver(flags=dns.flags.AD),
+    )
+    raw_headers = (
+        "From: Alerts <alerts@example.org>\n"
+        "Authentication-Results: mx.example.net; dkim=pass header.d=example.org\n"
+        "DKIM-Signature: v=1; a=rsa-sha256; d=example.org; s=selector1; "
+        "h=from:subject; bh=abc123=; b=def456=\n"
+    )
+
+    report = analyze_raw_email_headers(raw_headers)
+
+    assert report["dkim_key_lookups"][0]["status"] == "found"
+    assert report["dkim_key_lookups"][0]["has_public_key"] is True
+    assert report["dkim_key_lookups"][0]["dnssec_validated"] is False
+    assert report["dkim_overview"]["dnssec_validated"] is False
+    assert any(
+        "resolver AD flags are not treated as proof of validation" in line
+        for line in report["interpretation"]["auth_chain"]
+    )
+    assert not any(
+        "This DNS evidence is strong" in line for line in report["interpretation"]["auth_chain"]
+    )
 
 
 def test_email_headers_page_renders(client: FlaskClient) -> None:
@@ -411,7 +448,7 @@ def test_parse_tag_value_pairs_ignores_invalid_parts_and_empty_keys() -> None:
     assert tags == {"s": "selector1", "d": "example.org"}
 
 
-def test_build_interpretation_includes_strong_chain_multiple_signatures_and_strong_keys() -> None:
+def test_build_interpretation_includes_dnssec_chain_multiple_signatures_and_strong_keys() -> None:
     interpretation = email_headers._build_interpretation(
         {
             "auth_results": {"dkim": "pass", "spf": "pass", "dmarc": "pass"},

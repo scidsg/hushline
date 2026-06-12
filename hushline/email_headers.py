@@ -10,7 +10,6 @@ from email.utils import parseaddr
 from typing import Any
 
 import dns.exception
-import dns.flags
 import dns.resolver
 
 _AUTH_RESULTS_RE = re.compile(r"\b(dkim|spf|dmarc)\s*=\s*([a-zA-Z0-9_-]+)")
@@ -102,8 +101,10 @@ def _lookup_dkim_key(
         if tags.get("p"):
             has_public_key = True
 
-    response = getattr(records, "response", None)
-    dnssec_validated = bool(response and (response.flags & dns.flags.AD))
+    # A recursive resolver's AD bit is only a claim from that resolver. Because this
+    # application does not perform its own DNSSEC chain validation or authenticate the
+    # resolver transport, do not report DNSSEC validation for DKIM key lookups here.
+    dnssec_validated = False
 
     return {
         "selector": selector,
@@ -217,7 +218,10 @@ def _build_interpretation(report: dict[str, Any]) -> dict[str, list[str]]:
         auth_chain_lines.append(
             "Without DNSSEC validation, treat DNS-based evidence as lower-confidence."
         )
-    auth_chain_lines.append("Technical note: DNSSEC status is based on the resolver AD flag.")
+    auth_chain_lines.append(
+        "Technical note: Hush Line does not independently validate DNSSEC for DKIM DNS "
+        "lookups; resolver AD flags are not treated as proof of validation."
+    )
     interpretation["auth_chain"] = auth_chain_lines
 
     align_rp = alignment["from_matches_return_path"]
@@ -601,7 +605,7 @@ def _render_report_pdf(report: dict[str, Any], created_at: datetime) -> bytes:
                 f"{'yes' if report['dkim_overview']['key_advertised_in_dns'] else 'no'}"
             ),
             (
-                "  DKIM key validated via DNSSEC: "
+                "  DKIM key independently validated via DNSSEC: "
                 f"{'yes' if report['dkim_overview']['dnssec_validated'] else 'no'}"
             ),
             "  Summary:",
@@ -670,7 +674,7 @@ def _render_report_pdf(report: dict[str, Any], created_at: datetime) -> bytes:
             lines.append(
                 f"  {lookup['query_name']} status={lookup['status']} "
                 f"has_public_key={lookup['has_public_key']} "
-                f"dnssec_validated={lookup['dnssec_validated']}"
+                f"dnssec_independently_validated={lookup['dnssec_validated']}"
             )
     else:
         lines.append("  None")
