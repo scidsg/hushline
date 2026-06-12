@@ -1,4 +1,5 @@
 import re
+import smtplib
 from datetime import UTC, datetime
 from typing import Any
 
@@ -31,14 +32,23 @@ from hushline.model import (
     Conversation,
     ConversationMessage,
     ConversationMessageCopy,
+    ConversationParticipant,
     FieldValue,
     Message,
     User,
     Username,
 )
-from hushline.routes.common import do_send_email, notification_email_encryption_target
+from hushline.routes.common import (
+    do_send_email,
+    notification_email_encryption_target,
+    send_email_to_user_recipients,
+)
 
 _CHAT_CIPHERTEXT_MAX_LENGTH = 200_000
+_CONVERSATION_NOTIFICATION_BODY = (
+    "You have new Hush Line conversation activity. "
+    "Log in and unlock your Hush Line chat key to read it."
+)
 _ARMORED_PGP_MESSAGE_PATTERN = re.compile(
     r"^\s*-----BEGIN PGP MESSAGE-----\r?\n"
     r"(?:[!-~]+: .*\r?\n)*\r?\n?[\s\S]*\r?\n"
@@ -91,6 +101,50 @@ def _is_chat_ciphertext_envelope(value: object) -> bool:
         )
         and envelope["algorithm"] == "ECDH-P256-AES-GCM"
     )
+
+
+def _conversation_notification_body(user: User) -> str:
+    if not (user.email_include_message_content and user.email_encrypt_entire_body):
+        return _CONVERSATION_NOTIFICATION_BODY
+
+    notification_encryption_target = notification_email_encryption_target(user)
+    if not notification_encryption_target:
+        return _CONVERSATION_NOTIFICATION_BODY
+
+    try:
+        return encrypt_message(_CONVERSATION_NOTIFICATION_BODY, notification_encryption_target)
+    except (RuntimeError, TypeError, ValueError) as e:
+        current_app.logger.error(
+            "Failed to encrypt conversation notification body: %s",
+            str(e),
+            exc_info=True,
+        )
+        return _CONVERSATION_NOTIFICATION_BODY
+
+
+def _notify_conversation_participants(
+    thread: Conversation, sender_participant: ConversationParticipant
+) -> None:
+    for recipient_participant in thread.participants:
+        recipient_user = recipient_participant.user
+        if recipient_participant.id == sender_participant.id or recipient_user is None:
+            continue
+        if not recipient_user.enable_email_notifications:
+            continue
+
+        try:
+            send_email_to_user_recipients(
+                recipient_user,
+                "New Hush Line Conversation Activity",
+                _conversation_notification_body(recipient_user),
+            )
+        except (RuntimeError, OSError, TypeError, ValueError, smtplib.SMTPException) as e:
+            current_app.logger.error(
+                "Failed to send conversation notification for participant %s: %s",
+                recipient_participant.id,
+                str(e),
+                exc_info=True,
+            )
 
 
 def register_message_routes(app: Flask) -> None:
@@ -238,6 +292,7 @@ def register_message_routes(app: Flask) -> None:
             conversation_message.encrypted_copies.append(encrypted_copy)
         db.session.add(conversation_message)
         db.session.commit()
+        _notify_conversation_participants(thread, participant)
 
         return (
             jsonify(
