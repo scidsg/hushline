@@ -156,7 +156,7 @@ refresh-newsroom-listings: ## Refresh newsroom directory artifact from public so
 
 .PHONY: audit-python
 audit-python: ## Run Python dependency audit (CI-equivalent)
-	$(CMD) bash -lc 'poetry self add poetry-plugin-export && poetry export -f requirements.txt --without-hashes -o /tmp/requirements.txt && python -m pip install --disable-pip-version-check pip-audit==2.10.0 && pip-audit -r /tmp/requirements.txt'
+	$(CMD) bash -lc 'poetry self add "poetry-plugin-export==1.10.0" && poetry export -f requirements.txt --without-hashes -o /tmp/requirements.txt && python -m pip install --disable-pip-version-check pip-audit==2.10.0 && pip-audit -r /tmp/requirements.txt'
 
 .PHONY: audit-node-runtime
 audit-node-runtime: ## Run Node runtime dependency audit (CI-equivalent)
