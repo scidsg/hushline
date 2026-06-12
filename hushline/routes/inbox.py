@@ -14,6 +14,7 @@ from hushline.auth import authentication_required
 from hushline.db import db
 from hushline.model import (
     Conversation,
+    ConversationMessage,
     ConversationParticipant,
     Message,
     MessageStatus,
@@ -32,11 +33,19 @@ class InboxConversation:
     has_available_copy: bool
 
 
-def _conversation_latest_at(conversation: Conversation) -> datetime:
+def _conversation_latest_message(conversation: Conversation) -> ConversationMessage | None:
+    if not conversation.messages:
+        return None
+
     return max(
-        (message.created_at for message in conversation.messages),
-        default=conversation.created_at,
+        conversation.messages,
+        key=lambda message: (message.created_at, message.id),
     )
+
+
+def _conversation_latest_at(conversation: Conversation) -> datetime:
+    latest_message = _conversation_latest_message(conversation)
+    return latest_message.created_at if latest_message else conversation.created_at
 
 
 def _participant_has_available_copies(
@@ -56,10 +65,13 @@ def _conversation_has_unread(
     conversation: Conversation,
     participant: ConversationParticipant,
 ) -> bool:
-    return any(
-        message.sender_participant_id != participant.id
-        and (participant.last_read_at is None or message.created_at > participant.last_read_at)
-        for message in conversation.messages
+    latest_message = _conversation_latest_message(conversation)
+    return bool(
+        latest_message
+        and latest_message.sender_participant_id != participant.id
+        and (
+            participant.last_read_at is None or latest_message.created_at > participant.last_read_at
+        )
     )
 
 

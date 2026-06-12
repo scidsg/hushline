@@ -46,6 +46,16 @@ _ARMORED_PGP_MESSAGE_PATTERN = re.compile(
 )
 
 
+def _conversation_latest_message(thread: Conversation) -> ConversationMessage | None:
+    if not thread.messages:
+        return None
+
+    return max(
+        thread.messages,
+        key=lambda message: (message.created_at, message.id),
+    )
+
+
 def _is_armored_pgp_message(value: str) -> bool:
     return bool(_ARMORED_PGP_MESSAGE_PATTERN.fullmatch(value))
 
@@ -124,6 +134,13 @@ def register_message_routes(app: Flask) -> None:
         participant = thread.participant_for_user_id(user.id)
         if not participant:
             abort(404)
+
+        latest_message = _conversation_latest_message(thread)
+        if latest_message and (
+            participant.last_read_at is None or latest_message.created_at > participant.last_read_at
+        ):
+            participant.last_read_at = latest_message.created_at
+            db.session.commit()
 
         message_copies = []
         message_copy_payloads = []

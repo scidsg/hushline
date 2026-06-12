@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta, timezone
 
 from flask import Flask, url_for
 from flask.testing import FlaskClient
@@ -89,6 +90,38 @@ def _copies_for(conversation: Conversation, label: str) -> dict[str, str]:
         str(participant.id): _ciphertext(f"{label}-{participant.id}")
         for participant in conversation.participants
     }
+
+
+def _participant_for(conversation: Conversation, user: User) -> ConversationParticipant:
+    participant = conversation.participant_for_user_id(user.id)
+    assert participant is not None
+    return participant
+
+
+def _set_initial_message_created_at(conversation: Conversation, created_at: datetime) -> None:
+    conversation.messages[0].created_at = created_at
+    db.session.commit()
+
+
+def _add_conversation_message(
+    conversation: Conversation,
+    sender_participant: ConversationParticipant,
+    *,
+    created_at: datetime,
+    label: str,
+) -> ConversationMessage:
+    conversation_message = ConversationMessage()
+    conversation_message.conversation = conversation
+    conversation_message.sender_participant = sender_participant
+    conversation_message.created_at = created_at
+    for recipient_participant in conversation.participants:
+        encrypted_copy = ConversationMessageCopy()
+        encrypted_copy.recipient_participant = recipient_participant
+        encrypted_copy.encrypted_payload = _ciphertext(f"{label}-{recipient_participant.id}")
+        conversation_message.encrypted_copies.append(encrypted_copy)
+    db.session.add(conversation_message)
+    db.session.commit()
+    return conversation_message
 
 
 def test_conversation_route_authorizes_only_participants(
@@ -263,3 +296,79 @@ def test_append_conversation_message_redirects_unauthenticated_user(
     assert response.headers["Location"].endswith(url_for("login"))
     message_count = db.session.scalar(db.select(db.func.count()).select_from(ConversationMessage))
     assert message_count == 1
+
+
+def test_recipient_unread_indicator_clears_when_locked_thread_loads(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    conversation = _make_conversation(user, user2)
+    sender_participant = _participant_for(conversation, user)
+    recipient_participant = _participant_for(conversation, user2)
+    initial_created_at = datetime(2026, 1, 1, 12, tzinfo=timezone.utc)
+    _set_initial_message_created_at(conversation, initial_created_at)
+    recipient_participant.last_read_at = initial_created_at
+    db.session.commit()
+    latest_message = _add_conversation_message(
+        conversation,
+        sender_participant,
+        created_at=initial_created_at + timedelta(minutes=5),
+        label="recipient-unread",
+    )
+    _authenticate_as(client, user2)
+
+    unread_response = client.get(url_for("inbox"))
+
+    assert unread_response.status_code == 200
+    assert 'aria-label="Unread conversation"' in unread_response.text
+
+    thread_response = client.get(url_for("conversation", conversation_id=conversation.id))
+
+    assert thread_response.status_code == 200
+    assert "Transcript content is hidden until your chat key is unlocked" in thread_response.text
+    db.session.refresh(recipient_participant)
+    assert recipient_participant.last_read_at == latest_message.created_at
+
+    read_response = client.get(url_for("inbox"))
+    assert read_response.status_code == 200
+    assert 'aria-label="Unread conversation"' not in read_response.text
+
+
+def test_inbox_unread_indicator_uses_latest_message_for_each_participant(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    conversation = _make_conversation(user, user2)
+    user_participant = _participant_for(conversation, user)
+    user2_participant = _participant_for(conversation, user2)
+    initial_created_at = datetime(2026, 1, 1, 12, tzinfo=timezone.utc)
+    _set_initial_message_created_at(conversation, initial_created_at)
+    user_participant.last_read_at = initial_created_at
+    user2_participant.last_read_at = initial_created_at
+    db.session.commit()
+    _add_conversation_message(
+        conversation,
+        user2_participant,
+        created_at=initial_created_at + timedelta(minutes=5),
+        label="incoming",
+    )
+    _add_conversation_message(
+        conversation,
+        user_participant,
+        created_at=initial_created_at + timedelta(minutes=10),
+        label="own-latest",
+    )
+
+    _authenticate_as(client, user)
+    sender_response = client.get(url_for("inbox"))
+
+    assert sender_response.status_code == 200
+    assert 'aria-label="Unread conversation"' not in sender_response.text
+
+    _authenticate_as(client, user2)
+    recipient_response = client.get(url_for("inbox"))
+
+    assert recipient_response.status_code == 200
+    assert 'aria-label="Unread conversation"' in recipient_response.text

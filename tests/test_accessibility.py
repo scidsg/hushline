@@ -236,7 +236,7 @@ def test_inbox_conversation_rows_have_accessible_status_and_unread_state(
     conversation_section = soup.find("section", {"aria-labelledby": "conversation-list-heading"})
     conversation_heading = soup.find(id="conversation-list-heading")
     conversation_rows = soup.select("article.conversation-summary")
-    unread_badge = soup.select_one("article.conversation-summary .badge")
+    unread_indicator = soup.select_one("article.conversation-summary .conversation-unread-dot")
     status_messages = [
         status.get_text(" ", strip=True)
         for status in soup.select("article.conversation-summary p[role='status']")
@@ -251,9 +251,10 @@ def test_inbox_conversation_rows_have_accessible_status_and_unread_state(
         assert title_id
         assert soup.find(id=title_id) is not None
 
-    assert unread_badge is not None
-    assert unread_badge.get("aria-label") == "Unread conversation"
-    assert unread_badge.get_text(" ", strip=True) == "Unread"
+    assert unread_indicator is not None
+    assert unread_indicator.get("role") == "img"
+    assert unread_indicator.get("aria-label") == "Unread conversation"
+    assert unread_indicator.get_text(" ", strip=True) == ""
     assert "Locked: unlock your Hush Line chat key to read this thread." in status_messages
     assert "Key unavailable: no encrypted copy is available for this account." in status_messages
     assert (

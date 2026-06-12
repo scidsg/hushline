@@ -2239,6 +2239,17 @@ a.logoutLink {
   transform: scale(0.9);
 }
 
+.message .conversation-unread-dot {
+  position: absolute;
+  right: 1.125rem;
+  top: 0.925rem;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: var(--color-brand);
+  box-shadow: 0 0 0 0.1875rem var(--color-highlight);
+}
+
 footer {
   font-size: var(--font-size-smaller);
   padding-right: 1rem;
