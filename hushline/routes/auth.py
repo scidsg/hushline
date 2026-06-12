@@ -29,6 +29,7 @@ from hushline.auth import (
     rotate_user_session_id,
     set_session_user,
 )
+from hushline.chat_key_lifecycle import retire_active_chat_key
 from hushline.db import db
 from hushline.model import (
     AuthenticationLog,
@@ -494,6 +495,11 @@ def register_auth_routes(app: Flask) -> None:
                     return render_template("password_reset.html", form=form), 400
 
                 now = _now()
+                retire_active_chat_key(
+                    user,
+                    recovery_state="password_reset_locked",
+                    when=datetime.now(UTC),
+                )
                 user.password_hash = new_password
                 rotate_user_session_id(user)
                 _invalidate_password_reset_tokens(user, used_at=now)

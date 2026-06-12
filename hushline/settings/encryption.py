@@ -1,4 +1,3 @@
-import json
 from datetime import UTC, datetime
 from typing import Any, Tuple
 
@@ -15,6 +14,10 @@ from werkzeug.wrappers.response import Response
 from wtforms.validators import ValidationError
 
 from hushline.auth import authentication_required
+from hushline.chat_key_lifecycle import (
+    rewrap_active_chat_key,
+    validate_chat_key_payload,
+)
 from hushline.db import db
 from hushline.model import ChatKey, User
 from hushline.settings.common import (
@@ -25,20 +28,6 @@ from hushline.settings.forms import (
     PGPKeyForm,
     PGPProtonForm,
 )
-
-CHAT_KEY_STRING_MAX_LENGTH = 200_000
-CHAT_KEY_METADATA_MAX_LENGTH = 20_000
-CHAT_KEY_RECOVERY_STATE_MAX_LENGTH = 64
-CHAT_KEY_FORBIDDEN_SECRET_FIELDS = {
-    "decrypted_message_text",
-    "decrypted_private_key",
-    "derived_key",
-    "password",
-    "plaintext_private_key",
-    "private_key",
-    "unlock_key",
-    "wrapping_key",
-}
 
 
 def _submitted_encryption_form(pgp_key_form: PGPKeyForm) -> PGPKeyForm | None:
@@ -57,109 +46,6 @@ def _validate_json_csrf() -> str | None:
     except ValidationError:
         return "Invalid CSRF token."
     return None
-
-
-def _normalized_payload_key(value: str) -> str:
-    return value.strip().lower().replace("-", "_")
-
-
-def _payload_contains_forbidden_secret_field(value: Any) -> bool:
-    if isinstance(value, dict):
-        for key, nested_value in value.items():
-            if (
-                isinstance(key, str)
-                and _normalized_payload_key(key) in CHAT_KEY_FORBIDDEN_SECRET_FIELDS
-            ):
-                return True
-            if _payload_contains_forbidden_secret_field(nested_value):
-                return True
-    elif isinstance(value, list):
-        return any(_payload_contains_forbidden_secret_field(item) for item in value)
-    return False
-
-
-def _payload_text(payload: dict[str, Any], *keys: str) -> str | None:
-    for key in keys:
-        value = payload.get(key)
-        if isinstance(value, str):
-            stripped = value.strip()
-            if stripped:
-                return stripped
-    return None
-
-
-def _validate_chat_key_payload(payload: Any, *, current_user_id: int) -> tuple[dict[str, Any], str]:
-    if not isinstance(payload, dict):
-        return {}, "Expected a JSON object."
-
-    if _payload_contains_forbidden_secret_field(payload):
-        return {}, "Plaintext chat key material is not accepted."
-
-    payload_user_id = payload.get("user_id")
-    if payload_user_id is not None and payload_user_id != current_user_id:
-        return {}, "Chat keys can only be provisioned for the authenticated user."
-
-    public_key = _payload_text(payload, "public_key", "chat_public_key")
-    encrypted_private_key = _payload_text(
-        payload,
-        "encrypted_private_key",
-        "encrypted_private_key_blob",
-    )
-    kdf_algorithm = _payload_text(payload, "kdf_algorithm")
-    kdf_salt = _payload_text(payload, "kdf_salt", "salt")
-    wrapping_algorithm = _payload_text(payload, "wrapping_algorithm") or "AES-GCM"
-    kdf_params = payload.get("kdf_params")
-
-    kdf = payload.get("kdf")
-    if isinstance(kdf, dict):
-        if kdf_algorithm is None:
-            kdf_algorithm = _payload_text(kdf, "algorithm")
-        if kdf_salt is None:
-            kdf_salt = _payload_text(kdf, "salt")
-        if kdf_params is None:
-            kdf_params = kdf.get("params")
-
-    if not public_key:
-        return {}, "public_key is required."
-    if not encrypted_private_key:
-        return {}, "encrypted_private_key is required."
-    if not kdf_algorithm:
-        return {}, "kdf_algorithm is required."
-    if not kdf_salt:
-        return {}, "kdf_salt is required."
-    if not isinstance(kdf_params, dict) or not kdf_params:
-        return {}, "kdf_params must be a non-empty object."
-
-    string_fields = {
-        "public_key": public_key,
-        "encrypted_private_key": encrypted_private_key,
-        "kdf_algorithm": kdf_algorithm,
-        "kdf_salt": kdf_salt,
-        "wrapping_algorithm": wrapping_algorithm,
-    }
-    if any(len(value) > CHAT_KEY_STRING_MAX_LENGTH for value in string_fields.values()):
-        return {}, "Chat key payload is too large."
-
-    try:
-        serialized_kdf_params = json.dumps(kdf_params, sort_keys=True)
-    except (TypeError, ValueError):
-        return {}, "kdf_params must be JSON serializable."
-    if len(serialized_kdf_params) > CHAT_KEY_METADATA_MAX_LENGTH:
-        return {}, "kdf_params is too large."
-
-    recovery_state = _payload_text(payload, "recovery_state")
-    if recovery_state is not None and len(recovery_state) > CHAT_KEY_RECOVERY_STATE_MAX_LENGTH:
-        return {}, "recovery_state is too large."
-
-    return {
-        "public_key": public_key,
-        "encrypted_private_key": encrypted_private_key,
-        "kdf_algorithm": kdf_algorithm,
-        "kdf_params": kdf_params,
-        "kdf_salt": kdf_salt,
-        "wrapping_algorithm": wrapping_algorithm,
-        "recovery_state": recovery_state,
-    }, ""
 
 
 def _chat_key_response(chat_key: ChatKey | None) -> dict[str, Any]:
@@ -208,6 +94,14 @@ def register_encryption_routes(bp: Blueprint) -> None:
             pgp_proton_form=pgp_proton_form,
             pgp_key_form=pgp_key_form,
             chat_key=user.active_chat_key,
+            locked_chat_key=next(
+                (
+                    chat_key
+                    for chat_key in user.chat_keys
+                    if chat_key.recovery_state == "password_reset_locked"
+                ),
+                None,
+            ),
             chat_key_csrf_token=generate_csrf(),
         ), status_code
 
@@ -224,30 +118,29 @@ def register_encryption_routes(bp: Blueprint) -> None:
             return jsonify({"error": csrf_error}), 400
 
         payload = request.get_json(silent=True)
-        cleaned_payload, error = _validate_chat_key_payload(payload, current_user_id=user.id)
+        cleaned_payload, error = validate_chat_key_payload(payload, current_user_id=user.id)
         if error:
             status_code = 403 if error.startswith("Chat keys can only") else 400
             return jsonify({"error": error}), status_code
 
         now = datetime.now(UTC)
         active_key = user.active_chat_key
-        next_version = max((chat_key.key_version for chat_key in user.chat_keys), default=0) + 1
-        if active_key is not None:
-            active_key.disabled_at = now
+        new_chat_key = rewrap_active_chat_key(user, cleaned_payload, when=now)
+        if new_chat_key is None:
+            next_version = max((chat_key.key_version for chat_key in user.chat_keys), default=0) + 1
+            new_chat_key = ChatKey(
+                user=user,
+                key_version=next_version,
+                public_key=cleaned_payload["public_key"],
+                encrypted_private_key=cleaned_payload["encrypted_private_key"],
+                kdf_algorithm=cleaned_payload["kdf_algorithm"],
+                kdf_params=cleaned_payload["kdf_params"],
+                kdf_salt=cleaned_payload["kdf_salt"],
+                wrapping_algorithm=cleaned_payload["wrapping_algorithm"],
+                recovery_state=cleaned_payload["recovery_state"],
+            )
+        elif active_key is not None:
             active_key.recovery_state = "rotated"
-
-        new_chat_key = ChatKey(
-            user=user,
-            key_version=next_version,
-            public_key=cleaned_payload["public_key"],
-            encrypted_private_key=cleaned_payload["encrypted_private_key"],
-            kdf_algorithm=cleaned_payload["kdf_algorithm"],
-            kdf_params=cleaned_payload["kdf_params"],
-            kdf_salt=cleaned_payload["kdf_salt"],
-            wrapping_algorithm=cleaned_payload["wrapping_algorithm"],
-            rotated_at=now if active_key is not None else None,
-            recovery_state=cleaned_payload["recovery_state"],
-        )
         db.session.add(new_chat_key)
         db.session.commit()
 

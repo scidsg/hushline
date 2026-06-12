@@ -1,4 +1,6 @@
 import re
+from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 from flask import Flask, url_for
@@ -6,6 +8,8 @@ from flask.testing import FlaskClient
 
 from hushline.db import db
 from hushline.model import ChatKey, User
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _chat_key_payload(**overrides: object) -> dict[str, object]:
@@ -37,6 +41,32 @@ def test_settings_encryption_shows_chat_key_provisioner(client: FlaskClient) -> 
     assert 'id="chat-key-password"' in response.text
     assert 'autocomplete="current-password"' in response.text
     assert 'name="chat_key_password"' not in response.text
+    assert url_for("static", filename="js/chat-key-lifecycle.js") in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_settings_encryption_shows_locked_chat_key_state(client: FlaskClient, user: User) -> None:
+    chat_key = ChatKey(
+        user=user,
+        key_version=1,
+        public_key="public-chat-key",
+        encrypted_private_key="wrapped-private-chat-key",
+        kdf_algorithm="PBKDF2-SHA-256",
+        kdf_params={"iterations": 310000},
+        kdf_salt="salt",
+        wrapping_algorithm="AES-GCM",
+        disabled_at=datetime.now(UTC),
+        recovery_state="password_reset_locked",
+    )
+    db.session.add(chat_key)
+    db.session.commit()
+
+    response = client.get(url_for("settings.encryption"))
+
+    assert response.status_code == 200
+    assert "Chat history encrypted to key version 1 is locked" in response.text
+    assert "Hush Line cannot recover the private key." in response.text
+    assert 'id="chat-key-provision-form"' in response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -60,6 +90,37 @@ def test_authenticated_user_can_provision_chat_key(client: FlaskClient, user: Us
     assert response_payload["chat_key"]["encrypted_private_key"] == (
         created_key.encrypted_private_key
     )
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_authenticated_user_can_provision_new_chat_key_after_locked_key(
+    client: FlaskClient, user: User
+) -> None:
+    locked_key = ChatKey(
+        user=user,
+        key_version=1,
+        public_key="locked-public",
+        encrypted_private_key="locked-wrapped-private",
+        kdf_algorithm="PBKDF2-SHA-256",
+        kdf_params={"iterations": 310000},
+        kdf_salt="locked-salt",
+        wrapping_algorithm="AES-GCM",
+        disabled_at=datetime.now(UTC),
+        recovery_state="password_reset_locked",
+    )
+    db.session.add(locked_key)
+    db.session.commit()
+
+    response = client.post(url_for("settings.chat_key"), json=_chat_key_payload())
+
+    assert response.status_code == 201
+    keys = db.session.scalars(
+        db.select(ChatKey).filter_by(user_id=user.id).order_by(ChatKey.key_version.asc())
+    ).all()
+    assert [key.key_version for key in keys] == [1, 2]
+    assert keys[0].recovery_state == "password_reset_locked"
+    assert keys[1].disabled_at is None
+    assert keys[1].public_key == _chat_key_payload()["public_key"]
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -190,6 +251,17 @@ def test_chat_key_schema_has_no_plaintext_private_key_columns(app: Flask) -> Non
             "decrypted_message_text",
         }
     )
+
+
+def test_chat_key_lifecycle_js_exposes_unlock_rewrap_and_cleanup() -> None:
+    lifecycle_js = (ROOT / "hushline/static/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
+
+    assert "window.HushLineChatKeys" in lifecycle_js
+    assert "unlockFromPassword" in lifecycle_js
+    assert "rewrapForPasswordChange" in lifecycle_js
+    assert "clearChatKeyMaterial" in lifecycle_js
+    assert "document.body?.dataset.authenticated" in lifecycle_js
+    assert "Chat key unlock failed." in lifecycle_js
 
 
 @pytest.mark.usefixtures("_pgp_user")

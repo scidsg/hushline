@@ -10,6 +10,7 @@ htmlcov
 
 # generated
 hushline/static/js/*
+!hushline/static/js/chat-key-lifecycle.js
 !hushline/static/js/directory_verified.js
 !hushline/static/js/settings-location.js
 hushline/static/css/

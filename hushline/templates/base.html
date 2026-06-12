@@ -153,6 +153,7 @@
     />
     <script src="{{ url_for('static', filename='no-js.js') }}"></script>
     {% block scripts %}{% endblock %}
+    <script defer src="{{ url_for('static', filename='js/chat-key-lifecycle.js') }}"></script>
     <script defer src="{{ url_for('static', filename='js/time-shadows.js') }}"></script>
     <script defer src="{{ url_for('static', filename='js/global.js') }}"></script>
     <style>
@@ -169,7 +170,10 @@
     </style>
   </head>
 
-  <body class="{% block body_class %}{% endblock %}">
+  <body
+    class="{% block body_class %}{% endblock %}"
+    data-authenticated="{{ 'true' if 'user_id' in session and session.get('is_authenticated', False) else 'false' }}"
+  >
     {% if splash_screen_enabled %}
       <div
         id="first-load-splash"

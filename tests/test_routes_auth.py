@@ -20,6 +20,7 @@ from hushline.auth import (
 from hushline.config import PASSWORD_HASH_REHASH_ON_AUTH_ENABLED
 from hushline.db import db
 from hushline.model import (
+    ChatKey,
     InviteCode,
     NotificationRecipient,
     OrganizationSetting,
@@ -413,6 +414,47 @@ def test_password_reset_sets_new_password_and_consumes_token(
     assert reused_response.status_code == 200
     assert PASSWORD_RESET_INVALID_LINK_MESSAGE in reused_response.text
     assert "Reset Password" in reused_response.text
+
+
+def test_password_reset_locks_active_chat_key_without_server_recovery(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    chat_key = ChatKey(
+        user=user,
+        key_version=1,
+        public_key="public-chat-key",
+        encrypted_private_key='{"algorithm":"AES-GCM","iv":"old","ciphertext":"old"}',
+        kdf_algorithm="PBKDF2-SHA-256",
+        kdf_params={"iterations": 310000, "hash": "SHA-256"},
+        kdf_salt="old-salt",
+        wrapping_algorithm="AES-GCM",
+    )
+    reset_token, raw_token = PasswordResetToken.create_for_user(
+        user.id,
+        ttl=timedelta(hours=1),
+    )
+    db.session.add_all([chat_key, reset_token])
+    db.session.commit()
+
+    response = client.post(
+        url_for("reset_password", token=raw_token),
+        data={"password": "ResetPassword123!!"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    db.session.refresh(user)
+    db.session.refresh(chat_key)
+    assert ChatKey.active_for_user_id(user.id) is None
+    assert user.check_password("ResetPassword123!!")
+    assert not user.check_password(user_password)
+    assert chat_key.disabled_at is not None
+    assert chat_key.recovery_state == "password_reset_locked"
+    assert chat_key.encrypted_private_key == (
+        '{"algorithm":"AES-GCM","iv":"old","ciphertext":"old"}'
+    )
+    assert "recovery" not in chat_key.encrypted_private_key
+    assert db.session.scalar(db.select(db.func.count()).select_from(ChatKey)) == 1
 
 
 def test_password_reset_request_never_emails_shared_notification_recipients(
