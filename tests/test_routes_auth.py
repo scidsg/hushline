@@ -301,6 +301,38 @@ def test_login_redirects_to_original_protected_page(
         assert POST_AUTH_REDIRECT_SESSION_KEY not in sess
 
 
+def test_login_password_step_for_2fa_does_not_revoke_existing_sessions(
+    app: Flask, client: FlaskClient, user: User, user_password: str
+) -> None:
+    user.totp_secret = TOTP_SECRET
+    db.session.commit()
+    original_session_id = user.session_id
+
+    with client.session_transaction() as sess:
+        sess["user_id"] = user.id
+        sess["session_id"] = original_session_id
+        sess["username"] = user.primary_username.username
+        sess["is_authenticated"] = True
+
+    with app.test_client() as password_only_client:
+        response = password_only_client.post(
+            url_for("login"),
+            data={"username": user.primary_username.username, "password": user_password},
+            follow_redirects=False,
+        )
+
+    assert response.status_code == 302
+    assert response.headers["Location"] == url_for("verify_2fa_login", _external=False)
+    db.session.refresh(user)
+    assert user.session_id == original_session_id
+
+    response = client.get(url_for("settings.profile"), follow_redirects=False)
+    assert response.status_code == 200
+    with client.session_transaction() as sess:
+        assert sess["session_id"] == original_session_id
+        assert sess["is_authenticated"] is True
+
+
 def _enable_password_reset_email(user: User) -> None:
     user.enable_email_notifications = True
     user.email = "recipient@example.com"
@@ -751,6 +783,7 @@ def test_verify_2fa_login_redirects_to_original_protected_page(
     totp_secret = pyotp.random_base32()
     user.totp_secret = totp_secret
     db.session.commit()
+    original_session_id = user.session_id
 
     response = client.get(url_for("settings.profile"), follow_redirects=False)
     assert response.status_code == 302
@@ -775,8 +808,11 @@ def test_verify_2fa_login_redirects_to_original_protected_page(
     assert response.status_code == 302
     assert response.headers["Location"].endswith(url_for("settings.profile"))
 
+    db.session.refresh(user)
+    assert user.session_id != original_session_id
     with client.session_transaction() as sess:
         assert POST_AUTH_REDIRECT_SESSION_KEY not in sess
+        assert sess["session_id"] == user.session_id
 
 
 def test_verify_2fa_login_failed_rehash_commit_clears_auth_session(
