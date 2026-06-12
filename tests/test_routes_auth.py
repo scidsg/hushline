@@ -21,6 +21,10 @@ from hushline.config import PASSWORD_HASH_REHASH_ON_AUTH_ENABLED
 from hushline.db import db
 from hushline.model import (
     ChatKey,
+    Conversation,
+    ConversationMessage,
+    ConversationMessageCopy,
+    ConversationParticipant,
     InviteCode,
     NotificationRecipient,
     OrganizationSetting,
@@ -47,6 +51,14 @@ def _assert_auth_session_cleared(client: FlaskClient) -> None:
     with client.session_transaction() as sess:
         for key in AUTH_SESSION_KEYS:
             assert key not in sess
+
+
+def _authenticate_as(client: FlaskClient, user: User) -> None:
+    with client.session_transaction() as sess:
+        sess["user_id"] = user.id
+        sess["session_id"] = user.session_id
+        sess["username"] = user.primary_username.username
+        sess["is_authenticated"] = True
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -455,6 +467,96 @@ def test_password_reset_locks_active_chat_key_without_server_recovery(
     )
     assert "recovery" not in chat_key.encrypted_private_key
     assert db.session.scalar(db.select(db.func.count()).select_from(ChatKey)) == 1
+
+
+def test_password_reset_leaves_existing_conversation_history_locked(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    chat_key = ChatKey(
+        user=user,
+        key_version=1,
+        public_key='{"kty":"EC","crv":"P-256","x":"old-sender","y":"key"}',
+        encrypted_private_key='{"algorithm":"AES-GCM","iv":"old","ciphertext":"old"}',
+        kdf_algorithm="PBKDF2-SHA-256",
+        kdf_params={"iterations": 310000, "hash": "SHA-256"},
+        kdf_salt="old-salt",
+        wrapping_algorithm="AES-GCM",
+    )
+    recipient_chat_key = ChatKey(
+        user=user2,
+        key_version=1,
+        public_key='{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}',
+        encrypted_private_key='{"algorithm":"AES-GCM","iv":"recipient","ciphertext":"wrapped"}',
+        kdf_algorithm="PBKDF2-SHA-256",
+        kdf_params={"iterations": 310000, "hash": "SHA-256"},
+        kdf_salt="recipient-salt",
+        wrapping_algorithm="AES-GCM",
+    )
+    conversation = Conversation()
+    sender_participant = ConversationParticipant()
+    sender_participant.conversation = conversation
+    sender_participant.user = user
+    sender_participant.has_usable_public_key = True
+    recipient_participant = ConversationParticipant()
+    recipient_participant.conversation = conversation
+    recipient_participant.user = user2
+    recipient_participant.has_usable_public_key = True
+    conversation_message = ConversationMessage()
+    conversation_message.conversation = conversation
+    conversation_message.sender_participant = sender_participant
+    sender_copy = ConversationMessageCopy()
+    sender_copy.recipient_participant = sender_participant
+    sender_copy.encrypted_payload = (
+        '{"algorithm":"ECDH-P256-AES-GCM","iv":"old-copy","ciphertext":"old-history"}'
+    )
+    recipient_copy = ConversationMessageCopy()
+    recipient_copy.recipient_participant = recipient_participant
+    recipient_copy.encrypted_payload = (
+        '{"algorithm":"ECDH-P256-AES-GCM","iv":"recipient-copy","ciphertext":"history"}'
+    )
+    conversation_message.encrypted_copies.extend([sender_copy, recipient_copy])
+    reset_token, raw_token = PasswordResetToken.create_for_user(
+        user.id,
+        ttl=timedelta(hours=1),
+    )
+    db.session.add_all([chat_key, recipient_chat_key, conversation, reset_token])
+    db.session.commit()
+
+    response = client.post(
+        url_for("reset_password", token=raw_token),
+        data={"password": "ResetPassword123!!"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    db.session.refresh(user)
+    db.session.refresh(chat_key)
+    assert ChatKey.active_for_user_id(user.id) is None
+    assert chat_key.recovery_state == "password_reset_locked"
+    assert chat_key.encrypted_private_key == (
+        '{"algorithm":"AES-GCM","iv":"old","ciphertext":"old"}'
+    )
+
+    _authenticate_as(client, user)
+    chat_key_response = client.get(url_for("settings.chat_key"))
+    assert chat_key_response.status_code == 200
+    assert chat_key_response.get_json() == {"chat_key": None}
+
+    conversation_response = client.get(url_for("conversation", conversation_id=conversation.id))
+    assert conversation_response.status_code == 200
+    assert "Unlock your Hush Line chat key" in conversation_response.text
+    assert "old-sender" not in conversation_response.text
+    assert "old-history" in conversation_response.text
+    assert chat_key.encrypted_private_key not in conversation_response.text
+
+    reply_response = client.post(
+        url_for("append_conversation_message", conversation_id=conversation.id),
+        json={"encrypted_copies": {}},
+    )
+    assert reply_response.status_code == 400
+    assert reply_response.get_json() == {"error": "Conversation replies are unavailable."}
+    message_count = db.session.scalar(db.select(db.func.count()).select_from(ConversationMessage))
+    assert message_count == 1
 
 
 def test_password_reset_request_never_emails_shared_notification_recipients(

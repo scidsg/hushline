@@ -75,10 +75,60 @@ def test_conversation_message_has_encrypted_copies(
     assert participant2.encrypted_copies == [copy2]
     assert {
         column.name for column in db.metadata.tables["conversation_messages"].columns
-    }.isdisjoint({"body", "content", "plaintext", "message_body"})
+    }.isdisjoint(
+        {
+            "body",
+            "content",
+            "plaintext",
+            "message_body",
+            "private_key",
+            "plaintext_private_key",
+        }
+    )
     assert {
         column.name for column in db.metadata.tables["conversation_message_copies"].columns
-    }.isdisjoint({"body", "content", "plaintext", "message_body"})
+    }.isdisjoint(
+        {
+            "body",
+            "content",
+            "plaintext",
+            "message_body",
+            "private_key",
+            "plaintext_private_key",
+        }
+    )
+
+
+def test_conversation_tables_store_ciphertext_without_plaintext_body_columns(app: Flask) -> None:
+    _ = app
+    forbidden_columns = {
+        "body",
+        "content",
+        "message",
+        "message_body",
+        "plaintext",
+        "plaintext_body",
+        "plaintext_content",
+        "private_key",
+        "plaintext_private_key",
+        "decrypted_private_key",
+        "derived_key",
+        "unlock_key",
+        "decrypted_message_text",
+    }
+
+    for table_name in (
+        "conversations",
+        "conversation_participants",
+        "conversation_messages",
+        "conversation_message_copies",
+    ):
+        columns = {column.name for column in db.metadata.tables[table_name].columns}
+        assert columns.isdisjoint(forbidden_columns), table_name
+
+    assert "encrypted_payload" in {
+        column.name for column in db.metadata.tables["conversation_message_copies"].columns
+    }
 
 
 def test_participant_read_state_and_key_defaults(app: Flask, user: User, user2: User) -> None:

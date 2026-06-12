@@ -287,12 +287,20 @@ def test_anonymous_profile_submit_message_keeps_reply_success_flow(
     assert response.status_code == 200, response.text
     assert "Message submitted successfully." in response.text
     assert "Reply Address" in response.text
+    assert "/conversation/" not in response.text
 
     message = db.session.scalars(
         db.select(Message).filter_by(username_id=user.primary_username.id)
     ).one()
     assert message.conversation is None
     assert db.session.scalars(db.select(Conversation)).all() == []
+    assert db.session.scalars(db.select(ConversationMessageCopy)).all() == []
+
+    _authenticate_as(client, user)
+    inbox_response = client.get(url_for("inbox"))
+    assert inbox_response.status_code == 200
+    assert f'href="{url_for("message", public_id=message.public_id)}"' in inbox_response.text
+    assert 'id="conversation-list-heading"' not in inbox_response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")
