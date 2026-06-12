@@ -131,6 +131,7 @@ def test_screenshots_archive_workflow_publishes_directly_without_pr_flow() -> No
     assert "rm -f /tmp/docs-screenshots-artifact/artifact.zip" in artifact_section
     assert "path.is_symlink()" in artifact_section
     assert 'Path("screenshots/release/README.md")' in artifact_section
+    assert 'Path("screenshots/release/manifest.json")' in artifact_section
     assert 'Path("screenshots", "releases", release_key, "README.md")' in artifact_section
     assert 'is_current_image = relative.parts[:2] == ("screenshots", "current")' in artifact_section
     assert 'is_release_image = relative.parts[:2] == ("screenshots", "release")' in artifact_section

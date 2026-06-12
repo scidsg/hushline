@@ -125,6 +125,7 @@ jobs:
               Path("capture_files.json"),
               Path("screenshots/README.md"),
               Path("screenshots/release/README.md"),
+              Path("screenshots/release/manifest.json"),
           }
 
           def fail(message: str) -> None:
