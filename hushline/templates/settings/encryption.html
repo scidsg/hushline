@@ -8,6 +8,12 @@
   {% if chat_key %}
     <p class="meta">Chat key version {{ chat_key.key_version }} is provisioned.</p>
   {% else %}
+    {% if locked_chat_key %}
+      <p class="meta">
+        Chat history encrypted to key version {{ locked_chat_key.key_version }} is locked because
+        the password was reset without the old password. Hush Line cannot recover the private key.
+      </p>
+    {% endif %}
     <form
       id="chat-key-provision-form"
       class="formBody"
