@@ -253,7 +253,7 @@ async function provisionChatKey(form) {
         namedCurve: "P-256",
       },
       true,
-      ["deriveBits"],
+      ["deriveKey"],
     );
     const publicJwk = await window.crypto.subtle.exportKey(
       "jwk",

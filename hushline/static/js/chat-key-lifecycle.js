@@ -1,6 +1,11 @@
+/******/ (() => { // webpackBootstrap
+/*!*****************************************!*\
+  !*** ./assets/js/chat-key-lifecycle.js ***!
+  \*****************************************/
 (function () {
   const textEncoder = new TextEncoder();
   const textDecoder = new TextDecoder();
+  const sessionStorageKey = "hushline:chat-private-jwk";
   let unlockedChatPrivateKey = null;
   const state = {
     status: "empty",
@@ -76,16 +81,76 @@
   }
 
   async function importPrivateKey(privateJwk) {
+    const importJwk = {
+      ...privateJwk,
+      key_ops: ["deriveKey"],
+    };
     return window.crypto.subtle.importKey(
       "jwk",
-      privateJwk,
+      importJwk,
       {
         name: "ECDH",
-        namedCurve: privateJwk.crv || "P-256",
+        namedCurve: importJwk.crv || "P-256",
       },
       false,
-      ["deriveBits"],
+      ["deriveKey"],
     );
+  }
+
+  function rememberUnlockedPrivateJwk(privateJwk, chatKey) {
+    if (!window.sessionStorage) {
+      return;
+    }
+
+    try {
+      sessionStorage.setItem(
+        sessionStorageKey,
+        JSON.stringify({
+          key_version: chatKey.key_version,
+          private_jwk: privateJwk,
+        }),
+      );
+    } catch (error) {
+      return;
+    }
+  }
+
+  function forgetUnlockedPrivateJwk() {
+    try {
+      sessionStorage.removeItem(sessionStorageKey);
+    } catch (error) {
+      return;
+    }
+  }
+
+  async function restoreUnlockedChatKey(chatKey) {
+    if (!chatKey || !window.sessionStorage) {
+      return false;
+    }
+
+    try {
+      const storedValue = sessionStorage.getItem(sessionStorageKey);
+      if (!storedValue) {
+        return false;
+      }
+      const stored = JSON.parse(storedValue);
+      if (
+        stored?.key_version !== chatKey.key_version
+        || !stored.private_jwk
+      ) {
+        forgetUnlockedPrivateJwk();
+        return false;
+      }
+
+      unlockedChatPrivateKey = await importPrivateKey(stored.private_jwk);
+      state.status = "unlocked";
+      state.keyVersion = chatKey.key_version;
+      state.lastError = null;
+      return true;
+    } catch (error) {
+      clearChatKeyMaterial();
+      return false;
+    }
   }
 
   async function unlockFromPassword(chatKey, password) {
@@ -100,6 +165,7 @@
     try {
       privateJwk = await decryptPrivateJwk(chatKey, password);
       unlockedChatPrivateKey = await importPrivateKey(privateJwk);
+      rememberUnlockedPrivateJwk(privateJwk, chatKey);
       state.status = "unlocked";
       state.keyVersion = chatKey.key_version;
       state.lastError = null;
@@ -278,6 +344,7 @@
   }
 
   function clearChatKeyMaterial() {
+    forgetUnlockedPrivateJwk();
     unlockedChatPrivateKey = null;
     state.status = "empty";
     state.keyVersion = null;
@@ -320,6 +387,18 @@
     }
   }
 
+  function setConversationUnlockVisible(visible) {
+    const panel = document.getElementById("conversation-key-locked");
+    if (panel) {
+      panel.hidden = !visible;
+    }
+  }
+
+  function currentConversationParticipantId() {
+    const root = document.getElementById("conversation-chat");
+    return root?.dataset.participantId || "";
+  }
+
   async function decryptConversationMessages() {
     const copies = jsonFromScript("conversationMessageCopies", []);
     for (const copy of copies) {
@@ -330,12 +409,21 @@
       const messageElement = document.querySelector(
         `[data-conversation-message-id="${copy.message_id}"] .conversation-message-body`,
       );
+      const messageContainer = document.querySelector(
+        `[data-conversation-message-id="${copy.message_id}"]`,
+      );
       if (!messageElement) {
         continue;
       }
 
       try {
         messageElement.textContent = await decryptChatCiphertext(copy.encrypted_payload);
+        if (messageContainer) {
+          const isOwnMessage = String(copy.sender_participant_id)
+            === currentConversationParticipantId();
+          messageContainer.classList.toggle("is-own-message", isOwnMessage);
+          messageContainer.classList.toggle("is-other-message", !isOwnMessage);
+        }
       } catch (error) {
         messageElement.textContent = "This message cannot be decrypted in this browser.";
       }
@@ -356,55 +444,6 @@
     if (submit) {
       submit.disabled = !enabled;
     }
-  }
-
-  function conversationCsrfToken() {
-    return document
-      .getElementById("conversation-compose-form")
-      ?.querySelector("input[name='csrf_token']")
-      ?.value;
-  }
-
-  async function sendConversationPresence() {
-    const root = document.getElementById("conversation-chat");
-    if (!root?.dataset.presenceUrl) {
-      return;
-    }
-
-    try {
-      await fetch(root.dataset.presenceUrl, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-          Accept: "application/json",
-          "X-CSRFToken": conversationCsrfToken() || "",
-        },
-      });
-    } catch (error) {
-      return;
-    }
-  }
-
-  function bindConversationPresence(root) {
-    if (root.dataset.presenceBound === "true") {
-      return;
-    }
-    root.dataset.presenceBound = "true";
-
-    const configuredInterval = Number.parseInt(root.dataset.presenceIntervalMs, 10);
-    const intervalMs = Number.isFinite(configuredInterval)
-      ? Math.max(15000, configuredInterval)
-      : 60000;
-    const sendIfVisible = () => {
-      if (document.visibilityState === "visible") {
-        void sendConversationPresence();
-      }
-    };
-
-    sendIfVisible();
-    window.setInterval(sendIfVisible, intervalMs);
-    document.addEventListener("visibilitychange", sendIfVisible);
-    window.addEventListener("focus", sendIfVisible);
   }
 
   async function unlockConversationFromPassword() {
@@ -429,6 +468,7 @@
       await decryptConversationMessages();
       const root = document.getElementById("conversation-chat");
       setConversationComposeEnabled(root?.dataset.canCompose === "true");
+      setConversationUnlockVisible(false);
       setConversationStatus("Chat key unlocked in this browser.");
       passwordInput.value = "";
     } catch (error) {
@@ -484,6 +524,81 @@
     }
   }
 
+  function conversationCsrfToken() {
+    return document
+      .getElementById("conversation-compose-form")
+      ?.querySelector("input[name='csrf_token']")
+      ?.value;
+  }
+
+  async function sendConversationPresence() {
+    const root = document.getElementById("conversation-chat");
+    if (!root?.dataset.presenceUrl) {
+      return;
+    }
+
+    try {
+      await fetch(root.dataset.presenceUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "X-CSRFToken": conversationCsrfToken() || "",
+        },
+      });
+    } catch (error) {
+      return;
+    }
+  }
+
+  function bindConversationPresence(root) {
+    if (root.dataset.presenceBound === "true") {
+      return;
+    }
+    root.dataset.presenceBound = "true";
+
+    const configuredInterval = Number.parseInt(root.dataset.presenceIntervalMs, 10);
+    const intervalMs = Number.isFinite(configuredInterval)
+      ? Math.max(15000, configuredInterval)
+      : 60000;
+    const sendIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        void sendConversationPresence();
+      }
+    };
+
+    sendIfVisible();
+    window.setInterval(sendIfVisible, intervalMs);
+    document.addEventListener("visibilitychange", sendIfVisible);
+    window.addEventListener("focus", sendIfVisible);
+  }
+
+  async function restoreConversationFromSession() {
+    const root = document.getElementById("conversation-chat");
+    if (!root) {
+      return;
+    }
+
+    try {
+      const chatKey = await fetchChatKey(chatKeyUrlFromCurrentOrigin());
+      if (!chatKey) {
+        setConversationUnlockVisible(true);
+        setConversationStatus("Create a Hush Line chat key before reading this conversation.");
+        return;
+      }
+      if (await restoreUnlockedChatKey(chatKey)) {
+        await decryptConversationMessages();
+        setConversationComposeEnabled(root.dataset.canCompose === "true");
+        setConversationUnlockVisible(false);
+        setConversationStatus("Chat key unlocked for this session.");
+        return;
+      }
+      setConversationUnlockVisible(true);
+    } catch (error) {
+      setConversationUnlockVisible(true);
+    }
+  }
+
   function bindConversation() {
     const root = document.getElementById("conversation-chat");
     if (!root) {
@@ -505,8 +620,12 @@
     if (state.status === "unlocked") {
       decryptConversationMessages();
       setConversationComposeEnabled(root.dataset.canCompose === "true");
+      setConversationUnlockVisible(false);
       setConversationStatus("Chat key unlocked in this browser.");
+      return;
     }
+
+    void restoreConversationFromSession();
   }
 
   async function handleLoginSubmit(event) {
@@ -528,8 +647,12 @@
       const responseText = await response.text();
       if (response.redirected && responseUrl.pathname !== "/login") {
         if (responseUrl.pathname !== "/verify-2fa-login") {
-          const chatKey = await fetchChatKey(chatKeyUrlFromCurrentOrigin());
-          await unlockFromPassword(chatKey, password);
+          try {
+            const chatKey = await fetchChatKey(chatKeyUrlFromCurrentOrigin());
+            await unlockFromPassword(chatKey, password);
+          } catch (error) {
+            clearChatKeyMaterial();
+          }
         }
         replaceDocument(responseText, response.url);
         return;
@@ -627,3 +750,7 @@
     bindPage();
   });
 })();
+
+/******/ })()
+;
+//# sourceMappingURL=chat-key-lifecycle.js.map

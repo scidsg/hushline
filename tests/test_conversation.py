@@ -184,7 +184,13 @@ def test_conversation_view_shows_locked_chat_key_state(
     response = client.get(url_for("conversation", conversation_id=conversation.id))
 
     assert response.status_code == 200
-    assert "Transcript content is hidden until your chat key is unlocked" in response.text
+    assert 'class="conversation-thread"' in response.text
+    assert 'class="conversation-composer"' in response.text
+    assert 'data-participant-id="' in response.text
+    assert "Transcript content is hidden until your chat key is unlocked for this session" in (
+        response.text
+    )
+    assert "Locked message. Unlock chat to read." in response.text
     assert (
         "Replies are unavailable until every participant has an active Hush Line chat key."
         in response.text

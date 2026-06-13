@@ -11,8 +11,6 @@
   <form
     method="POST"
     class="formBody"
-    id="change-password-form"
-    data-chat-key-url="{{ url_for('settings.chat_key') if chat_key else '' }}"
   >
     {% set username_field = change_username_form.new_username %}
     {{ change_username_form.hidden_tag() }}
@@ -47,6 +45,8 @@
   <form
     method="POST"
     class="formBody"
+    id="change-password-form"
+    data-chat-key-url="{{ url_for('settings.chat_key') if chat_key else '' }}"
   >
     {% set old_password_field = change_password_form.old_password %}
     {% set new_password_field = change_password_form.new_password %}

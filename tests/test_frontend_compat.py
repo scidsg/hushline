@@ -122,6 +122,36 @@ def test_client_side_encryption_prepares_chat_conversation_copies() -> None:
     assert 'id="senderChatPublicKey"' in embed_template
 
 
+def test_chat_key_lifecycle_imports_private_key_for_message_decryption() -> None:
+    js = (ROOT / "assets/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
+
+    assert "unlockedChatPrivateKey = await importPrivateKey(privateJwk);" in js
+    assert 'key_ops: ["deriveKey"]' in js
+    assert '["deriveKey"]' in js
+    assert "deriveChatMessageKey(" in js
+    assert "decryptChatCiphertext" in js
+
+
+def test_settings_chat_key_provisioning_generates_decryptable_ecdh_key() -> None:
+    js = (ROOT / "assets/js/settings.js").read_text(encoding="utf-8")
+
+    assert 'name: "ECDH"' in js
+    assert '["deriveKey"]' in js
+    assert '["deriveBits"]' not in js
+
+
+def test_chat_key_lifecycle_restores_unlocked_key_for_session_only() -> None:
+    js = (ROOT / "assets/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
+
+    assert 'const sessionStorageKey = "hushline:chat-private-jwk";' in js
+    assert "sessionStorage.setItem(" in js
+    assert "sessionStorage.getItem(sessionStorageKey)" in js
+    assert "sessionStorage.removeItem(sessionStorageKey)" in js
+    assert "restoreConversationFromSession" in js
+    assert 'passwordInput.value = "";' in js
+    assert "localStorage.setItem" not in js
+
+
 def test_profile_template_avoids_inline_submit_handlers() -> None:
     template = (ROOT / "hushline/templates/profile.html").read_text(encoding="utf-8")
     scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")

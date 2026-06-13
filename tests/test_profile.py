@@ -361,13 +361,13 @@ def test_logged_in_profile_submit_message_creates_conversation_for_distinct_reci
     )
     assert sender_response.status_code == 200
     assert "Unlock your Hush Line chat key" in sender_response.text
-    assert "Locked until your chat key is unlocked." in sender_response.text
+    assert "Locked message. Unlock chat to read." in sender_response.text
 
     _authenticate_as(client, user2)
     recipient_response = client.get(url_for("conversation", conversation_id=conversation.id))
     assert recipient_response.status_code == 200
     assert "Unlock your Hush Line chat key" in recipient_response.text
-    assert "Locked until your chat key is unlocked." in recipient_response.text
+    assert "Locked message. Unlock chat to read." in recipient_response.text
     message_response = client.get(url_for("message", public_id=message.public_id))
     assert url_for("conversation", conversation_id=conversation.id) in message_response.text
 
@@ -424,7 +424,7 @@ def test_logged_in_profile_submit_message_creates_conversation_without_sender_ke
     recipient_response = client.get(url_for("conversation", conversation_id=conversation.id))
     assert recipient_response.status_code == 200
     assert "Unlock your Hush Line chat key" in recipient_response.text
-    assert "Locked until your chat key is unlocked." in recipient_response.text
+    assert "Locked message. Unlock chat to read." in recipient_response.text
 
 
 @pytest.mark.usefixtures("_authenticated_user")

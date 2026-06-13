@@ -212,6 +212,37 @@ def test_change_username_rejects_case_insensitive_duplicate(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_auth_page_binds_chat_key_rewrap_to_password_form(
+    client: FlaskClient,
+    user: User,
+) -> None:
+    chat_key = ChatKey(
+        user=user,
+        key_version=1,
+        public_key="public-chat-key",
+        encrypted_private_key="wrapped-private-chat-key",
+        kdf_algorithm="PBKDF2-SHA-256",
+        kdf_params={"iterations": 310000},
+        kdf_salt="salt",
+        wrapping_algorithm="AES-GCM",
+    )
+    db.session.add(chat_key)
+    db.session.commit()
+
+    response = client.get(url_for("settings.auth"))
+
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    rewrap_form = soup.find("form", id="change-password-form")
+    assert rewrap_form is not None
+    assert rewrap_form.get("data-chat-key-url") == url_for("settings.chat_key")
+    assert rewrap_form.find(id="old_password") is not None
+    assert rewrap_form.find(id="new_password") is not None
+    assert rewrap_form.find(id="rewrapped_chat_key") is not None
+    assert rewrap_form.find(id="new_username") is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_settings_auth_requires_csrf_token(app: Flask, client: FlaskClient, user: User) -> None:
     prior_setting = app.config.get("WTF_CSRF_ENABLED")
     app.config["WTF_CSRF_ENABLED"] = True

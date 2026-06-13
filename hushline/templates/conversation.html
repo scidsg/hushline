@@ -3,24 +3,37 @@
 {% block title %}Conversation{% endblock %}
 
 {% block content %}
-<div class="message-header">
-  <h1>Conversation</h1>
-</div>
+{% if conversation.initial_message %}
+  {% set conversation_name = conversation.initial_message.username.display_name
+    or conversation.initial_message.username.username %}
+{% else %}
+  {% set conversation_name = "Conversation" %}
+{% endif %}
 
-<div class="message-container">
-  <div class="message-meta">
+<div class="conversation-page">
+  <header class="conversation-header">
+    <div>
+      <p class="conversation-eyebrow">Secure Chat</p>
+      <h1>{{ conversation_name }}</h1>
+    </div>
     {% if conversation.initial_message %}
-      <p>
-        To:
-        <a href="{{ url_for('profile', username=conversation.initial_message.username.username) }}">
-          {{
-            conversation.initial_message.username.display_name
-            or conversation.initial_message.username.username
-          }}
-        </a>
-      </p>
+      <a
+        class="conversation-profile-link"
+        href="{{ url_for('profile', username=conversation.initial_message.username.username) }}"
+      >
+        @{{ conversation.initial_message.username.username }}
+      </a>
     {% endif %}
-  </div>
+  </header>
+
+  {% if conversation.initial_message %}
+    <p class="conversation-context">
+      Started from a disclosure to
+        <a href="{{ url_for('profile', username=conversation.initial_message.username.username) }}">
+          {{ conversation_name }}
+        </a>
+    </p>
+  {% endif %}
 
   {% set append_message_url = url_for('append_conversation_message', conversation_id=conversation.id) %}
   {% set presence_url = url_for('conversation_presence', conversation_id=conversation.id) %}
@@ -30,11 +43,17 @@
     data-presence-url="{{ presence_url }}"
     data-presence-interval-ms="{{ conversation_presence_interval_ms }}"
     data-can-compose="{{ 'true' if can_compose else 'false' }}"
+    data-participant-id="{{ participant.id }}"
   >
-    <div id="conversation-key-locked" class="message">
-      <h2>Chat Key Locked</h2>
+    <div id="conversation-key-locked" class="conversation-unlock-panel">
+      <div>
+        <h2>Chat locked on this device</h2>
+        <p>
+          Unlock your Hush Line chat key in this browser session if it was not
+          unlocked during login.
+        </p>
+      </div>
       <p>
-        Unlock your Hush Line chat key with your account password to read and reply.
         Do not upload or paste any external private key.
       </p>
       <label for="conversation-chat-password">Account Password</label>
@@ -46,7 +65,7 @@
       />
       <button id="conversation-chat-unlock" type="button">Unlock Chat</button>
       <p id="conversation-chat-status" class="meta" role="status">
-        Transcript content is hidden until your chat key is unlocked in this browser.
+        Transcript content is hidden until your chat key is unlocked for this session.
       </p>
     </div>
 
@@ -57,25 +76,27 @@
       {{ message_copy_payloads | tojson }}
     </script>
 
-    <article class="message" aria-live="polite">
+    <article class="conversation-thread" aria-live="polite" aria-label="Conversation messages">
       {% for conversation_message, encrypted_copy in message_copies %}
         <div
-          class="field-value encrypted"
+          class="conversation-message"
           data-conversation-message-id="{{ conversation_message.id }}"
         >
-          <div class="label">
-            {{ conversation_message.created_at.date() }}
-          </div>
+          <time datetime="{{ conversation_message.created_at.isoformat() }}">
+            {{ conversation_message.created_at.strftime("%b %-d, %Y") }}
+          </time>
           {% if encrypted_copy %}
-            <p class="conversation-message-body">Locked until your chat key is unlocked.</p>
+            <p class="conversation-message-body">Locked message. Unlock chat to read.</p>
           {% else %}
-            <p>No encrypted copy is available for your account.</p>
+            <p class="conversation-message-body unavailable">
+              No encrypted copy is available for your account.
+            </p>
           {% endif %}
         </div>
       {% endfor %}
     </article>
 
-    <form id="conversation-compose-form">
+    <form id="conversation-compose-form" class="conversation-composer">
       {{ conversation_message_form.hidden_tag() }}
       <label for="conversation-compose-body">Reply</label>
       <textarea
@@ -86,7 +107,11 @@
         disabled="disabled"
         required
       ></textarea>
-      {{ conversation_message_form.submit(id="conversation-compose-submit", disabled="disabled") }}
+      {{ conversation_message_form.submit(
+        id="conversation-compose-submit",
+        disabled="disabled",
+        value="Send"
+      ) }}
       {% if not can_compose %}
         <p class="meta">
           Replies are unavailable until every participant has an active Hush Line chat key.

@@ -117,7 +117,7 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
             response.headers.pop("X-Frame-Options", None)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Permissions-Policy"] = (
-            "geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=();"  # noqa: E501
+            "geolocation=(), midi=(), notifications=(), push=(), sync-xhr=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), vibrate=(), fullscreen=(), payment=(), interest-cohort=()"  # noqa: E501
         )
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["X-XSS-Protection"] = "1; mode=block"

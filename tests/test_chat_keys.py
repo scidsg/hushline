@@ -255,14 +255,17 @@ def test_chat_key_schema_has_no_plaintext_private_key_columns(app: Flask) -> Non
 
 def test_chat_key_lifecycle_js_exposes_unlock_rewrap_and_cleanup() -> None:
     lifecycle_js = (ROOT / "hushline/static/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
+    lifecycle_source = (ROOT / "assets/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
 
     assert "window.HushLineChatKeys" in lifecycle_js
-    assert "unlockFromPassword" in lifecycle_js
-    assert "rewrapForPasswordChange" in lifecycle_js
-    assert "clearChatKeyMaterial" in lifecycle_js
-    assert "sendConversationPresence" in lifecycle_js
-    assert 'document.visibilityState === "visible"' in lifecycle_js
-    assert "document.body?.dataset.authenticated" in lifecycle_js
+    assert "unlockFromPassword" in lifecycle_source
+    assert "rewrapForPasswordChange" in lifecycle_source
+    assert "clearChatKeyMaterial" in lifecycle_source
+    assert "restoreConversationFromSession" in lifecycle_source
+    assert "hushline:chat-private-jwk" in lifecycle_js
+    assert "sendConversationPresence" in lifecycle_source
+    assert 'document.visibilityState === "visible"' in lifecycle_source
+    assert "document.body?.dataset.authenticated" in lifecycle_source
     assert "Chat key unlock failed." in lifecycle_js
 
 
