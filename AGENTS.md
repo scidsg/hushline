@@ -100,6 +100,7 @@ This file provides operating guidance for coding agents working in the Hush Line
 - For encryption changes, ensure client-side encryption is covered and server-side fallback (JS disabled or no client payload) is covered.
 - For any change touching templates, static JS/CSS, response headers, or external integrations, add/update tests to verify CSP remains enforced and is not broadened unintentionally (for example in tests/test_security_headers.py).
 - If a CSP directive/source must be broadened, document explicit maintainer approval and risk rationale, and add tests that lock the change to the minimal required scope.
+- When opening a PR for an epic, run end-to-end Playwright tests and include the screenshots as artifacts. There may be human-authored flows to check against in the epic description, but if they are absent, conduct a thorough test based on the work of the PR and stated goals of the epic - and even if the flows are included, make sure there's nothing missing, then append as necessary.
 
 ## Change Guidelines
 
