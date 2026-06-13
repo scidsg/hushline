@@ -45,6 +45,8 @@
   <form
     method="POST"
     class="formBody"
+    id="change-password-form"
+    data-chat-key-url="{{ url_for('settings.chat_key') if chat_key else '' }}"
   >
     {% set old_password_field = change_password_form.old_password %}
     {% set new_password_field = change_password_form.new_password %}
@@ -59,6 +61,13 @@
     {% for error in new_password_field.errors %}
       <span class="error">{{ error }}</span>
     {% endfor %}
+    <input type="hidden" name="rewrapped_chat_key" id="rewrapped_chat_key" />
+    <p
+      id="chat-key-rewrap-status"
+      class="meta"
+      role="status"
+      aria-live="polite"
+    ></p>
     {{ change_password_form.submit }}
   </form>
 {% endblock %}

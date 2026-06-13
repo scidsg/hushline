@@ -1,4 +1,6 @@
+import json
 from base64 import b64decode
+from datetime import UTC, datetime
 from io import BytesIO
 from unittest.mock import ANY, MagicMock, patch
 from uuid import uuid4
@@ -15,6 +17,7 @@ from hushline.db import db
 from hushline.model import (
     AccountCategory,
     AuthenticationLog,
+    ChatKey,
     FieldDefinition,
     FieldType,
     Message,
@@ -206,6 +209,37 @@ def test_change_username_rejects_case_insensitive_duplicate(
     )
     assert response.status_code == 200
     assert "This username is already taken." in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_auth_page_binds_chat_key_rewrap_to_password_form(
+    client: FlaskClient,
+    user: User,
+) -> None:
+    chat_key = ChatKey(
+        user=user,
+        key_version=1,
+        public_key="public-chat-key",
+        encrypted_private_key="wrapped-private-chat-key",
+        kdf_algorithm="PBKDF2-SHA-256",
+        kdf_params={"iterations": 310000},
+        kdf_salt="salt",
+        wrapping_algorithm="AES-GCM",
+    )
+    db.session.add(chat_key)
+    db.session.commit()
+
+    response = client.get(url_for("settings.auth"))
+
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    rewrap_form = soup.find("form", id="change-password-form")
+    assert rewrap_form is not None
+    assert rewrap_form.get("data-chat-key-url") == url_for("settings.chat_key")
+    assert rewrap_form.find(id="old_password") is not None
+    assert rewrap_form.find(id="new_password") is not None
+    assert rewrap_form.find(id="rewrapped_chat_key") is not None
+    assert rewrap_form.find(id="new_username") is None
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -434,6 +468,197 @@ def test_change_password_revokes_sibling_session(
     response = sibling_client.get(url_for("inbox"), follow_redirects=False)
     assert response.status_code == 302
     assert response.headers["Location"].endswith(url_for("login"))
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_password_requires_chat_key_rewrap_when_active_chat_key_exists(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    chat_key = ChatKey(
+        user=user,
+        key_version=1,
+        public_key="public-chat-key",
+        encrypted_private_key='{"algorithm":"AES-GCM","iv":"old","ciphertext":"old"}',
+        kdf_algorithm="PBKDF2-SHA-256",
+        kdf_params={"iterations": 310000, "hash": "SHA-256"},
+        kdf_salt="old-salt",
+        wrapping_algorithm="AES-GCM",
+    )
+    db.session.add(chat_key)
+    db.session.commit()
+    original_password_hash = user.password_hash
+
+    response = client.post(
+        url_for("settings.auth"),
+        data=form_to_data(
+            ChangePasswordForm(
+                data={
+                    "old_password": user_password,
+                    "new_password": "ChangedPassword123!!",
+                }
+            )
+        ),
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "Unlock your chat key before changing your password." in response.text
+    db.session.refresh(user)
+    assert user.password_hash == original_password_hash
+    db.session.refresh(chat_key)
+    assert chat_key.disabled_at is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_password_rewraps_active_chat_key(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    chat_key = ChatKey(
+        user=user,
+        key_version=1,
+        public_key="public-chat-key",
+        encrypted_private_key='{"algorithm":"AES-GCM","iv":"old","ciphertext":"old"}',
+        kdf_algorithm="PBKDF2-SHA-256",
+        kdf_params={"iterations": 310000, "hash": "SHA-256"},
+        kdf_salt="old-salt",
+        wrapping_algorithm="AES-GCM",
+    )
+    db.session.add(chat_key)
+    db.session.commit()
+    new_password = "ChangedPassword123!!"
+    data = form_to_data(
+        ChangePasswordForm(
+            data={
+                "old_password": user_password,
+                "new_password": new_password,
+            }
+        )
+    )
+    data["rewrapped_chat_key"] = json.dumps(
+        {
+            "public_key": "public-chat-key",
+            "encrypted_private_key": (
+                '{"algorithm":"AES-GCM","iv":"new","ciphertext":"rewrapped"}'
+            ),
+            "kdf_algorithm": "PBKDF2-SHA-256",
+            "kdf_params": {"iterations": 310000, "hash": "SHA-256"},
+            "kdf_salt": "new-salt",
+            "wrapping_algorithm": "AES-GCM",
+            "recovery_state": "available",
+        }
+    )
+
+    response = client.post(
+        url_for("settings.auth"),
+        data=data,
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "Password successfully changed. Please log in again." in response.text
+    db.session.refresh(user)
+    assert user.check_password(new_password)
+    keys = db.session.scalars(
+        db.select(ChatKey).filter_by(user_id=user.id).order_by(ChatKey.key_version.asc())
+    ).all()
+    assert [key.key_version for key in keys] == [1, 2]
+    assert keys[0].disabled_at is not None
+    assert keys[0].recovery_state == "rewrapped"
+    assert keys[1].disabled_at is None
+    assert keys[1].public_key == "public-chat-key"
+    assert keys[1].encrypted_private_key == (
+        '{"algorithm":"AES-GCM","iv":"new","ciphertext":"rewrapped"}'
+    )
+    assert keys[1].kdf_salt == "new-salt"
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_password_rewrap_rejects_plaintext_chat_key_material(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    chat_key = ChatKey(
+        user=user,
+        key_version=1,
+        public_key="public-chat-key",
+        encrypted_private_key='{"algorithm":"AES-GCM","iv":"old","ciphertext":"old"}',
+        kdf_algorithm="PBKDF2-SHA-256",
+        kdf_params={"iterations": 310000, "hash": "SHA-256"},
+        kdf_salt="old-salt",
+        wrapping_algorithm="AES-GCM",
+    )
+    db.session.add(chat_key)
+    db.session.commit()
+    original_password_hash = user.password_hash
+    data = form_to_data(
+        ChangePasswordForm(
+            data={
+                "old_password": user_password,
+                "new_password": "ChangedPassword123!!",
+            }
+        )
+    )
+    data["rewrapped_chat_key"] = json.dumps(
+        {
+            "public_key": "public-chat-key",
+            "encrypted_private_key": (
+                '{"algorithm":"AES-GCM","iv":"new","ciphertext":"rewrapped"}'
+            ),
+            "kdf_algorithm": "PBKDF2-SHA-256",
+            "kdf_params": {"iterations": 310000, "hash": "SHA-256"},
+            "kdf_salt": "new-salt",
+            "private_key": "plaintext-private-key",
+        }
+    )
+
+    response = client.post(url_for("settings.auth"), data=data, follow_redirects=True)
+
+    assert response.status_code == 400
+    assert "Plaintext chat key material is not accepted." in response.text
+    db.session.refresh(user)
+    assert user.password_hash == original_password_hash
+    db.session.refresh(chat_key)
+    assert chat_key.disabled_at is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_password_allows_account_access_when_chat_key_is_locked(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    chat_key = ChatKey(
+        user=user,
+        key_version=1,
+        public_key="public-chat-key",
+        encrypted_private_key='{"algorithm":"AES-GCM","iv":"old","ciphertext":"old"}',
+        kdf_algorithm="PBKDF2-SHA-256",
+        kdf_params={"iterations": 310000, "hash": "SHA-256"},
+        kdf_salt="old-salt",
+        wrapping_algorithm="AES-GCM",
+        disabled_at=datetime.now(UTC),
+        recovery_state="password_reset_locked",
+    )
+    db.session.add(chat_key)
+    db.session.commit()
+    new_password = "ChangedPassword123!!"
+
+    response = client.post(
+        url_for("settings.auth"),
+        data=form_to_data(
+            ChangePasswordForm(
+                data={
+                    "old_password": user_password,
+                    "new_password": new_password,
+                }
+            )
+        ),
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "Password successfully changed. Please log in again." in response.text
+    db.session.refresh(user)
+    assert user.check_password(new_password)
+    db.session.refresh(chat_key)
+    assert chat_key.recovery_state == "password_reset_locked"
 
 
 @pytest.mark.usefixtures("_authenticated_user")

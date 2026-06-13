@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 
 {% block title %}Inbox{% endblock %}
+{% block body_class %}inbox-body{% endblock %}
+{% block main_class %}inbox-main{% endblock %}
 
 {% block content %}
   <h2>Inbox for {{ user.primary_username.display_name or user.primary_username.username }}</h2>
@@ -8,35 +10,110 @@
   <div class="inbox-content">
     <nav class="inbox-tabs-nav" aria-label="Inbox filters">
       <ul class="tab-list inbox-tabs">
-        {% for pair in [None] + message_statuses %}
-          {% if pair %}
-            {% set display_str = pair[0].display_str %}
-            {% set count = pair[1] %}
-            {% set url = url_for('inbox', status=pair[0].value) %}
-          {% else %}
-            {% set display_str = "All" %}
-            {% set count = total_messages %}
-            {% set url = url_for('inbox') %}
-          {% endif %}
-          {% set is_active = (pair and pair[0] == status_filter) or (pair is none and not status_filter) %}
+        <li class="tab{% if not type_filter and not status_filter %} active{% endif %}">
+          <a href="{{ url_for('inbox') }}"{% if not type_filter and not status_filter %} aria-current="page"{% endif %}>
+            All
+          </a>
+          <span class="badge">{{ total_inbox_items }}</span>
+        </li>
+        <li class="tab{% if type_filter == 'tips' and not status_filter %} active{% endif %}">
+          <a href="{{ url_for('inbox', type='tips') }}"{% if type_filter == 'tips' and not status_filter %} aria-current="page"{% endif %}>
+            Tips
+          </a>
+          <span class="badge">{{ total_messages }}</span>
+        </li>
+        <li class="tab{% if type_filter == 'conversations' and not status_filter %} active{% endif %}">
+          <a href="{{ url_for('inbox', type='conversations') }}"{% if type_filter == 'conversations' and not status_filter %} aria-current="page"{% endif %}>
+            Conversations
+          </a>
+          <span class="badge">{{ total_conversations }}</span>
+        </li>
+        {% for pair in message_statuses %}
+          {% set display_str = pair[0].display_str %}
+          {% set count = pair[1] %}
+          {% set url = url_for('inbox', status=pair[0].value) %}
+          {% set is_active = pair[0] == status_filter %}
           <li class="tab{% if is_active %} active{% endif %}">
-            <a href="{{ url }}"{% if is_active %} aria-current="page"{% endif %}>{{ display_str }}</a>
+            <a href="{{ url }}"{% if is_active %} aria-current="page"{% endif %}>
+              {{ display_str }}
+            </a>
             <span class="badge">{{ count }}</span>
           </li>
         {% endfor %}
       </ul>
     </nav>
     <div class="message-list">
-      {% if messages %}
-        {% for message in messages %}
+      {% if inbox_items %}
+        {% for item in inbox_items %}
+          {% if item.kind == "conversation" and item.conversation %}
+            {% set conversation_item = item.conversation %}
+            {% set title_id = "conversation-title-" ~ conversation_item.conversation.id %}
+            {% set conversation_name = conversation_item.other_participant_names | join(", ")
+              if conversation_item.other_participant_names else "Conversation" %}
+            {% set avatar_initial = conversation_name | replace("@", "") | trim %}
+            <article
+              class="message encrypted inbox-message-summary conversation-summary{% if conversation_item.has_unread %} has-unread{% endif %}"
+              aria-labelledby="{{ title_id }}"
+            >
+              <div class="conversation-summary-avatar" aria-hidden="true">
+                {{ avatar_initial[:1] | upper if avatar_initial else "C" }}
+              </div>
+              <div class="conversation-summary-main">
+                <p id="{{ title_id }}" class="inbox-message-recipient">
+                  {% if conversation_item.has_unread %}
+                    <span
+                      class="conversation-unread-dot"
+                      role="img"
+                      aria-label="Unread conversation"
+                      title="Unread conversation"
+                    ></span>
+                  {% endif %}
+                  From: {{ conversation_name }}
+                </p>
+                <p class="conversation-summary-route">
+                  To: @{{ user.primary_username.username }}
+                </p>
+                <div class="inbox-message-summary-meta conversation-summary-meta">
+                  <time datetime="{{ conversation_item.latest_at.isoformat() }}">
+                    {{ conversation_item.latest_at.strftime("%b %-d") }}
+                  </time>
+                </div>
+                <p class="inbox-message-link">
+                  <a
+                    class="stretched-link"
+                    href="{{ url_for('conversation', conversation_id=conversation_item.conversation.id) }}"
+                  >
+                    Go to conversation
+                  </a>
+                </p>
+              </div>
+            </article>
+          {% elif item.kind == "message" and item.message %}
+            {% set message = item.message %}
           <article
-            class="message encrypted"
-            aria-label="Message with {{ message.username.display_name or message.username.username }}"
+            class="message encrypted inbox-message-summary"
+            aria-label="Message with {{
+              message.username.display_name or message.username.username
+            }}"
           >
-            <p>To: @{{ message.username.username }}</p>
-            <p>{{ message.created_at.date() }}</p>
-            <p><a class="stretched-link" href="{{ url_for('message', public_id=message.public_id) }}">Go to message</a></p>
+            <div>
+              <p class="inbox-message-recipient">To: @{{ message.username.username }}</p>
+            </div>
+            <div class="inbox-message-summary-meta">
+              <time datetime="{{ message.created_at.isoformat() }}">
+                {{ message.created_at.strftime("%b %-d") }}
+              </time>
+            </div>
+            <p class="inbox-message-link">
+              <a
+                class="stretched-link"
+                href="{{ url_for('message', public_id=message.public_id) }}"
+              >
+                Go to message
+              </a>
+            </p>
           </article>
+          {% endif %}
         {% endfor %}
       {% else %}
         <div class="emptyState">

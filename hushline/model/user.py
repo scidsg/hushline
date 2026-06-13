@@ -27,6 +27,8 @@ from hushline.password_hasher import hash_password, verify_password
 if TYPE_CHECKING:
     from flask_sqlalchemy.model import Model
 
+    from hushline.model.chat_key import ChatKey
+    from hushline.model.conversation import ConversationParticipant
     from hushline.model.message import Message
     from hushline.model.notification_recipient import NotificationRecipient
     from hushline.model.password_reset_token import PasswordResetToken
@@ -89,6 +91,17 @@ class User(Model):
         back_populates="user",
         cascade="all, delete-orphan",
         order_by="PasswordResetToken.id.desc()",
+    )
+    conversation_participants: Mapped[list["ConversationParticipant"]] = relationship(
+        back_populates="user",
+        order_by="ConversationParticipant.id.asc()",
+        passive_deletes=True,
+    )
+    chat_keys: Mapped[list["ChatKey"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        order_by="ChatKey.key_version.desc(), ChatKey.id.desc()",
+        passive_deletes=True,
     )
     messages: Mapped[list["Message"]] = relationship(
         secondary="usernames",
@@ -447,6 +460,18 @@ class User(Model):
         if len(keys) == 1:
             return keys[0]
         return keys
+
+    @property
+    def active_chat_key(self) -> "ChatKey | None":
+        return next(
+            (chat_key for chat_key in self.chat_keys if chat_key.disabled_at is None),
+            None,
+        )
+
+    @property
+    def chat_public_key(self) -> str | None:
+        active_key = self.active_chat_key
+        return active_key.public_key if active_key is not None else None
 
     @property
     def next_notification_recipient_position(self) -> int:

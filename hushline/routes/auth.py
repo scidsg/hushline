@@ -1,7 +1,9 @@
+import json
 import secrets
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from hmac import new as hmac_new
+from typing import Any
 
 import pyotp
 from flask import (
@@ -29,9 +31,11 @@ from hushline.auth import (
     rotate_user_session_id,
     set_session_user,
 )
+from hushline.chat_key_lifecycle import retire_active_chat_key, validate_chat_key_payload
 from hushline.db import db
 from hushline.model import (
     AuthenticationLog,
+    ChatKey,
     InviteCode,
     OrganizationSetting,
     PasswordResetAttempt,
@@ -59,6 +63,7 @@ PASSWORD_RESET_CONFIRMATION_MESSAGE = (
 PASSWORD_RESET_INVALID_LINK_MESSAGE = (
     "Password reset links expire quickly and can only be used once. Request a new reset if needed."  # noqa: S105
 )
+PENDING_LOGIN_CHAT_KEY_SESSION_KEY = "pending_login_chat_key_payload"
 
 
 def _now() -> datetime:
@@ -90,6 +95,69 @@ def _password_reset_ip_hash() -> str:
 def _password_reset_ttl() -> timedelta:
     minutes = int(current_app.config.get("PASSWORD_RESET_TOKEN_TTL_MINUTES", 30))
     return timedelta(minutes=minutes)
+
+
+def _create_initial_chat_key_from_payload(
+    user: User,
+    payload: dict[str, Any] | None,
+    *,
+    when: datetime | None = None,
+) -> ChatKey | None:
+    if payload is None or user.active_chat_key is not None:
+        return None
+
+    next_version = max((chat_key.key_version for chat_key in user.chat_keys), default=0) + 1
+    chat_key = ChatKey(
+        user=user,
+        key_version=next_version,
+        public_key=payload["public_key"],
+        encrypted_private_key=payload["encrypted_private_key"],
+        kdf_algorithm=payload["kdf_algorithm"],
+        kdf_params=payload["kdf_params"],
+        kdf_salt=payload["kdf_salt"],
+        wrapping_algorithm=payload["wrapping_algorithm"],
+        recovery_state=payload["recovery_state"],
+        created_at=when or datetime.now(UTC),
+    )
+    db.session.add(chat_key)
+    return chat_key
+
+
+def _validated_login_chat_key_payload(user: User) -> dict[str, Any] | None:
+    raw_payload = request.form.get("chat_key_payload", "").strip()
+    if not raw_payload:
+        session.pop(PENDING_LOGIN_CHAT_KEY_SESSION_KEY, None)
+        return None
+
+    try:
+        submitted_payload = json.loads(raw_payload)
+    except (TypeError, ValueError):
+        current_app.logger.warning("Ignoring malformed login chat key payload.")
+        session.pop(PENDING_LOGIN_CHAT_KEY_SESSION_KEY, None)
+        return None
+
+    cleaned_payload, error = validate_chat_key_payload(submitted_payload, current_user_id=user.id)
+    if error:
+        current_app.logger.warning(
+            "Ignoring invalid login chat key payload.",
+            extra={"chat_key_error": error},
+        )
+        session.pop(PENDING_LOGIN_CHAT_KEY_SESSION_KEY, None)
+        return None
+    return cleaned_payload
+
+
+def _stash_pending_login_chat_key(user: User, payload: dict[str, Any] | None) -> None:
+    if payload is None or user.active_chat_key is not None:
+        session.pop(PENDING_LOGIN_CHAT_KEY_SESSION_KEY, None)
+        return
+    session[PENDING_LOGIN_CHAT_KEY_SESSION_KEY] = payload
+
+
+def _provision_pending_login_chat_key(user: User) -> None:
+    payload = session.pop(PENDING_LOGIN_CHAT_KEY_SESSION_KEY, None)
+    if isinstance(payload, dict):
+        _create_initial_chat_key_from_payload(user, payload)
 
 
 def _password_reset_rate_limited(identifier_hash: str, ip_hash: str) -> bool:
@@ -400,10 +468,12 @@ def register_auth_routes(app: Flask) -> None:
                     form.password.data,
                     password_rehash_source_hash,
                 )
+                login_chat_key_payload = _validated_login_chat_key_payload(user)
 
                 # 2FA enabled?
                 if user.totp_secret:
                     set_session_user(user=user, username=username.username, is_authenticated=False)
+                    _stash_pending_login_chat_key(user, login_chat_key_payload)
                     if pending_password_rehash is not None:
                         _stash_pending_password_rehash(
                             replacement_hash=pending_password_rehash,
@@ -422,6 +492,7 @@ def register_auth_routes(app: Flask) -> None:
 
                 auth_log = AuthenticationLog(user_id=user.id, successful=True)
                 db.session.add(auth_log)
+                _create_initial_chat_key_from_payload(user, login_chat_key_payload)
                 if pending_password_rehash is not None:
                     user._password_hash = pending_password_rehash
                     db.session.add(user)
@@ -494,6 +565,11 @@ def register_auth_routes(app: Flask) -> None:
                     return render_template("password_reset.html", form=form), 400
 
                 now = _now()
+                retire_active_chat_key(
+                    user,
+                    recovery_state="password_reset_locked",
+                    when=datetime.now(UTC),
+                )
                 user.password_hash = new_password
                 rotate_user_session_id(user)
                 _invalidate_password_reset_tokens(user, used_at=now)
@@ -575,6 +651,7 @@ def register_auth_routes(app: Flask) -> None:
                 has_pending_password_rehash = PENDING_PASSWORD_REHASH_SESSION_KEY in session
                 try:
                     _apply_pending_password_rehash(user, source_hash=password_rehash_source_hash)
+                    _provision_pending_login_chat_key(user)
                     db.session.commit()
                 except Exception:
                     db.session.rollback()

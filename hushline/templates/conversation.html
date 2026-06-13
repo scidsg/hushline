@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Conversation{% endblock %}
+{% block body_class %}conversation-body{% endblock %}
+{% block main_class %}conversation-main{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block content %}
+<div class="conversation-page">
+  <div class="conversation-header">
+    <div class="conversation-identity">
+      <a class="conversation-back-link" href="{{ url_for('inbox') }}">Back to Inbox</a>
+      <h1>{{ conversation_name }}</h1>
+      {% if conversation_username %}
+        <a
+          class="conversation-profile-link"
+          href="{{ url_for('profile', username=conversation_username) }}"
+        >
+          @{{ conversation_username }}
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% set append_message_url = url_for('append_conversation_message', conversation_id=conversation.id) %}
+  {% set presence_url = url_for('conversation_presence', conversation_id=conversation.id) %}
+  <section
+    id="conversation-chat"
+    class="conversation-chat"
+    data-message-url="{{ append_message_url }}"
+    data-presence-url="{{ presence_url }}"
+    data-presence-interval-ms="{{ conversation_presence_interval_ms }}"
+    data-poll-interval-ms="5000"
+    data-csrf-token="{{ global_csrf_token }}"
+    data-can-compose="{{ 'true' if can_compose else 'false' }}"
+    data-participant-id="{{ participant.id }}"
+  >
+    <div id="conversation-key-locked" class="conversation-unlock-panel" role="status" hidden>
+      <div>
+        <h2>Secure chat unavailable</h2>
+        <p>
+          This conversation needs your browser chat key before messages can be read.
+        </p>
+      </div>
+      <p id="conversation-chat-status" class="meta" role="status">
+        Messages are encrypted until your browser chat key unlocks.
+      </p>
+    </div>
+
+    <script id="conversationParticipantPublicKeys" type="application/json">
+      {{ participant_public_keys | tojson }}
+    </script>
+    <script id="conversationMessageCopies" type="application/json">
+      {{ message_copy_payloads | tojson }}
+    </script>
+
+    <article class="conversation-thread" aria-live="polite" aria-label="Conversation messages">
+      {% for conversation_message, encrypted_copy in message_copies %}
+        <div
+          class="conversation-message {{ 'is-own-message' if conversation_message.sender_participant_id == participant.id else 'is-other-message' }}"
+          data-conversation-message-id="{{ conversation_message.id }}"
+        >
+          <time datetime="{{ conversation_message.created_at.isoformat() }}">
+            {{ conversation_message.created_at.strftime("%b %-d, %Y") }}
+          </time>
+          {% if encrypted_copy %}
+            <p class="conversation-message-body">Encrypted message. Waiting for browser chat key.</p>
+          {% else %}
+            <p class="conversation-message-body unavailable">
+              No encrypted copy is available for your account.
+            </p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </article>
+
+    <span
+      class="conversation-secure-badge badge"
+      role="img"
+      aria-label="End-to-end encrypted"
+      hidden
+      >🔒 End-to-end encrypted</span
+    >
+
+    <noscript>
+      <div class="conversation-noscript" role="status">
+        JavaScript is required for end-to-end encrypted chat. There is no
+        server-side chat fallback for conversations.
+      </div>
+    </noscript>
+
+    <form id="conversation-compose-form" class="conversation-composer">
+      {{ conversation_message_form.hidden_tag() }}
+      <label class="visually-hidden" for="conversation-compose-body">Message</label>
+      <textarea
+        id="conversation-compose-body"
+        name="message"
+        rows="1"
+        maxlength="50000"
+        disabled="disabled"
+        placeholder="Message"
+        required
+      ></textarea>
+      {{ conversation_message_form.submit(
+        id="conversation-compose-submit",
+        disabled="disabled",
+        value="Send"
+      ) }}
+      {% if not can_compose %}
+        <p class="meta">
+          Replies are unavailable until every participant has an active Hush Line chat key.
+        </p>
+      {% endif %}
+    </form>
+  </section>
+</div>
+{% endblock %}

@@ -13,6 +13,9 @@
       media="(prefers-color-scheme: light)"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    {% if global_csrf_token %}
+      <meta name="csrf-token" content="{{ global_csrf_token }}" />
+    {% endif %}
     <meta property="og:title" content="{{ brand_name }}" />
     <meta
       property="og:description"
@@ -153,6 +156,7 @@
     />
     <script src="{{ url_for('static', filename='no-js.js') }}"></script>
     {% block scripts %}{% endblock %}
+    <script defer src="{{ url_for('static', filename='js/chat-key-lifecycle.js') }}"></script>
     <script defer src="{{ url_for('static', filename='js/time-shadows.js') }}"></script>
     <script defer src="{{ url_for('static', filename='js/global.js') }}"></script>
     <style>
@@ -169,7 +173,10 @@
     </style>
   </head>
 
-  <body class="{% block body_class %}{% endblock %}">
+  <body
+    class="{% block body_class %}{% endblock %}"
+    data-authenticated="{{ 'true' if 'user_id' in session and session.get('is_authenticated', False) else 'false' }}"
+  >
     {% if splash_screen_enabled %}
       <div
         id="first-load-splash"
@@ -320,34 +327,36 @@
       </div>
     </main>
 
-    <footer>
-      <p>
-        <a
-          href="https://github.com/scidsg/hushline/blob/main/docs/PRIVACY.md"
-          target="_blank"
-          rel="noopener noreferrer"
-          >Privacy</a
-        >
-        |
-        <a
-          href="https://github.com/scidsg/hushline/blob/main/docs/TERMS.md"
-          target="_blank"
-          rel="noopener noreferrer"
-          >Terms</a
-        >
-        |
-        <a
-          href="https://github.com/scidsg/hushline"
-          target="_blank"
-          rel="noopener noreferrer"
-          >v{{ hushline_version }}</a
-        > 
-        {% if brand_name != "🤫 Hush Line" %}
-          | 
-          <a href="https://hushline.app" class="powered-by">⚡️ Powered by Hush Line</a>
-        {% endif %}
-      </p>
-    </footer>
+    {% block footer %}
+      <footer>
+        <p>
+          <a
+            href="https://github.com/scidsg/hushline/blob/main/docs/PRIVACY.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Privacy</a
+          >
+          |
+          <a
+            href="https://github.com/scidsg/hushline/blob/main/docs/TERMS.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Terms</a
+          >
+          |
+          <a
+            href="https://github.com/scidsg/hushline"
+            target="_blank"
+            rel="noopener noreferrer"
+            >v{{ hushline_version }}</a
+          > 
+          {% if brand_name != "🤫 Hush Line" %}
+            | 
+            <a href="https://hushline.app" class="powered-by">⚡️ Powered by Hush Line</a>
+          {% endif %}
+        </p>
+      </footer>
+    {% endblock %}
 
     {% if guidance_enabled %}
       <input type="hidden" id="guidance-exit-button-link" value="{{ guidance_exit_button_link }}" />
