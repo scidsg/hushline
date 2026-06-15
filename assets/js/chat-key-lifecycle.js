@@ -1018,6 +1018,7 @@
 
     const shouldScroll = scroll || conversationThreadIsNearBottom();
     const response = await fetch(window.location.href, {
+      cache: "no-store",
       credentials: "same-origin",
       headers: {
         Accept: "text/html",
@@ -1324,6 +1325,7 @@
       }
       if (await restoreUnlockedChatKey(chatKey)) {
         await decryptConversationMessages();
+        await refreshConversationMessages({ force: true });
         setConversationComposeEnabled(root.dataset.canCompose === "true");
         setConversationUnlockVisible(false);
         setConversationSecureBadgeVisible(true);
@@ -1334,6 +1336,7 @@
       setConversationStatus("Checking for an unlocked chat session...");
       if (await restoreUnlockedChatKeyFromOtherTab(chatKey)) {
         await decryptConversationMessages();
+        await refreshConversationMessages({ force: true });
         setConversationComposeEnabled(root.dataset.canCompose === "true");
         setConversationUnlockVisible(false);
         setConversationSecureBadgeVisible(true);
