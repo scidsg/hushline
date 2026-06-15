@@ -2309,7 +2309,6 @@ a.logoutLink {
     var(--container-padding),
     calc((100vw - var(--conversation-content-max-width)) / 2 + var(--container-padding))
   );
-  --conversation-header-offset: 6.75rem;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -2380,8 +2379,24 @@ body.conversation-body {
   z-index: 4;
   height: var(--conversation-header-offset);
   border-bottom: 1px solid var(--color-border);
-  padding: 1rem var(--conversation-content-padding-inline) 1.25rem;
+  padding: 1rem;
   background: inherit;
+}
+
+@media (prefers-color-scheme: light) {
+  .conversation-header {
+    background: var(--color-white-transparent);
+    backdrop-filter: blur(1rem);
+    -webkit-backdrop-filter: blur(1rem);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .conversation-header {
+    background: var(--color-dark-bg-alt-transparent);
+    backdrop-filter: blur(1rem);
+    -webkit-backdrop-filter: blur(1rem);
+  }
 }
 
 .conversation-identity {
@@ -2478,6 +2493,7 @@ body.conversation-body {
   position: relative;
   scroll-padding-bottom: 6rem;
   z-index: 1;
+  padding-top: 8rem;
 }
 
 .conversation-message {
@@ -2669,8 +2685,8 @@ body.conversation-body {
   }
 
   .conversation-message.is-own-message .conversation-message-body {
-    border-color: var(--color-brand-dark-mid-saturation);
-    background: var(--color-brand-dark-mid-saturation);
+    border-color: var(--color-brand-dark-min-saturation);
+    background: var(--color-brand-dark-min-saturation);
     color: var(--color-dark-bg);
   }
 
