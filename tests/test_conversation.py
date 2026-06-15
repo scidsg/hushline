@@ -316,7 +316,7 @@ def test_conversation_view_hides_message_metadata_from_page_payload(
         and "sender_participant_id" not in message_copy_payload
         for message_copy_payload in message_copy_payloads
     )
-    assert f'{message_created_at.isoformat()}' not in response.text
+    assert f"{message_created_at.isoformat()}" not in response.text
     assert '<time datetime="' not in response.text
 
 
@@ -586,7 +586,7 @@ def test_append_conversation_message_suppresses_notification_for_active_recipien
 
 
 @patch("hushline.routes.message.send_email_to_user_recipients")
-def test_append_conversation_message_suppresses_notification_for_active_recipient_in_any_conversation(
+def test_append_conversation_message_suppresses_notification_for_active_recipients(
     mock_send_email_to_user_recipients: MagicMock,
     client: FlaskClient,
     user: User,

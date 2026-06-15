@@ -5,3 +5,6 @@ build
 coverage
 .pytest_cache
 hushline/data/newsroom_directory_listings.json
+
+# Generated screenshot artifacts are binary and should be skipped by prettier checks
+docs/screenshots/**/*.png

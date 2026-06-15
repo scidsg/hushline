@@ -128,12 +128,9 @@ def _conversation_participant_is_active(
     return current_time - active_at <= _conversation_activity_timeout()
 
 
-def _user_has_active_conversation_session(
-    user: User, now: datetime | None = None
-) -> bool:
+def _user_has_active_conversation_session(user: User, now: datetime | None = None) -> bool:
     return any(
-        participant.user_id == user.id
-        and _conversation_participant_is_active(participant, now=now)
+        participant.user_id == user.id and _conversation_participant_is_active(participant, now=now)
         for participant in user.conversation_participants
     )
 
