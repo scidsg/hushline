@@ -958,13 +958,14 @@
       ) {
         return {
           content: parsed.content,
-          createdAt: typeof parsed.created_at === "string" ? parsed.created_at : null,
+          createdAt:
+            typeof parsed.created_at === "string" ? parsed.created_at : null,
         };
       }
     } catch (error) {
       // Legacy payloads still contain raw plaintext.
     }
-    return {content: plaintext, createdAt: null};
+    return { content: plaintext, createdAt: null };
   }
 
   function formatConversationMessageTimestamp(createdAt) {
@@ -1021,6 +1022,7 @@
 
     const shouldScroll = scroll || conversationThreadIsNearBottom();
     const response = await fetch(window.location.href, {
+      cache: "no-store",
       credentials: "same-origin",
       headers: {
         Accept: "text/html",
@@ -1083,14 +1085,16 @@
       }
 
       try {
-        const senderParticipantId =
-          conversationMessageSenderIdFromPayload(copy.encrypted_payload);
+        const senderParticipantId = conversationMessageSenderIdFromPayload(
+          copy.encrypted_payload,
+        );
         const senderKey = participantPublicKeyById(senderParticipantId);
         const plaintext = await decryptChatCiphertext(
           copy.encrypted_payload,
           senderKey?.public_signing_key || null,
         );
-        const messagePayload = conversationMessagePayloadFromPlaintext(plaintext);
+        const messagePayload =
+          conversationMessagePayloadFromPlaintext(plaintext);
         messageElement.textContent = messagePayload.content;
         if (messageTimeElement) {
           messageTimeElement.setAttribute(
@@ -1157,7 +1161,7 @@
       const timestamp = new Date().toISOString();
       const context = {
         purpose: "hushline.chat.message",
-        conversation_id: root.dataset.conversationId || "",
+        conversation_public_id: root.dataset.conversationPublicId || "",
         sender_participant_id: currentConversationParticipantId(),
       };
       const plaintextPayload = JSON.stringify({
@@ -1325,6 +1329,7 @@
       }
       if (await restoreUnlockedChatKey(chatKey)) {
         await decryptConversationMessages();
+        await refreshConversationMessages({ force: true });
         setConversationComposeEnabled(root.dataset.canCompose === "true");
         setConversationUnlockVisible(false);
         setConversationSecureBadgeVisible(true);
@@ -1335,6 +1340,7 @@
       setConversationStatus("Checking for an unlocked chat session...");
       if (await restoreUnlockedChatKeyFromOtherTab(chatKey)) {
         await decryptConversationMessages();
+        await refreshConversationMessages({ force: true });
         setConversationComposeEnabled(root.dataset.canCompose === "true");
         setConversationUnlockVisible(false);
         setConversationSecureBadgeVisible(true);

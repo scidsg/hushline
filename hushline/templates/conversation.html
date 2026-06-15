@@ -22,8 +22,8 @@
     </div>
   </div>
 
-  {% set append_message_url = url_for('append_conversation_message', conversation_id=conversation.id) %}
-  {% set presence_url = url_for('conversation_presence', conversation_id=conversation.id) %}
+  {% set append_message_url = url_for('append_conversation_message', public_id=conversation.public_id) %}
+  {% set presence_url = url_for('conversation_presence', public_id=conversation.public_id) %}
   <section
     id="conversation-chat"
     class="conversation-chat"
@@ -33,7 +33,7 @@
     data-poll-interval-ms="5000"
     data-csrf-token="{{ global_csrf_token }}"
     data-can-compose="{{ 'true' if can_compose else 'false' }}"
-    data-conversation-id="{{ conversation.id }}"
+    data-conversation-public-id="{{ conversation.public_id }}"
     data-participant-id="{{ participant.id }}"
   >
     <div id="conversation-key-locked" class="conversation-unlock-panel" role="status" hidden>

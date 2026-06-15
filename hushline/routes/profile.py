@@ -718,7 +718,7 @@ def register_profile_routes(app: Flask) -> None:
                 flash("👍 Message submitted successfully.")
                 if conversation is not None:
                     current_app.logger.debug("Message sent and now redirecting to conversation")
-                    return redirect(url_for("conversation", conversation_id=conversation.id))
+                    return redirect(url_for("conversation", public_id=conversation.public_id))
                 session["reply_slug"] = message.reply_slug
                 current_app.logger.debug("Message sent and now redirecting")
                 return redirect(url_for("submission_success"))

@@ -72,11 +72,22 @@ def _ciphertext(label: str) -> str:
 
 def _bound_ciphertext(
     *,
-    conversation_id: int,
+    conversation_public_id: str | None = None,
+    conversation_id: int | None = None,
     sender_participant_id: int,
     recipient_participant_id: int,
     label: str,
 ) -> str:
+    context = {
+        "purpose": "hushline.chat.message",
+        "sender_participant_id": str(sender_participant_id),
+        "recipient_participant_id": str(recipient_participant_id),
+    }
+    if conversation_public_id is not None:
+        context["conversation_public_id"] = conversation_public_id
+    else:
+        context["conversation_id"] = str(conversation_id)
+
     return json.dumps(
         {
             "v": 2,
@@ -84,12 +95,7 @@ def _bound_ciphertext(
             "ephemeral_public_key": '{"kty":"EC","crv":"P-256","x":"ephemeral","y":"key"}',
             "iv": f"iv-{label}",
             "ciphertext": f"ciphertext-{label}",
-            "context": {
-                "purpose": "hushline.chat.message",
-                "conversation_id": str(conversation_id),
-                "sender_participant_id": str(sender_participant_id),
-                "recipient_participant_id": str(recipient_participant_id),
-            },
+            "context": context,
             "signature": f"signature-{label}",
         }
     )
@@ -142,10 +148,13 @@ def _bound_copies_for(
     conversation: Conversation,
     sender_participant: ConversationParticipant,
     label: str,
+    *,
+    use_legacy_conversation_id: bool = False,
 ) -> dict[str, str]:
     return {
         str(participant.id): _bound_ciphertext(
-            conversation_id=conversation.id,
+            conversation_id=conversation.id if use_legacy_conversation_id else None,
+            conversation_public_id=None if use_legacy_conversation_id else conversation.public_id,
             sender_participant_id=sender_participant.id,
             recipient_participant_id=participant.id,
             label=f"{label}-{participant.id}",
@@ -195,24 +204,24 @@ def test_conversation_route_authorizes_only_participants(
     conversation = _make_conversation(user, user2)
 
     _authenticate_as(client, user)
-    sender_response = client.get(url_for("conversation", conversation_id=conversation.id))
+    sender_response = client.get(url_for("conversation", public_id=conversation.public_id))
     assert sender_response.status_code == 200
     assert "Secure chat unavailable" in sender_response.text
     assert "conversation-chat-password" not in sender_response.text
 
     _authenticate_as(client, user2)
-    recipient_response = client.get(url_for("conversation", conversation_id=conversation.id))
+    recipient_response = client.get(url_for("conversation", public_id=conversation.public_id))
     assert recipient_response.status_code == 200
     assert "Secure chat unavailable" in recipient_response.text
     assert "conversation-chat-password" not in recipient_response.text
 
     _authenticate_as(client, admin_user)
-    unrelated_response = client.get(url_for("conversation", conversation_id=conversation.id))
+    unrelated_response = client.get(url_for("conversation", public_id=conversation.public_id))
     assert unrelated_response.status_code == 404
 
     with client.session_transaction() as session:
         session.clear()
-    unauthenticated_response = client.get(url_for("conversation", conversation_id=conversation.id))
+    unauthenticated_response = client.get(url_for("conversation", public_id=conversation.public_id))
     assert unauthenticated_response.status_code == 302
     assert unauthenticated_response.headers["Location"].endswith(url_for("login"))
 
@@ -225,7 +234,7 @@ def test_conversation_header_names_other_participant(
     conversation = _make_conversation(user, user2)
 
     _authenticate_as(client, user2)
-    recipient_response = client.get(url_for("conversation", conversation_id=conversation.id))
+    recipient_response = client.get(url_for("conversation", public_id=conversation.public_id))
 
     assert recipient_response.status_code == 200
     assert f"<h1>{user.primary_username.username}</h1>" in recipient_response.text
@@ -248,7 +257,7 @@ def test_conversation_view_shows_locked_chat_key_state(
     )
     _authenticate_as(client, user)
 
-    response = client.get(url_for("conversation", conversation_id=conversation.id))
+    response = client.get(url_for("conversation", public_id=conversation.public_id))
 
     assert response.status_code == 200
     assert 'class="conversation-thread"' in response.text
@@ -272,7 +281,7 @@ def test_conversation_view_shows_locked_chat_key_state(
     assert "Unlock Chat" not in response.text
     assert "Proton" not in response.text
     assert "PGP" not in response.text
-    assert url_for("conversation_presence", conversation_id=conversation.id) in response.text
+    assert url_for("conversation_presence", public_id=conversation.public_id) in response.text
 
 
 def test_conversation_view_hides_message_metadata_from_page_payload(
@@ -292,7 +301,7 @@ def test_conversation_view_hides_message_metadata_from_page_payload(
 
     _authenticate_as(client, user)
 
-    response = client.get(url_for("conversation", conversation_id=conversation.id))
+    response = client.get(url_for("conversation", public_id=conversation.public_id))
 
     assert response.status_code == 200
     payload_match = re.search(
@@ -329,7 +338,7 @@ def test_conversation_view_marks_participant_active(
     participant = _participant_for(conversation, user)
     _authenticate_as(client, user)
 
-    response = client.get(url_for("conversation", conversation_id=conversation.id))
+    response = client.get(url_for("conversation", public_id=conversation.public_id))
 
     assert response.status_code == 200
     db.session.refresh(participant)
@@ -346,7 +355,7 @@ def test_conversation_presence_requires_participant(
     participant = _participant_for(conversation, user)
     _authenticate_as(client, admin_user)
 
-    response = client.post(url_for("conversation_presence", conversation_id=conversation.id))
+    response = client.post(url_for("conversation_presence", public_id=conversation.public_id))
 
     assert response.status_code == 404
     db.session.refresh(participant)
@@ -362,7 +371,7 @@ def test_conversation_presence_heartbeat_marks_participant_active(
     participant = _participant_for(conversation, user)
     _authenticate_as(client, user)
 
-    response = client.post(url_for("conversation_presence", conversation_id=conversation.id))
+    response = client.post(url_for("conversation_presence", public_id=conversation.public_id))
 
     assert response.status_code == 200
     db.session.refresh(participant)
@@ -381,12 +390,12 @@ def test_conversation_presence_accepts_rendered_csrf_token(
     prior_setting = app.config.get("WTF_CSRF_ENABLED")
     app.config["WTF_CSRF_ENABLED"] = True
     try:
-        page_response = client.get(url_for("conversation", conversation_id=conversation.id))
+        page_response = client.get(url_for("conversation", public_id=conversation.public_id))
         token_match = re.search(r'data-csrf-token="([^"]+)"', page_response.text)
         assert token_match is not None
 
         response = client.post(
-            url_for("conversation_presence", conversation_id=conversation.id),
+            url_for("conversation_presence", public_id=conversation.public_id),
             headers={"X-CSRFToken": token_match.group(1)},
         )
     finally:
@@ -408,7 +417,7 @@ def test_conversation_presence_requires_csrf_when_enabled(
     prior_setting = app.config.get("WTF_CSRF_ENABLED")
     app.config["WTF_CSRF_ENABLED"] = True
     try:
-        response = client.post(url_for("conversation_presence", conversation_id=conversation.id))
+        response = client.post(url_for("conversation_presence", public_id=conversation.public_id))
     finally:
         app.config["WTF_CSRF_ENABLED"] = prior_setting
 
@@ -428,7 +437,7 @@ def test_participant_can_append_encrypted_conversation_message(
     _authenticate_as(client, user)
 
     response = client.post(
-        url_for("append_conversation_message", conversation_id=conversation.id),
+        url_for("append_conversation_message", public_id=conversation.public_id),
         json={"encrypted_copies": _copies_for(conversation, "follow-up")},
     )
 
@@ -463,7 +472,7 @@ def test_append_conversation_message_rejects_mismatched_bound_context(
     _authenticate_as(client, user)
 
     response = client.post(
-        url_for("append_conversation_message", conversation_id=conversation.id),
+        url_for("append_conversation_message", public_id=conversation.public_id),
         json={"encrypted_copies": encrypted_copies},
     )
 
@@ -491,12 +500,46 @@ def test_participant_can_append_context_bound_conversation_message(
     _authenticate_as(client, user)
 
     response = client.post(
-        url_for("append_conversation_message", conversation_id=conversation.id),
+        url_for("append_conversation_message", public_id=conversation.public_id),
         json={
             "encrypted_copies": _bound_copies_for(
                 conversation,
                 sender_participant,
                 "bound-follow-up",
+            )
+        },
+    )
+
+    assert response.status_code == 201
+    assert (
+        db.session.scalar(
+            db.select(db.func.count())
+            .select_from(ConversationMessage)
+            .where(ConversationMessage.conversation_id == conversation.id)
+        )
+        == 2
+    )
+
+
+def test_participant_can_append_legacy_context_bound_conversation_message(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    conversation = _make_conversation(user, user2)
+    sender_participant = _participant_for(conversation, user)
+    _authenticate_as(client, user)
+
+    response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={
+            "encrypted_copies": _bound_copies_for(
+                conversation,
+                sender_participant,
+                "legacy-bound-follow-up",
+                use_legacy_conversation_id=True,
             )
         },
     )
@@ -537,7 +580,7 @@ def test_append_conversation_message_sends_generic_notification_to_other_partici
     _authenticate_as(client, user)
 
     response = client.post(
-        url_for("append_conversation_message", conversation_id=conversation.id),
+        url_for("append_conversation_message", public_id=conversation.public_id),
         json={"encrypted_copies": _copies_for(conversation, "generic-notification")},
     )
 
@@ -577,7 +620,7 @@ def test_append_conversation_message_suppresses_notification_for_active_recipien
     _authenticate_as(client, user)
 
     response = client.post(
-        url_for("append_conversation_message", conversation_id=conversation.id),
+        url_for("append_conversation_message", public_id=conversation.public_id),
         json={"encrypted_copies": _copies_for(conversation, "active-recipient")},
     )
 
@@ -608,7 +651,7 @@ def test_append_conversation_message_suppresses_notification_for_active_recipien
     _authenticate_as(client, user)
 
     response = client.post(
-        url_for("append_conversation_message", conversation_id=target_conversation.id),
+        url_for("append_conversation_message", public_id=target_conversation.public_id),
         json={"encrypted_copies": _copies_for(target_conversation, "active-recipient")},
     )
 
@@ -638,7 +681,7 @@ def test_append_conversation_message_notifies_after_stale_recipient_activity(
     _authenticate_as(client, user)
 
     response = client.post(
-        url_for("append_conversation_message", conversation_id=conversation.id),
+        url_for("append_conversation_message", public_id=conversation.public_id),
         json={"encrypted_copies": _copies_for(conversation, "stale-recipient")},
     )
 
@@ -666,7 +709,7 @@ def test_append_conversation_message_does_not_notify_sender(
     _authenticate_as(client, user)
 
     response = client.post(
-        url_for("append_conversation_message", conversation_id=conversation.id),
+        url_for("append_conversation_message", public_id=conversation.public_id),
         json={"encrypted_copies": _copies_for(conversation, "sender-notification")},
     )
 
@@ -696,7 +739,7 @@ def test_append_conversation_message_include_content_mode_still_sends_safe_gener
     encrypted_copies = _copies_for(conversation, "include-content")
 
     response = client.post(
-        url_for("append_conversation_message", conversation_id=conversation.id),
+        url_for("append_conversation_message", public_id=conversation.public_id),
         json={"encrypted_copies": encrypted_copies},
     )
 
@@ -738,7 +781,7 @@ def test_append_conversation_message_encrypts_generic_body_for_full_body_mode(
     mock_encrypt_message.return_value = encrypted_body
 
     response = client.post(
-        url_for("append_conversation_message", conversation_id=conversation.id),
+        url_for("append_conversation_message", public_id=conversation.public_id),
         json={"encrypted_copies": _copies_for(conversation, "full-body")},
     )
 
@@ -774,7 +817,7 @@ def test_append_conversation_message_notification_failure_does_not_rollback_mess
     mock_send_email_to_user_recipients.side_effect = RuntimeError("smtp unavailable")
 
     response = client.post(
-        url_for("append_conversation_message", conversation_id=conversation.id),
+        url_for("append_conversation_message", public_id=conversation.public_id),
         json={"encrypted_copies": _copies_for(conversation, "failed-notification")},
     )
 
@@ -800,7 +843,7 @@ def test_append_conversation_message_rejects_invalid_payload_without_leaking_con
     leaked_content = "plaintext disclosure"
 
     response = client.post(
-        url_for("append_conversation_message", conversation_id=conversation.id),
+        url_for("append_conversation_message", public_id=conversation.public_id),
         json={
             "encrypted_copies": {
                 str(participant.id): leaked_content for participant in conversation.participants
@@ -829,7 +872,7 @@ def test_append_conversation_message_requires_encrypted_copy_for_every_participa
     _authenticate_as(client, user)
 
     response = client.post(
-        url_for("append_conversation_message", conversation_id=conversation.id),
+        url_for("append_conversation_message", public_id=conversation.public_id),
         json={"encrypted_copies": encrypted_copies},
     )
 
@@ -853,7 +896,7 @@ def test_append_conversation_message_ignores_extra_plaintext_fields(
     _authenticate_as(client, user)
 
     response = client.post(
-        url_for("append_conversation_message", conversation_id=conversation.id),
+        url_for("append_conversation_message", public_id=conversation.public_id),
         json={
             "body": plaintext,
             "message": plaintext,
@@ -875,7 +918,7 @@ def test_append_conversation_message_ignores_extra_plaintext_fields(
         assert "ECDH-P256-AES-GCM" in encrypted_copy.encrypted_payload
         assert plaintext not in encrypted_copy.encrypted_payload
 
-    thread_response = client.get(url_for("conversation", conversation_id=conversation.id))
+    thread_response = client.get(url_for("conversation", public_id=conversation.public_id))
     assert thread_response.status_code == 200
     assert plaintext not in thread_response.text
 
@@ -894,7 +937,7 @@ def test_append_conversation_message_requires_csrf_when_enabled(
     app.config["WTF_CSRF_ENABLED"] = True
     try:
         response = client.post(
-            url_for("append_conversation_message", conversation_id=conversation.id),
+            url_for("append_conversation_message", public_id=conversation.public_id),
             json={"encrypted_copies": _copies_for(conversation, "csrf")},
         )
     finally:
@@ -918,7 +961,7 @@ def test_append_conversation_message_rejects_non_participant(
     _authenticate_as(client, admin_user)
 
     response = client.post(
-        url_for("append_conversation_message", conversation_id=conversation.id),
+        url_for("append_conversation_message", public_id=conversation.public_id),
         json={"encrypted_copies": _copies_for(conversation, "unrelated")},
     )
 
@@ -937,7 +980,7 @@ def test_append_conversation_message_redirects_unauthenticated_user(
     conversation = _make_conversation(user, user2)
 
     response = client.post(
-        url_for("append_conversation_message", conversation_id=conversation.id),
+        url_for("append_conversation_message", public_id=conversation.public_id),
         json={"encrypted_copies": _copies_for(conversation, "unauthenticated")},
     )
 
@@ -972,7 +1015,7 @@ def test_recipient_unread_indicator_clears_when_locked_thread_loads(
     assert unread_response.status_code == 200
     assert 'aria-label="Unread conversation"' in unread_response.text
 
-    thread_response = client.get(url_for("conversation", conversation_id=conversation.id))
+    thread_response = client.get(url_for("conversation", public_id=conversation.public_id))
 
     assert thread_response.status_code == 200
     assert "Messages are encrypted until your browser chat key unlocks." in thread_response.text
@@ -1008,7 +1051,7 @@ def test_background_thread_refresh_does_not_clear_inbox_unread_indicator(
     _authenticate_as(client, user2)
 
     refresh_response = client.get(
-        url_for("conversation", conversation_id=conversation.id),
+        url_for("conversation", public_id=conversation.public_id),
         headers={"X-Hushline-Conversation-Refresh": "true"},
     )
 
@@ -1021,7 +1064,7 @@ def test_background_thread_refresh_does_not_clear_inbox_unread_indicator(
     assert inbox_response.status_code == 200
     assert 'aria-label="Unread conversation"' in inbox_response.text
 
-    thread_response = client.get(url_for("conversation", conversation_id=conversation.id))
+    thread_response = client.get(url_for("conversation", public_id=conversation.public_id))
     assert thread_response.status_code == 200
     db.session.refresh(recipient_participant)
     assert recipient_participant.last_read_message_id == latest_message.id

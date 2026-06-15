@@ -47,7 +47,7 @@
         {% for item in inbox_items %}
           {% if item.kind == "conversation" and item.conversation %}
             {% set conversation_item = item.conversation %}
-            {% set title_id = "conversation-title-" ~ conversation_item.conversation.id %}
+            {% set title_id = "conversation-title-" ~ conversation_item.conversation.public_id %}
             {% set conversation_name = conversation_item.other_participant_names | join(", ")
               if conversation_item.other_participant_names else "Conversation" %}
             {% set avatar_initial = conversation_name | replace("@", "") | trim %}
@@ -81,7 +81,7 @@
                 <p class="inbox-message-link">
                   <a
                     class="stretched-link"
-                    href="{{ url_for('conversation', conversation_id=conversation_item.conversation.id) }}"
+                    href="{{ url_for('conversation', public_id=conversation_item.conversation.public_id) }}"
                   >
                     Go to conversation
                   </a>

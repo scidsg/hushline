@@ -211,7 +211,11 @@ def test_conversation_presence_uses_root_csrf_token() -> None:
     template = (ROOT / "hushline/templates/conversation.html").read_text(encoding="utf-8")
 
     assert 'data-csrf-token="{{ global_csrf_token }}"' in template
+    assert 'data-conversation-public-id="{{ conversation.public_id }}"' in template
+    assert "data-conversation-id=" not in template
     assert 'const root = document.getElementById("conversation-chat");' in js
+    assert 'conversation_public_id: root.dataset.conversationPublicId || ""' in js
+    assert "conversation_id: root.dataset.conversationId" not in js
     assert "root?.dataset.csrfToken" in js
     assert "csrfTokenFromDocument()" in js
 
@@ -401,6 +405,8 @@ def test_conversation_replies_and_polling_update_thread_in_place() -> None:
     static_js = (ROOT / "hushline/static/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
 
     assert "refreshConversationMessages({ force: true, scroll: true })" in js
+    assert 'cache: "no-store"' in js
+    assert "await refreshConversationMessages({ force: true });" in js
     assert "bindConversationPolling(root);" in js
     assert "window.setInterval(refreshIfVisible, intervalMs);" in js
     assert "thread.replaceChildren(" in js
@@ -411,6 +417,8 @@ def test_conversation_replies_and_polling_update_thread_in_place() -> None:
     assert "top: thread.scrollHeight" in js
 
     assert "refreshConversationMessages({ force: true, scroll: true })" in static_js
+    assert 'cache: "no-store"' in static_js
+    assert "await refreshConversationMessages({ force: true });" in static_js
     assert "bindConversationPolling(root);" in static_js
     assert "window.setInterval(refreshIfVisible, intervalMs);" in static_js
     assert "thread.replaceChildren(" in static_js

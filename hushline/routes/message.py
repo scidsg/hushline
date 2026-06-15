@@ -196,7 +196,7 @@ def _chat_ciphertext_context(value: str) -> dict[str, Any] | None:
 def _chat_ciphertext_context_is_bound(
     encrypted_copies: dict[str, object],
     *,
-    conversation_id: int,
+    conversation: Conversation,
     sender_participant_id: int,
 ) -> bool:
     for recipient_participant_id, encrypted_payload in encrypted_copies.items():
@@ -207,7 +207,11 @@ def _chat_ciphertext_context_is_bound(
             continue
         if context.get("purpose") != "hushline.chat.message":
             return False
-        if str(context.get("conversation_id")) != str(conversation_id):
+        conversation_public_id = context.get("conversation_public_id")
+        if conversation_public_id is not None:
+            if str(conversation_public_id) != conversation.public_id:
+                return False
+        elif str(context.get("conversation_id")) != str(conversation.id):
             return False
         if str(context.get("sender_participant_id")) != str(sender_participant_id):
             return False
@@ -287,15 +291,15 @@ def register_message_routes(app: Flask) -> None:
             resend_message_form=resend_message_form,
         )
 
-    @app.route("/conversation/<int:conversation_id>")
+    @app.route("/conversation/<public_id>")
     @authentication_required
-    def conversation(conversation_id: int) -> str:
+    def conversation(public_id: str) -> str:
         user = db.session.get(User, session["user_id"])
         if not user:
             abort(404)
 
         thread = db.session.scalars(
-            Conversation.for_user_id(user.id).where(Conversation.id == conversation_id)
+            Conversation.for_user_id(user.id).where(Conversation.public_id == public_id)
         ).one_or_none()
         if not thread:
             abort(404)
@@ -404,15 +408,15 @@ def register_message_routes(app: Flask) -> None:
             conversation_message_form=conversation_message_form,
         )
 
-    @app.route("/conversation/<int:conversation_id>/presence", methods=["POST"])
+    @app.route("/conversation/<public_id>/presence", methods=["POST"])
     @authentication_required
-    def conversation_presence(conversation_id: int) -> tuple[Response, int]:
+    def conversation_presence(public_id: str) -> tuple[Response, int]:
         user = db.session.get(User, session["user_id"])
         if not user:
             abort(404)
 
         thread = db.session.scalars(
-            Conversation.for_user_id(user.id).where(Conversation.id == conversation_id)
+            Conversation.for_user_id(user.id).where(Conversation.public_id == public_id)
         ).one_or_none()
         if not thread:
             abort(404)
@@ -429,15 +433,15 @@ def register_message_routes(app: Flask) -> None:
         db.session.commit()
         return jsonify({"ok": True}), 200
 
-    @app.route("/conversation/<int:conversation_id>/messages", methods=["POST"])
+    @app.route("/conversation/<public_id>/messages", methods=["POST"])
     @authentication_required
-    def append_conversation_message(conversation_id: int) -> tuple[Response, int]:
+    def append_conversation_message(public_id: str) -> tuple[Response, int]:
         user = db.session.get(User, session["user_id"])
         if not user:
             abort(404)
 
         thread = db.session.scalars(
-            Conversation.for_user_id(user.id).where(Conversation.id == conversation_id)
+            Conversation.for_user_id(user.id).where(Conversation.public_id == public_id)
         ).one_or_none()
         if not thread:
             abort(404)
@@ -473,7 +477,7 @@ def register_message_routes(app: Flask) -> None:
             return jsonify({"error": "Invalid encrypted message payload."}), 400
         if not _chat_ciphertext_context_is_bound(
             encrypted_copies,
-            conversation_id=thread.id,
+            conversation=thread,
             sender_participant_id=participant.id,
         ):
             return jsonify({"error": "Invalid encrypted message payload."}), 400

@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 from sqlalchemy import Index, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -20,6 +21,13 @@ class Conversation(Model):
     __tablename__ = "conversations"
 
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
+    public_id: Mapped[str] = mapped_column(
+        db.String(36),
+        unique=True,
+        index=True,
+        nullable=False,
+        default=lambda: str(uuid4()),
+    )
     created_at: Mapped[datetime] = mapped_column(
         db.DateTime(timezone=True), server_default=text("NOW()"), nullable=False
     )
