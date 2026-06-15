@@ -262,7 +262,7 @@ def test_conversation_chat_uses_full_width_and_dark_mode_styles() -> None:
     assert "border-radius: 0.325rem;" in composer_block
     assert "border-radius: 999px;" not in composer_block
     assert "white-space: nowrap;" in composer_block
-    assert ".conversation-thread," in mobile_block
+    assert ".conversation-thread {" in mobile_block
     assert ".conversation-composer {" in mobile_block
     assert "padding: 0.625rem;" in mobile_block
 
