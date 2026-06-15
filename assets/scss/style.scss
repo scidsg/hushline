@@ -385,7 +385,7 @@
   input[type="file"]::file-selector-button,
   #add_field,
   #update_field {
-    background-color: var(--color-brand-mid-contrast);
+    background-color: var(--color-brand-min-contrast);
     border: var(--border);
     color: white;
   }
@@ -2585,8 +2585,15 @@ body.conversation-body {
   padding: 0.625rem 0.75rem;
   resize: none;
   overflow-y: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
   line-height: var(--line-height-base);
   border-radius: 0.25rem;
+}
+
+.conversation-composer textarea::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .conversation-composer button,
