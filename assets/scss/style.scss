@@ -2378,7 +2378,7 @@ body.conversation-body {
   width: 100vw;
   box-sizing: border-box;
   z-index: 4;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border-light);
   padding: 1rem;
 }
 
@@ -2642,7 +2642,11 @@ body.conversation-body {
     max-width: 88%;
   }
 
-  .conversation-thread,
+  .conversation-thread {
+    padding: 0.625rem;
+    padding-top: 8rem;
+  }
+
   .conversation-composer {
     padding: 0.625rem;
   }
