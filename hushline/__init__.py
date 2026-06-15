@@ -5,6 +5,7 @@ from http import HTTPStatus
 from typing import Any, Mapping, Optional, Tuple, Union
 
 from flask import Flask, g, render_template, request, session, url_for
+from flask_wtf.csrf import generate_csrf
 from jinja2 import StrictUndefined
 from werkzeug.exceptions import HTTPException, InternalServerError
 from werkzeug.wrappers.response import Response
@@ -269,6 +270,7 @@ def configure_jinja(app: Flask) -> None:
             alias_mode=app.config["ALIAS_MODE"],
             fields_mode=app.config["FIELDS_MODE"],
             directory_verified_tab_enabled=app.config["DIRECTORY_VERIFIED_TAB_ENABLED"],
+            global_csrf_token=generate_csrf(),
             is_onion_service=request.host.lower().endswith(".onion"),
             is_premium_enabled=bool(app.config.get("STRIPE_SECRET_KEY", False)),
             registration_settings_enabled=app.config["REGISTRATION_SETTINGS_ENABLED"],

@@ -7,6 +7,7 @@ const entries = new Object();
 modules = [
   // ours
   "client-side-encryption",
+  "chat-key-lifecycle",
   "diceware-words",
   "directory",
   "directory_verified",

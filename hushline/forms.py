@@ -114,6 +114,10 @@ class ResendMessageForm(FlaskForm):
     submit = SubmitField("Resend to Email", widget=Button())
 
 
+class ConversationMessageForm(FlaskForm):
+    submit = SubmitField("Send Reply", widget=Button())
+
+
 class ValidTemplate:
     def __init__(self, variables: Mapping[str, str]) -> None:
         self._variables = variables

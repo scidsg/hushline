@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -14,6 +15,9 @@ from werkzeug.exceptions import NotFound
 from hushline.db import db
 from hushline.model import (
     AccountCategory,
+    ChatKey,
+    Conversation,
+    ConversationMessageCopy,
     Message,
     NotificationRecipient,
     OrganizationSetting,
@@ -27,6 +31,45 @@ msg_content = "This is a test message."
 suspended_message = "This account is suspended. New messages cannot be sent at this time."
 
 pgp_message_sig = "-----BEGIN PGP MESSAGE-----\n\n"
+chat_message_algorithm = "ECDH-P256-AES-GCM"
+
+
+def _set_pgp_key(user: User) -> None:
+    user.pgp_key = Path("tests/test_pgp_key.txt").read_text()
+
+
+def _add_chat_key(user: User, public_key: str) -> None:
+    db.session.add(
+        ChatKey(
+            user=user,
+            key_version=1,
+            public_key=public_key,
+            encrypted_private_key="wrapped-private-chat-key",
+            kdf_algorithm="PBKDF2-SHA-256",
+            kdf_params={"iterations": 310000, "hash": "SHA-256"},
+            kdf_salt="salt",
+            wrapping_algorithm="AES-GCM",
+        )
+    )
+
+
+def _chat_ciphertext(label: str) -> str:
+    return json.dumps(
+        {
+            "algorithm": chat_message_algorithm,
+            "ephemeral_public_key": '{"kty":"EC","crv":"P-256","x":"ephemeral","y":"key"}',
+            "iv": f"iv-{label}",
+            "ciphertext": f"ciphertext-{label}",
+        }
+    )
+
+
+def _authenticate_as(client: FlaskClient, user: User) -> None:
+    with client.session_transaction() as session:
+        session["user_id"] = user.id
+        session["session_id"] = user.session_id
+        session["username"] = user.primary_username.username
+        session["is_authenticated"] = True
 
 
 def _make_current_paid_super_user(user: User) -> None:
@@ -226,6 +269,335 @@ def test_profile_submit_message(client: FlaskClient, user: User) -> None:
     response = client.get(url_for("message", public_id=message.public_id), follow_redirects=True)
     assert response.status_code == 200
     assert pgp_message_sig in response.text, response.text
+
+
+@pytest.mark.usefixtures("_pgp_user")
+def test_anonymous_profile_submit_message_keeps_reply_success_flow(
+    client: FlaskClient, user: User
+) -> None:
+    response = client.post(
+        url_for("profile", username=user.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            **get_profile_submission_data(client, user.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200, response.text
+    assert "Message submitted successfully." in response.text
+    assert "Reply Address" in response.text
+    assert "/conversation/" not in response.text
+
+    message = db.session.scalars(
+        db.select(Message).filter_by(username_id=user.primary_username.id)
+    ).one()
+    assert message.conversation is None
+    assert db.session.scalars(db.select(Conversation)).all() == []
+    assert db.session.scalars(db.select(ConversationMessageCopy)).all() == []
+
+    _authenticate_as(client, user)
+    inbox_response = client.get(url_for("inbox"))
+    assert inbox_response.status_code == 200
+    assert f'href="{url_for("message", public_id=message.public_id)}"' in inbox_response.text
+    assert 'id="conversation-list-heading"' not in inbox_response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_logged_in_profile_submit_message_creates_conversation_for_distinct_recipient(
+    client: FlaskClient, user: User, user2: User, admin_user: User
+) -> None:
+    _set_pgp_key(user)
+    _set_pgp_key(user2)
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    db.session.commit()
+
+    response = client.post(
+        url_for("profile", username=user2.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            "encrypted_conversation_copies": json.dumps(
+                {
+                    "sender": _chat_ciphertext("sender-initial"),
+                    "recipient": _chat_ciphertext("recipient-initial"),
+                }
+            ),
+            **get_profile_submission_data(client, user2.primary_username.username),
+        },
+        follow_redirects=False,
+    )
+
+    message = db.session.scalars(
+        db.select(Message).filter_by(username_id=user2.primary_username.id)
+    ).one()
+    conversation = message.conversation
+    assert conversation is not None
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(
+        url_for("conversation", conversation_id=conversation.id)
+    )
+    assert {participant.user_id for participant in conversation.participants} == {
+        user.id,
+        user2.id,
+    }
+    participants_by_user_id = {
+        participant.user_id: participant for participant in conversation.participants
+    }
+    assert participants_by_user_id[user.id].has_usable_public_key is True
+    assert participants_by_user_id[user2.id].has_usable_public_key is True
+    [conversation_message] = conversation.messages
+    assert conversation_message.sender_participant.user_id == user.id
+    assert len(conversation_message.encrypted_copies) == 2
+    for encrypted_copy in conversation_message.encrypted_copies:
+        assert chat_message_algorithm in encrypted_copy.encrypted_payload
+        assert msg_contact_method not in encrypted_copy.encrypted_payload
+        assert msg_content not in encrypted_copy.encrypted_payload
+        assert "wrapped-private-chat-key" not in encrypted_copy.encrypted_payload
+
+    sender_response = client.get(
+        url_for("conversation", conversation_id=conversation.id), follow_redirects=True
+    )
+    assert sender_response.status_code == 200
+    assert "Secure chat unavailable" in sender_response.text
+    assert "conversation-chat-password" not in sender_response.text
+    assert "Encrypted message. Waiting for browser chat key." in sender_response.text
+
+    _authenticate_as(client, user2)
+    recipient_response = client.get(url_for("conversation", conversation_id=conversation.id))
+    assert recipient_response.status_code == 200
+    assert "Secure chat unavailable" in recipient_response.text
+    assert "conversation-chat-password" not in recipient_response.text
+    assert "Encrypted message. Waiting for browser chat key." in recipient_response.text
+    message_response = client.get(url_for("message", public_id=message.public_id))
+    assert url_for("conversation", conversation_id=conversation.id) in message_response.text
+
+    _authenticate_as(client, admin_user)
+    other_response = client.get(url_for("conversation", conversation_id=conversation.id))
+    assert other_response.status_code == 404
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_logged_in_profile_submit_without_recipient_pgp_uses_chat_only_conversation(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    user.pgp_key = None
+    user2.pgp_key = None
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    db.session.commit()
+
+    profile_response = client.get(url_for("profile", username=user2.primary_username.username))
+    assert profile_response.status_code == 200
+    soup = BeautifulSoup(profile_response.text, "html.parser")
+    submit_button = soup.find("button", id="submitBtn")
+    assert submit_button is not None
+    assert submit_button.get("disabled") is None
+    assert 'disabled="disabled"' not in profile_response.text
+    assert "Sending messages is disabled" not in profile_response.text
+
+    response = client.post(
+        url_for("profile", username=user2.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            "encrypted_conversation_copies": json.dumps(
+                {
+                    "sender": _chat_ciphertext("sender-chat-only"),
+                    "recipient": _chat_ciphertext("recipient-chat-only"),
+                }
+            ),
+            **get_profile_submission_data(client, user2.primary_username.username),
+        },
+        follow_redirects=False,
+    )
+
+    message = db.session.scalars(
+        db.select(Message).filter_by(username_id=user2.primary_username.id)
+    ).one()
+    conversation = message.conversation
+    assert conversation is not None
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(
+        url_for("conversation", conversation_id=conversation.id)
+    )
+    assert len(conversation.messages[0].encrypted_copies) == 2
+    assert all(
+        field_value.value == "Stored in encrypted conversation."
+        for field_value in message.field_values
+    )
+    assert msg_contact_method not in response.text
+    assert msg_content not in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_logged_in_profile_submit_message_creates_conversation_without_sender_key(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    _set_pgp_key(user2)
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    db.session.commit()
+
+    response = client.post(
+        url_for("profile", username=user2.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            "encrypted_conversation_copies": json.dumps(
+                {"recipient": _chat_ciphertext("recipient-initial")}
+            ),
+            **get_profile_submission_data(client, user2.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200, response.text
+    assert "No encrypted copy is available for your account." in response.text
+
+    message = db.session.scalars(
+        db.select(Message).filter_by(username_id=user2.primary_username.id)
+    ).one()
+    conversation = message.conversation
+    assert conversation is not None
+    assert {participant.user_id for participant in conversation.participants} == {
+        user.id,
+        user2.id,
+    }
+    participants_by_user_id = {
+        participant.user_id: participant for participant in conversation.participants
+    }
+    assert participants_by_user_id[user.id].has_usable_public_key is False
+    assert participants_by_user_id[user2.id].has_usable_public_key is True
+    copies = db.session.scalars(db.select(ConversationMessageCopy)).all()
+    assert len(copies) == 1
+    assert copies[0].recipient_participant.user_id == user2.id
+    assert chat_message_algorithm in copies[0].encrypted_payload
+    assert msg_contact_method not in copies[0].encrypted_payload
+    assert msg_content not in copies[0].encrypted_payload
+
+    _authenticate_as(client, user2)
+    recipient_response = client.get(url_for("conversation", conversation_id=conversation.id))
+    assert recipient_response.status_code == 200
+    assert "Secure chat unavailable" in recipient_response.text
+    assert "conversation-chat-password" not in recipient_response.text
+    assert "Encrypted message. Waiting for browser chat key." in recipient_response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_logged_in_profile_submit_message_with_invalid_chat_ciphertext_skips_conversation(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    _set_pgp_key(user)
+    _set_pgp_key(user2)
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    db.session.commit()
+
+    response = client.post(
+        url_for("profile", username=user2.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            "encrypted_conversation_copies": json.dumps(
+                {
+                    "recipient": msg_content,
+                    "private_key": "plain-private-key",
+                    "derived_wrapping_key": "plain-derived-key",
+                }
+            ),
+            **get_profile_submission_data(client, user2.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200, response.text
+    assert "Message submitted successfully." in response.text
+    message = db.session.scalars(
+        db.select(Message).filter_by(username_id=user2.primary_username.id)
+    ).one()
+    assert message.conversation is None
+    assert db.session.scalars(db.select(Conversation)).all() == []
+    assert db.session.scalars(db.select(ConversationMessageCopy)).all() == []
+    assert "plain-private-key" not in response.text
+    assert "plain-derived-key" not in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.usefixtures("_pgp_user")
+def test_self_profile_submit_message_keeps_reply_success_flow(
+    client: FlaskClient, user: User
+) -> None:
+    response = client.post(
+        url_for("profile", username=user.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            **get_profile_submission_data(client, user.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200, response.text
+    assert "Reply Address" in response.text
+
+    message = db.session.scalars(
+        db.select(Message).filter_by(username_id=user.primary_username.id)
+    ).one()
+    assert message.conversation is None
+    assert db.session.scalars(db.select(Conversation)).all() == []
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_logged_in_profile_submit_message_requires_recipient_encryption_target(
+    client: FlaskClient, user2: User
+) -> None:
+    response = client.post(
+        url_for("profile", username=user2.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            **get_profile_submission_data(client, user2.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 400
+    assert "do not have any usable recipient PGP keys" in response.text
+    assert (
+        db.session.scalars(
+            db.select(Message).filter_by(username_id=user2.primary_username.id)
+        ).first()
+        is None
+    )
+    assert db.session.scalars(db.select(Conversation)).all() == []
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_logged_in_profile_submit_without_pgp_requires_valid_chat_payload(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    user2.pgp_key = None
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    db.session.commit()
+
+    response = client.post(
+        url_for("profile", username=user2.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            "encrypted_conversation_copies": json.dumps({"recipient": "plaintext"}),
+            **get_profile_submission_data(client, user2.primary_username.username),
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    assert "do not have any usable recipient PGP keys" in response.text
+    assert (
+        db.session.scalars(
+            db.select(Message).filter_by(username_id=user2.primary_username.id)
+        ).first()
+        is None
+    )
+    assert db.session.scalars(db.select(Conversation)).all() == []
 
 
 @pytest.mark.usefixtures("_authenticated_user")

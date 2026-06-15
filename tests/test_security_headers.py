@@ -7,7 +7,13 @@ from werkzeug.datastructures import Headers
 
 from hushline import PERMISSIONS_POLICY
 from hushline.db import db
-from hushline.model import OrganizationSetting, StripeSubscriptionStatusEnum, User
+from hushline.model import (
+    Conversation,
+    ConversationParticipant,
+    OrganizationSetting,
+    StripeSubscriptionStatusEnum,
+    User,
+)
 
 
 def _csp_directives(response_headers: Headers) -> dict[str, str]:
@@ -220,6 +226,31 @@ def test_password_reset_pages_keep_csp_enforced(client: FlaskClient) -> None:
         assert csp
         assert "'unsafe-eval'" not in csp
         assert "script-src-elem 'self' 'unsafe-inline'" not in csp
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_conversation_page_keeps_csp_enforced(client: FlaskClient, user: User, user2: User) -> None:
+    conversation = Conversation()
+    participant = ConversationParticipant()
+    participant.conversation = conversation
+    participant.user = user
+    other_participant = ConversationParticipant()
+    other_participant.conversation = conversation
+    other_participant.user = user2
+    db.session.add(conversation)
+    db.session.commit()
+
+    response = client.get(url_for("conversation", conversation_id=conversation.id))
+
+    assert response.status_code == 200
+    directives = _csp_directives(response.headers)
+    assert "'unsafe-eval'" not in response.headers["Content-Security-Policy"]
+    assert directives["script-src-elem"] == (
+        "'self' https://js.stripe.com https://cdn.jsdelivr.net"
+    )
+    assert (
+        "script-src-elem 'self' 'unsafe-inline'" not in response.headers["Content-Security-Policy"]
+    )
 
 
 def test_base_template_uses_external_no_js_bootstrap_script(client: FlaskClient) -> None:

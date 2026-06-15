@@ -63,6 +63,7 @@ def register_auth_routes(bp: Blueprint) -> None:
         return render_template(
             "settings/auth.html",
             user=user,
+            chat_key=user.active_chat_key,
             change_username_form=change_username_form,
             change_password_form=change_password_form,
         ), status_code

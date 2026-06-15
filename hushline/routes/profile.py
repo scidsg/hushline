@@ -23,6 +23,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import MultipleResultsFound
 from werkzeug.wrappers.response import Response
 
+from hushline.auth import get_session_user
 from hushline.crypto import encrypt_message
 from hushline.db import db
 from hushline.embeds import (
@@ -35,11 +36,16 @@ from hushline.embeds import (
 )
 from hushline.external_urls import canonical_external_url
 from hushline.model import (
+    Conversation,
+    ConversationMessage,
+    ConversationMessageCopy,
+    ConversationParticipant,
     FieldDefinition,
     FieldValue,
     Message,
     NotificationRecipient,
     OrganizationSetting,
+    User,
     Username,
 )
 from hushline.routes.common import (
@@ -53,6 +59,7 @@ from hushline.routes.common import (
     validate_captcha,
 )
 from hushline.routes.forms import DynamicMessageForm
+from hushline.routes.message import _is_chat_ciphertext_envelope
 from hushline.safe_template import safe_render_template
 
 EMBED_CAPTCHA_MAX_AGE_SECONDS = 60 * 60
@@ -123,6 +130,27 @@ def register_profile_routes(app: Flask) -> None:
                 and _is_armored_pgp_message(field_value)
             }
         return encrypted_fields
+
+    def _client_encrypted_conversation_copies(value: str) -> dict[str, str]:
+        if not value:
+            return {}
+
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+
+        if not isinstance(parsed, dict):
+            return {}
+
+        encrypted_copies: dict[str, str] = {}
+        for role in ("sender", "recipient"):
+            encrypted_payload = parsed.get(role)
+            if isinstance(encrypted_payload, str) and _is_chat_ciphertext_envelope(
+                encrypted_payload
+            ):
+                encrypted_copies[role] = encrypted_payload
+        return encrypted_copies
 
     def _new_math_problem() -> tuple[str, str]:
         num1 = secrets.randbelow(10) + 1
@@ -219,12 +247,80 @@ def register_profile_routes(app: Flask) -> None:
             parsed_host.netloc,
         )
 
-    def _message_submission_block_reason(uname: Username) -> str | None:
+    def _authenticated_sender() -> User | None:
+        if not session.get("is_authenticated", False):
+            return None
+        return get_session_user()
+
+    def _chat_submission_base_available(uname: Username, sender: User | None) -> bool:
+        return bool(sender and sender.id != uname.user_id and uname.user.chat_public_key)
+
+    def _conversation_payload_can_start(
+        *,
+        sender: User | None,
+        recipient: User,
+        encrypted_conversation_copies: dict[str, str],
+    ) -> bool:
+        if sender is None or sender.id == recipient.id or not recipient.chat_public_key:
+            return False
+        if not encrypted_conversation_copies.get("recipient"):
+            return False
+        return not (sender.chat_public_key and not encrypted_conversation_copies.get("sender"))
+
+    def _message_submission_block_reason(
+        uname: Username, *, allow_chat_submission: bool = False
+    ) -> str | None:
         if bool(getattr(uname.user, "is_suspended", False)):
             return "suspended"
-        if not uname.user.message_encryption_target:
+        if not uname.user.message_encryption_target and not allow_chat_submission:
             return "missing_recipient_keys"
         return None
+
+    def _create_initial_conversation(
+        *,
+        message: Message,
+        sender: User,
+        recipient: User,
+        encrypted_conversation_copies: dict[str, str],
+    ) -> Conversation | None:
+        if sender.id == recipient.id:
+            return None
+
+        if not recipient.chat_public_key:
+            return None
+
+        recipient_payload = encrypted_conversation_copies.get("recipient")
+        if not recipient_payload:
+            return None
+
+        sender_payload = encrypted_conversation_copies.get("sender")
+        if sender.chat_public_key and not sender_payload:
+            return None
+
+        conversation = Conversation()
+        sender_participant = ConversationParticipant()
+        sender_participant.conversation = conversation
+        sender_participant.user = sender
+        sender_participant.has_usable_public_key = sender_payload is not None
+        recipient_participant = ConversationParticipant()
+        recipient_participant.conversation = conversation
+        recipient_participant.user = recipient
+        recipient_participant.has_usable_public_key = True
+        conversation_message = ConversationMessage()
+        conversation_message.conversation = conversation
+        conversation_message.sender_participant = sender_participant
+        if sender_payload:
+            sender_copy = ConversationMessageCopy()
+            sender_copy.recipient_participant = sender_participant
+            sender_copy.encrypted_payload = sender_payload
+            conversation_message.encrypted_copies.append(sender_copy)
+        recipient_copy = ConversationMessageCopy()
+        recipient_copy.recipient_participant = recipient_participant
+        recipient_copy.encrypted_payload = recipient_payload
+        conversation_message.encrypted_copies.append(recipient_copy)
+        message.conversation = conversation
+        db.session.add(conversation)
+        return conversation
 
     @app.route("/to/<username>", methods=["GET", "POST"])
     def profile(username: str) -> Response | str | tuple[str, int]:
@@ -270,7 +366,13 @@ def register_profile_routes(app: Flask) -> None:
         )
 
         def _render_profile(status_code: int | None = None) -> Response | str | tuple[str, int]:
-            message_submission_block_reason = _message_submission_block_reason(uname)
+            sender = _authenticated_sender()
+            message_submission_block_reason = _message_submission_block_reason(
+                uname,
+                allow_chat_submission=(
+                    not is_embedded and _chat_submission_base_available(uname, sender)
+                ),
+            )
             owner_guard_nonce = secrets.token_urlsafe(16)
             owner_guard_signature = _owner_guard_signature(
                 uname.username,
@@ -293,6 +395,12 @@ def register_profile_routes(app: Flask) -> None:
                 ),
                 current_user_id=session.get("user_id"),
                 recipient_public_keys=uname.user.message_recipient_keys,
+                recipient_chat_public_key=uname.user.chat_public_key,
+                sender_chat_public_key=(
+                    sender.chat_public_key
+                    if sender is not None and sender.id != uname.user_id
+                    else None
+                ),
                 recipient_public_key_entries=(
                     notification_recipient_public_key_entries(uname.user)
                     if (
@@ -382,7 +490,22 @@ def register_profile_routes(app: Flask) -> None:
                 flash("⛔️ Invalid embed form token. Please reload.")
                 return _render_profile(400)
 
-            block_reason = _message_submission_block_reason(uname)
+            sender = _authenticated_sender()
+            encrypted_conversation_copies = _client_encrypted_conversation_copies(
+                form.encrypted_conversation_copies.data or ""
+            )
+            chat_only_submission = (
+                not is_embedded
+                and not uname.user.message_encryption_target
+                and _conversation_payload_can_start(
+                    sender=sender,
+                    recipient=uname.user,
+                    encrypted_conversation_copies=encrypted_conversation_copies,
+                )
+            )
+            block_reason = _message_submission_block_reason(
+                uname, allow_chat_submission=chat_only_submission
+            )
             if block_reason == "suspended":
                 if embed_rate_limit_result is not None:
                     emit_embed_abuse_counter(
@@ -445,7 +568,11 @@ def register_profile_routes(app: Flask) -> None:
                 for data in dynamic_form.field_data():
                     field_name: str = data["name"]  # type: ignore
                     field_definition: FieldDefinition = data["field"]  # type: ignore
-                    value = getattr(form, field_name).data
+                    value = (
+                        "Stored in encrypted conversation."
+                        if chat_only_submission
+                        else getattr(form, field_name).data
+                    )
                     raw_value = "\n".join(value) if isinstance(value, list) else (value or "")
                     raw_extracted_fields.append((field_definition.label, str(raw_value)))
                     raw_email_field_data.append(
@@ -460,11 +587,20 @@ def register_profile_routes(app: Flask) -> None:
                         field_definition,
                         message,
                         value,
-                        field_definition.encrypted,
+                        False if chat_only_submission else field_definition.encrypted,
                     )
                     db.session.add(field_value)
                     db.session.flush()
                     extracted_fields.append((field_definition.label, field_value.value or ""))
+
+                conversation = None
+                if sender:
+                    conversation = _create_initial_conversation(
+                        message=message,
+                        sender=sender,
+                        recipient=uname.user,
+                        encrypted_conversation_copies=encrypted_conversation_copies,
+                    )
 
                 db.session.commit()
 
@@ -580,6 +716,9 @@ def register_profile_routes(app: Flask) -> None:
                     )
 
                 flash("👍 Message submitted successfully.")
+                if conversation is not None:
+                    current_app.logger.debug("Message sent and now redirecting to conversation")
+                    return redirect(url_for("conversation", conversation_id=conversation.id))
                 session["reply_slug"] = message.reply_slug
                 current_app.logger.debug("Message sent and now redirecting")
                 return redirect(url_for("submission_success"))

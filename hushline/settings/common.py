@@ -1,5 +1,6 @@
 import asyncio
 import ipaddress
+import json
 import socket
 import urllib.parse
 from dataclasses import dataclass
@@ -25,6 +26,7 @@ from werkzeug.wrappers.response import Response
 from wtforms import Field
 
 from hushline.auth import rotate_user_session_id
+from hushline.chat_key_lifecycle import rewrap_active_chat_key, validate_chat_key_payload
 from hushline.crypto import can_encrypt_with_pgp_key, is_valid_pgp_key
 from hushline.db import db
 from hushline.external_urls import canonical_external_url
@@ -476,6 +478,30 @@ def handle_change_password_form(
     ):
         change_password_form.new_password.errors.append("Cannot choose a repeat password.")
         return None
+
+    if user.active_chat_key is not None:
+        rewrapped_chat_key = request.form.get("rewrapped_chat_key", "")
+        if not rewrapped_chat_key:
+            change_password_form.new_password.errors.append(
+                "Unlock your chat key before changing your password."
+            )
+            return None
+
+        try:
+            rewrapped_payload = json.loads(rewrapped_chat_key)
+        except json.JSONDecodeError:
+            change_password_form.new_password.errors.append("Chat key rewrap payload is invalid.")
+            return None
+
+        cleaned_payload, error = validate_chat_key_payload(
+            rewrapped_payload,
+            current_user_id=user.id,
+        )
+        if error:
+            change_password_form.new_password.errors.append(error)
+            return None
+
+        rewrap_active_chat_key(user, cleaned_payload)
 
     user.password_hash = change_password_form.new_password.data
     rotate_user_session_id(user)

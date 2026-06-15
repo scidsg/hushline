@@ -4,7 +4,49 @@ from flask import url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import OrganizationSetting
+from hushline.model import (
+    Conversation,
+    ConversationMessage,
+    ConversationMessageCopy,
+    ConversationParticipant,
+    OrganizationSetting,
+    User,
+)
+
+
+def _make_inbox_conversation(
+    user: User,
+    user2: User,
+    *,
+    user_has_copy: bool,
+    sender_is_other_user: bool,
+) -> Conversation:
+    conversation = Conversation()
+    user_participant = ConversationParticipant()
+    user_participant.conversation = conversation
+    user_participant.user = user
+    user_participant.has_usable_public_key = user_has_copy
+    other_participant = ConversationParticipant()
+    other_participant.conversation = conversation
+    other_participant.user = user2
+    other_participant.has_usable_public_key = True
+    conversation_message = ConversationMessage()
+    conversation_message.conversation = conversation
+    conversation_message.sender_participant = (
+        other_participant if sender_is_other_user else user_participant
+    )
+    if user_has_copy:
+        user_copy = ConversationMessageCopy()
+        user_copy.recipient_participant = user_participant
+        user_copy.encrypted_payload = "encrypted-for-current-user"
+        conversation_message.encrypted_copies.append(user_copy)
+    other_copy = ConversationMessageCopy()
+    other_copy.recipient_participant = other_participant
+    other_copy.encrypted_payload = "encrypted-for-other-user"
+    conversation_message.encrypted_copies.append(other_copy)
+    db.session.add(conversation)
+    db.session.commit()
+    return conversation
 
 
 def test_directory_tab_aria_and_controls(client: FlaskClient) -> None:
@@ -166,6 +208,104 @@ def test_inbox_filter_nav_marks_current_page(client: FlaskClient) -> None:
     assert inbox_nav is not None
     assert current is not None
     assert current.text.strip() == "All"
+
+    tips_response = client.get(url_for("inbox", type="tips"), follow_redirects=True)
+    assert tips_response.status_code == 200
+    tips_soup = BeautifulSoup(tips_response.text, "html.parser")
+    tips_current = tips_soup.select_one('nav.inbox-tabs-nav a[aria-current="page"]')
+    assert tips_current is not None
+    assert tips_current.text.strip() == "Tips"
+
+    conversations_response = client.get(
+        url_for("inbox", type="conversations"),
+        follow_redirects=True,
+    )
+    assert conversations_response.status_code == 200
+    conversations_soup = BeautifulSoup(conversations_response.text, "html.parser")
+    conversations_current = conversations_soup.select_one(
+        'nav.inbox-tabs-nav a[aria-current="page"]'
+    )
+    assert conversations_current is not None
+    assert conversations_current.text.strip() == "Conversations"
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_inbox_conversation_rows_have_accessible_status_and_unread_state(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    locked_conversation = _make_inbox_conversation(
+        user,
+        user2,
+        user_has_copy=True,
+        sender_is_other_user=False,
+    )
+    unavailable_conversation = _make_inbox_conversation(
+        user,
+        user2,
+        user_has_copy=False,
+        sender_is_other_user=True,
+    )
+
+    response = client.get(url_for("inbox"), follow_redirects=True)
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    conversation_section = soup.find("section", {"aria-label": "Conversations"})
+    conversation_heading = soup.find(id="conversation-list-heading")
+    message_list = soup.select_one(".message-list")
+    conversation_rows = soup.select("article.conversation-summary")
+    unread_indicator = soup.select_one("article.conversation-summary .conversation-unread-dot")
+    status_messages = soup.select("article.conversation-summary [role='status']")
+
+    assert conversation_section is None
+    assert conversation_heading is None
+    assert message_list is not None
+    assert len(conversation_rows) == 2
+    for row in conversation_rows:
+        assert row.parent == message_list
+        time = row.find("time")
+        assert time is not None
+        assert time.parent is not None
+        assert "inbox-message-summary-meta" in time.parent.get("class", [])
+        title_id = row.get("aria-labelledby")
+        assert title_id
+        title = soup.find(id=title_id)
+        assert title is not None
+        assert title.get_text(" ", strip=True).startswith("From: @")
+        route = row.select_one(".conversation-summary-route")
+        assert route is not None
+        assert route.get_text(" ", strip=True).startswith("To: @")
+        avatar = row.select_one(".conversation-summary-avatar")
+        assert avatar is not None
+        assert avatar.get("aria-hidden") == "true"
+        assert avatar.get_text(" ", strip=True)
+
+    assert unread_indicator is not None
+    assert unread_indicator.get("role") == "img"
+    assert unread_indicator.get("aria-label") == "Unread conversation"
+    assert unread_indicator.get_text(" ", strip=True) == ""
+    unread_title = unread_indicator.parent
+    assert unread_title is not None
+    assert "inbox-message-recipient" in unread_title.get("class", [])
+    assert unread_title.find("span", class_="conversation-unread-dot") == unread_indicator
+    assert unread_title.get_text(" ", strip=True).startswith("From: @")
+    assert str(unread_title).index('class="conversation-unread-dot"') < str(unread_title).index(
+        "From:"
+    )
+    assert status_messages == []
+    locked_link = soup.find(
+        "a", href=url_for("conversation", conversation_id=locked_conversation.id)
+    )
+    unavailable_link = soup.find(
+        "a",
+        href=url_for("conversation", conversation_id=unavailable_conversation.id),
+    )
+    assert locked_link is not None
+    assert locked_link.get_text(" ", strip=True) == "Go to conversation"
+    assert unavailable_link is not None
+    assert unavailable_link.get_text(" ", strip=True) == "Go to conversation"
 
 
 def test_guidance_modal_has_accessible_attributes(client: FlaskClient) -> None:
