@@ -932,6 +932,52 @@
     return conversationMessageIds(sourceDocument).join(",");
   }
 
+  function conversationMessageSenderIdFromPayload(encryptedPayload) {
+    if (!encryptedPayload || typeof encryptedPayload !== "string") {
+      return null;
+    }
+    try {
+      const envelope = JSON.parse(encryptedPayload);
+      return envelope?.context?.sender_participant_id || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function conversationMessagePayloadFromPlaintext(plaintext) {
+    try {
+      const parsed = JSON.parse(plaintext);
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        typeof parsed.content === "string"
+      ) {
+        return {
+          content: parsed.content,
+          createdAt: typeof parsed.created_at === "string" ? parsed.created_at : null,
+        };
+      }
+    } catch (error) {
+      // Legacy payloads still contain raw plaintext.
+    }
+    return {content: plaintext, createdAt: null};
+  }
+
+  function formatConversationMessageTimestamp(createdAt) {
+    if (typeof createdAt !== "string") {
+      return "";
+    }
+    const date = new Date(createdAt);
+    if (Number.isNaN(date.getTime())) {
+      return "";
+    }
+    return date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
+
   function conversationThreadIsNearBottom() {
     const thread = document.querySelector(".conversation-thread");
     if (!thread) {
@@ -1025,22 +1071,31 @@
       const messageContainer = document.querySelector(
         `[data-conversation-message-id="${copy.message_id}"]`,
       );
+      const messageTimeElement = messageContainer?.querySelector(
+        "[data-conversation-message-time]",
+      );
       if (!messageElement) {
         continue;
       }
 
       try {
-        const senderKey = participantPublicKeyById(copy.sender_participant_id);
-        messageElement.textContent = await decryptChatCiphertext(
+        const senderParticipantId =
+          conversationMessageSenderIdFromPayload(copy.encrypted_payload);
+        const senderKey = participantPublicKeyById(senderParticipantId);
+        const plaintext = await decryptChatCiphertext(
           copy.encrypted_payload,
           senderKey?.public_signing_key || null,
         );
-        if (messageContainer) {
-          const isOwnMessage =
-            String(copy.sender_participant_id) ===
-            currentConversationParticipantId();
-          messageContainer.classList.toggle("is-own-message", isOwnMessage);
-          messageContainer.classList.toggle("is-other-message", !isOwnMessage);
+        const messagePayload = conversationMessagePayloadFromPlaintext(plaintext);
+        messageElement.textContent = messagePayload.content;
+        if (messageTimeElement) {
+          messageTimeElement.setAttribute(
+            "datetime",
+            messagePayload.createdAt || "",
+          );
+          messageTimeElement.textContent = formatConversationMessageTimestamp(
+            messagePayload.createdAt,
+          );
         }
       } catch (error) {
         messageElement.textContent =
@@ -1085,22 +1140,29 @@
     if (!root?.dataset.messageUrl || !plaintext) {
       return;
     }
-    if (state.status !== "unlocked") {
-      setConversationStatus("Chat key is still unlocking in this browser.");
+    if (root.dataset.canCompose !== "true") {
+      setConversationStatus(
+        "Replies are unavailable until every participant has an active Hush Line chat key.",
+      );
       return;
     }
 
     setConversationStatus("Encrypting reply...");
     try {
       const encryptedCopies = {};
+      const timestamp = new Date().toISOString();
       const context = {
         purpose: "hushline.chat.message",
         conversation_id: root.dataset.conversationId || "",
         sender_participant_id: currentConversationParticipantId(),
       };
+      const plaintextPayload = JSON.stringify({
+        content: plaintext,
+        created_at: timestamp,
+      });
       for (const participantKey of participantKeys) {
         encryptedCopies[String(participantKey.participant_id)] =
-          await encryptForPublicKey(plaintext, participantKey, context);
+          await encryptForPublicKey(plaintextPayload, participantKey, context);
       }
       const csrfToken = form.querySelector("input[name='csrf_token']")?.value;
       const response = await fetch(root.dataset.messageUrl, {
@@ -1293,6 +1355,7 @@
     if (!root) {
       return;
     }
+    setConversationComposeEnabled(root.dataset.canCompose === "true");
 
     bindConversationPresence(root);
     bindConversationPolling(root);

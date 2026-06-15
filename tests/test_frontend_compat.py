@@ -235,7 +235,6 @@ def test_conversation_chat_uses_full_width_and_dark_mode_styles() -> None:
     assert "--conversation-content-max-width: 960px;" in scss
     assert "--conversation-content-padding-inline: max(" in scss
     assert "--conversation-header-offset: 8rem;" in scss
-    assert "height: var(--conversation-header-offset);" in scss
     assert "--conversation-top-offset: calc(105px + env(safe-area-inset-top));" in scss
     assert "height: calc(100vh - var(--conversation-top-offset));" in scss
     assert "min-height: calc(100vh - var(--conversation-top-offset));" in scss

@@ -275,6 +275,51 @@ def test_conversation_view_shows_locked_chat_key_state(
     assert url_for("conversation_presence", conversation_id=conversation.id) in response.text
 
 
+def test_conversation_view_hides_message_metadata_from_page_payload(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    conversation = _make_conversation(user, user2)
+    recipient_participant = _participant_for(conversation, user2)
+    message_created_at = datetime(2026, 2, 1, 12, 5, tzinfo=timezone.utc)
+    _add_conversation_message(
+        conversation,
+        recipient_participant,
+        created_at=message_created_at,
+        label="timestamp-leak-check",
+    )
+
+    _authenticate_as(client, user)
+
+    response = client.get(url_for("conversation", conversation_id=conversation.id))
+
+    assert response.status_code == 200
+    payload_match = re.search(
+        r'<script id="conversationMessageCopies" type="application/json">\s*([\s\S]*?)</script>',
+        response.text,
+    )
+    assert payload_match is not None
+
+    message_copy_payloads = json.loads(payload_match.group(1))
+    assert isinstance(message_copy_payloads, list)
+    assert all(
+        {
+            "message_id",
+            "encrypted_payload",
+        }
+        == set(message_copy_payload.keys())
+        for message_copy_payload in message_copy_payloads
+    )
+    assert all(
+        "created_at" not in message_copy_payload
+        and "sender_participant_id" not in message_copy_payload
+        for message_copy_payload in message_copy_payloads
+    )
+    assert f'{message_created_at.isoformat()}' not in response.text
+    assert '<time datetime="' not in response.text
+
+
 def test_conversation_view_marks_participant_active(
     client: FlaskClient,
     user: User,
@@ -534,6 +579,37 @@ def test_append_conversation_message_suppresses_notification_for_active_recipien
     response = client.post(
         url_for("append_conversation_message", conversation_id=conversation.id),
         json={"encrypted_copies": _copies_for(conversation, "active-recipient")},
+    )
+
+    assert response.status_code == 201
+    mock_send_email_to_user_recipients.assert_not_called()
+
+
+@patch("hushline.routes.message.send_email_to_user_recipients")
+def test_append_conversation_message_suppresses_notification_for_active_recipient_in_any_conversation(
+    mock_send_email_to_user_recipients: MagicMock,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _enable_conversation_notifications(
+        user2,
+        email="recipient@example.com",
+        include_content=False,
+        encrypt_entire_body=False,
+    )
+    target_conversation = _make_conversation(user, user2)
+    active_conversation = _make_conversation(user, user2)
+    active_participant = _participant_for(active_conversation, user2)
+    active_participant.last_active_at = datetime.now(timezone.utc)
+    db.session.commit()
+    _authenticate_as(client, user)
+
+    response = client.post(
+        url_for("append_conversation_message", conversation_id=target_conversation.id),
+        json={"encrypted_copies": _copies_for(target_conversation, "active-recipient")},
     )
 
     assert response.status_code == 201

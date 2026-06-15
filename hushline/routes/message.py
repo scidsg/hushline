@@ -128,6 +128,16 @@ def _conversation_participant_is_active(
     return current_time - active_at <= _conversation_activity_timeout()
 
 
+def _user_has_active_conversation_session(
+    user: User, now: datetime | None = None
+) -> bool:
+    return any(
+        participant.user_id == user.id
+        and _conversation_participant_is_active(participant, now=now)
+        for participant in user.conversation_participants
+    )
+
+
 def _is_armored_pgp_message(value: str) -> bool:
     return bool(_ARMORED_PGP_MESSAGE_PATTERN.fullmatch(value))
 
@@ -237,7 +247,7 @@ def _notify_conversation_participants(
             continue
         if not recipient_user.enable_email_notifications:
             continue
-        if _conversation_participant_is_active(recipient_participant):
+        if _user_has_active_conversation_session(recipient_user):
             continue
 
         try:
@@ -335,12 +345,16 @@ def register_message_routes(app: Flask) -> None:
                 ),
                 None,
             )
-            message_copies.append((conversation_message, copy))
+            message_copies.append(
+                (
+                    conversation_message,
+                    copy,
+                    conversation_message.sender_participant_id == participant.id,
+                )
+            )
             message_copy_payloads.append(
                 {
                     "message_id": conversation_message.id,
-                    "created_at": conversation_message.created_at.isoformat(),
-                    "sender_participant_id": conversation_message.sender_participant_id,
                     "encrypted_payload": copy.encrypted_payload if copy else None,
                 }
             )
@@ -484,7 +498,6 @@ def register_message_routes(app: Flask) -> None:
             jsonify(
                 {
                     "message_id": conversation_message.id,
-                    "created_at": conversation_message.created_at.isoformat(),
                 }
             ),
             201,

@@ -56,14 +56,12 @@
     </script>
 
     <article class="conversation-thread" aria-live="polite" aria-label="Conversation messages">
-      {% for conversation_message, encrypted_copy in message_copies %}
+      {% for conversation_message, encrypted_copy, is_own_message in message_copies %}
         <div
-          class="conversation-message {{ 'is-own-message' if conversation_message.sender_participant_id == participant.id else 'is-other-message' }}"
+          class="conversation-message {{ 'is-own-message' if is_own_message else 'is-other-message' }}"
           data-conversation-message-id="{{ conversation_message.id }}"
         >
-          <time datetime="{{ conversation_message.created_at.isoformat() }}">
-            {{ conversation_message.created_at.strftime("%b %-d, %Y") }}
-          </time>
+          <time data-conversation-message-time class="meta" role="presentation"></time>
           {% if encrypted_copy %}
             <p class="conversation-message-body">Encrypted message. Waiting for browser chat key.</p>
           {% else %}
