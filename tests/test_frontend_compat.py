@@ -234,7 +234,7 @@ def test_conversation_chat_uses_full_width_and_dark_mode_styles() -> None:
     assert "body.conversation-body {" in scss
     assert "--conversation-content-max-width: 960px;" in scss
     assert "--conversation-content-padding-inline: max(" in scss
-    assert "--conversation-header-offset: 7.25rem;" in scss
+    assert "--conversation-header-offset: 8rem;" in scss
     assert "height: var(--conversation-header-offset);" in scss
     assert "--conversation-top-offset: calc(105px + env(safe-area-inset-top));" in scss
     assert "height: calc(100vh - var(--conversation-top-offset));" in scss
@@ -249,6 +249,7 @@ def test_conversation_chat_uses_full_width_and_dark_mode_styles() -> None:
     assert "padding-right: 0;" in scss
     assert "width: 100vw;" in scss
     assert "padding: 0.75rem var(--conversation-content-padding-inline);" in scss
+    assert "padding-top: 8rem;" in scss
     assert "@media (prefers-color-scheme: dark)" in scss
     assert ".conversation-message.is-own-message .conversation-message-body" in scss
     assert "background: var(--color-brand-dark-mid-saturation);" in scss
