@@ -78,7 +78,7 @@ dev-data: migrate-dev ## Run dev env migrations, and add dev data
 lint: ## Lint the code
 	$(CMD) poetry run ruff format --check && \
 	$(CMD) poetry run ruff check --output-format full && \
-	$(CMD) poetry run mypy . && \
+	$(CMD) poetry run mypy --no-incremental . && \
 	$(CMD) sh -lc 'if [ -x node_modules/.bin/prettier ] && node_modules/.bin/prettier --version >/dev/null 2>&1; then node_modules/.bin/prettier $(PRETTIER_FLAGS) --check $(PRETTIER_TARGETS); elif command -v prettier >/dev/null 2>&1 && prettier --version >/dev/null 2>&1; then prettier $(PRETTIER_FLAGS) --check $(PRETTIER_TARGETS); else echo "Error: prettier/node is unavailable in this environment." >&2; exit 1; fi'
 
 .PHONY: fix
