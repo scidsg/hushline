@@ -2378,10 +2378,8 @@ body.conversation-body {
   width: 100vw;
   box-sizing: border-box;
   z-index: 4;
-  height: var(--conversation-header-offset);
   border-bottom: 1px solid var(--color-border);
   padding: 1rem;
-  background: inherit;
 }
 
 @media (prefers-color-scheme: light) {
@@ -2452,7 +2450,6 @@ body.conversation-body {
   flex-direction: column;
   gap: 0;
   min-height: 0;
-  padding-top: var(--conversation-header-offset);
   position: relative;
 }
 
