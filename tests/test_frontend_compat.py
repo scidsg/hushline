@@ -159,21 +159,21 @@ def test_settings_chat_key_provisioning_generates_decryptable_ecdh_key() -> None
     assert "Old conversations encrypted to earlier keys are no longer readable." in js
 
 
-def test_chat_key_lifecycle_restores_unlocked_key_for_authenticated_browser_session() -> None:
+def test_chat_key_lifecycle_restores_unlocked_key_for_authenticated_tab_session() -> None:
     js = (ROOT / "assets/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
     login_template = (ROOT / "hushline/templates/login.html").read_text(encoding="utf-8")
 
     assert 'const sessionStorageKey = "hushline:chat-private-jwk";' in js
-    assert 'const browserStorageKey = "hushline:chat-private-jwk:browser-session";' in js
-    assert "const browserStorageMaxAgeMs = 12 * 60 * 60 * 1000;" in js
+    assert 'const legacyBrowserStorageKey = "hushline:chat-private-jwk:browser-session";' in js
+    assert "browserStorageMaxAgeMs" not in js
     assert 'const crossTabChannelName = "hushline:chat-key-session";' in js
     assert "new BroadcastChannel(crossTabChannelName)" in js
     assert "sessionStorage.setItem(" in js
     assert "sessionStorage.getItem(sessionStorageKey)" in js
     assert "sessionStorage.removeItem(sessionStorageKey)" in js
-    assert "localStorage.setItem(browserStorageKey" in js
-    assert "localStorage.getItem(browserStorageKey)" in js
-    assert "localStorage.removeItem(browserStorageKey)" in js
+    assert "localStorage.setItem" not in js
+    assert "localStorage.getItem" not in js
+    assert "localStorage.removeItem(legacyBrowserStorageKey)" in js
     assert "restoreConversationFromSession" in js
     assert "restoreUnlockedChatKeyFromOtherTab" in js
     assert "function setConversationSecureBadgeVisible(visible)" in js

@@ -335,6 +335,8 @@ def test_chat_key_lifecycle_js_exposes_unlock_rewrap_and_cleanup() -> None:
     assert "BroadcastChannel" in lifecycle_source
     assert "hushline:chat-private-jwk" in lifecycle_js
     assert "hushline:chat-private-jwk:browser-session" in lifecycle_js
+    assert "localStorage.setItem" not in lifecycle_js
+    assert "localStorage.getItem" not in lifecycle_js
     assert "sendConversationPresence" in lifecycle_source
     assert 'document.visibilityState === "visible"' in lifecycle_source
     assert "document.body?.dataset.authenticated" in lifecycle_source

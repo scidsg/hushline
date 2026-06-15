@@ -2,8 +2,7 @@
   const textEncoder = new TextEncoder();
   const textDecoder = new TextDecoder();
   const sessionStorageKey = "hushline:chat-private-jwk";
-  const browserStorageKey = "hushline:chat-private-jwk:browser-session";
-  const browserStorageMaxAgeMs = 12 * 60 * 60 * 1000;
+  const legacyBrowserStorageKey = "hushline:chat-private-jwk:browser-session";
   const crossTabChannelName = "hushline:chat-key-session";
   const crossTabRequestTimeoutMs = 750;
   const conversationPollMinIntervalMs = 3000;
@@ -158,19 +157,13 @@
       public_key: chatKey.public_key,
       public_signing_key: chatKey.public_signing_key || null,
       private_key_bundle: privateKeyBundle,
-      expires_at: Date.now() + browserStorageMaxAgeMs,
+      expires_at: Number.MAX_SAFE_INTEGER,
     });
 
     try {
       sessionStorage.setItem(sessionStorageKey, storedValue);
     } catch (error) {
-      // Continue with browser storage below when tab storage is unavailable.
-    }
-
-    try {
-      localStorage.setItem(browserStorageKey, storedValue);
-    } catch (error) {
-      return;
+      // Private key material must not be persisted beyond this tab.
     }
   }
 
@@ -181,7 +174,7 @@
       // Keep clearing other storage locations.
     }
     try {
-      localStorage.removeItem(browserStorageKey);
+      localStorage.removeItem(legacyBrowserStorageKey);
     } catch (error) {
       return;
     }
@@ -220,18 +213,6 @@
     try {
       const privateKeyBundle = privateKeyBundleFromStoredValue(
         sessionStorage.getItem(sessionStorageKey),
-        chatKey,
-      );
-      if (privateKeyBundle) {
-        return privateKeyBundle;
-      }
-    } catch (error) {
-      // Fall through to browser storage.
-    }
-
-    try {
-      const privateKeyBundle = privateKeyBundleFromStoredValue(
-        localStorage.getItem(browserStorageKey),
         chatKey,
       );
       if (privateKeyBundle) {
