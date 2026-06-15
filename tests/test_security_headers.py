@@ -240,7 +240,7 @@ def test_conversation_page_keeps_csp_enforced(client: FlaskClient, user: User, u
     db.session.add(conversation)
     db.session.commit()
 
-    response = client.get(url_for("conversation", conversation_id=conversation.id))
+    response = client.get(url_for("conversation", public_id=conversation.public_id))
 
     assert response.status_code == 200
     directives = _csp_directives(response.headers)

@@ -39,7 +39,7 @@
     </p>
     {% if message.conversation %}
       <p>
-        <a href="{{ url_for('conversation', conversation_id=message.conversation.id) }}">
+        <a href="{{ url_for('conversation', public_id=message.conversation.public_id) }}">
           Open conversation
         </a>
       </p>

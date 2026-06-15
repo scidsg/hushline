@@ -653,7 +653,7 @@ def test_password_reset_leaves_existing_conversation_history_locked(
     assert chat_key_response.status_code == 200
     assert chat_key_response.get_json() == {"chat_key": None}
 
-    conversation_response = client.get(url_for("conversation", conversation_id=conversation.id))
+    conversation_response = client.get(url_for("conversation", public_id=conversation.public_id))
     assert conversation_response.status_code == 200
     assert "Secure chat unavailable" in conversation_response.text
     assert "conversation-chat-password" not in conversation_response.text
@@ -662,7 +662,7 @@ def test_password_reset_leaves_existing_conversation_history_locked(
     assert chat_key.encrypted_private_key not in conversation_response.text
 
     reply_response = client.post(
-        url_for("append_conversation_message", conversation_id=conversation.id),
+        url_for("append_conversation_message", public_id=conversation.public_id),
         json={"encrypted_copies": {}},
     )
     assert reply_response.status_code == 400

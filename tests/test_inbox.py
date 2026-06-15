@@ -209,7 +209,7 @@ def test_inbox_lists_conversation_for_sender_and_recipient_after_submission(
     db.session.add(newer_tip)
     db.session.commit()
 
-    conversation_url = url_for("conversation", conversation_id=message.conversation.id)
+    conversation_url = url_for("conversation", public_id=message.conversation.public_id)
     message_url = url_for("message", public_id=message.public_id)
     newer_tip_url = url_for("message", public_id=newer_tip.public_id)
     assert response.status_code == 302

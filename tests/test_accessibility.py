@@ -296,11 +296,11 @@ def test_inbox_conversation_rows_have_accessible_status_and_unread_state(
     )
     assert status_messages == []
     locked_link = soup.find(
-        "a", href=url_for("conversation", conversation_id=locked_conversation.id)
+        "a", href=url_for("conversation", public_id=locked_conversation.public_id)
     )
     unavailable_link = soup.find(
         "a",
-        href=url_for("conversation", conversation_id=unavailable_conversation.id),
+        href=url_for("conversation", public_id=unavailable_conversation.public_id),
     )
     assert locked_link is not None
     assert locked_link.get_text(" ", strip=True) == "Go to conversation"

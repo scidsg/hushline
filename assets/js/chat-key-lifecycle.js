@@ -954,13 +954,14 @@
       ) {
         return {
           content: parsed.content,
-          createdAt: typeof parsed.created_at === "string" ? parsed.created_at : null,
+          createdAt:
+            typeof parsed.created_at === "string" ? parsed.created_at : null,
         };
       }
     } catch (error) {
       // Legacy payloads still contain raw plaintext.
     }
-    return {content: plaintext, createdAt: null};
+    return { content: plaintext, createdAt: null };
   }
 
   function formatConversationMessageTimestamp(createdAt) {
@@ -1079,14 +1080,16 @@
       }
 
       try {
-        const senderParticipantId =
-          conversationMessageSenderIdFromPayload(copy.encrypted_payload);
+        const senderParticipantId = conversationMessageSenderIdFromPayload(
+          copy.encrypted_payload,
+        );
         const senderKey = participantPublicKeyById(senderParticipantId);
         const plaintext = await decryptChatCiphertext(
           copy.encrypted_payload,
           senderKey?.public_signing_key || null,
         );
-        const messagePayload = conversationMessagePayloadFromPlaintext(plaintext);
+        const messagePayload =
+          conversationMessagePayloadFromPlaintext(plaintext);
         messageElement.textContent = messagePayload.content;
         if (messageTimeElement) {
           messageTimeElement.setAttribute(
@@ -1153,7 +1156,7 @@
       const timestamp = new Date().toISOString();
       const context = {
         purpose: "hushline.chat.message",
-        conversation_id: root.dataset.conversationId || "",
+        conversation_public_id: root.dataset.conversationPublicId || "",
         sender_participant_id: currentConversationParticipantId(),
       };
       const plaintextPayload = JSON.stringify({

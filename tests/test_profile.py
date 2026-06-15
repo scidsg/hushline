@@ -336,7 +336,7 @@ def test_logged_in_profile_submit_message_creates_conversation_for_distinct_reci
     assert conversation is not None
     assert response.status_code == 302
     assert response.headers["Location"].endswith(
-        url_for("conversation", conversation_id=conversation.id)
+        url_for("conversation", public_id=conversation.public_id)
     )
     assert {participant.user_id for participant in conversation.participants} == {
         user.id,
@@ -357,7 +357,7 @@ def test_logged_in_profile_submit_message_creates_conversation_for_distinct_reci
         assert "wrapped-private-chat-key" not in encrypted_copy.encrypted_payload
 
     sender_response = client.get(
-        url_for("conversation", conversation_id=conversation.id), follow_redirects=True
+        url_for("conversation", public_id=conversation.public_id), follow_redirects=True
     )
     assert sender_response.status_code == 200
     assert "Secure chat unavailable" in sender_response.text
@@ -365,16 +365,16 @@ def test_logged_in_profile_submit_message_creates_conversation_for_distinct_reci
     assert "Encrypted message. Waiting for browser chat key." in sender_response.text
 
     _authenticate_as(client, user2)
-    recipient_response = client.get(url_for("conversation", conversation_id=conversation.id))
+    recipient_response = client.get(url_for("conversation", public_id=conversation.public_id))
     assert recipient_response.status_code == 200
     assert "Secure chat unavailable" in recipient_response.text
     assert "conversation-chat-password" not in recipient_response.text
     assert "Encrypted message. Waiting for browser chat key." in recipient_response.text
     message_response = client.get(url_for("message", public_id=message.public_id))
-    assert url_for("conversation", conversation_id=conversation.id) in message_response.text
+    assert url_for("conversation", public_id=conversation.public_id) in message_response.text
 
     _authenticate_as(client, admin_user)
-    other_response = client.get(url_for("conversation", conversation_id=conversation.id))
+    other_response = client.get(url_for("conversation", public_id=conversation.public_id))
     assert other_response.status_code == 404
 
 
@@ -420,7 +420,7 @@ def test_logged_in_profile_submit_without_recipient_pgp_uses_chat_only_conversat
     assert conversation is not None
     assert response.status_code == 302
     assert response.headers["Location"].endswith(
-        url_for("conversation", conversation_id=conversation.id)
+        url_for("conversation", public_id=conversation.public_id)
     )
     assert len(conversation.messages[0].encrypted_copies) == 2
     assert all(
@@ -476,7 +476,7 @@ def test_logged_in_profile_submit_message_creates_conversation_without_sender_ke
     assert msg_content not in copies[0].encrypted_payload
 
     _authenticate_as(client, user2)
-    recipient_response = client.get(url_for("conversation", conversation_id=conversation.id))
+    recipient_response = client.get(url_for("conversation", public_id=conversation.public_id))
     assert recipient_response.status_code == 200
     assert "Secure chat unavailable" in recipient_response.text
     assert "conversation-chat-password" not in recipient_response.text
