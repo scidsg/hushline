@@ -135,9 +135,14 @@ def test_client_side_encryption_prepares_chat_conversation_copies() -> None:
 def test_chat_key_lifecycle_imports_private_key_for_message_decryption() -> None:
     js = (ROOT / "assets/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
 
-    assert "unlockedChatPrivateKey = await importPrivateKey(privateJwk);" in js
+    assert "unlockedChatPrivateKey = await importPrivateKey(" in js
+    assert "privateKeyBundle.ecdh_private_jwk" in js
+    assert "unlockedChatSigningPrivateKey = await importSigningPrivateKey(" in js
+    assert "privateKeyBundle.signing_private_jwk" in js
     assert 'key_ops: ["deriveKey"]' in js
     assert '["deriveKey"]' in js
+    assert 'key_ops: ["sign"]' in js
+    assert '["sign"]' in js
     assert "deriveChatMessageKey(" in js
     assert "decryptChatCiphertext" in js
 
