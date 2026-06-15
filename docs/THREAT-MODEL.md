@@ -2,7 +2,7 @@
 
 ## Overview
 
-Hush Line is an open‑source whistleblower/tip‑line platform for secure, anonymous, one‑way disclosures. A Flask backend serves public submission pages and authenticated inboxes, backed by Postgres, optional S3/FS blob storage, and optional Stripe billing. Submissions are encrypted using recipient PGP keys (client‑side OpenPGP.js in `assets/js/client-side-encryption.js` with server‑side fallback in `hushline/model/field_value.py`), and sensitive account data is encrypted at rest via `hushline/crypto.py` and `hushline/model/user.py`. Tor onion support and privacy‑preserving defaults make anonymity a core objective.
+Hush Line is an open‑source whistleblower/tip‑line platform for secure, anonymous disclosures and follow-up conversations. A Flask backend serves public submission pages and authenticated inboxes, backed by Postgres, optional S3/FS blob storage, and optional Stripe billing. Submissions are encrypted using recipient PGP keys (client‑side OpenPGP.js in `assets/js/client-side-encryption.js` with server‑side fallback in `hushline/model/field_value.py`). Two-way conversation replies are encrypted in the browser to per-participant chat keys; new chat keys also include signing keys so versioned envelopes can be signed and bound to conversation context with AES-GCM additional authenticated data. Sensitive account data is encrypted at rest via `hushline/crypto.py` and `hushline/model/user.py`. Tor onion support and privacy‑preserving defaults make anonymity a core objective.
 
 Primary assets include:
 
@@ -105,6 +105,9 @@ Primary assets include:
 - **Billing fraud:** Forged Stripe webhooks could alter tiers if signature verification or webhook secret is misconfigured. `premium.py` mitigates with Stripe signature checks.
 - **Supply‑chain compromise of client‑side encryption:** If JS dependencies or build artifacts are compromised, attacker could exfiltrate plaintext before encryption. CI security audits and pinned dependencies reduce risk but cannot eliminate it.
 - **Operator compromise:** A hostile operator or cloud breach can access DB and keys, defeating server‑side encryption. Client‑side encryption mitigates but relies on JS integrity and user opsec.
+- **Chat key substitution:** A compromised server or account can present a replacement chat public key for a participant. Chat key fingerprints, previous-key history, and key-change warnings make substitution more visible, but they do not yet provide a cryptographic key-transparency log.
+- **Conversation envelope swapping:** An attacker with database write access tries to replay or swap signed chat envelopes across conversations or recipients. Versioned conversation envelopes bind purpose, conversation, sender participant, and recipient participant into AES-GCM AAD; signing-capable chat keys also sign the envelope fields. Legacy unsigned envelopes remain readable for backward compatibility.
+- **Conversation metadata exposure:** Conversation membership, timestamps, unread cursors, and recent activity timestamps are server-visible operational metadata. Hush Line does not expose user-facing read receipts, but the backend still stores read/activity state for unread counts, active-recipient notification suppression, and inbox ordering.
 
 ## Criticality calibration (critical, high, medium, low)
 

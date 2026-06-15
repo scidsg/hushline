@@ -20,6 +20,7 @@ from werkzeug.wrappers.response import Response
 from wtforms.validators import ValidationError
 
 from hushline.auth import authentication_required
+from hushline.chat_key_lifecycle import chat_key_fingerprint
 from hushline.crypto import encrypt_message
 from hushline.db import db
 from hushline.forms import (
@@ -45,6 +46,7 @@ from hushline.routes.common import (
 )
 
 _CHAT_CIPHERTEXT_MAX_LENGTH = 200_000
+_CHAT_CIPHERTEXT_CONTEXT_VERSION = 2
 _CONVERSATION_ACTIVITY_TIMEOUT_SECONDS = 120
 _CONVERSATION_PRESENCE_HEARTBEAT_SECONDS = 60
 _CONVERSATION_NOTIFICATION_BODY = (
@@ -154,13 +156,57 @@ def _is_chat_ciphertext_envelope(value: object) -> bool:
     if not isinstance(envelope, dict):
         return False
 
+    required_fields = ("algorithm", "ephemeral_public_key", "iv", "ciphertext")
+    if not all(
+        isinstance(envelope.get(field), str) and envelope[field] for field in required_fields
+    ):
+        return False
+    if envelope["algorithm"] != "ECDH-P256-AES-GCM":
+        return False
+    if envelope.get("v") in (None, 1):
+        return True
+    if envelope.get("v") != _CHAT_CIPHERTEXT_CONTEXT_VERSION:
+        return False
     return (
-        all(
-            isinstance(envelope.get(field), str) and envelope[field]
-            for field in ("algorithm", "ephemeral_public_key", "iv", "ciphertext")
-        )
-        and envelope["algorithm"] == "ECDH-P256-AES-GCM"
+        isinstance(envelope.get("context"), dict)
+        and isinstance(envelope.get("signature"), str)
+        and bool(envelope["signature"])
     )
+
+
+def _chat_ciphertext_context(value: str) -> dict[str, Any] | None:
+    try:
+        envelope = current_app.json.loads(value)
+    except ValueError:
+        return None
+
+    if not isinstance(envelope, dict) or envelope.get("v") != _CHAT_CIPHERTEXT_CONTEXT_VERSION:
+        return None
+    context = envelope.get("context")
+    return context if isinstance(context, dict) else None
+
+
+def _chat_ciphertext_context_is_bound(
+    encrypted_copies: dict[str, object],
+    *,
+    conversation_id: int,
+    sender_participant_id: int,
+) -> bool:
+    for recipient_participant_id, encrypted_payload in encrypted_copies.items():
+        if not isinstance(encrypted_payload, str):
+            return False
+        context = _chat_ciphertext_context(encrypted_payload)
+        if context is None:
+            continue
+        if context.get("purpose") != "hushline.chat.message":
+            return False
+        if str(context.get("conversation_id")) != str(conversation_id):
+            return False
+        if str(context.get("sender_participant_id")) != str(sender_participant_id):
+            return False
+        if str(context.get("recipient_participant_id")) != str(recipient_participant_id):
+            return False
+    return True
 
 
 def _conversation_notification_body(user: User) -> str:
@@ -302,10 +348,31 @@ def register_message_routes(app: Flask) -> None:
         participant_public_keys = [
             {
                 "participant_id": thread_participant.id,
+                "key_version": thread_participant.user.active_chat_key.key_version,
                 "public_key": thread_participant.user.chat_public_key,
+                "public_key_fingerprint": chat_key_fingerprint(
+                    thread_participant.user.chat_public_key
+                ),
+                "public_signing_key": thread_participant.user.chat_public_signing_key,
+                "public_signing_key_fingerprint": chat_key_fingerprint(
+                    thread_participant.user.chat_public_signing_key
+                ),
             }
             for thread_participant in thread.participants
-            if thread_participant.user and thread_participant.user.chat_public_key
+            if (
+                thread_participant.user
+                and thread_participant.user.active_chat_key
+                and thread_participant.user.chat_public_key
+            )
+        ]
+        rotated_participant_keys = [
+            thread_participant.user.active_chat_key
+            for thread_participant in thread.participants
+            if (
+                thread_participant.user
+                and thread_participant.user.active_chat_key
+                and thread_participant.user.active_chat_key.key_version > 1
+            )
         ]
         can_compose = len(participant_public_keys) == len(thread.participants)
         conversation_message_form = ConversationMessageForm()
@@ -317,6 +384,8 @@ def register_message_routes(app: Flask) -> None:
             message_copies=message_copies,
             message_copy_payloads=message_copy_payloads,
             participant_public_keys=participant_public_keys,
+            rotated_participant_keys=rotated_participant_keys,
+            chat_key_fingerprint=chat_key_fingerprint,
             can_compose=can_compose,
             conversation_name=conversation_name or "Conversation",
             conversation_username=conversation_username,
@@ -390,6 +459,12 @@ def register_message_routes(app: Flask) -> None:
             return jsonify({"error": "Invalid encrypted message payload."}), 400
 
         if not all(_is_chat_ciphertext_envelope(value) for value in encrypted_copies.values()):
+            return jsonify({"error": "Invalid encrypted message payload."}), 400
+        if not _chat_ciphertext_context_is_bound(
+            encrypted_copies,
+            conversation_id=thread.id,
+            sender_participant_id=participant.id,
+        ):
             return jsonify({"error": "Invalid encrypted message payload."}), 400
 
         conversation_message = ConversationMessage()

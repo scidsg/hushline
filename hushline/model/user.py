@@ -474,6 +474,11 @@ class User(Model):
         return active_key.public_key if active_key is not None else None
 
     @property
+    def chat_public_signing_key(self) -> str | None:
+        active_key = self.active_chat_key
+        return active_key.public_signing_key if active_key is not None else None
+
+    @property
     def next_notification_recipient_position(self) -> int:
         if not self.notification_recipients:
             return 0

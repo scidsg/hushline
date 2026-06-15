@@ -14,6 +14,37 @@
   </p>
   {% if chat_key %}
     <p>Chat key version {{ chat_key.key_version }} is active.</p>
+    <p class="meta">
+      Encryption fingerprint:
+      <code>{{ chat_key_fingerprint(chat_key.public_key) }}</code>
+    </p>
+    {% if chat_key.public_signing_key %}
+      <p class="meta">
+        Signing fingerprint:
+        <code>{{ chat_key_fingerprint(chat_key.public_signing_key) }}</code>
+      </p>
+    {% else %}
+      <p class="meta">
+        This chat key predates signed conversation envelopes. Rotate it to sign
+        new conversation replies from this account.
+      </p>
+    {% endif %}
+    {% if chat_key_history %}
+      <details>
+        <summary>Previous chat key fingerprints</summary>
+        <ul>
+          {% for previous_chat_key in chat_key_history %}
+            <li>
+              Version {{ previous_chat_key.key_version }}:
+              <code>{{ chat_key_fingerprint(previous_chat_key.public_key) }}</code>
+              {% if previous_chat_key.recovery_state %}
+                ({{ previous_chat_key.recovery_state }})
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </details>
+    {% endif %}
     <form
       id="chat-key-provision-form"
       class="formBody"

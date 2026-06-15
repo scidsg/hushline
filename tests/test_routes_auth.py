@@ -52,6 +52,9 @@ TOTP_SECRET = "KBOVHCCELV67CYGOQ2QYU5SCNYVAREMH"
 def _login_chat_key_payload(**overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
         "public_key": '{"kty":"EC","crv":"P-256","x":"login-public-x","y":"login-public-y"}',
+        "public_signing_key": (
+            '{"kty":"EC","crv":"P-256","x":"login-signing-public-x","y":"login-signing-public-y"}'
+        ),
         "encrypted_private_key": (
             '{"algorithm":"AES-GCM","iv":"login-nonce","ciphertext":"login-wrapped-private-key"}'
         ),
@@ -383,6 +386,7 @@ def test_login_with_chat_key_payload_creates_missing_chat_key(
     assert created_key.key_version == 1
     assert created_key.disabled_at is None
     assert created_key.public_key == _login_chat_key_payload()["public_key"]
+    assert created_key.public_signing_key == _login_chat_key_payload()["public_signing_key"]
     assert created_key.encrypted_private_key == _login_chat_key_payload()["encrypted_private_key"]
     assert created_key.kdf_salt == "login-salt"
 
@@ -418,6 +422,7 @@ def test_login_with_chat_key_payload_waits_for_successful_2fa(
     assert created_key.key_version == 1
     assert created_key.disabled_at is None
     assert created_key.public_key == _login_chat_key_payload()["public_key"]
+    assert created_key.public_signing_key == _login_chat_key_payload()["public_signing_key"]
 
 
 def _enable_password_reset_email(user: User) -> None:

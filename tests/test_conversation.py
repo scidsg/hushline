@@ -70,6 +70,31 @@ def _ciphertext(label: str) -> str:
     )
 
 
+def _bound_ciphertext(
+    *,
+    conversation_id: int,
+    sender_participant_id: int,
+    recipient_participant_id: int,
+    label: str,
+) -> str:
+    return json.dumps(
+        {
+            "v": 2,
+            "algorithm": "ECDH-P256-AES-GCM",
+            "ephemeral_public_key": '{"kty":"EC","crv":"P-256","x":"ephemeral","y":"key"}',
+            "iv": f"iv-{label}",
+            "ciphertext": f"ciphertext-{label}",
+            "context": {
+                "purpose": "hushline.chat.message",
+                "conversation_id": str(conversation_id),
+                "sender_participant_id": str(sender_participant_id),
+                "recipient_participant_id": str(recipient_participant_id),
+            },
+            "signature": f"signature-{label}",
+        }
+    )
+
+
 def _make_conversation(
     sender: User,
     recipient: User,
@@ -109,6 +134,22 @@ def _make_conversation(
 def _copies_for(conversation: Conversation, label: str) -> dict[str, str]:
     return {
         str(participant.id): _ciphertext(f"{label}-{participant.id}")
+        for participant in conversation.participants
+    }
+
+
+def _bound_copies_for(
+    conversation: Conversation,
+    sender_participant: ConversationParticipant,
+    label: str,
+) -> dict[str, str]:
+    return {
+        str(participant.id): _bound_ciphertext(
+            conversation_id=conversation.id,
+            sender_participant_id=sender_participant.id,
+            recipient_participant_id=participant.id,
+            label=f"{label}-{participant.id}",
+        )
         for participant in conversation.participants
     }
 
@@ -358,6 +399,72 @@ def test_participant_can_append_encrypted_conversation_message(
     for encrypted_copy in messages[-1].encrypted_copies:
         assert "ECDH-P256-AES-GCM" in encrypted_copy.encrypted_payload
         assert plaintext not in encrypted_copy.encrypted_payload
+
+
+def test_append_conversation_message_rejects_mismatched_bound_context(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    conversation = _make_conversation(user, user2)
+    sender_participant = _participant_for(conversation, user)
+    encrypted_copies = _bound_copies_for(conversation, sender_participant, "follow-up")
+    first_recipient_id = next(iter(encrypted_copies))
+    parsed_copy = json.loads(encrypted_copies[first_recipient_id])
+    parsed_copy["context"]["recipient_participant_id"] = "999999"
+    encrypted_copies[first_recipient_id] = json.dumps(parsed_copy)
+    _authenticate_as(client, user)
+
+    response = client.post(
+        url_for("append_conversation_message", conversation_id=conversation.id),
+        json={"encrypted_copies": encrypted_copies},
+    )
+
+    assert response.status_code == 400
+    assert "Invalid encrypted message payload." in response.text
+    assert (
+        db.session.scalar(
+            db.select(db.func.count())
+            .select_from(ConversationMessage)
+            .where(ConversationMessage.conversation_id == conversation.id)
+        )
+        == 1
+    )
+
+
+def test_participant_can_append_context_bound_conversation_message(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    conversation = _make_conversation(user, user2)
+    sender_participant = _participant_for(conversation, user)
+    _authenticate_as(client, user)
+
+    response = client.post(
+        url_for("append_conversation_message", conversation_id=conversation.id),
+        json={
+            "encrypted_copies": _bound_copies_for(
+                conversation,
+                sender_participant,
+                "bound-follow-up",
+            )
+        },
+    )
+
+    assert response.status_code == 201
+    assert (
+        db.session.scalar(
+            db.select(db.func.count())
+            .select_from(ConversationMessage)
+            .where(ConversationMessage.conversation_id == conversation.id)
+        )
+        == 2
+    )
 
 
 @patch("hushline.routes.message.send_email_to_user_recipients")

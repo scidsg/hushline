@@ -111,6 +111,7 @@ def _create_initial_chat_key_from_payload(
         user=user,
         key_version=next_version,
         public_key=payload["public_key"],
+        public_signing_key=payload["public_signing_key"],
         encrypted_private_key=payload["encrypted_private_key"],
         kdf_algorithm=payload["kdf_algorithm"],
         kdf_params=payload["kdf_params"],

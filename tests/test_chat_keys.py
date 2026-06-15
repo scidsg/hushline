@@ -16,6 +16,9 @@ ROOT = Path(__file__).resolve().parents[1]
 def _chat_key_payload(**overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
         "public_key": '{"kty":"EC","crv":"P-256","x":"public-x","y":"public-y"}',
+        "public_signing_key": (
+            '{"kty":"EC","crv":"P-256","x":"signing-public-x","y":"signing-public-y"}'
+        ),
         "encrypted_private_key": (
             '{"algorithm":"AES-GCM","iv":"nonce","ciphertext":"wrapped-private-key"}'
         ),
@@ -129,6 +132,7 @@ def test_authenticated_user_can_provision_chat_key(client: FlaskClient, user: Us
     created_key = db.session.scalars(db.select(ChatKey).filter_by(user_id=user.id)).one()
     assert created_key.key_version == 1
     assert created_key.public_key == _chat_key_payload()["public_key"]
+    assert created_key.public_signing_key == _chat_key_payload()["public_signing_key"]
     assert created_key.encrypted_private_key == _chat_key_payload()["encrypted_private_key"]
     assert created_key.kdf_algorithm == "PBKDF2-SHA-256"
     assert created_key.kdf_params == {"iterations": 310000, "hash": "SHA-256"}
@@ -139,6 +143,9 @@ def test_authenticated_user_can_provision_chat_key(client: FlaskClient, user: Us
     response_payload = response.get_json()
     assert response_payload is not None
     assert response_payload["chat_key"]["public_key"] == created_key.public_key
+    assert response_payload["chat_key"]["public_signing_key"] == created_key.public_signing_key
+    assert response_payload["chat_key"]["public_key_fingerprint"]
+    assert response_payload["chat_key"]["public_signing_key_fingerprint"]
     assert response_payload["chat_key"]["encrypted_private_key"] == (
         created_key.encrypted_private_key
     )
@@ -243,7 +250,7 @@ def test_chat_key_rotation_versions_new_key_and_disables_old_key(
     first_response = client.post(url_for("settings.chat_key"), json=_chat_key_payload())
     second_response = client.post(
         url_for("settings.chat_key"),
-        json=_chat_key_payload(public_key='{"kty":"EC","x":"rotated"}'),
+        json=_chat_key_payload(public_key='{"kty":"EC","crv":"P-256","x":"rotated","y":"key"}'),
     )
 
     assert first_response.status_code == 201
@@ -256,7 +263,7 @@ def test_chat_key_rotation_versions_new_key_and_disables_old_key(
     assert keys[0].recovery_state == "rotated"
     assert keys[1].disabled_at is None
     assert keys[1].rotated_at is not None
-    assert user.chat_public_key == '{"kty":"EC","x":"rotated"}'
+    assert user.chat_public_key == '{"kty":"EC","crv":"P-256","x":"rotated","y":"key"}'
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -320,6 +327,9 @@ def test_chat_key_lifecycle_js_exposes_unlock_rewrap_and_cleanup() -> None:
     assert "form[action$='/verify-2fa-login']" in lifecycle_source
     assert "rewrapForPasswordChange" in lifecycle_source
     assert "clearChatKeyMaterial" in lifecycle_source
+    assert "signChatEnvelope" in lifecycle_source
+    assert "verifyChatEnvelope" in lifecycle_source
+    assert "additionalData" in lifecycle_source
     assert "restoreConversationFromSession" in lifecycle_source
     assert "restoreUnlockedChatKeyFromOtherTab" in lifecycle_source
     assert "BroadcastChannel" in lifecycle_source

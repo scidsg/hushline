@@ -15,6 +15,7 @@ from wtforms.validators import ValidationError
 
 from hushline.auth import authentication_required
 from hushline.chat_key_lifecycle import (
+    chat_key_fingerprint,
     rewrap_active_chat_key,
     validate_chat_key_payload,
 )
@@ -57,6 +58,9 @@ def _chat_key_response(chat_key: ChatKey | None) -> dict[str, Any]:
             "id": chat_key.id,
             "key_version": chat_key.key_version,
             "public_key": chat_key.public_key,
+            "public_key_fingerprint": chat_key_fingerprint(chat_key.public_key),
+            "public_signing_key": chat_key.public_signing_key,
+            "public_signing_key_fingerprint": chat_key_fingerprint(chat_key.public_signing_key),
             "encrypted_private_key": chat_key.encrypted_private_key,
             "kdf_algorithm": chat_key.kdf_algorithm,
             "kdf_params": chat_key.kdf_params,
@@ -94,6 +98,10 @@ def register_encryption_routes(bp: Blueprint) -> None:
             pgp_proton_form=pgp_proton_form,
             pgp_key_form=pgp_key_form,
             chat_key=user.active_chat_key,
+            chat_key_fingerprint=chat_key_fingerprint,
+            chat_key_history=[
+                chat_key for chat_key in user.chat_keys if chat_key.disabled_at is not None
+            ],
             locked_chat_key=next(
                 (
                     chat_key
@@ -132,6 +140,7 @@ def register_encryption_routes(bp: Blueprint) -> None:
                 user=user,
                 key_version=next_version,
                 public_key=cleaned_payload["public_key"],
+                public_signing_key=cleaned_payload["public_signing_key"],
                 encrypted_private_key=cleaned_payload["encrypted_private_key"],
                 kdf_algorithm=cleaned_payload["kdf_algorithm"],
                 kdf_params=cleaned_payload["kdf_params"],

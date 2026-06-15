@@ -27,6 +27,7 @@ class ChatKey(Model):
     )
     key_version: Mapped[int] = mapped_column(nullable=False)
     public_key: Mapped[str] = mapped_column(db.Text, nullable=False)
+    public_signing_key: Mapped[str | None] = mapped_column(db.Text)
     encrypted_private_key: Mapped[str] = mapped_column(db.Text, nullable=False)
     kdf_algorithm: Mapped[str] = mapped_column(db.String(128), nullable=False)
     kdf_params: Mapped[dict[str, Any]] = mapped_column(db.JSON, nullable=False)

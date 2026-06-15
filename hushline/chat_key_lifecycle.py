@@ -1,5 +1,6 @@
 import json
 from datetime import UTC, datetime
+from hashlib import sha256
 from typing import Any
 
 from hushline.db import db
@@ -49,6 +50,48 @@ def payload_text(payload: dict[str, Any], *keys: str) -> str | None:
     return None
 
 
+def _canonical_json(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+
+def chat_key_fingerprint(public_key: str | None) -> str | None:
+    if not public_key:
+        return None
+
+    try:
+        parsed = json.loads(public_key)
+        key_material = _canonical_json(parsed)
+    except (TypeError, ValueError):
+        key_material = public_key.strip()
+
+    digest = sha256(key_material.encode("utf-8")).hexdigest().upper()
+    return ":".join(digest[index : index + 4] for index in range(0, 32, 4))
+
+
+def _valid_public_jwk(value: str, *, expected_use: str) -> bool:
+    try:
+        jwk = json.loads(value)
+    except (TypeError, ValueError):
+        return False
+
+    if not isinstance(jwk, dict):
+        return False
+    if jwk.get("kty") != "EC" or jwk.get("crv") != "P-256":
+        return False
+    if not all(isinstance(jwk.get(field), str) and jwk[field] for field in ("x", "y")):
+        return False
+    key_ops = jwk.get("key_ops")
+    if key_ops is not None and not (
+        isinstance(key_ops, list) and all(isinstance(item, str) for item in key_ops)
+    ):
+        return False
+    if expected_use == "signing" and key_ops and "verify" not in key_ops:
+        return False
+    if expected_use == "agreement" and key_ops and "deriveKey" not in key_ops:
+        return False
+    return True
+
+
 def validate_chat_key_payload(payload: Any, *, current_user_id: int) -> tuple[dict[str, Any], str]:
     if not isinstance(payload, dict):
         return {}, "Expected a JSON object."
@@ -61,6 +104,7 @@ def validate_chat_key_payload(payload: Any, *, current_user_id: int) -> tuple[di
         return {}, "Chat keys can only be provisioned for the authenticated user."
 
     public_key = payload_text(payload, "public_key", "chat_public_key")
+    public_signing_key = payload_text(payload, "public_signing_key", "signing_public_key")
     encrypted_private_key = payload_text(
         payload,
         "encrypted_private_key",
@@ -82,6 +126,10 @@ def validate_chat_key_payload(payload: Any, *, current_user_id: int) -> tuple[di
 
     if not public_key:
         return {}, "public_key is required."
+    if not _valid_public_jwk(public_key, expected_use="agreement"):
+        return {}, "public_key must be a P-256 ECDH public JWK."
+    if public_signing_key and not _valid_public_jwk(public_signing_key, expected_use="signing"):
+        return {}, "public_signing_key must be a P-256 ECDSA public JWK."
     if not encrypted_private_key:
         return {}, "encrypted_private_key is required."
     if not kdf_algorithm:
@@ -98,6 +146,8 @@ def validate_chat_key_payload(payload: Any, *, current_user_id: int) -> tuple[di
         "kdf_salt": kdf_salt,
         "wrapping_algorithm": wrapping_algorithm,
     }
+    if public_signing_key:
+        string_fields["public_signing_key"] = public_signing_key
     if any(len(value) > CHAT_KEY_STRING_MAX_LENGTH for value in string_fields.values()):
         return {}, "Chat key payload is too large."
 
@@ -114,6 +164,7 @@ def validate_chat_key_payload(payload: Any, *, current_user_id: int) -> tuple[di
 
     return {
         "public_key": public_key,
+        "public_signing_key": public_signing_key,
         "encrypted_private_key": encrypted_private_key,
         "kdf_algorithm": kdf_algorithm,
         "kdf_params": kdf_params,
@@ -151,6 +202,7 @@ def rewrap_active_chat_key(
         user=user,
         key_version=next_version,
         public_key=payload["public_key"],
+        public_signing_key=payload["public_signing_key"],
         encrypted_private_key=payload["encrypted_private_key"],
         kdf_algorithm=payload["kdf_algorithm"],
         kdf_params=payload["kdf_params"],
