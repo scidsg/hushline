@@ -54,8 +54,10 @@ jobs:
 
           if str(run.get("id")) != os.environ["RUN_ID"]:
               errors.append("source run ID mismatch")
-          if run.get("event") != "release":
-              errors.append(f"source run event must be release, got {run.get('event')!r}")
+          if run.get("event") not in {"release", "workflow_dispatch"}:
+              errors.append(
+                  f"source run event must be release or workflow_dispatch, got {run.get('event')!r}"
+              )
           if run.get("path") != ".github/workflows/docs-screenshots.yml":
               errors.append(f"source run workflow path is unexpected: {run.get('path')!r}")
           head_repository = run.get("head_repository") or {}
