@@ -99,10 +99,9 @@ async function login(baseUrl, context, username, password) {
   await page.goto(`${baseUrl}/login`, { waitUntil: "networkidle" });
   await page.fill("#username", username);
   await page.fill("#password", password);
-  await Promise.all([
-    page.waitForLoadState("networkidle"),
-    page.click("button[type='submit']"),
-  ]);
+  await page.click("button[type='submit']");
+  await page.waitForFunction(() => window.location.pathname !== "/login");
+  await page.waitForLoadState("networkidle").catch(() => {});
 
   if (page.url().includes("/login")) {
     throw new Error(`Login failed for user ${username}.`);

@@ -451,6 +451,20 @@
       "waitForSelector": ".inbox-content"
     },
     {
+      "slug": "auth-artvandelay-inbox-conversations",
+      "title": "Inbox - artvandelay conversations",
+      "path": "/inbox?type=conversations",
+      "session": "artvandelay",
+      "waitForSelector": ".conversation-summary"
+    },
+    {
+      "slug": "auth-artvandelay-conversation-thread",
+      "title": "Conversation thread - artvandelay",
+      "path": "/conversation/33333333-3333-4333-8333-333333333333",
+      "session": "artvandelay",
+      "waitForSelector": ".conversation-message-body:has-text('The procurement file has three dates')"
+    },
+    {
       "slug": "auth-artvandelay-tools-email-validation",
       "title": "Tools - Email Validation (artvandelay)",
       "path": "/email-headers",
@@ -575,6 +589,13 @@
       "path": "/inbox",
       "session": "newman",
       "waitForSelector": ".inbox-content"
+    },
+    {
+      "slug": "auth-newman-conversation-thread",
+      "title": "Conversation thread - newman",
+      "path": "/conversation/33333333-3333-4333-8333-333333333333",
+      "session": "newman",
+      "waitForSelector": ".conversation-message-body:has-text('I can confirm the Feb 9 shipment')"
     },
     {
       "slug": "auth-newman-onboarding-profile",

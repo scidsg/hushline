@@ -1,14 +1,28 @@
 #!/usr/bin/env python
+import base64
 import json
+import os
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import List, Optional, Tuple, cast
+from typing import Any, List, Optional, Tuple, cast
 
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from flask import current_app
 from sqlalchemy import func, select
 
 from hushline import create_app
+from hushline.chat_key_lifecycle import chat_key_fingerprint
 from hushline.db import db
 from hushline.model import (
+    ChatKey,
+    Conversation,
+    ConversationMessage,
+    ConversationMessageCopy,
+    ConversationParticipant,
     FieldValue,
     Message,
     MessageStatus,
@@ -32,6 +46,7 @@ def main() -> None:
         create_users()
         create_org_settings()
         create_sample_messages()
+        create_sample_conversations()
         create_localstack_buckets()
 
 
@@ -707,6 +722,325 @@ def create_sample_messages() -> None:
         msg.status = MessageStatus[cast(str, item["status"]).upper()]
 
         db.session.commit()
+
+
+DOCS_CONVERSATION_PUBLIC_ID = "33333333-3333-4333-8333-333333333333"
+DOCS_FOLLOWUP_CONVERSATION_PUBLIC_ID = "33333333-3333-4333-8333-333333333334"
+DOCS_SCREENSHOT_PASSWORD = "Test-testtesttesttest-1"  # noqa: S105
+
+
+def _b64(value: bytes) -> str:
+    return base64.b64encode(value).decode("ascii")
+
+
+def _b64url_uint(value: int) -> str:
+    return base64.urlsafe_b64encode(value.to_bytes(32, "big")).decode("ascii").rstrip("=")
+
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+
+def _jwk_public(private_key: ec.EllipticCurvePrivateKey, *, key_ops: list[str]) -> dict[str, Any]:
+    numbers = private_key.public_key().public_numbers()
+    return {
+        "crv": "P-256",
+        "ext": True,
+        "key_ops": key_ops,
+        "kty": "EC",
+        "x": _b64url_uint(numbers.x),
+        "y": _b64url_uint(numbers.y),
+    }
+
+
+def _jwk_private(private_key: ec.EllipticCurvePrivateKey, *, key_ops: list[str]) -> dict[str, Any]:
+    private_numbers = private_key.private_numbers()
+    jwk = _jwk_public(private_key, key_ops=key_ops)
+    jwk["d"] = _b64url_uint(private_numbers.private_value)
+    return jwk
+
+
+def _wrap_private_key_bundle(private_key_bundle: dict[str, Any], password: str) -> dict[str, Any]:
+    salt = os.urandom(16)
+    iv = os.urandom(12)
+    kdf_iterations = 310000
+    kdf_params: dict[str, int | str] = {"iterations": kdf_iterations, "hash": "SHA-256"}
+    wrapping_key = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=kdf_iterations,
+    ).derive(password.encode("utf-8"))
+    encrypted_private_key = AESGCM(wrapping_key).encrypt(
+        iv,
+        json.dumps(private_key_bundle, separators=(",", ":")).encode("utf-8"),
+        None,
+    )
+    return {
+        "encrypted_private_key": json.dumps(
+            {
+                "algorithm": "AES-GCM",
+                "iv": _b64(iv),
+                "ciphertext": _b64(encrypted_private_key),
+            },
+            separators=(",", ":"),
+        ),
+        "kdf_algorithm": "PBKDF2-SHA-256",
+        "kdf_params": kdf_params,
+        "kdf_salt": _b64(salt),
+        "wrapping_algorithm": "AES-GCM",
+    }
+
+
+def _demo_chat_identity(password: str) -> dict[str, Any]:
+    ecdh_private_key = ec.generate_private_key(ec.SECP256R1())
+    signing_private_key = ec.generate_private_key(ec.SECP256R1())
+    private_key_bundle = {
+        "ecdh_private_jwk": _jwk_private(ecdh_private_key, key_ops=["deriveKey"]),
+        "signing_private_jwk": _jwk_private(signing_private_key, key_ops=["sign"]),
+    }
+    public_key = json.dumps(_jwk_public(ecdh_private_key, key_ops=[]), separators=(",", ":"))
+    public_signing_key = json.dumps(
+        _jwk_public(signing_private_key, key_ops=["verify"]), separators=(",", ":")
+    )
+    return {
+        "ecdh_private_key": ecdh_private_key,
+        "signing_private_key": signing_private_key,
+        "payload": {
+            "public_key": public_key,
+            "public_signing_key": public_signing_key,
+            **_wrap_private_key_bundle(private_key_bundle, password),
+            "recovery_state": None,
+        },
+    }
+
+
+def _reset_demo_chat_key(user: User, identity: dict[str, Any]) -> ChatKey:
+    for chat_key in list(user.chat_keys):
+        db.session.delete(chat_key)
+    db.session.flush()
+    payload = cast(dict[str, Any], identity["payload"])
+    chat_key = ChatKey(
+        user=user,
+        key_version=1,
+        public_key=cast(str, payload["public_key"]),
+        public_signing_key=cast(str, payload["public_signing_key"]),
+        encrypted_private_key=cast(str, payload["encrypted_private_key"]),
+        kdf_algorithm=cast(str, payload["kdf_algorithm"]),
+        kdf_params=cast(dict[str, Any], payload["kdf_params"]),
+        kdf_salt=cast(str, payload["kdf_salt"]),
+        wrapping_algorithm=cast(str, payload["wrapping_algorithm"]),
+        recovery_state=None,
+    )
+    db.session.add(chat_key)
+    db.session.flush()
+    return chat_key
+
+
+def _encrypt_conversation_copy(  # noqa: PLR0913
+    *,
+    plaintext: str,
+    conversation: Conversation,
+    sender_participant: ConversationParticipant,
+    sender_identity: dict[str, Any],
+    recipient_participant: ConversationParticipant,
+    recipient_identity: dict[str, Any],
+) -> str:
+    recipient_payload = cast(dict[str, Any], recipient_identity["payload"])
+    recipient_public_key = cast(
+        ec.EllipticCurvePrivateKey, recipient_identity["ecdh_private_key"]
+    ).public_key()
+    ephemeral_private_key = ec.generate_private_key(ec.SECP256R1())
+    shared_secret = ephemeral_private_key.exchange(ec.ECDH(), recipient_public_key)
+    iv = os.urandom(12)
+    context = {
+        "purpose": "hushline.chat.message",
+        "conversation_public_id": conversation.public_id,
+        "sender_participant_id": str(sender_participant.id),
+        "recipient_participant_id": str(recipient_participant.id),
+        "recipient_key_version": 1,
+        "recipient_public_key_fingerprint": chat_key_fingerprint(
+            cast(str, recipient_payload["public_key"])
+        ),
+    }
+    ciphertext = AESGCM(shared_secret).encrypt(
+        iv,
+        plaintext.encode("utf-8"),
+        _canonical_json(context).encode("utf-8"),
+    )
+    ephemeral_public_key = json.dumps(
+        _jwk_public(ephemeral_private_key, key_ops=[]), separators=(",", ":")
+    )
+    envelope: dict[str, Any] = {
+        "v": 2,
+        "algorithm": "ECDH-P256-AES-GCM",
+        "ephemeral_public_key": ephemeral_public_key,
+        "iv": _b64(iv),
+        "ciphertext": _b64(ciphertext),
+        "context": context,
+    }
+    signed_payload = {
+        "v": envelope["v"],
+        "algorithm": envelope["algorithm"],
+        "ephemeral_public_key": envelope["ephemeral_public_key"],
+        "iv": envelope["iv"],
+        "ciphertext": envelope["ciphertext"],
+        "context": envelope["context"],
+    }
+    signature = cast(ec.EllipticCurvePrivateKey, sender_identity["signing_private_key"]).sign(
+        _canonical_json(signed_payload).encode("utf-8"), ec.ECDSA(hashes.SHA256())
+    )
+    r, s = decode_dss_signature(signature)
+    envelope["signature"] = _b64(r.to_bytes(32, "big") + s.to_bytes(32, "big"))
+    return json.dumps(envelope, separators=(",", ":"))
+
+
+def _conversation_plaintext(content: str, created_at: datetime) -> str:
+    return json.dumps(
+        {
+            "content": content,
+            "created_at": created_at.isoformat().replace("+00:00", "Z"),
+        },
+        separators=(",", ":"),
+    )
+
+
+def _seed_demo_conversation(
+    *,
+    public_id: str,
+    artvandelay: User,
+    newman: User,
+    identities: dict[str, dict[str, Any]],
+    messages: list[tuple[str, str, datetime]],
+) -> None:
+    existing = db.session.scalars(
+        select(Conversation).where(Conversation.public_id == public_id)
+    ).one_or_none()
+    if existing is not None:
+        db.session.delete(existing)
+        db.session.flush()
+
+    conversation = Conversation()
+    conversation.public_id = public_id
+    artvandelay_participant = ConversationParticipant()
+    artvandelay_participant.conversation = conversation
+    artvandelay_participant.user = artvandelay
+    artvandelay_participant.has_usable_public_key = True
+    newman_participant = ConversationParticipant()
+    newman_participant.conversation = conversation
+    newman_participant.user = newman
+    newman_participant.has_usable_public_key = True
+    db.session.add(conversation)
+    db.session.flush()
+
+    participants = {
+        "artvandelay": artvandelay_participant,
+        "newman": newman_participant,
+    }
+    for sender_username, content, created_at in messages:
+        sender_participant = participants[sender_username]
+        conversation_message = ConversationMessage()
+        conversation_message.conversation = conversation
+        conversation_message.sender_participant = sender_participant
+        conversation_message.created_at = created_at
+        db.session.add(conversation_message)
+        db.session.flush()
+
+        plaintext = _conversation_plaintext(content, created_at)
+        for recipient_username, recipient_participant in participants.items():
+            encrypted_copy = ConversationMessageCopy()
+            encrypted_copy.recipient_participant = recipient_participant
+            encrypted_copy.encrypted_payload = _encrypt_conversation_copy(
+                plaintext=plaintext,
+                conversation=conversation,
+                sender_participant=sender_participant,
+                sender_identity=identities[sender_username],
+                recipient_participant=recipient_participant,
+                recipient_identity=identities[recipient_username],
+            )
+            conversation_message.encrypted_copies.append(encrypted_copy)
+
+    latest_message = conversation.messages[-1]
+    artvandelay_participant.last_read_at = latest_message.created_at
+    artvandelay_participant.last_read_message = latest_message
+
+
+def create_sample_conversations() -> None:
+    artvandelay_username = db.session.scalars(
+        select(Username).where(
+            func.lower(Username._username) == "artvandelay",
+            Username.is_primary.is_(True),
+        )
+    ).one_or_none()
+    newman_username = db.session.scalars(
+        select(Username).where(
+            func.lower(Username._username) == "newman",
+            Username.is_primary.is_(True),
+        )
+    ).one_or_none()
+    if artvandelay_username is None or newman_username is None:
+        return
+
+    identities = {
+        "artvandelay": _demo_chat_identity(DOCS_SCREENSHOT_PASSWORD),
+        "newman": _demo_chat_identity(DOCS_SCREENSHOT_PASSWORD),
+    }
+    _reset_demo_chat_key(artvandelay_username.user, identities["artvandelay"])
+    _reset_demo_chat_key(newman_username.user, identities["newman"])
+
+    base_time = datetime(2026, 2, 16, 17, 30, tzinfo=timezone.utc)
+    _seed_demo_conversation(
+        public_id=DOCS_CONVERSATION_PUBLIC_ID,
+        artvandelay=artvandelay_username.user,
+        newman=newman_username.user,
+        identities=identities,
+        messages=[
+            (
+                "newman",
+                "The procurement file has three dates that do not match the public agenda.",
+                base_time,
+            ),
+            (
+                "artvandelay",
+                "I am in the thread now. Share only what you can safely document.",
+                base_time + timedelta(minutes=8),
+            ),
+            (
+                "newman",
+                "I can confirm the Feb 9 shipment was approved before the safety review closed.",
+                base_time + timedelta(minutes=19),
+            ),
+            (
+                "artvandelay",
+                "Received. I will cross-check the contract number and keep this conversation here.",
+                base_time + timedelta(minutes=24),
+            ),
+            (
+                "newman",
+                "There is also an internal memo saying the vendor was preselected.",
+                base_time + timedelta(minutes=37),
+            ),
+        ],
+    )
+    _seed_demo_conversation(
+        public_id=DOCS_FOLLOWUP_CONVERSATION_PUBLIC_ID,
+        artvandelay=artvandelay_username.user,
+        newman=newman_username.user,
+        identities=identities,
+        messages=[
+            (
+                "newman",
+                "I found the records-retention note. It says the backup exports run weekly.",
+                base_time - timedelta(days=1),
+            ),
+            (
+                "artvandelay",
+                "Good. Please do not send files from a work device or managed network.",
+                base_time - timedelta(days=1, minutes=-11),
+            ),
+        ],
+    )
+    db.session.commit()
 
 
 def create_tiers() -> None:
