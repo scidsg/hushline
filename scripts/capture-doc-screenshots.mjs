@@ -31,6 +31,7 @@ async function sleep(ms) {
 
 const GUIDANCE_STORAGE_KEY = "hasFinishedGuidance";
 const FIRST_LOAD_SPLASH_SEEN_KEY = "hushline:first-load-splash-seen";
+const CHAT_PRIVATE_JWK_STORAGE_KEY = "hushline:chat-private-jwk";
 const SCREENSHOT_SPLASH_SUPPRESSION_CSS = `
 /* Capture-only: docs screenshots need the target screen, not the first-load splash. */
 #first-load-splash,
@@ -105,6 +106,23 @@ async function login(baseUrl, context, username, password) {
 
   if (page.url().includes("/login")) {
     throw new Error(`Login failed for user ${username}.`);
+  }
+
+  const unlockedChatKey = await page
+    .evaluate((storageKey) => sessionStorage.getItem(storageKey), CHAT_PRIVATE_JWK_STORAGE_KEY)
+    .catch(() => null);
+  if (unlockedChatKey) {
+    await context.addInitScript(
+      ({ storageKey, storageValue }) => {
+        try {
+          sessionStorage.setItem(storageKey, storageValue);
+        } catch {}
+      },
+      {
+        storageKey: CHAT_PRIVATE_JWK_STORAGE_KEY,
+        storageValue: unlockedChatKey,
+      },
+    );
   }
 
   await page.close();
