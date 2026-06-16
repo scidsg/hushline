@@ -117,7 +117,7 @@ def test_screenshots_archive_workflow_publishes_directly_without_pr_flow() -> No
         "      - name: Publish screenshots to hushline-screenshots", 1
     )[1].split("      - name: Publish current screenshots to hushline-website", 1)[0]
 
-    assert 'run.get("event") != "release"' in source_section
+    assert 'run.get("event") not in {"release", "workflow_dispatch"}' in source_section
     assert 'run.get("path") != ".github/workflows/docs-screenshots.yml"' in source_section
     assert 'head_repository.get("full_name") != os.environ["GITHUB_REPOSITORY"]' in source_section
     assert (
@@ -185,7 +185,10 @@ def test_screenshots_workflow_publishes_current_folder_to_website_directly() -> 
         "      - name: Publish current screenshots to hushline-website", 1
     )[1]
 
-    assert "if: ${{ github.event_name == 'release' }}" in publish_job_section
+    assert (
+        "if: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}"
+        in publish_job_section
+    )
     assert "if: ${{ github.event_name != 'workflow_call' }}" not in capture_workflow_text
     assert "fetch-depth: 1" in checkout_section
     assert "fetch-depth: 0" not in checkout_section
