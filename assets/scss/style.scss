@@ -228,6 +228,10 @@
     box-shadow: var(--shadow-dynamic);
   }
 
+  .conversation-main .container {
+    border: none;
+  }
+
   .dirMeta,
   p.instr {
     background-color: rgb(255, 249, 234);
@@ -832,6 +836,10 @@
     background-color: var(--color-dark-bg-alt);
     box-shadow: 0px 4px 12px -4px rgba(0, 0, 0, 0.15);
     box-shadow: var(--shadow-dynamic);
+  }
+
+  .conversation-main .container {
+    border: none;
   }
 
   .dirMeta,
@@ -2247,7 +2255,6 @@ a.logoutLink {
   height: 0.75rem;
   border-radius: 50%;
   background: var(--color-brand);
-  box-shadow: 0 0 0 0.1875rem var(--color-highlight);
 }
 
 .conversation-summary {
@@ -2262,8 +2269,6 @@ a.logoutLink {
 
 .conversation-summary.has-unread {
   border-color: var(--color-brand);
-  box-shadow:
-    var(--shadow-dynamic-card);
 }
 
 .conversation-summary .conversation-unread-dot {
@@ -2275,7 +2280,6 @@ a.logoutLink {
   margin-right: 0.125rem;
   border-radius: 50%;
   background: var(--color-brand);
-  box-shadow: 0 0 0 0.1875rem var(--color-highlight);
   vertical-align: 0.06rem;
 }
 
@@ -2532,7 +2536,6 @@ body.conversation-body {
   background: var(--color-white-transparent);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  box-shadow: var(--shadow-dynamic-card);
 }
 
 .conversation-message.is-own-message .conversation-message-body {
@@ -4575,7 +4578,6 @@ h2.submit#embed-recipient-heading {
 
   .inbox-main .conversation-summary .conversation-unread-dot {
     background: var(--color-brand-dark-min-saturation);
-    box-shadow: 0 0 0 0.1875rem var(--color-highlight-dark);
   }
 }
 
