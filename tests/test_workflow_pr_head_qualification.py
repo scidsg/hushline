@@ -399,10 +399,22 @@ def test_staging_release_branch_resets_to_trusted_base_before_auto_merge() -> No
         "      - name: Create or update staging PR",
         1,
     )[0]
+    pr_section = workflow_text.split("      - name: Create or update staging PR", 1)[1].split(
+        "      - name: Merge staging PR if immediately allowed",
+        1,
+    )[0]
+    merge_section = workflow_text.split(
+        "      - name: Merge staging PR if immediately allowed",
+        1,
+    )[1]
 
+    assert "HUSHLINE_INFRA_STAGING_PAT || HUSHLINE_INFRA_TOKEN" not in workflow_text
+    assert "HUSHLINE_INFRA_TOKEN" not in workflow_text
+    assert "token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}" in workflow_text
     assert 'git fetch origin "$INFRA_BRANCH":"refs/remotes/origin/$INFRA_BRANCH"' in reset_section
     assert 'git checkout -B "$INFRA_BRANCH" "origin/$INFRA_BASE_REF"' in reset_section
     assert 'git checkout -B "$INFRA_BRANCH" "origin/$INFRA_BRANCH"' not in reset_section
+    assert 'echo "head_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"' in commit_section
     assert (
         'git push --force-with-lease=refs/heads/"$INFRA_BRANCH" origin "$INFRA_BRANCH"'
         not in commit_section
@@ -414,3 +426,7 @@ def test_staging_release_branch_resets_to_trusted_base_before_auto_merge() -> No
         'git push --force-with-lease=refs/heads/"$INFRA_BRANCH" origin "$INFRA_BRANCH"'
         in push_section
     )
+    assert "Missing infra push token" not in push_section
+    assert "GH_TOKEN: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}" in pr_section
+    assert "GH_TOKEN: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}" in merge_section
+    assert '--match-head-commit "${{ steps.commit_infra.outputs.head_sha }}"' in merge_section

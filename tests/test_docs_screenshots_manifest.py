@@ -203,8 +203,12 @@ def test_docs_screenshot_capture_login_waits_for_fetch_driven_redirect() -> None
         script.index("async function login(") : script.index("async function runAction")
     ]
 
+    assert 'const CHAT_PRIVATE_JWK_STORAGE_KEY = "hushline:chat-private-jwk";' in script
     assert "await page.click(\"button[type='submit']\");" in login_body
     assert 'window.location.pathname !== "/login"' in login_body
+    assert "sessionStorage.getItem(storageKey)" in login_body
+    assert "sessionStorage.setItem(storageKey, storageValue)" in login_body
+    assert "await context.addInitScript(" in login_body
     assert "Promise.all" not in login_body
 
 
