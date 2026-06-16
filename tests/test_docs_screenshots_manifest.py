@@ -142,6 +142,37 @@ def test_docs_screenshots_manifest_includes_featured_directory_carousel() -> Non
     )
 
 
+def test_docs_screenshots_manifest_includes_decrypted_conversation_scenes() -> None:
+    scenes = _scene_map()
+    screenshots_readme = (REPO_ROOT / "docs" / "screenshots" / "README.md").read_text(
+        encoding="utf-8"
+    )
+    dev_data = (REPO_ROOT / "scripts" / "dev_data.py").read_text(encoding="utf-8")
+
+    inbox_scene = scenes["auth-artvandelay-inbox-conversations"]
+    artvandelay_thread = scenes["auth-artvandelay-conversation-thread"]
+    newman_thread = scenes["auth-newman-conversation-thread"]
+
+    assert inbox_scene["path"] == "/inbox?type=conversations"
+    assert inbox_scene["session"] == "artvandelay"
+    assert inbox_scene["waitForSelector"] == ".conversation-summary"
+    assert artvandelay_thread["path"] == "/conversation/33333333-3333-4333-8333-333333333333"
+    assert artvandelay_thread["waitForSelector"] == (
+        ".conversation-message-body:has-text('The procurement file has three dates')"
+    )
+    assert newman_thread["path"] == artvandelay_thread["path"]
+    assert newman_thread["waitForSelector"] == (
+        ".conversation-message-body:has-text('I can confirm the Feb 9 shipment')"
+    )
+    assert "create_sample_conversations()" in dev_data
+    assert "ECDH-P256-AES-GCM" in dev_data
+    assert "PBKDF2-SHA-256" in dev_data
+    assert (
+        "./releases/latest/artvandelay/auth-artvandelay-conversation-thread-mobile-light-fold.png"
+        in screenshots_readme
+    )
+
+
 def test_docs_screenshot_capture_suppresses_first_load_splash() -> None:
     script = CAPTURE_SCRIPT_PATH.read_text(encoding="utf-8")
 
@@ -164,6 +195,17 @@ def test_docs_screenshot_capture_filters_to_manifest_capture_files() -> None:
     assert "shouldVisitCaptureTarget(" in script
     assert "shouldCaptureFile(captureFiles, relativeFile)" in script
     assert "Required screenshot captures were not produced" in script
+
+
+def test_docs_screenshot_capture_login_waits_for_fetch_driven_redirect() -> None:
+    script = CAPTURE_SCRIPT_PATH.read_text(encoding="utf-8")
+    login_body = script[
+        script.index("async function login(") : script.index("async function runAction")
+    ]
+
+    assert "await page.click(\"button[type='submit']\");" in login_body
+    assert 'window.location.pathname !== "/login"' in login_body
+    assert "Promise.all" not in login_body
 
 
 def test_docs_screenshot_capture_supports_scene_masks() -> None:
