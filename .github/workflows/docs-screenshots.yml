@@ -296,7 +296,7 @@ jobs:
           path: ${{ steps.artifact.outputs.artifact_root }}
 
   publish-release:
-    if: ${{ github.event_name == 'release' }}
+    if: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
     needs: capture
     uses: ./.github/workflows/publish-docs-screenshots.yml
     with:
