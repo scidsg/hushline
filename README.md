@@ -152,6 +152,22 @@ If local audit commands are blocked by network/tooling availability, document th
       />
     </td>
   </tr>
+  <tr>
+    <td valign="bottom" width="73%">
+      <img
+        src="https://raw.githubusercontent.com/scidsg/hushline-screenshots/refs/heads/main/releases/latest/artvandelay/auth-artvandelay-conversation-thread-desktop-light-fold.png"
+        width="100%"
+        alt="E2EE chat screenshot"
+      />
+    </td>
+    <td valign="bottom" width="27%">
+      <img
+        src="https://raw.githubusercontent.com/scidsg/hushline-screenshots/refs/heads/main/releases/latest/artvandelay/auth-artvandelay-conversation-thread-mobile-light-fold.png"
+        width="100%"
+        alt="Mobile E2EE screenshot"
+      />
+    </td>
+  </tr>
 </table>
 
 More screenshots: <https://github.com/scidsg/hushline-screenshots/tree/main/releases/latest>
