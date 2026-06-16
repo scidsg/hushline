@@ -193,8 +193,6 @@ jobs:
             echo "::error title=Missing infra push token::HUSHLINE_INFRA_STAGING_PAT and HUSHLINE_INFRA_TOKEN are both unset."
             exit 1
           fi
-
-          git remote set-url origin "https://x-access-token:${INFRA_PUSH_TOKEN}@github.com/${INFRA_REPOSITORY}.git"
           git push --force-with-lease=refs/heads/"$INFRA_BRANCH" origin "$INFRA_BRANCH"
 
       - name: Create or update staging PR
