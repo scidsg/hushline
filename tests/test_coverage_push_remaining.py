@@ -318,8 +318,10 @@ def test_enable_2fa_invalid_code_path(client: FlaskClient, user: User) -> None:
         data={"verification_code": bad_code},
         follow_redirects=False,
     )
-    assert response.status_code == 302
-    assert response.headers["Location"].endswith(url_for("settings.enable_2fa"))
+    assert response.status_code == 400
+    assert 'id="verification-code-error"' in response.text
+    assert 'aria-invalid="true"' in response.text
+    assert "Invalid 2FA code. Please try again." in response.text
 
 
 @pytest.mark.asyncio()

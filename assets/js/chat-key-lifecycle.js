@@ -982,9 +982,17 @@
     });
   }
 
+  function announceConversationUpdate(message) {
+    const status = document.getElementById("conversation-live-status");
+    if (status) {
+      status.textContent = message;
+    }
+  }
+
   async function refreshConversationMessages({
     force = false,
     scroll = false,
+    announce = false,
   } = {}) {
     const root = document.getElementById("conversation-chat");
     if (!root || state.status !== "unlocked") {
@@ -998,6 +1006,7 @@
     }
 
     const shouldScroll = scroll || conversationThreadIsNearBottom();
+    const currentMessageIds = conversationMessageIds();
     const response = await fetch(window.location.href, {
       cache: "no-store",
       credentials: "same-origin",
@@ -1020,10 +1029,14 @@
       return false;
     }
 
+    const nextMessageIds = conversationMessageIds(nextDocument);
+    const addedMessageIds = nextMessageIds.filter(
+      (messageId) => !currentMessageIds.includes(messageId),
+    );
+
     if (
       !force &&
-      conversationMessagesSignature(nextDocument) ===
-        conversationMessagesSignature()
+      nextMessageIds.join(",") === currentMessageIds.join(",")
     ) {
       return false;
     }
@@ -1035,6 +1048,19 @@
       }),
     );
     await decryptConversationMessages();
+    if (announce && addedMessageIds.length > 0) {
+      const incomingMessageCount = addedMessageIds.filter((messageId) => {
+        const messageElement = thread.querySelector(
+          `[data-conversation-message-id="${CSS.escape(messageId)}"]`,
+        );
+        return messageElement && !messageElement.classList.contains("is-own-message");
+      }).length;
+      if (incomingMessageCount === 1) {
+        announceConversationUpdate("New reply received.");
+      } else if (incomingMessageCount > 1) {
+        announceConversationUpdate(`${incomingMessageCount} new replies received.`);
+      }
+    }
     if (shouldScroll) {
       scrollConversationThreadToLatest("smooth");
     }
@@ -1275,7 +1301,7 @@
       }
       isRefreshing = true;
       try {
-        await refreshConversationMessages();
+        await refreshConversationMessages({ announce: true });
       } catch (error) {
         return;
       } finally {

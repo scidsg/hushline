@@ -88,7 +88,18 @@ class NoDisallowedLanguage:
 
 
 class TwoFactorForm(FlaskForm):
-    verification_code = StringField("2FA Code", validators=[DataRequired(), Length(min=6, max=6)])
+    verification_code = StringField(
+        "2FA Code",
+        validators=[
+            DataRequired(message="Enter your six-digit 2FA code."),
+            Length(min=6, max=6, message="Enter the six-digit 2FA code."),
+        ],
+        render_kw={
+            "autocomplete": "one-time-code",
+            "inputmode": "numeric",
+            "pattern": "[0-9]*",
+        },
+    )
 
 
 def coerce_status(status: str | MessageStatus) -> MessageStatus:

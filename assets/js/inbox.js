@@ -34,6 +34,24 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   if (inboxTabsNav) {
+    const ensureInboxStatus = () => {
+      let status = document.getElementById("inbox-live-status");
+      if (!status) {
+        status = document.createElement("p");
+        status.id = "inbox-live-status";
+        status.className = "visually-hidden";
+        status.setAttribute("role", "status");
+        status.setAttribute("aria-live", "polite");
+        status.setAttribute("aria-atomic", "true");
+        document.body.appendChild(status);
+      }
+      return status;
+    };
+
+    const announceInboxUpdate = () => {
+      ensureInboxStatus().textContent = "Inbox updated with the latest messages.";
+    };
+
     const updateStickyOffset = () => {
       const header = document.querySelector("header");
       const banner = document.querySelector(".banner");
@@ -69,7 +87,18 @@ document.addEventListener("DOMContentLoaded", function () {
         return false;
       }
 
+      const activeElement = document.activeElement;
+      const activeHref =
+        activeElement instanceof HTMLAnchorElement
+          ? activeElement.getAttribute("href")
+          : null;
       currentElement.replaceWith(nextElement);
+      if (activeHref) {
+        const restoredFocus = document.querySelector(
+          `${selector} a[href="${CSS.escape(activeHref)}"]`,
+        );
+        restoredFocus?.focus();
+      }
       return true;
     };
 
@@ -97,6 +126,7 @@ document.addEventListener("DOMContentLoaded", function () {
           replaceIfChanged(".inbox-tabs", nextDocument),
         ].some(Boolean);
         if (changed) {
+          announceInboxUpdate();
           requestAnimationFrame(updateStickyOffset);
         }
       } catch (_error) {

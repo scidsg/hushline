@@ -682,7 +682,7 @@ def register_auth_routes(app: Flask) -> None:
             db.session.add(auth_log)
             db.session.commit()
 
-            flash("⛔️ Invalid 2FA code. Please try again.")
+            form.verification_code.errors.append("Invalid 2FA code. Please try again.")
             return render_template("verify_2fa_login.html", form=form), 401
 
         return render_template("verify_2fa_login.html", form=form)

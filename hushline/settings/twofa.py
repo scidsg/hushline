@@ -22,6 +22,26 @@ from hushline.routes import (
 )
 
 
+def _twofa_qr_code_img(totp_secret: str, user: User) -> str:
+    totp_uri = pyotp.totp.TOTP(totp_secret).provisioning_uri(
+        name=user.primary_username.username, issuer_name="HushLine"
+    )
+    img = qrcode.make(totp_uri)
+    buffered = io.BytesIO()
+    img.save(buffered)
+    return "data:image/png;base64," + base64.b64encode(buffered.getvalue()).decode()
+
+
+def _render_enable_2fa_form(user: User, form: TwoFactorForm, totp_secret: str) -> str:
+    return render_template(
+        "enable_2fa.html",
+        form=form,
+        qr_code_img=_twofa_qr_code_img(totp_secret, user),
+        text_code=totp_secret,
+        user=user,
+    )
+
+
 def register_2fa_routes(bp: Blueprint) -> None:
     @bp.route("/toggle-2fa", methods=["POST"])
     @authentication_required
@@ -34,8 +54,11 @@ def register_2fa_routes(bp: Blueprint) -> None:
 
     @bp.route("/enable-2fa", methods=["GET", "POST"])
     @authentication_required
-    def enable_2fa() -> Response | str:
+    def enable_2fa() -> Response | str | tuple[str, int]:
         user = db.session.get(User, session.get("user_id"))
+        if not user:
+            return redirect(url_for("login"))
+
         form = TwoFactorForm()
 
         if form.validate_on_submit():
@@ -53,29 +76,17 @@ def register_2fa_routes(bp: Blueprint) -> None:
                 flash("👍 2FA setup successful. Please log in again with 2FA.")
                 return redirect(url_for("logout"))
 
-            flash("⛔️ Invalid 2FA code. Please try again.")
-            return redirect(url_for(".enable_2fa"))
+            form.verification_code.errors.append("Invalid 2FA code. Please try again.")
+            if not temp_totp_secret:
+                temp_totp_secret = pyotp.random_base32()
+                session["temp_totp_secret"] = temp_totp_secret
+            return _render_enable_2fa_form(user, form, temp_totp_secret), 400
 
         # Generate new 2FA secret and QR code
         temp_totp_secret = pyotp.random_base32()
         session["temp_totp_secret"] = temp_totp_secret
         session["is_setting_up_2fa"] = True
-        if user:
-            totp_uri = pyotp.totp.TOTP(temp_totp_secret).provisioning_uri(
-                name=user.primary_username.username, issuer_name="HushLine"
-            )
-        img = qrcode.make(totp_uri)
-        buffered = io.BytesIO()
-        img.save(buffered)
-        qr_code_img = "data:image/png;base64," + base64.b64encode(buffered.getvalue()).decode()
-
-        return render_template(
-            "enable_2fa.html",
-            form=form,
-            qr_code_img=qr_code_img,
-            text_code=temp_totp_secret,
-            user=user,
-        )
+        return _render_enable_2fa_form(user, form, temp_totp_secret)
 
     @bp.route("/disable-2fa", methods=["POST"])
     @authentication_required

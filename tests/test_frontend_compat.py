@@ -11,6 +11,123 @@ def test_package_json_declares_node_20_plus() -> None:
     assert engines.get("node") == ">=20"
 
 
+def test_accessibility_reduced_motion_is_platform_wide() -> None:
+    scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
+
+    assert "@media (prefers-reduced-motion: reduce)" in scss
+    assert "*,\n  *::before,\n  *::after" in scss
+    assert "animation-duration: 0.01ms !important;" in scss
+    assert "transition-duration: 0.01ms !important;" in scss
+    assert "scroll-behavior: auto !important;" in scss
+    assert ".first-load-splash-spinner" in scss
+    assert "animation: none !important;" in scss
+
+
+def test_accessibility_contrast_guardrails_for_theme_and_focus() -> None:
+    scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
+    base_template = (ROOT / "hushline/templates/base.html").read_text(encoding="utf-8")
+
+    assert "--color-brand-min-contrast:" in scss
+    assert "--color-brand-mid-contrast:" in scss
+    assert "--color-brand-max-contrast:" in scss
+    assert "--color-brand-dark-min-saturation:" in scss
+    assert "--color-brand-dark-mid-saturation:" in scss
+    assert "--color-brand-dark-max-saturation:" in scss
+    assert "input:focus" in scss
+    assert "textarea:focus" in scss
+    assert "button:focus" in scss
+    assert "select:focus" in scss
+    assert "outline: 4px double var(--color-brand-min-contrast);" in scss
+    assert "outline: 4px double var(--color-brand-dark-min-saturation);" in scss
+    assert "--color-brand: {{ brand_primary_color }};" in base_template
+    assert "--color-brand: oklch(from {{ brand_primary_color }} l c h);" in base_template
+
+
+def test_custom_profile_field_controls_are_accessible() -> None:
+    template = (ROOT / "hushline/templates/settings/profile-forms.html").read_text(encoding="utf-8")
+    js = (ROOT / "assets/js/settings-fields.js").read_text(encoding="utf-8")
+
+    assert '<button\n            type="button"\n            class="field-form-toggle"' in template
+    assert 'aria-expanded="false"' in template
+    assert 'aria-controls="field-form-content-' in template
+    assert 'class="icon chevron" aria-hidden="true"' in template
+    assert "fieldContent.hidden = true;" in js
+    assert 'fieldToggle.setAttribute("aria-expanded", isExpanded ? "false" : "true")' in js
+    assert '<label for="${inputId}">Choice ${index + 1}</label>' in js
+    assert "Move choice ${choiceNumber} up" in js
+    assert "Move choice ${choiceNumber} down" in js
+    assert "Remove choice ${choiceNumber}" in js
+
+
+def test_inbox_polling_announces_updates_and_restores_focus() -> None:
+    js = (ROOT / "assets/js/inbox.js").read_text(encoding="utf-8")
+
+    assert 'status.id = "inbox-live-status";' in js
+    assert 'status.className = "visually-hidden";' in js
+    assert 'status.setAttribute("role", "status");' in js
+    assert 'status.setAttribute("aria-live", "polite");' in js
+    assert "Inbox updated with the latest messages." in js
+    assert "activeElement instanceof HTMLAnchorElement" in js
+    assert "restoredFocus?.focus();" in js
+
+
+def test_conversation_chat_announces_new_incoming_replies() -> None:
+    js = (ROOT / "assets/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
+    template = (ROOT / "hushline/templates/conversation.html").read_text(encoding="utf-8")
+
+    assert 'role="log"' in template
+    assert 'tabindex="0"' in template
+    assert 'id="conversation-live-status"' in template
+    assert 'id="conversation-compose-help"' in template
+    assert 'aria-describedby="conversation-compose-help conversation-chat-status"' in template
+    assert "function announceConversationUpdate(message)" in js
+    assert 'document.getElementById("conversation-live-status")' in js
+    assert "announce = false" in js
+    assert "addedMessageIds" in js
+    assert "incomingMessageCount" in js
+    assert 'announceConversationUpdate("New reply received.");' in js
+    assert "await refreshConversationMessages({ announce: true });" in js
+
+
+def test_mobile_reflow_and_touch_targets_cover_chat_and_navigation() -> None:
+    scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
+    conversation_template = (ROOT / "hushline/templates/conversation.html").read_text(
+        encoding="utf-8"
+    )
+    directory_template = (ROOT / "hushline/templates/directory.html").read_text(encoding="utf-8")
+
+    assert "@media (max-width: 720px)" in scss
+    assert ".conversation-page" in scss
+    assert "height: calc(100dvh - var(--conversation-top-offset));" in scss
+    assert ".conversation-thread" in scss
+    assert "padding-top: 8rem;" in scss
+    assert ".conversation-composer textarea" in scss
+    assert "min-height: 44px;" in scss
+    assert ".conversation-composer button" in scss
+    assert "overflow-y: auto;" in scss
+    assert 'class="conversation-thread"' in conversation_template
+    assert 'role="log"' in conversation_template
+    assert 'aria-label="Scroll directory tabs left"' in directory_template
+    assert 'aria-label="Scroll directory tabs right"' in directory_template
+
+
+def test_captcha_and_trust_icon_semantics_are_accessible() -> None:
+    templates = [
+        ROOT / "hushline/templates/register.html",
+        ROOT / "hushline/templates/password_reset_request.html",
+        ROOT / "hushline/templates/profile.html",
+        ROOT / "hushline/templates/embed_profile.html",
+    ]
+    combined = "\n".join(path.read_text(encoding="utf-8") for path in templates)
+
+    assert 'id="captcha-instructions"' in combined
+    assert 'inputmode="numeric"' in combined
+    assert 'aria_describedby="captcha-instructions"' in combined
+    assert 'aria-describedby="captcha-instructions"' in combined
+    assert 'role="img"' in combined
+    assert 'aria-label="Verified address"' in combined
+
+
 def test_theme_select_rules_set_closed_control_text_color() -> None:
     scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
 
@@ -411,7 +528,8 @@ def test_conversation_replies_and_polling_update_thread_in_place() -> None:
     assert "window.setInterval(refreshIfVisible, intervalMs);" in js
     assert "thread.replaceChildren(" in js
     assert "currentCopies.textContent = nextCopies.textContent;" in js
-    assert "conversationMessagesSignature(nextDocument)" in js
+    assert "const currentMessageIds = conversationMessageIds();" in js
+    assert "const nextMessageIds = conversationMessageIds(nextDocument);" in js
     assert "window.location.reload()" not in js
     assert "thread.scrollTo({" in js
     assert "top: thread.scrollHeight" in js

@@ -41,7 +41,7 @@
       </div>
     {% endif %}
     <div class="captcha">
-      <p>🤖 Solve the math problem to complete your registration.</p>
+      <p id="captcha-instructions">🤖 Solve the math problem to complete your registration.</p>
       <div class="captcha_container">
         <label for="captcha_answer">{{ math_problem }}</label>
         <input
@@ -50,6 +50,8 @@
           name="captcha_answer"
           required
           autocomplete="off"
+          inputmode="numeric"
+          aria-describedby="captcha-instructions"
           aria-label="Solve {{ math_problem }} to complete registration"
         />
       </div>

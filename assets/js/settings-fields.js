@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", function () {
   document
     .querySelectorAll(".field-form-content")
     .forEach(function (fieldContent) {
-      fieldContent.style.display = "none";
+      fieldContent.hidden = true;
     });
 
   // Ensure chevrons start unrotated
@@ -24,17 +24,13 @@ document.addEventListener("DOMContentLoaded", function () {
           ".field-form-content",
         );
         const chevron = fieldToggle.querySelector(".icon.chevron");
+        const isExpanded = fieldToggle.getAttribute("aria-expanded") === "true";
 
-        if (
-          fieldContent.style.display === "none" ||
-          !fieldContent.style.display
-        ) {
-          fieldContent.style.display = "block";
-          chevron.style.transform = "rotate(90deg)"; // Open state
-        } else {
-          fieldContent.style.display = "none";
-          chevron.style.transform = "rotate(0deg)"; // Closed state
-        }
+        fieldToggle.setAttribute("aria-expanded", isExpanded ? "false" : "true");
+        fieldContent.hidden = isExpanded;
+        chevron.style.transform = isExpanded
+          ? "rotate(0deg)"
+          : "rotate(90deg)";
       });
     });
 
@@ -102,6 +98,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const choiceItem = document.createElement("div");
       choiceItem.classList.add("choice-item");
       choiceItem.innerHTML = `
+                <label for="${inputId}">Choice ${index + 1}</label>
                 <input type="text" name="${inputName}" id="${inputId}" />
                 <button type="button" class="move-up-choice">Move Up</button>
                 <button type="button" class="move-down-choice">Move Down</button>
@@ -152,8 +149,23 @@ document.addEventListener("DOMContentLoaded", function () {
       .querySelectorAll(".choice-item")
       .forEach(function (choiceItem, index) {
         const input = choiceItem.querySelector("input[type='text']");
+        const label = choiceItem.querySelector("label");
+        const moveUpButton = choiceItem.querySelector(".move-up-choice");
+        const moveDownButton = choiceItem.querySelector(".move-down-choice");
+        const removeButton = choiceItem.querySelector(".remove-choice");
+        const choiceNumber = index + 1;
         input.name = `choices-${index}-choice`;
         input.id = `choices-${index}-choice`;
+        if (label) {
+          label.setAttribute("for", input.id);
+          label.textContent = `Choice ${choiceNumber}`;
+        }
+        moveUpButton?.setAttribute("aria-label", `Move choice ${choiceNumber} up`);
+        moveDownButton?.setAttribute(
+          "aria-label",
+          `Move choice ${choiceNumber} down`,
+        );
+        removeButton?.setAttribute("aria-label", `Remove choice ${choiceNumber}`);
       });
   }
   document

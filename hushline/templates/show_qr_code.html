@@ -3,14 +3,44 @@
 
 {% block content %}
   <h2>Scan this QR Code with your 2FA app and enter the code</h2>
-  <img class="qr" src="{{ qr_code_img }}" alt="QR Code" />
-  <p class="mono">Your pairing code: {{ user_secret }}</p>
+  <p id="two-factor-setup-instructions">
+    Scan the QR code with your 2FA app, or manually enter the pairing code.
+  </p>
+  <img
+    class="qr"
+    src="{{ qr_code_img }}"
+    alt="QR code for adding this Hush Line account to a 2FA app"
+  />
+  <p>
+    Your pairing code:
+    <code id="two-factor-secret" class="mono">{{ user_secret }}</code>
+  </p>
   <form method="POST" action="{{ url_for('settings.verify_2fa_setup') }}">
     {{ form.hidden_tag() }}
     <div>
-      {{ form.verification_code(size=6) }}
+      {{ form.verification_code.label(for="verification_code") }}
+      {% set verification_code_describedby = "two-factor-setup-instructions two-factor-secret" %}
       {% if form.verification_code.errors %}
-        <div class="error">{{ form.verification_code.errors[0] }}</div>
+        {% set verification_code_describedby = verification_code_describedby ~ " verification-code-error" %}
+      {% endif %}
+      {{ form.verification_code(
+        id="verification_code",
+        size=6,
+        autocomplete="one-time-code",
+        inputmode="numeric",
+        pattern="[0-9]*",
+        aria_describedby=verification_code_describedby,
+        aria_invalid="true" if form.verification_code.errors else "false",
+      ) }}
+      {% if form.verification_code.errors %}
+        <div
+          id="verification-code-error"
+          class="error"
+          role="alert"
+          aria-live="assertive"
+        >
+          {{ form.verification_code.errors[0] }}
+        </div>
       {% endif %}
     </div>
     <button type="submit">Verify Setup</button>

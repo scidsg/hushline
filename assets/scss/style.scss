@@ -6059,6 +6059,32 @@ button .badge {
     margin-top: 1rem;
 }
 
+.field-form-toggle {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.field-form-toggle .field-form-label-container {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .first-load-splash-spinner {
+    animation: none !important;
+  }
+}
+
 .settings-search + .meta {
   margin-top: 1rem;
   margin-bottom: 0.25rem;

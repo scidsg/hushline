@@ -3,14 +3,33 @@
 
 {% block content %}
   <h2>Enter your 2FA Code</h2>
-  <p>🔑 Enter the six-digit code from your authenticator app.</p>
+  <p id="verification-code-help">🔑 Enter the six-digit code from your authenticator app.</p>
   <form method="POST" action="{{ url_for('verify_2fa_login') }}">
     {{ form.hidden_tag() }}
     <div>
-      {{ form.verification_code.label }}
-      {{ form.verification_code(size=6) }}
+      {{ form.verification_code.label(for="verification_code") }}
+      {% set verification_code_describedby = "verification-code-help" %}
       {% if form.verification_code.errors %}
-        <div class="error">{{ form.verification_code.errors[0] }}</div>
+        {% set verification_code_describedby = verification_code_describedby ~ " verification-code-error" %}
+      {% endif %}
+      {{ form.verification_code(
+        id="verification_code",
+        size=6,
+        autocomplete="one-time-code",
+        inputmode="numeric",
+        pattern="[0-9]*",
+        aria_describedby=verification_code_describedby,
+        aria_invalid="true" if form.verification_code.errors else "false",
+      ) }}
+      {% if form.verification_code.errors %}
+        <div
+          id="verification-code-error"
+          class="error"
+          role="alert"
+          aria-live="assertive"
+        >
+          {{ form.verification_code.errors[0] }}
+        </div>
       {% endif %}
     </div>
     <button type="submit">Verify</button>

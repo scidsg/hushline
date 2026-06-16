@@ -181,9 +181,14 @@
 
       {% for field_form in field_forms %}
         <div class="field-form field-form-{{ field_form.id.data }}">
-          <h5 class="field-form-toggle">
-            <div class="icon chevron"></div>
-            <div class="field-form-label-container">
+          <button
+            type="button"
+            class="field-form-toggle"
+            aria-expanded="false"
+            aria-controls="field-form-content-{{ field_form.id.data }}"
+          >
+            <span class="icon chevron" aria-hidden="true"></span>
+            <span class="field-form-label-container">
               <div>
                 Field {{ loop.index }}
                 {% if not field_form.enabled.data %}
@@ -191,9 +196,9 @@
                 {% endif %}
               </div>
               <div class="field-form-label">{{ field_form.label.data }}</div>
-            </div>
-          </h5>
-          <div class="field-form-content">
+            </span>
+          </button>
+          <div id="field-form-content-{{ field_form.id.data }}" class="field-form-content">
             {% with is_new_field=False, is_first=(loop.index == 1), is_last=(loop.index == field_forms|length) %}
               {% include "settings/profile-field-form.html" %}
             {% endwith %}
@@ -202,11 +207,16 @@
       {% endfor %}
 
       <div class="field-form field-form-new">
-        <h5 class="field-form-toggle">
-          <div class="icon chevron"></div>
+        <button
+          type="button"
+          class="field-form-toggle"
+          aria-expanded="false"
+          aria-controls="field-form-content-new"
+        >
+          <span class="icon chevron" aria-hidden="true"></span>
           Add Field
-        </h5>
-        <div class="field-form-content">
+        </button>
+        <div id="field-form-content-new" class="field-form-content">
           {% with is_new_field=True, field_form=new_field_form %}
             {% include "settings/profile-field-form.html" %}
           {% endwith %}

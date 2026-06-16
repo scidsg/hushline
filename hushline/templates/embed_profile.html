@@ -125,10 +125,15 @@
           <div class="extra-fields">
             {% for field in username.valid_fields %}
               <p class="extra-field">
-                <span class="extra-field-label">{{ field.label }}</span>
+                  <span class="extra-field-label">{{ field.label }}</span>
                 <span class="extra-field-value">
                   {% if field.is_verified %}
-                    <span class="icon verifiedURL" title="Verified Address"></span>
+                    <span
+                      class="icon verifiedURL"
+                      role="img"
+                      aria-label="Verified address"
+                      title="Verified Address"
+                    ></span>
                   {% endif %}
                   {% if field.value.startswith('https://') %}
                     <a
@@ -216,7 +221,7 @@
 
         {% if not message_submission_block_reason %}
           <div class="captcha">
-            <p>🤖 Solve the math problem to submit your message.</p>
+            <p id="captcha-instructions">🤖 Solve the math problem to submit your message.</p>
             <div class="captcha_container">
               <label for="captcha_answer">{{ math_problem }}</label>
               {{ form.captcha_answer(
@@ -224,6 +229,8 @@
                 value="",
                 required="",
                 autocomplete="off",
+                inputmode="numeric",
+                aria_describedby="captcha-instructions",
                 aria_label="Solve " ~ math_problem ~ " to submit your message",
               ) }}
             </div>

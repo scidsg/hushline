@@ -55,13 +55,21 @@
       {{ message_copy_payloads | tojson }}
     </script>
 
-    <article class="conversation-thread" aria-live="polite" aria-label="Conversation messages">
+    <article
+      class="conversation-thread"
+      role="log"
+      tabindex="0"
+      aria-live="polite"
+      aria-relevant="additions text"
+      aria-atomic="false"
+      aria-label="Conversation messages"
+    >
       {% for conversation_message, encrypted_copy, is_own_message in message_copies %}
         <div
           class="conversation-message {{ 'is-own-message' if is_own_message else 'is-other-message' }}"
           data-conversation-message-id="{{ conversation_message.id }}"
         >
-          <time data-conversation-message-time class="meta" role="presentation"></time>
+          <time data-conversation-message-time class="meta"></time>
           {% if encrypted_copy %}
             <p class="conversation-message-body">Encrypted message. Waiting for browser chat key.</p>
           {% else %}
@@ -98,6 +106,14 @@
       >🔒 End-to-end encrypted</span
     >
 
+    <p
+      id="conversation-live-status"
+      class="visually-hidden"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    ></p>
+
     <noscript>
       <div class="conversation-noscript" role="status">
         JavaScript is required for end-to-end encrypted chat. There is no
@@ -108,6 +124,9 @@
     <form id="conversation-compose-form" class="conversation-composer">
       {{ conversation_message_form.hidden_tag() }}
       <label class="visually-hidden" for="conversation-compose-body">Message</label>
+      <p id="conversation-compose-help" class="visually-hidden">
+        Type your reply. Press Enter to send, or Shift and Enter to add a new line.
+      </p>
       <textarea
         id="conversation-compose-body"
         name="message"
@@ -115,6 +134,7 @@
         maxlength="50000"
         disabled="disabled"
         placeholder="Message"
+        aria-describedby="conversation-compose-help conversation-chat-status"
         required
       ></textarea>
       {{ conversation_message_form.submit(

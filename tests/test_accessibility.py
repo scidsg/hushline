@@ -14,6 +14,37 @@ from hushline.model import (
 )
 
 
+def _assert_2fa_code_input_accessibility(
+    soup: BeautifulSoup,
+    *,
+    describedby_ids: set[str],
+    expects_error: bool = False,
+) -> None:
+    field = soup.find(id="verification_code")
+    label = soup.find("label", {"for": "verification_code"})
+
+    assert field is not None
+    assert label is not None
+    assert label.get_text(" ", strip=True) == "2FA Code"
+    assert field.get("autocomplete") == "one-time-code"
+    assert field.get("inputmode") == "numeric"
+    assert field.get("pattern") == "[0-9]*"
+
+    describedby = set((field.get("aria-describedby") or "").split())
+    assert describedby_ids.issubset(describedby)
+    for element_id in describedby_ids:
+        assert soup.find(id=element_id) is not None
+
+    if expects_error:
+        assert field.get("aria-invalid") == "true"
+        error = soup.find(id="verification-code-error")
+        assert error is not None
+        assert error.get("role") == "alert"
+        assert error.get("aria-live") == "assertive"
+    else:
+        assert field.get("aria-invalid") == "false"
+
+
 def _make_inbox_conversation(
     user: User,
     user2: User,
@@ -332,3 +363,122 @@ def test_guidance_modal_has_accessible_attributes(client: FlaskClient) -> None:
     assert modal.get("tabindex") == "-1"
     assert soup.find("button", {"aria-label": "Go to step 1"}) is not None
     assert soup.find("button", {"aria-label": "Go to step 2"}) is not None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_conversation_chat_has_accessible_log_and_composer(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    conversation = _make_inbox_conversation(
+        user,
+        user2,
+        user_has_copy=True,
+        sender_is_other_user=True,
+    )
+
+    response = client.get(
+        url_for("conversation", public_id=conversation.public_id),
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    thread = soup.select_one(".conversation-thread")
+    live_status = soup.find(id="conversation-live-status")
+    composer = soup.find(id="conversation-compose-body")
+    help_text = soup.find(id="conversation-compose-help")
+    chat_status = soup.find(id="conversation-chat-status")
+    message_time = soup.select_one("[data-conversation-message-time]")
+
+    assert thread is not None
+    assert thread.get("role") == "log"
+    assert thread.get("tabindex") == "0"
+    assert thread.get("aria-live") == "polite"
+    assert thread.get("aria-relevant") == "additions text"
+    assert thread.get("aria-atomic") == "false"
+    assert live_status is not None
+    assert live_status.get("role") == "status"
+    assert live_status.get("aria-live") == "polite"
+    assert live_status.get("aria-atomic") == "true"
+    assert composer is not None
+    assert help_text is not None
+    assert chat_status is not None
+    assert set((composer.get("aria-describedby") or "").split()) == {
+        "conversation-compose-help",
+        "conversation-chat-status",
+    }
+    assert message_time is not None
+    assert message_time.get("role") is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_enable_2fa_setup_has_accessible_code_entry(client: FlaskClient) -> None:
+    response = client.get(url_for("settings.enable_2fa"))
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    qr_code = soup.find("img", class_="qr")
+    secret = soup.find(id="two-factor-secret")
+
+    assert qr_code is not None
+    assert qr_code.get("alt") == "QR code for adding this Hush Line account to a 2FA app"
+    assert secret is not None
+    _assert_2fa_code_input_accessibility(
+        soup,
+        describedby_ids={"two-factor-setup-instructions", "two-factor-secret"},
+    )
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_enable_2fa_invalid_code_has_accessible_error(client: FlaskClient) -> None:
+    client.get(url_for("settings.enable_2fa"))
+
+    response = client.post(
+        url_for("settings.enable_2fa"),
+        data={"verification_code": "000000"},
+    )
+    assert response.status_code == 400
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    _assert_2fa_code_input_accessibility(
+        soup,
+        describedby_ids={
+            "two-factor-setup-instructions",
+            "two-factor-secret",
+            "verification-code-error",
+        },
+        expects_error=True,
+    )
+    assert "Invalid 2FA code. Please try again." in soup.get_text(" ", strip=True)
+
+
+def test_verify_2fa_login_has_accessible_error(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    user.totp_secret = "KBOVHCCELV67CYGOQ2QYU5SCNYVAREMH"
+    db.session.commit()
+    login_response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": user_password,
+        },
+        follow_redirects=True,
+    )
+    assert login_response.status_code == 200
+
+    response = client.post(
+        url_for("verify_2fa_login"),
+        data={"verification_code": "000000"},
+    )
+    assert response.status_code == 401
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    _assert_2fa_code_input_accessibility(
+        soup,
+        describedby_ids={"verification-code-help", "verification-code-error"},
+        expects_error=True,
+    )
+    assert "Invalid 2FA code. Please try again." in soup.get_text(" ", strip=True)
