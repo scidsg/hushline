@@ -11,13 +11,13 @@ from hushline.model import User
 PENDING_PASSWORD_REHASH_SESSION_KEY = "pending_password_rehash"  # noqa: S105
 PENDING_PASSWORD_REHASH_SOURCE_DIGEST_SESSION_KEY = "pending_password_rehash_source_digest"  # noqa: S105
 POST_AUTH_REDIRECT_SESSION_KEY = "post_auth_redirect"
-CHAT_KEY_SESSION_SECRET_SESSION_KEY = "chat_key_session_secret"  # noqa: S105
+CHAT_KEY_SESSION_ID_SESSION_KEY = "chat_key_session_id"
 AUTH_SESSION_KEYS = (
     "user_id",
     "session_id",
     "username",
     "is_authenticated",
-    CHAT_KEY_SESSION_SECRET_SESSION_KEY,
+    CHAT_KEY_SESSION_ID_SESSION_KEY,
     POST_AUTH_REDIRECT_SESSION_KEY,
     PENDING_PASSWORD_REHASH_SESSION_KEY,
     PENDING_PASSWORD_REHASH_SOURCE_DIGEST_SESSION_KEY,
@@ -34,9 +34,9 @@ def rotate_user_session_id(user: User) -> None:
     db.session.add(user)
 
 
-def rotate_chat_key_session_secret() -> str:
-    session[CHAT_KEY_SESSION_SECRET_SESSION_KEY] = secrets.token_urlsafe(32)
-    return str(session[CHAT_KEY_SESSION_SECRET_SESSION_KEY])
+def rotate_chat_key_session_id() -> str:
+    session[CHAT_KEY_SESSION_ID_SESSION_KEY] = secrets.token_urlsafe(32)
+    return str(session[CHAT_KEY_SESSION_ID_SESSION_KEY])
 
 
 def set_session_user(*, user: User, username: str, is_authenticated: bool) -> None:
@@ -46,9 +46,9 @@ def set_session_user(*, user: User, username: str, is_authenticated: bool) -> No
     session["username"] = username
     session["is_authenticated"] = is_authenticated
     if is_authenticated:
-        rotate_chat_key_session_secret()
+        rotate_chat_key_session_id()
     else:
-        session.pop(CHAT_KEY_SESSION_SECRET_SESSION_KEY, None)
+        session.pop(CHAT_KEY_SESSION_ID_SESSION_KEY, None)
 
 
 def stash_post_auth_redirect() -> None:

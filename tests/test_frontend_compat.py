@@ -206,11 +206,11 @@ def test_chat_key_lifecycle_restores_unlocked_key_for_authenticated_tab_session(
     assert "expiresAt > now + unlockedKeyMaxAgeMs" in js
     assert 'const crossTabChannelName = "hushline:chat-key-session";' in js
     assert "new BroadcastChannel(crossTabChannelName)" in js
-    assert "function chatKeySessionSecret(sourceDocument = document)" in js
-    assert "message.session_secret !== chatKeySessionSecret()" in js
-    assert "message.session_secret !== sessionSecret" in js
-    assert "session_secret: sessionSecret" in js
-    assert "stored.session_secret !== chatKeySessionSecret()" in js
+    assert "function chatKeySessionId(sourceDocument = document)" in js
+    assert "message.session_id !== chatKeySessionId()" in js
+    assert "message.session_id !== sessionId" in js
+    assert "session_id: sessionId" in js
+    assert "stored.session_id !== chatKeySessionId()" in js
     assert "sessionStorage.setItem(" in js
     assert "sessionStorage.getItem(sessionStorageKey)" in js
     assert "sessionStorage.removeItem(sessionStorageKey)" in js
@@ -220,6 +220,10 @@ def test_chat_key_lifecycle_restores_unlocked_key_for_authenticated_tab_session(
     assert "restoreConversationFromSession" in js
     assert "restoreUnlockedChatKeyFromOtherTab" in js
     assert "async function signingPrivateKeyForChatKey(chatKey)" in js
+    assert "function touchUnlockedChatKeyUse()" in js
+    assert "if (!touchUnlockedChatKeyUse())" in js
+    assert "function updateConversationLockedAfterKeyClear()" in js
+    assert "setConversationComposeEnabled(false);" in js
     assert "function setConversationSecureBadgeVisible(visible)" in js
     assert "setConversationSecureBadgeVisible(true);" in js
     assert "setConversationSecureBadgeVisible(false);" in js
@@ -234,7 +238,7 @@ def test_chat_key_lifecycle_restores_unlocked_key_for_authenticated_tab_session(
     assert "request-unlocked-chat-key" in js
     assert "unlocked-chat-key" in js
     assert "pendingLoginPassword = null;" in js
-    assert 'data-chat-key-session-secret="{{ chat_key_session_secret }}"' in base_template
+    assert 'data-chat-key-session-id="{{ chat_key_session_id }}"' in base_template
     assert 'data-clear-chat-key-material="true"' in base_template
     assert 'data-clear-chat-key-material="true"' in password_reset_template
     assert 'data-clear-chat-key-material="true"' in password_reset_request_template

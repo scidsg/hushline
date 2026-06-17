@@ -176,7 +176,7 @@
   <body
     class="{% block body_class %}{% endblock %}"
     data-authenticated="{{ 'true' if 'user_id' in session and session.get('is_authenticated', False) else 'false' }}"
-    data-chat-key-session-secret="{{ chat_key_session_secret }}"
+    data-chat-key-session-id="{{ chat_key_session_id }}"
   >
     {% if splash_screen_enabled %}
       <div

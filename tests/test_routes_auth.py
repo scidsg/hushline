@@ -13,7 +13,7 @@ from werkzeug.security import generate_password_hash
 
 from hushline.auth import (
     AUTH_SESSION_KEYS,
-    CHAT_KEY_SESSION_SECRET_SESSION_KEY,
+    CHAT_KEY_SESSION_ID_SESSION_KEY,
     PENDING_PASSWORD_REHASH_SESSION_KEY,
     PENDING_PASSWORD_REHASH_SOURCE_DIGEST_SESSION_KEY,
     POST_AUTH_REDIRECT_SESSION_KEY,
@@ -334,8 +334,8 @@ def test_login_redirects_to_original_protected_page(
 
     with client.session_transaction() as sess:
         assert POST_AUTH_REDIRECT_SESSION_KEY not in sess
-        assert isinstance(sess[CHAT_KEY_SESSION_SECRET_SESSION_KEY], str)
-        assert sess[CHAT_KEY_SESSION_SECRET_SESSION_KEY]
+        assert isinstance(sess[CHAT_KEY_SESSION_ID_SESSION_KEY], str)
+        assert sess[CHAT_KEY_SESSION_ID_SESSION_KEY]
 
 
 def test_login_password_step_for_2fa_does_not_revoke_existing_sessions(
@@ -415,7 +415,7 @@ def test_login_with_chat_key_payload_waits_for_successful_2fa(
     assert response.headers["Location"].endswith(url_for("verify_2fa_login"))
     assert db.session.scalars(db.select(ChatKey).filter_by(user_id=user.id)).all() == []
     with client.session_transaction() as sess:
-        assert CHAT_KEY_SESSION_SECRET_SESSION_KEY not in sess
+        assert CHAT_KEY_SESSION_ID_SESSION_KEY not in sess
 
     response = client.post(
         url_for("verify_2fa_login"),
@@ -425,8 +425,8 @@ def test_login_with_chat_key_payload_waits_for_successful_2fa(
 
     assert response.status_code == 302
     with client.session_transaction() as sess:
-        assert isinstance(sess[CHAT_KEY_SESSION_SECRET_SESSION_KEY], str)
-        assert sess[CHAT_KEY_SESSION_SECRET_SESSION_KEY]
+        assert isinstance(sess[CHAT_KEY_SESSION_ID_SESSION_KEY], str)
+        assert sess[CHAT_KEY_SESSION_ID_SESSION_KEY]
     created_key = db.session.scalars(db.select(ChatKey).filter_by(user_id=user.id)).one()
     assert created_key.key_version == 1
     assert created_key.disabled_at is None

@@ -11,7 +11,7 @@ from werkzeug.exceptions import HTTPException, InternalServerError
 from werkzeug.wrappers.response import Response
 
 from hushline import admin, premium, routes, settings, storage
-from hushline.auth import CHAT_KEY_SESSION_SECRET_SESSION_KEY, rotate_chat_key_session_secret
+from hushline.auth import CHAT_KEY_SESSION_ID_SESSION_KEY, rotate_chat_key_session_id
 from hushline.cli_encrypted_field import register_encrypted_field_commands
 from hushline.cli_password_hash import register_password_hash_commands
 from hushline.cli_reg import register_reg_commands
@@ -294,7 +294,7 @@ def configure_jinja(app: Flask) -> None:
             splash_screen_duration_ms=app.config.get(SPLASH_SCREEN_DURATION_MS, 2000),
             setup_incomplete=False,
             user=None,
-            chat_key_session_secret="",
+            chat_key_session_id="",
         )
         brand_primary_color = data.get(OrganizationSetting.BRAND_PRIMARY_COLOR, "#7d25c1")
         data["brand_primary_color_dark"] = _brand_dark_color(brand_primary_color)
@@ -304,11 +304,9 @@ def configure_jinja(app: Flask) -> None:
             data["user"] = user
             if user:
                 if session.get("is_authenticated", False):
-                    if not isinstance(session.get(CHAT_KEY_SESSION_SECRET_SESSION_KEY), str):
-                        rotate_chat_key_session_secret()
-                    data["chat_key_session_secret"] = session.get(
-                        CHAT_KEY_SESSION_SECRET_SESSION_KEY, ""
-                    )
+                    if not isinstance(session.get(CHAT_KEY_SESSION_ID_SESSION_KEY), str):
+                        rotate_chat_key_session_id()
+                    data["chat_key_session_id"] = session.get(CHAT_KEY_SESSION_ID_SESSION_KEY, "")
                 username = user.primary_username
                 data["setup_incomplete"] = bool(
                     not username
