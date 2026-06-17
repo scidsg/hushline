@@ -334,6 +334,9 @@ async function submitEncryptedForm(form) {
     },
   });
   const html = await response.text();
+  if (response.url && response.url.startsWith(window.location.origin)) {
+    window.history.replaceState({}, "", response.url);
+  }
   document.open();
   document.write(html);
   document.close();

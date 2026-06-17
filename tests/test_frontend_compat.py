@@ -106,6 +106,8 @@ def test_client_side_encryption_has_platform_guards() -> None:
     assert "body: new FormData(form)" in js
     assert 'credentials: "same-origin"' in js
     assert 'Accept: "text/html"' in js
+    assert "response.url.startsWith(window.location.origin)" in js
+    assert 'window.history.replaceState({}, "", response.url);' in js
     assert "document.write(html);" in js
     assert "form.submit();" not in js
 
