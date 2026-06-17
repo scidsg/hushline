@@ -56,7 +56,8 @@ def _login_chat_key_payload(**overrides: object) -> dict[str, object]:
             '{"kty":"EC","crv":"P-256","x":"login-signing-public-x","y":"login-signing-public-y"}'
         ),
         "encrypted_private_key": (
-            '{"algorithm":"AES-GCM","iv":"login-nonce","ciphertext":"login-wrapped-private-key"}'
+            '{"algorithm":"AES-GCM","iv":"bG9naW4tbm9uY2U=",'
+            '"ciphertext":"bG9naW4td3JhcHBlZC1wcml2YXRlLWtleQ=="}'
         ),
         "kdf_algorithm": "PBKDF2-SHA-256",
         "kdf_params": {"iterations": 310000, "hash": "SHA-256"},

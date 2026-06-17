@@ -538,7 +538,7 @@ def test_change_password_rewraps_active_chat_key(
         {
             "public_key": '{"kty":"EC","crv":"P-256","x":"public-chat","y":"key"}',
             "encrypted_private_key": (
-                '{"algorithm":"AES-GCM","iv":"new","ciphertext":"rewrapped"}'
+                '{"algorithm":"AES-GCM","iv":"bmV3","ciphertext":"cmV3cmFwcGVk"}'
             ),
             "kdf_algorithm": "PBKDF2-SHA-256",
             "kdf_params": {"iterations": 310000, "hash": "SHA-256"},
@@ -567,7 +567,7 @@ def test_change_password_rewraps_active_chat_key(
     assert keys[1].disabled_at is None
     assert keys[1].public_key == '{"kty":"EC","crv":"P-256","x":"public-chat","y":"key"}'
     assert keys[1].encrypted_private_key == (
-        '{"algorithm":"AES-GCM","iv":"new","ciphertext":"rewrapped"}'
+        '{"algorithm":"AES-GCM","iv":"bmV3","ciphertext":"cmV3cmFwcGVk"}'
     )
     assert keys[1].kdf_salt == "new-salt"
 
@@ -601,7 +601,7 @@ def test_change_password_rewrap_rejects_plaintext_chat_key_material(
         {
             "public_key": '{"kty":"EC","crv":"P-256","x":"public-chat","y":"key"}',
             "encrypted_private_key": (
-                '{"algorithm":"AES-GCM","iv":"new","ciphertext":"rewrapped"}'
+                '{"algorithm":"AES-GCM","iv":"bmV3","ciphertext":"cmV3cmFwcGVk"}'
             ),
             "kdf_algorithm": "PBKDF2-SHA-256",
             "kdf_params": {"iterations": 310000, "hash": "SHA-256"},

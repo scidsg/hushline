@@ -20,7 +20,7 @@ def _chat_key_payload(**overrides: object) -> dict[str, object]:
             '{"kty":"EC","crv":"P-256","x":"signing-public-x","y":"signing-public-y"}'
         ),
         "encrypted_private_key": (
-            '{"algorithm":"AES-GCM","iv":"nonce","ciphertext":"wrapped-private-key"}'
+            '{"algorithm":"AES-GCM","iv":"bm9uY2U=",' '"ciphertext":"d3JhcHBlZC1wcml2YXRlLWtleQ=="}'
         ),
         "kdf_algorithm": "PBKDF2-SHA-256",
         "kdf_params": {"iterations": 310000, "hash": "SHA-256"},
@@ -193,6 +193,69 @@ def test_chat_key_payload_rejects_plaintext_private_key_material(
 
     assert response.status_code == 400
     assert "Plaintext chat key material is not accepted." in response.text
+    assert db.session.scalars(db.select(ChatKey)).all() == []
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.parametrize(
+    ("overrides", "expected_error"),
+    [
+        (
+            {"kdf_algorithm": "PBKDF2-SHA-1"},
+            "kdf_algorithm must be PBKDF2-SHA-256.",
+        ),
+        (
+            {"kdf_params": {"iterations": 309999, "hash": "SHA-256"}},
+            "kdf_params.iterations is below the minimum.",
+        ),
+        (
+            {"kdf_params": {"iterations": 310000, "hash": "SHA-1"}},
+            "kdf_params.hash must be SHA-256.",
+        ),
+        (
+            {"wrapping_algorithm": "AES-CBC"},
+            "wrapping_algorithm must be AES-GCM.",
+        ),
+        (
+            {"encrypted_private_key": "wrapped-private-key"},
+            "encrypted_private_key must be a JSON object.",
+        ),
+        (
+            {
+                "encrypted_private_key": (
+                    '{"algorithm":"AES-CBC","iv":"bm9uY2U=",'
+                    '"ciphertext":"d3JhcHBlZC1wcml2YXRlLWtleQ=="}'
+                )
+            },
+            "encrypted_private_key algorithm must be AES-GCM.",
+        ),
+        (
+            {
+                "encrypted_private_key": (
+                    '{"algorithm":"AES-GCM","iv":"not base64",'
+                    '"ciphertext":"d3JhcHBlZC1wcml2YXRlLWtleQ=="}'
+                )
+            },
+            "encrypted_private_key iv must be non-empty base64.",
+        ),
+        (
+            {"encrypted_private_key": ('{"algorithm":"AES-GCM","iv":"bm9uY2U=","ciphertext":""}')},
+            "encrypted_private_key ciphertext must be non-empty base64.",
+        ),
+    ],
+)
+def test_chat_key_payload_rejects_weak_or_malformed_wrapping_policy(
+    client: FlaskClient,
+    overrides: dict[str, object],
+    expected_error: str,
+) -> None:
+    response = client.post(
+        url_for("settings.chat_key"),
+        json=_chat_key_payload(**overrides),
+    )
+
+    assert response.status_code == 400
+    assert expected_error in response.text
     assert db.session.scalars(db.select(ChatKey)).all() == []
 
 
