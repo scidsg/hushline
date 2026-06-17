@@ -367,6 +367,13 @@ async function importSigningPrivateKey(privateJwk) {
 }
 
 async function initialConversationSigningKey(senderChatKey) {
+  const restoredSigningKey =
+    await window.HushLineChatKeys?.signingPrivateKeyForChatKey?.(
+      senderChatKey,
+    );
+  if (restoredSigningKey) {
+    return restoredSigningKey;
+  }
   const privateKeyBundle = rememberedPrivateKeyBundleForChatKey(senderChatKey);
   if (!privateKeyBundle?.signing_private_jwk) {
     return null;

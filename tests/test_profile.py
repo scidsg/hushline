@@ -19,6 +19,7 @@ from hushline.model import (
     ChatKey,
     Conversation,
     ConversationMessageCopy,
+    InitialConversationNonce,
     Message,
     NotificationRecipient,
     OrganizationSetting,
@@ -580,6 +581,58 @@ def test_logged_in_profile_submit_initial_chat_nonce_is_single_use(
     assert "do not have any usable recipient PGP keys" in second_response.text
     assert db.session.scalar(db.select(db.func.count()).select_from(Message)) == 1
     assert db.session.scalar(db.select(db.func.count()).select_from(Conversation)) == 1
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_logged_in_profile_submit_initial_chat_nonce_rejects_stale_session_cookie_replay(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    user.pgp_key = None
+    user2.pgp_key = None
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    db.session.commit()
+    submission_data = get_profile_submission_data(client, user2.primary_username.username)
+    post_data = {
+        "field_0": msg_contact_method,
+        "field_1": msg_content,
+        "encrypted_conversation_copies": json.dumps(
+            _initial_conversation_copies_for(
+                sender=user,
+                recipient=user2,
+                nonce=submission_data["owner_guard_nonce"],
+            )
+        ),
+        **submission_data,
+    }
+    replay_client = app.test_client()
+    _authenticate_as(replay_client, user)
+    with replay_client.session_transaction() as stale_session:
+        stale_session["initial_conversation_nonces"] = [submission_data["owner_guard_nonce"]]
+
+    first_response = client.post(
+        url_for("profile", username=user2.primary_username.username),
+        data=post_data,
+        follow_redirects=False,
+    )
+    replay_response = replay_client.post(
+        url_for("profile", username=user2.primary_username.username),
+        data=post_data,
+        follow_redirects=True,
+    )
+
+    assert first_response.status_code == 302
+    assert replay_response.status_code == 400
+    assert "do not have any usable recipient PGP keys" in replay_response.text
+    assert db.session.scalar(db.select(db.func.count()).select_from(Message)) == 1
+    assert db.session.scalar(db.select(db.func.count()).select_from(Conversation)) == 1
+    consumed_nonce_rows = db.session.scalars(
+        db.select(InitialConversationNonce).where(InitialConversationNonce.consumed_at.is_not(None))
+    ).all()
+    assert len(consumed_nonce_rows) == 1
 
 
 @pytest.mark.usefixtures("_authenticated_user")

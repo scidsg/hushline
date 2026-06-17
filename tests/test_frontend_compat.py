@@ -125,6 +125,7 @@ def test_client_side_encryption_prepares_chat_conversation_copies() -> None:
     assert "recipient_public_key_fingerprint" in js
     assert "canonicalStringify(envelopeContext)" in js
     assert "await signChatEnvelope(envelope, signingKey)" in js
+    assert "signingPrivateKeyForChatKey" in js
     assert 'const sessionStorageKey = "hushline:chat-private-jwk";' in js
     assert 'getChatPublicKey("recipientChatPublicKey")' in js
     assert 'getChatKeyDescriptor("recipientChatKey")' in js
@@ -154,6 +155,8 @@ def test_chat_key_lifecycle_imports_private_key_for_message_decryption() -> None
     assert "conversationMessageSenderSigningFingerprintFromPayload" in static_js
     assert "participantPublicKeyBySigningFingerprint" in js
     assert "participantPublicKeyBySigningFingerprint" in static_js
+    assert "conversationParticipantSigningPublicKeys" in js
+    assert "conversationParticipantSigningPublicKeys" in static_js
     assert "privateKeyBundle.ecdh_private_jwk" in js
     assert "unlockedChatSigningPrivateKey = await importSigningPrivateKey(" in js
     assert "privateKeyBundle.signing_private_jwk" in js
@@ -194,6 +197,7 @@ def test_chat_key_lifecycle_restores_unlocked_key_for_authenticated_tab_session(
     assert "localStorage.removeItem(legacyBrowserStorageKey)" in js
     assert "restoreConversationFromSession" in js
     assert "restoreUnlockedChatKeyFromOtherTab" in js
+    assert "async function signingPrivateKeyForChatKey(chatKey)" in js
     assert "function setConversationSecureBadgeVisible(visible)" in js
     assert "setConversationSecureBadgeVisible(true);" in js
     assert "setConversationSecureBadgeVisible(false);" in js
@@ -214,6 +218,7 @@ def test_conversation_does_not_prompt_for_password_after_login() -> None:
     js = (ROOT / "assets/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
     template = (ROOT / "hushline/templates/conversation.html").read_text(encoding="utf-8")
 
+    assert 'id="conversationParticipantSigningPublicKeys"' in template
     assert "conversation-chat-password" not in js
     assert "unlockConversationFromPassword" not in js
     assert "conversation-chat-password" not in template

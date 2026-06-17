@@ -381,6 +381,18 @@ def register_message_routes(app: Flask) -> None:
                 and thread_participant.user.chat_public_signing_key
             )
         ]
+        participant_signing_public_keys = [
+            {
+                "participant_id": thread_participant.id,
+                "key_version": chat_key.key_version,
+                "public_signing_key": chat_key.public_signing_key,
+                "public_signing_key_fingerprint": chat_key_fingerprint(chat_key.public_signing_key),
+            }
+            for thread_participant in thread.participants
+            if thread_participant.user
+            for chat_key in thread_participant.user.chat_keys
+            if chat_key.public_signing_key
+        ]
         rotated_participant_keys = [
             thread_participant.user.active_chat_key
             for thread_participant in thread.participants
@@ -400,6 +412,7 @@ def register_message_routes(app: Flask) -> None:
             message_copies=message_copies,
             message_copy_payloads=message_copy_payloads,
             participant_public_keys=participant_public_keys,
+            participant_signing_public_keys=participant_signing_public_keys,
             rotated_participant_keys=rotated_participant_keys,
             chat_key_fingerprint=chat_key_fingerprint,
             can_compose=can_compose,

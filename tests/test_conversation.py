@@ -329,6 +329,63 @@ def test_conversation_view_disables_composer_when_participant_key_cannot_sign(
     ]
 
 
+def test_conversation_view_exposes_historical_signing_keys_for_initial_message_verification(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    old_signing_key = '{"kty":"EC","crv":"P-256","x":"old-signing","y":"key"}'
+    new_signing_key = '{"kty":"EC","crv":"P-256","x":"new-signing","y":"key"}'
+    db.session.add_all(
+        [
+            ChatKey(
+                user=user,
+                key_version=1,
+                public_key='{"kty":"EC","crv":"P-256","x":"old-sender","y":"key"}',
+                public_signing_key=old_signing_key,
+                encrypted_private_key="wrapped-old-private-chat-key",
+                kdf_algorithm="PBKDF2-SHA-256",
+                kdf_params={"iterations": 310000},
+                kdf_salt="salt",
+                wrapping_algorithm="AES-GCM",
+                disabled_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            ),
+            ChatKey(
+                user=user,
+                key_version=2,
+                public_key='{"kty":"EC","crv":"P-256","x":"new-sender","y":"key"}',
+                public_signing_key=new_signing_key,
+                encrypted_private_key="wrapped-new-private-chat-key",
+                kdf_algorithm="PBKDF2-SHA-256",
+                kdf_params={"iterations": 310000},
+                kdf_salt="salt",
+                wrapping_algorithm="AES-GCM",
+            ),
+        ]
+    )
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    db.session.commit()
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user2)
+
+    response = client.get(url_for("conversation", public_id=conversation.public_id))
+
+    assert response.status_code == 200
+    signing_keys_match = re.search(
+        r'<script id="conversationParticipantSigningPublicKeys" type="application/json">\s*'
+        r"([\s\S]*?)</script>",
+        response.text,
+    )
+    assert signing_keys_match is not None
+    signing_keys = json.loads(signing_keys_match.group(1))
+    sender_participant_id = _participant_for(conversation, user).id
+    assert {
+        signing_key["public_signing_key"]
+        for signing_key in signing_keys
+        if signing_key["participant_id"] == sender_participant_id
+    } == {old_signing_key, new_signing_key}
+
+
 def test_conversation_view_hides_message_metadata_from_page_payload(
     client: FlaskClient,
     user: User,

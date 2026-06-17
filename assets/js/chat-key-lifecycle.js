@@ -376,6 +376,19 @@
     });
   }
 
+  async function signingPrivateKeyForChatKey(chatKey) {
+    if (!chatKey) {
+      return null;
+    }
+    if (await restoreUnlockedChatKey(chatKey)) {
+      return unlockedChatSigningPrivateKey;
+    }
+    if (await restoreUnlockedChatKeyFromOtherTab(chatKey)) {
+      return unlockedChatSigningPrivateKey;
+    }
+    return null;
+  }
+
   async function unlockFromPassword(chatKey, password) {
     if (!chatKey) {
       clearChatKeyMaterial();
@@ -894,6 +907,10 @@
     return jsonFromScript("conversationParticipantPublicKeys", []);
   }
 
+  function conversationParticipantSigningPublicKeys() {
+    return jsonFromScript("conversationParticipantSigningPublicKeys", []);
+  }
+
   function participantPublicKeyById(participantId) {
     return conversationParticipantPublicKeys().find(
       (participantKey) =>
@@ -943,9 +960,15 @@
     if (!fingerprint) {
       return null;
     }
-    return conversationParticipantPublicKeys().find(
-      (participantKey) =>
-        participantKey.public_signing_key_fingerprint === fingerprint,
+    return (
+      conversationParticipantPublicKeys().find(
+        (participantKey) =>
+          participantKey.public_signing_key_fingerprint === fingerprint,
+      ) ||
+      conversationParticipantSigningPublicKeys().find(
+        (participantKey) =>
+          participantKey.public_signing_key_fingerprint === fingerprint,
+      )
     );
   }
 
@@ -1573,6 +1596,7 @@
     ensureChatKeyUnlockedAfterAuth,
     provisionChatKey,
     rewrapForPasswordChange,
+    signingPrivateKeyForChatKey,
     unlockFromPassword,
   };
 

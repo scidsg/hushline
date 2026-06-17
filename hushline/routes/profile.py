@@ -19,8 +19,8 @@ from flask import (
     url_for,
 )
 from itsdangerous import BadData, SignatureExpired, URLSafeTimedSerializer
-from sqlalchemy import func
-from sqlalchemy.exc import MultipleResultsFound
+from sqlalchemy import func, update
+from sqlalchemy.exc import IntegrityError, MultipleResultsFound
 from werkzeug.wrappers.response import Response
 
 from hushline.auth import get_session_user
@@ -43,6 +43,7 @@ from hushline.model import (
     ConversationParticipant,
     FieldDefinition,
     FieldValue,
+    InitialConversationNonce,
     Message,
     NotificationRecipient,
     OrganizationSetting,
@@ -64,8 +65,6 @@ from hushline.routes.message import _chat_ciphertext_context, _is_chat_ciphertex
 from hushline.safe_template import safe_render_template
 
 EMBED_CAPTCHA_MAX_AGE_SECONDS = 60 * 60
-INITIAL_CONVERSATION_NONCE_SESSION_KEY = "initial_conversation_nonces"
-INITIAL_CONVERSATION_NONCE_SESSION_LIMIT = 10
 
 
 def register_profile_routes(app: Flask) -> None:
@@ -281,32 +280,47 @@ def register_profile_routes(app: Flask) -> None:
             and uname.user.chat_public_key
         )
 
-    def _remember_initial_conversation_nonce(nonce: str) -> None:
-        remembered_nonces = session.get(INITIAL_CONVERSATION_NONCE_SESSION_KEY, [])
-        if not isinstance(remembered_nonces, list):
-            remembered_nonces = []
-        remembered_nonces = [
-            remembered_nonce
-            for remembered_nonce in remembered_nonces
-            if isinstance(remembered_nonce, str)
-        ]
-        if nonce not in remembered_nonces:
-            remembered_nonces.append(nonce)
-        session[INITIAL_CONVERSATION_NONCE_SESSION_KEY] = remembered_nonces[
-            -INITIAL_CONVERSATION_NONCE_SESSION_LIMIT:
-        ]
+    def _initial_conversation_nonce_hash(nonce: str) -> str:
+        return sha256(f"hushline:initial-conversation:{nonce}".encode()).hexdigest()
 
-    def _initial_conversation_nonce_is_known(nonce: str) -> bool:
-        remembered_nonces = session.get(INITIAL_CONVERSATION_NONCE_SESSION_KEY, [])
-        return isinstance(remembered_nonces, list) and nonce in remembered_nonces
+    def _remember_initial_conversation_nonce(nonce: str, sender: User, recipient: User) -> None:
+        db.session.add(
+            InitialConversationNonce(
+                nonce_hash=_initial_conversation_nonce_hash(nonce),
+                sender_user_id=sender.id,
+                recipient_user_id=recipient.id,
+            )
+        )
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
 
-    def _consume_initial_conversation_nonce(nonce: str) -> bool:
-        remembered_nonces = session.get(INITIAL_CONVERSATION_NONCE_SESSION_KEY, [])
-        if not isinstance(remembered_nonces, list) or nonce not in remembered_nonces:
-            return False
-        remembered_nonces.remove(nonce)
-        session[INITIAL_CONVERSATION_NONCE_SESSION_KEY] = remembered_nonces
-        return True
+    def _initial_conversation_nonce_is_known(nonce: str, sender: User, recipient: User) -> bool:
+        nonce_id = db.session.scalar(
+            db.select(InitialConversationNonce.id)
+            .where(
+                InitialConversationNonce.nonce_hash == _initial_conversation_nonce_hash(nonce),
+                InitialConversationNonce.sender_user_id == sender.id,
+                InitialConversationNonce.recipient_user_id == recipient.id,
+                InitialConversationNonce.consumed_at.is_(None),
+            )
+            .limit(1)
+        )
+        return nonce_id is not None
+
+    def _consume_initial_conversation_nonce(nonce: str, sender: User, recipient: User) -> bool:
+        result = db.session.execute(
+            update(InitialConversationNonce)
+            .where(
+                InitialConversationNonce.nonce_hash == _initial_conversation_nonce_hash(nonce),
+                InitialConversationNonce.sender_user_id == sender.id,
+                InitialConversationNonce.recipient_user_id == recipient.id,
+                InitialConversationNonce.consumed_at.is_(None),
+            )
+            .values(consumed_at=func.now())
+        )
+        return result.rowcount == 1
 
     def _copy_recipient_for_role(role: str, sender: User, recipient: User) -> User | None:
         if role == "sender":
@@ -361,10 +375,11 @@ def register_profile_routes(app: Flask) -> None:
         recipient: User,
         encrypted_conversation_copies: dict[str, str],
         initial_conversation_nonce: str,
-        consume_nonce: bool = False,
     ) -> bool:
         if not initial_conversation_nonce or not _initial_conversation_nonce_is_known(
-            initial_conversation_nonce
+            initial_conversation_nonce,
+            sender,
+            recipient,
         ):
             return False
         if not _chat_key_can_sign(sender):
@@ -386,7 +401,7 @@ def register_profile_routes(app: Flask) -> None:
         ):
             return False
 
-        return not consume_nonce or _consume_initial_conversation_nonce(initial_conversation_nonce)
+        return True
 
     def _conversation_payload_can_start(
         *,
@@ -431,8 +446,9 @@ def register_profile_routes(app: Flask) -> None:
             recipient=recipient,
             encrypted_conversation_copies=encrypted_conversation_copies,
             initial_conversation_nonce=initial_conversation_nonce,
-            consume_nonce=True,
         ):
+            return None
+        if not _consume_initial_conversation_nonce(initial_conversation_nonce, sender, recipient):
             return None
 
         recipient_payload = encrypted_conversation_copies["recipient"]
@@ -530,7 +546,7 @@ def register_profile_routes(app: Flask) -> None:
                 and sender is not None
                 and _chat_submission_base_available(uname, sender)
             ):
-                _remember_initial_conversation_nonce(owner_guard_nonce)
+                _remember_initial_conversation_nonce(owner_guard_nonce, sender, uname.user)
             rendered = render_template(
                 "embed_profile.html" if is_embedded else "profile.html",
                 profile_header=profile_header,
@@ -757,6 +773,16 @@ def register_profile_routes(app: Flask) -> None:
                         encrypted_conversation_copies=encrypted_conversation_copies,
                         initial_conversation_nonce=owner_guard_nonce,
                     )
+                if chat_only_submission and conversation is None:
+                    db.session.rollback()
+                    flash(
+                        (
+                            "⛔️ You cannot submit messages to users who do not have any "
+                            "usable recipient PGP keys."
+                        ),
+                        "error",
+                    )
+                    return _render_profile(400)
 
                 db.session.commit()
 
