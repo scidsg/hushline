@@ -28,6 +28,7 @@ from hushline.auth import (
     clear_auth_session,
     get_session_user,
     pop_post_auth_redirect,
+    rotate_chat_key_session_secret,
     rotate_user_session_id,
     set_session_user,
 )
@@ -648,6 +649,7 @@ def register_auth_routes(app: Flask) -> None:
                 rotate_user_session_id(user)
                 session["session_id"] = user.session_id
                 session["is_authenticated"] = True
+                rotate_chat_key_session_secret()
                 password_rehash_source_hash = user.password_hash
                 has_pending_password_rehash = PENDING_PASSWORD_REHASH_SESSION_KEY in session
                 try:

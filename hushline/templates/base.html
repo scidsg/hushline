@@ -176,6 +176,7 @@
   <body
     class="{% block body_class %}{% endblock %}"
     data-authenticated="{{ 'true' if 'user_id' in session and session.get('is_authenticated', False) else 'false' }}"
+    data-chat-key-session-secret="{{ chat_key_session_secret }}"
   >
     {% if splash_screen_enabled %}
       <div
@@ -306,7 +307,13 @@
                     <li>
                       <a href="{{ url_for('settings.profile') }}">Settings</a>
                     </li>
-                    <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                    <li>
+                      <a
+                        href="{{ url_for('logout') }}"
+                        data-clear-chat-key-material="true"
+                        >Logout</a
+                      >
+                    </li>
                   </ul>
                 </div>
               </li>

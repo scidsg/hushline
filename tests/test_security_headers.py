@@ -66,9 +66,12 @@ def test_csp_form_action_omits_stripe_redirect_hosts_when_premium_disabled(
 def test_csp_script_src_elem_disallows_inline_scripts(client: FlaskClient) -> None:
     response = client.get(url_for("directory"), follow_redirects=True)
     assert response.status_code == 200
-    csp = response.headers["Content-Security-Policy"]
-    assert "script-src-elem 'self' https://js.stripe.com https://cdn.jsdelivr.net" in csp
-    assert "script-src-elem 'self' 'unsafe-inline'" not in csp
+    directives = _csp_directives(response.headers)
+    assert directives["script-src"] == "'self'"
+    assert directives["script-src-elem"] == "'self'"
+    assert (
+        "script-src-elem 'self' 'unsafe-inline'" not in response.headers["Content-Security-Policy"]
+    )
 
 
 def test_custom_splash_logo_keeps_csp_enforced(client: FlaskClient) -> None:
@@ -102,10 +105,15 @@ def test_profile_page_keeps_csp_enforced(client: FlaskClient, user: User) -> Non
     response = client.get(url_for("profile", username=user.primary_username.username))
     assert response.status_code == 200
 
-    csp = (response.headers.get("Content-Security-Policy") or "").strip()
-    assert csp
-    assert "'unsafe-eval'" not in csp
-    assert "script-src-elem 'self' 'unsafe-inline'" not in csp
+    directives = _csp_directives(response.headers)
+    assert directives["script-src"] == "'self' 'wasm-unsafe-eval'"
+    assert directives["script-src-elem"] == "'self'"
+    assert "https://js.stripe.com" not in response.headers["Content-Security-Policy"]
+    assert "https://cdn.jsdelivr.net" not in response.headers["Content-Security-Policy"]
+    assert "'unsafe-eval'" not in response.headers["Content-Security-Policy"]
+    assert (
+        "script-src-elem 'self' 'unsafe-inline'" not in response.headers["Content-Security-Policy"]
+    )
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -114,8 +122,25 @@ def test_settings_profile_keeps_frame_restrictions(client: FlaskClient) -> None:
     assert response.status_code == 200
 
     csp = (response.headers.get("Content-Security-Policy") or "").strip()
+    directives = _csp_directives(response.headers)
     assert "frame-ancestors 'none'" in csp
+    assert directives["script-src"] == "'self'"
+    assert directives["script-src-elem"] == "'self'"
+    assert "https://js.stripe.com" not in csp
+    assert "https://cdn.jsdelivr.net" not in csp
+    assert "'wasm-unsafe-eval'" not in csp
     assert response.headers["X-Frame-Options"] == "DENY"
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_vision_page_allows_jsdelivr_only_for_tooling(client: FlaskClient) -> None:
+    response = client.get(url_for("vision"))
+    assert response.status_code == 200
+
+    directives = _csp_directives(response.headers)
+    assert directives["script-src"] == ("'self' https://cdn.jsdelivr.net 'wasm-unsafe-eval'")
+    assert directives["script-src-elem"] == "'self' https://cdn.jsdelivr.net"
+    assert "https://js.stripe.com" not in response.headers["Content-Security-Policy"]
 
 
 def test_embed_profile_uses_allowed_origins_for_frames_and_sandboxed_assets(
@@ -143,13 +168,8 @@ def test_embed_profile_uses_allowed_origins_for_frames_and_sandboxed_assets(
     )
     assert directives["style-src"] == "'self' 'unsafe-inline' https://tips.hushline.app"
     assert directives["font-src"] == "'self' https://tips.hushline.app"
-    assert directives["script-src"] == (
-        "'self' https://js.stripe.com https://cdn.jsdelivr.net "
-        "'wasm-unsafe-eval' https://tips.hushline.app"
-    )
-    assert directives["script-src-elem"] == (
-        "'self' https://js.stripe.com https://cdn.jsdelivr.net https://tips.hushline.app"
-    )
+    assert directives["script-src"] == ("'self' 'wasm-unsafe-eval' https://tips.hushline.app")
+    assert directives["script-src-elem"] == "'self' https://tips.hushline.app"
     assert "X-Frame-Options" not in response.headers
 
 
@@ -162,9 +182,8 @@ def test_non_embed_csp_does_not_add_canonical_asset_origin(client: FlaskClient, 
     directives = _csp_directives(response.headers)
     assert directives["style-src"] == "'self' 'unsafe-inline'"
     assert directives["font-src"] == "'self'"
-    assert directives["script-src-elem"] == (
-        "'self' https://js.stripe.com https://cdn.jsdelivr.net"
-    )
+    assert directives["script-src"] == "'self'"
+    assert directives["script-src-elem"] == "'self'"
 
 
 def test_denied_embed_csp_does_not_add_canonical_asset_origin(
@@ -179,9 +198,8 @@ def test_denied_embed_csp_does_not_add_canonical_asset_origin(
     assert directives["frame-ancestors"] == "'none'"
     assert directives["style-src"] == "'self' 'unsafe-inline'"
     assert directives["font-src"] == "'self'"
-    assert directives["script-src-elem"] == (
-        "'self' https://js.stripe.com https://cdn.jsdelivr.net"
-    )
+    assert directives["script-src"] == "'self' 'wasm-unsafe-eval'"
+    assert directives["script-src-elem"] == "'self'"
     assert response.headers["X-Frame-Options"] == "DENY"
 
 
@@ -244,10 +262,11 @@ def test_conversation_page_keeps_csp_enforced(client: FlaskClient, user: User, u
 
     assert response.status_code == 200
     directives = _csp_directives(response.headers)
+    assert directives["script-src"] == "'self'"
+    assert directives["script-src-elem"] == "'self'"
     assert "'unsafe-eval'" not in response.headers["Content-Security-Policy"]
-    assert directives["script-src-elem"] == (
-        "'self' https://js.stripe.com https://cdn.jsdelivr.net"
-    )
+    assert "https://js.stripe.com" not in response.headers["Content-Security-Policy"]
+    assert "https://cdn.jsdelivr.net" not in response.headers["Content-Security-Policy"]
     assert (
         "script-src-elem 'self' 'unsafe-inline'" not in response.headers["Content-Security-Policy"]
     )

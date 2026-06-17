@@ -182,13 +182,35 @@ def test_settings_chat_key_provisioning_generates_decryptable_ecdh_key() -> None
 
 def test_chat_key_lifecycle_restores_unlocked_key_for_authenticated_tab_session() -> None:
     js = (ROOT / "assets/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
+    base_template = (ROOT / "hushline/templates/base.html").read_text(encoding="utf-8")
     login_template = (ROOT / "hushline/templates/login.html").read_text(encoding="utf-8")
+    password_reset_template = (ROOT / "hushline/templates/password_reset.html").read_text(
+        encoding="utf-8"
+    )
+    password_reset_request_template = (
+        ROOT / "hushline/templates/password_reset_request.html"
+    ).read_text(encoding="utf-8")
+    advanced_template = (ROOT / "hushline/templates/settings/advanced.html").read_text(
+        encoding="utf-8"
+    )
 
     assert 'const sessionStorageKey = "hushline:chat-private-jwk";' in js
     assert 'const legacyBrowserStorageKey = "hushline:chat-private-jwk:browser-session";' in js
     assert "browserStorageMaxAgeMs" not in js
+    assert "const unlockedKeyMaxAgeMs = 15 * 60 * 1000;" in js
+    assert "const unlockedKeyIdleTimeoutMs = 5 * 60 * 1000;" in js
+    assert "expires_at: expiresAt" in js
+    assert "last_used_at: now" in js
+    assert "scheduleUnlockedKeyExpiry(expiresAt, now);" in js
+    assert "now - lastUsedAt > unlockedKeyIdleTimeoutMs" in js
+    assert "expiresAt > now + unlockedKeyMaxAgeMs" in js
     assert 'const crossTabChannelName = "hushline:chat-key-session";' in js
     assert "new BroadcastChannel(crossTabChannelName)" in js
+    assert "function chatKeySessionSecret(sourceDocument = document)" in js
+    assert "message.session_secret !== chatKeySessionSecret()" in js
+    assert "message.session_secret !== sessionSecret" in js
+    assert "session_secret: sessionSecret" in js
+    assert "stored.session_secret !== chatKeySessionSecret()" in js
     assert "sessionStorage.setItem(" in js
     assert "sessionStorage.getItem(sessionStorageKey)" in js
     assert "sessionStorage.removeItem(sessionStorageKey)" in js
@@ -212,6 +234,12 @@ def test_chat_key_lifecycle_restores_unlocked_key_for_authenticated_tab_session(
     assert "request-unlocked-chat-key" in js
     assert "unlocked-chat-key" in js
     assert "pendingLoginPassword = null;" in js
+    assert 'data-chat-key-session-secret="{{ chat_key_session_secret }}"' in base_template
+    assert 'data-clear-chat-key-material="true"' in base_template
+    assert 'data-clear-chat-key-material="true"' in password_reset_template
+    assert 'data-clear-chat-key-material="true"' in password_reset_request_template
+    assert 'data-clear-chat-key-material="true"' in advanced_template
+    assert "function bindChatKeyCleanupTriggers()" in js
 
 
 def test_conversation_does_not_prompt_for_password_after_login() -> None:
