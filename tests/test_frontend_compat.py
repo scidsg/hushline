@@ -81,6 +81,9 @@ def test_embed_resize_bundle_is_declared_and_height_only() -> None:
 
 def test_client_side_encryption_has_platform_guards() -> None:
     js = (ROOT / "assets/js/client-side-encryption.js").read_text(encoding="utf-8")
+    static_js = (ROOT / "hushline/static/js/client-side-encryption.js").read_text(
+        encoding="utf-8"
+    )
 
     assert "function assertClientCryptoSupport()" in js
     assert "function getRecipientPublicKeys()" in js
@@ -106,6 +109,10 @@ def test_client_side_encryption_has_platform_guards() -> None:
     assert "body: new FormData(form)" in js
     assert 'credentials: "same-origin"' in js
     assert 'Accept: "text/html"' in js
+    assert "response.url.startsWith(window.location.origin)" in js
+    assert "window.history.replaceState({}, \"\", response.url);" in js
+    assert "startsWith(window.location.origin)" in static_js
+    assert "history.replaceState" in static_js
     assert "document.write(html);" in js
     assert "form.submit();" not in js
 
