@@ -26,12 +26,18 @@ def _authenticate_as(client: FlaskClient, user: User) -> None:
         session["is_authenticated"] = True
 
 
-def _add_chat_key(user: User, public_key: str) -> None:
+def _add_chat_key(
+    user: User,
+    public_key: str,
+    *,
+    public_signing_key: str | None = None,
+) -> None:
     db.session.add(
         ChatKey(
             user=user,
             key_version=1,
             public_key=public_key,
+            public_signing_key=public_signing_key,
             encrypted_private_key="wrapped-private-chat-key",
             kdf_algorithm="PBKDF2-SHA-256",
             kdf_params={"iterations": 310000},
@@ -163,6 +169,10 @@ def _bound_copies_for(
     }
 
 
+def _reply_copies_for(conversation: Conversation, sender: User, label: str) -> dict[str, str]:
+    return _bound_copies_for(conversation, _participant_for(conversation, sender), label)
+
+
 def _participant_for(conversation: Conversation, user: User) -> ConversationParticipant:
     participant = conversation.participant_for_user_id(user.id)
     assert participant is not None
@@ -278,7 +288,7 @@ def test_conversation_view_shows_locked_chat_key_state(
     assert "server-side chat fallback for conversations" in response.text
     assert "Encrypted message. Waiting for browser chat key." in response.text
     assert (
-        "Replies are unavailable until every participant has an active Hush Line chat key."
+        "Replies are unavailable until every participant has an active signing-capable"
         in response.text
     )
     assert "conversation-chat-password" not in response.text
@@ -286,6 +296,37 @@ def test_conversation_view_shows_locked_chat_key_state(
     assert "Proton" not in response.text
     assert "PGP" not in response.text
     assert url_for("conversation_presence", public_id=conversation.public_id) in response.text
+
+
+def test_conversation_view_disables_composer_when_participant_key_cannot_sign(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(
+        user2,
+        '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}',
+        public_signing_key='{"kty":"EC","crv":"P-256","x":"recipient-sign","y":"key"}',
+    )
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+
+    response = client.get(url_for("conversation", public_id=conversation.public_id))
+
+    assert response.status_code == 200
+    assert 'data-can-compose="false"' in response.text
+    assert "active signing-capable" in response.text
+    participant_keys_match = re.search(
+        r'<script id="conversationParticipantPublicKeys" type="application/json">\s*'
+        r"([\s\S]*?)</script>",
+        response.text,
+    )
+    assert participant_keys_match is not None
+    participant_keys = json.loads(participant_keys_match.group(1))
+    assert [participant_key["participant_id"] for participant_key in participant_keys] == [
+        _participant_for(conversation, user2).id
+    ]
 
 
 def test_conversation_view_hides_message_metadata_from_page_payload(
@@ -442,7 +483,7 @@ def test_participant_can_append_encrypted_conversation_message(
 
     response = client.post(
         url_for("append_conversation_message", public_id=conversation.public_id),
-        json={"encrypted_copies": _copies_for(conversation, "follow-up")},
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "follow-up")},
     )
 
     assert response.status_code == 201
@@ -457,6 +498,27 @@ def test_participant_can_append_encrypted_conversation_message(
     for encrypted_copy in messages[-1].encrypted_copies:
         assert "ECDH-P256-AES-GCM" in encrypted_copy.encrypted_payload
         assert plaintext not in encrypted_copy.encrypted_payload
+
+
+def test_append_conversation_message_rejects_unsigned_legacy_envelopes(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+
+    response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _copies_for(conversation, "legacy-follow-up")},
+    )
+
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Invalid encrypted message payload."}
+    message_count = db.session.scalar(db.select(db.func.count()).select_from(ConversationMessage))
+    assert message_count == 1
 
 
 def test_append_conversation_message_rejects_mismatched_bound_context(
@@ -585,7 +647,7 @@ def test_append_conversation_message_sends_generic_notification_to_other_partici
 
     response = client.post(
         url_for("append_conversation_message", public_id=conversation.public_id),
-        json={"encrypted_copies": _copies_for(conversation, "generic-notification")},
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "generic-notification")},
     )
 
     assert response.status_code == 201
@@ -625,7 +687,7 @@ def test_append_conversation_message_suppresses_notification_for_active_recipien
 
     response = client.post(
         url_for("append_conversation_message", public_id=conversation.public_id),
-        json={"encrypted_copies": _copies_for(conversation, "active-recipient")},
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "active-recipient")},
     )
 
     assert response.status_code == 201
@@ -656,7 +718,7 @@ def test_append_conversation_message_suppresses_notification_for_active_recipien
 
     response = client.post(
         url_for("append_conversation_message", public_id=target_conversation.public_id),
-        json={"encrypted_copies": _copies_for(target_conversation, "active-recipient")},
+        json={"encrypted_copies": _reply_copies_for(target_conversation, user, "active-recipient")},
     )
 
     assert response.status_code == 201
@@ -686,7 +748,7 @@ def test_append_conversation_message_notifies_after_stale_recipient_activity(
 
     response = client.post(
         url_for("append_conversation_message", public_id=conversation.public_id),
-        json={"encrypted_copies": _copies_for(conversation, "stale-recipient")},
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "stale-recipient")},
     )
 
     assert response.status_code == 201
@@ -714,7 +776,7 @@ def test_append_conversation_message_does_not_notify_sender(
 
     response = client.post(
         url_for("append_conversation_message", public_id=conversation.public_id),
-        json={"encrypted_copies": _copies_for(conversation, "sender-notification")},
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "sender-notification")},
     )
 
     assert response.status_code == 201
@@ -740,7 +802,7 @@ def test_append_conversation_message_include_content_mode_still_sends_safe_gener
     )
     conversation = _make_conversation(user, user2)
     _authenticate_as(client, user)
-    encrypted_copies = _copies_for(conversation, "include-content")
+    encrypted_copies = _reply_copies_for(conversation, user, "include-content")
 
     response = client.post(
         url_for("append_conversation_message", public_id=conversation.public_id),
@@ -786,7 +848,7 @@ def test_append_conversation_message_encrypts_generic_body_for_full_body_mode(
 
     response = client.post(
         url_for("append_conversation_message", public_id=conversation.public_id),
-        json={"encrypted_copies": _copies_for(conversation, "full-body")},
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "full-body")},
     )
 
     assert response.status_code == 201
@@ -822,7 +884,7 @@ def test_append_conversation_message_notification_failure_does_not_rollback_mess
 
     response = client.post(
         url_for("append_conversation_message", public_id=conversation.public_id),
-        json={"encrypted_copies": _copies_for(conversation, "failed-notification")},
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "failed-notification")},
     )
 
     assert response.status_code == 201
@@ -871,7 +933,7 @@ def test_append_conversation_message_requires_encrypted_copy_for_every_participa
     _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
     conversation = _make_conversation(user, user2)
     participant = _participant_for(conversation, user)
-    encrypted_copies = _copies_for(conversation, "missing-recipient")
+    encrypted_copies = _reply_copies_for(conversation, user, "missing-recipient")
     encrypted_copies = {str(participant.id): encrypted_copies[str(participant.id)]}
     _authenticate_as(client, user)
 
@@ -905,7 +967,7 @@ def test_append_conversation_message_ignores_extra_plaintext_fields(
             "body": plaintext,
             "message": plaintext,
             "plaintext": plaintext,
-            "encrypted_copies": _copies_for(conversation, "plaintext-extra-field"),
+            "encrypted_copies": _reply_copies_for(conversation, user, "plaintext-extra-field"),
         },
     )
 
@@ -942,7 +1004,7 @@ def test_append_conversation_message_requires_csrf_when_enabled(
     try:
         response = client.post(
             url_for("append_conversation_message", public_id=conversation.public_id),
-            json={"encrypted_copies": _copies_for(conversation, "csrf")},
+            json={"encrypted_copies": _reply_copies_for(conversation, user, "csrf")},
         )
     finally:
         app.config["WTF_CSRF_ENABLED"] = prior_setting
@@ -966,7 +1028,7 @@ def test_append_conversation_message_rejects_non_participant(
 
     response = client.post(
         url_for("append_conversation_message", public_id=conversation.public_id),
-        json={"encrypted_copies": _copies_for(conversation, "unrelated")},
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "unrelated")},
     )
 
     assert response.status_code == 404
@@ -985,7 +1047,7 @@ def test_append_conversation_message_redirects_unauthenticated_user(
 
     response = client.post(
         url_for("append_conversation_message", public_id=conversation.public_id),
-        json={"encrypted_copies": _copies_for(conversation, "unauthenticated")},
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "unauthenticated")},
     )
 
     assert response.status_code == 302

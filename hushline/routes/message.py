@@ -204,7 +204,7 @@ def _chat_ciphertext_context_is_bound(
             return False
         context = _chat_ciphertext_context(encrypted_payload)
         if context is None:
-            continue
+            return False
         if context.get("purpose") != "hushline.chat.message":
             return False
         conversation_public_id = context.get("conversation_public_id")
@@ -378,6 +378,7 @@ def register_message_routes(app: Flask) -> None:
                 thread_participant.user
                 and thread_participant.user.active_chat_key
                 and thread_participant.user.chat_public_key
+                and thread_participant.user.chat_public_signing_key
             )
         ]
         rotated_participant_keys = [
