@@ -117,10 +117,19 @@ def test_client_side_encryption_prepares_chat_conversation_copies() -> None:
     profile_template = (ROOT / "hushline/templates/profile.html").read_text(encoding="utf-8")
     embed_template = (ROOT / "hushline/templates/embed_profile.html").read_text(encoding="utf-8")
 
-    assert "function encryptForChatPublicKey(plaintext, publicKeyValue)" in js
+    assert "async function encryptForChatPublicKey(" in js
     assert 'algorithm: "ECDH-P256-AES-GCM"' in js
+    assert 'purpose: "hushline.chat.initial_message"' in js
+    assert "initial_conversation_nonce: initialConversationNonce" in js
+    assert "sender_public_signing_key_fingerprint" in js
+    assert "recipient_public_key_fingerprint" in js
+    assert "canonicalStringify(envelopeContext)" in js
+    assert "await signChatEnvelope(envelope, signingKey)" in js
+    assert "signingPrivateKeyForChatKey" in js
+    assert 'const sessionStorageKey = "hushline:chat-private-jwk";' in js
     assert 'getChatPublicKey("recipientChatPublicKey")' in js
-    assert 'getChatPublicKey("senderChatPublicKey")' in js
+    assert 'getChatKeyDescriptor("recipientChatKey")' in js
+    assert 'getChatKeyDescriptor("senderChatKey")' in js
     assert "recipient: await encryptForChatPublicKey(" in js
     assert "encryptedCopies.sender = await encryptForChatPublicKey(" in js
     assert "function replaceSubmittedFieldsWithConversationPlaceholder()" in js
@@ -128,16 +137,26 @@ def test_client_side_encryption_prepares_chat_conversation_copies() -> None:
     assert "if (recipientPublicKeys.length === 0)" in js
     assert "replaceSubmittedFieldsWithConversationPlaceholder();" in js
     assert "encrypted_conversation_copies" in js
-    assert "private_key" not in js
+    assert "plaintext_private_key" not in js
+    assert "decrypted_private_key" not in js
     assert "derived wrapping key" not in js.lower()
     assert 'id="senderChatPublicKey"' in profile_template
     assert 'id="senderChatPublicKey"' in embed_template
+    assert 'id="recipientChatKey"' in profile_template
+    assert 'id="senderChatKey"' in profile_template
 
 
 def test_chat_key_lifecycle_imports_private_key_for_message_decryption() -> None:
     js = (ROOT / "assets/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
+    static_js = (ROOT / "hushline/static/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
 
     assert "unlockedChatPrivateKey = await importPrivateKey(" in js
+    assert "conversationMessageSenderSigningFingerprintFromPayload" in js
+    assert "conversationMessageSenderSigningFingerprintFromPayload" in static_js
+    assert "participantPublicKeyBySigningFingerprint" in js
+    assert "participantPublicKeyBySigningFingerprint" in static_js
+    assert "conversationParticipantSigningPublicKeys" in js
+    assert "conversationParticipantSigningPublicKeys" in static_js
     assert "privateKeyBundle.ecdh_private_jwk" in js
     assert "unlockedChatSigningPrivateKey = await importSigningPrivateKey(" in js
     assert "privateKeyBundle.signing_private_jwk" in js
@@ -178,6 +197,7 @@ def test_chat_key_lifecycle_restores_unlocked_key_for_authenticated_tab_session(
     assert "localStorage.removeItem(legacyBrowserStorageKey)" in js
     assert "restoreConversationFromSession" in js
     assert "restoreUnlockedChatKeyFromOtherTab" in js
+    assert "async function signingPrivateKeyForChatKey(chatKey)" in js
     assert "function setConversationSecureBadgeVisible(visible)" in js
     assert "setConversationSecureBadgeVisible(true);" in js
     assert "setConversationSecureBadgeVisible(false);" in js
@@ -198,6 +218,7 @@ def test_conversation_does_not_prompt_for_password_after_login() -> None:
     js = (ROOT / "assets/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
     template = (ROOT / "hushline/templates/conversation.html").read_text(encoding="utf-8")
 
+    assert 'id="conversationParticipantSigningPublicKeys"' in template
     assert "conversation-chat-password" not in js
     assert "unlockConversationFromPassword" not in js
     assert "conversation-chat-password" not in template

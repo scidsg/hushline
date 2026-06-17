@@ -25,6 +25,7 @@ from hushline.model.globaleaks_directory_listing import (
     get_globaleaks_directory_listing,
     get_globaleaks_directory_listings,
 )
+from hushline.model.initial_conversation_nonce import InitialConversationNonce
 from hushline.model.invite_code import InviteCode
 from hushline.model.message import Message
 from hushline.model.message_status_text import MessageStatusText

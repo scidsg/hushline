@@ -1,6 +1,7 @@
 import * as openpgp from "openpgp";
 
 const textEncoder = new TextEncoder();
+const sessionStorageKey = "hushline:chat-private-jwk";
 
 function assertClientCryptoSupport() {
   // OpenPGP.js v6 requires secure context + SubtleCrypto + Web Streams + BigInt.
@@ -100,6 +101,19 @@ function bytesToBase64(bytes) {
   return btoa(binary);
 }
 
+function canonicalStringify(value) {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => canonicalStringify(item)).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${canonicalStringify(value[key])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
 function jsonFromScript(id, fallback) {
   const script = document.getElementById(id);
   if (!script?.textContent) {
@@ -130,8 +144,15 @@ async function importChatPublicKey(publicKeyValue) {
   );
 }
 
-async function encryptForChatPublicKey(plaintext, publicKeyValue) {
-  const recipientPublicKey = await importChatPublicKey(publicKeyValue);
+async function encryptForChatPublicKey(
+  plaintext,
+  recipientChatKey,
+  context,
+  signingKey,
+) {
+  const recipientPublicKey = await importChatPublicKey(
+    recipientChatKey.public_key || recipientChatKey,
+  );
   const ephemeralKeyPair = await window.crypto.subtle.generateKey(
     {
       name: "ECDH",
@@ -154,12 +175,27 @@ async function encryptForChatPublicKey(plaintext, publicKeyValue) {
     ["encrypt"],
   );
   const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const envelopeContext =
+    context && signingKey
+      ? {
+          ...context,
+          recipient_key_version: recipientChatKey.key_version || null,
+          recipient_public_key_fingerprint:
+            recipientChatKey.public_key_fingerprint || null,
+        }
+      : null;
+  const encryptParams = {
+    name: "AES-GCM",
+    iv,
+  };
+  if (envelopeContext) {
+    encryptParams.additionalData = textEncoder.encode(
+      canonicalStringify(envelopeContext),
+    );
+  }
   const ciphertext = new Uint8Array(
     await window.crypto.subtle.encrypt(
-      {
-        name: "AES-GCM",
-        iv,
-      },
+      encryptParams,
       messageKey,
       textEncoder.encode(plaintext),
     ),
@@ -169,12 +205,18 @@ async function encryptForChatPublicKey(plaintext, publicKeyValue) {
     ephemeralKeyPair.publicKey,
   );
 
-  return JSON.stringify({
+  const envelope = {
     algorithm: "ECDH-P256-AES-GCM",
     ephemeral_public_key: JSON.stringify(ephemeralPublicJwk),
     iv: bytesToBase64(iv),
     ciphertext: bytesToBase64(ciphertext),
-  });
+  };
+  if (envelopeContext) {
+    envelope.v = 2;
+    envelope.context = envelopeContext;
+    envelope.signature = await signChatEnvelope(envelope, signingKey);
+  }
+  return JSON.stringify(envelope);
 }
 
 function getFieldValue(field) {
@@ -256,6 +298,111 @@ function getChatPublicKey(id) {
   return typeof publicKey === "string" && publicKey.trim() ? publicKey : null;
 }
 
+function getChatKeyDescriptor(id) {
+  const descriptor = jsonFromScript(id, null);
+  if (
+    !descriptor ||
+    typeof descriptor !== "object" ||
+    typeof descriptor.public_key !== "string" ||
+    !descriptor.public_key.trim()
+  ) {
+    return null;
+  }
+  return descriptor;
+}
+
+function normalizePrivateKeyBundle(value) {
+  if (value?.ecdh_private_jwk) {
+    return value;
+  }
+  return {
+    ecdh_private_jwk: value,
+    signing_private_jwk: null,
+  };
+}
+
+function rememberedPrivateKeyBundleForChatKey(chatKey) {
+  if (!chatKey) {
+    return null;
+  }
+  try {
+    const stored = JSON.parse(sessionStorage.getItem(sessionStorageKey) || "null");
+    if (
+      stored?.key_version !== chatKey.key_version ||
+      stored.public_key !== chatKey.public_key ||
+      (stored.public_signing_key || null) !==
+        (chatKey.public_signing_key || null) ||
+      !(stored.private_key_bundle || stored.private_jwk) ||
+      !stored.expires_at ||
+      Date.now() > Number(stored.expires_at)
+    ) {
+      return null;
+    }
+    return normalizePrivateKeyBundle(
+      stored.private_key_bundle || stored.private_jwk,
+    );
+  } catch (error) {
+    return null;
+  }
+}
+
+async function importSigningPrivateKey(privateJwk) {
+  if (!privateJwk) {
+    return null;
+  }
+  const importJwk = {
+    ...privateJwk,
+    key_ops: ["sign"],
+  };
+  return window.crypto.subtle.importKey(
+    "jwk",
+    importJwk,
+    {
+      name: "ECDSA",
+      namedCurve: importJwk.crv || "P-256",
+    },
+    false,
+    ["sign"],
+  );
+}
+
+async function initialConversationSigningKey(senderChatKey) {
+  const restoredSigningKey =
+    await window.HushLineChatKeys?.signingPrivateKeyForChatKey?.(
+      senderChatKey,
+    );
+  if (restoredSigningKey) {
+    return restoredSigningKey;
+  }
+  const privateKeyBundle = rememberedPrivateKeyBundleForChatKey(senderChatKey);
+  if (!privateKeyBundle?.signing_private_jwk) {
+    return null;
+  }
+  return importSigningPrivateKey(privateKeyBundle.signing_private_jwk);
+}
+
+async function signChatEnvelope(envelope, signingKey) {
+  const signedPayload = {
+    v: envelope.v,
+    algorithm: envelope.algorithm,
+    ephemeral_public_key: envelope.ephemeral_public_key,
+    iv: envelope.iv,
+    ciphertext: envelope.ciphertext,
+    context: envelope.context,
+  };
+  const signature = new Uint8Array(
+    await window.crypto.subtle.sign(
+      {
+        name: "ECDSA",
+        hash: "SHA-256",
+      },
+      signingKey,
+      textEncoder.encode(canonicalStringify(signedPayload)),
+    ),
+  );
+  return bytesToBase64(signature);
+}
+
 function getMessageFields() {
   return Array.from(document.querySelectorAll(".form-field")).map((field) => ({
     name: field.name || field.querySelector("input")?.name,
@@ -297,26 +444,51 @@ function replaceSubmittedFieldsWithConversationPlaceholder() {
 }
 
 async function buildEncryptedConversationCopies(messageFields) {
-  const recipientChatPublicKey = getChatPublicKey("recipientChatPublicKey");
-  if (!recipientChatPublicKey) {
+  const recipientChatKey =
+    getChatKeyDescriptor("recipientChatKey") ||
+    (getChatPublicKey("recipientChatPublicKey")
+      ? { public_key: getChatPublicKey("recipientChatPublicKey") }
+      : null);
+  const senderChatKey = getChatKeyDescriptor("senderChatKey");
+  const signingKey = await initialConversationSigningKey(senderChatKey);
+  const initialConversationNonce = document.querySelector(
+    "input[name='owner_guard_nonce']",
+  )?.value;
+  if (
+    !recipientChatKey?.public_key ||
+    !senderChatKey?.public_key ||
+    !senderChatKey?.public_signing_key ||
+    !signingKey ||
+    !initialConversationNonce
+  ) {
     return {};
   }
 
   try {
     const conversationBody = conversationBodyFromFields(messageFields);
+    const context = {
+      purpose: "hushline.chat.initial_message",
+      initial_conversation_nonce: initialConversationNonce,
+      sender_key_version: senderChatKey.key_version || null,
+      sender_public_key_fingerprint:
+        senderChatKey.public_key_fingerprint || null,
+      sender_public_signing_key_fingerprint:
+        senderChatKey.public_signing_key_fingerprint || null,
+    };
     const encryptedCopies = {
       recipient: await encryptForChatPublicKey(
         conversationBody,
-        recipientChatPublicKey,
+        recipientChatKey,
+        context,
+        signingKey,
       ),
     };
-    const senderChatPublicKey = getChatPublicKey("senderChatPublicKey");
-    if (senderChatPublicKey) {
-      encryptedCopies.sender = await encryptForChatPublicKey(
-        conversationBody,
-        senderChatPublicKey,
-      );
-    }
+    encryptedCopies.sender = await encryptForChatPublicKey(
+      conversationBody,
+      senderChatKey,
+      context,
+      signingKey,
+    );
     return encryptedCopies;
   } catch (error) {
     console.error("Chat transcript encryption failed.");

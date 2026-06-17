@@ -376,6 +376,19 @@
     });
   }
 
+  async function signingPrivateKeyForChatKey(chatKey) {
+    if (!chatKey) {
+      return null;
+    }
+    if (await restoreUnlockedChatKey(chatKey)) {
+      return unlockedChatSigningPrivateKey;
+    }
+    if (await restoreUnlockedChatKeyFromOtherTab(chatKey)) {
+      return unlockedChatSigningPrivateKey;
+    }
+    return null;
+  }
+
   async function unlockFromPassword(chatKey, password) {
     if (!chatKey) {
       clearChatKeyMaterial();
@@ -894,6 +907,10 @@
     return jsonFromScript("conversationParticipantPublicKeys", []);
   }
 
+  function conversationParticipantSigningPublicKeys() {
+    return jsonFromScript("conversationParticipantSigningPublicKeys", []);
+  }
+
   function participantPublicKeyById(participantId) {
     return conversationParticipantPublicKeys().find(
       (participantKey) =>
@@ -923,6 +940,36 @@
     } catch (error) {
       return null;
     }
+  }
+
+  function conversationMessageSenderSigningFingerprintFromPayload(
+    encryptedPayload,
+  ) {
+    if (!encryptedPayload || typeof encryptedPayload !== "string") {
+      return null;
+    }
+    try {
+      const envelope = JSON.parse(encryptedPayload);
+      return envelope?.context?.sender_public_signing_key_fingerprint || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function participantPublicKeyBySigningFingerprint(fingerprint) {
+    if (!fingerprint) {
+      return null;
+    }
+    return (
+      conversationParticipantPublicKeys().find(
+        (participantKey) =>
+          participantKey.public_signing_key_fingerprint === fingerprint,
+      ) ||
+      conversationParticipantSigningPublicKeys().find(
+        (participantKey) =>
+          participantKey.public_signing_key_fingerprint === fingerprint,
+      )
+    );
   }
 
   function conversationMessagePayloadFromPlaintext(plaintext) {
@@ -1065,7 +1112,13 @@
         const senderParticipantId = conversationMessageSenderIdFromPayload(
           copy.encrypted_payload,
         );
-        const senderKey = participantPublicKeyById(senderParticipantId);
+        const senderKey =
+          participantPublicKeyById(senderParticipantId) ||
+          participantPublicKeyBySigningFingerprint(
+            conversationMessageSenderSigningFingerprintFromPayload(
+              copy.encrypted_payload,
+            ),
+          );
         const plaintext = await decryptChatCiphertext(
           copy.encrypted_payload,
           senderKey?.public_signing_key || null,
@@ -1543,6 +1596,7 @@
     ensureChatKeyUnlockedAfterAuth,
     provisionChatKey,
     rewrapForPasswordChange,
+    signingPrivateKeyForChatKey,
     unlockFromPassword,
   };
 
