@@ -8,11 +8,13 @@ from flask.testing import FlaskClient
 from helpers import get_profile_submission_data
 
 from hushline import auth
+from hushline.chat_key_lifecycle import chat_key_fingerprint
 from hushline.db import db
 from hushline.model import ChatKey, FieldValue, Message, MessageStatus, User, Username
 
 MSG_CONTACT_METHOD = "I prefer Signal."
 MSG_CONTENT = "This is a test message."
+CHAT_MESSAGE_ALGORITHM = "ECDH-P256-AES-GCM"
 
 
 def _authenticate_as(client: FlaskClient, user: User) -> None:
@@ -27,12 +29,19 @@ def _set_pgp_key(user: User) -> None:
     user.pgp_key = Path("tests/test_pgp_key.txt").read_text()
 
 
-def _add_chat_key(user: User, public_key: str) -> None:
+def _add_chat_key(
+    user: User,
+    public_key: str,
+    *,
+    public_signing_key: str | None = None,
+) -> None:
     db.session.add(
         ChatKey(
             user=user,
             key_version=1,
             public_key=public_key,
+            public_signing_key=public_signing_key
+            or '{"kty":"EC","crv":"P-256","x":"signing","y":"key"}',
             encrypted_private_key="wrapped-private-chat-key",
             kdf_algorithm="PBKDF2-SHA-256",
             kdf_params={"iterations": 310000, "hash": "SHA-256"},
@@ -42,15 +51,59 @@ def _add_chat_key(user: User, public_key: str) -> None:
     )
 
 
-def _chat_ciphertext(label: str) -> str:
-    return json.dumps(
-        {
-            "algorithm": "ECDH-P256-AES-GCM",
-            "ephemeral_public_key": '{"kty":"EC","crv":"P-256","x":"ephemeral","y":"key"}',
-            "iv": f"iv-{label}",
-            "ciphertext": f"ciphertext-{label}",
-        }
-    )
+def _initial_chat_ciphertext(
+    *,
+    label: str,
+    sender: User,
+    recipient: User,
+    nonce: str,
+) -> str:
+    sender_key = sender.active_chat_key
+    recipient_key = recipient.active_chat_key
+    assert sender_key is not None
+    assert recipient_key is not None
+    envelope = {
+        "v": 2,
+        "algorithm": CHAT_MESSAGE_ALGORITHM,
+        "ephemeral_public_key": '{"kty":"EC","crv":"P-256","x":"ephemeral","y":"key"}',
+        "iv": f"iv-{label}",
+        "ciphertext": f"ciphertext-{label}",
+        "context": {
+            "purpose": "hushline.chat.initial_message",
+            "initial_conversation_nonce": nonce,
+            "sender_key_version": sender_key.key_version,
+            "sender_public_key_fingerprint": chat_key_fingerprint(sender_key.public_key),
+            "sender_public_signing_key_fingerprint": chat_key_fingerprint(
+                sender_key.public_signing_key
+            ),
+            "recipient_key_version": recipient_key.key_version,
+            "recipient_public_key_fingerprint": chat_key_fingerprint(recipient_key.public_key),
+        },
+        "signature": f"signature-{label}",
+    }
+    return json.dumps(envelope)
+
+
+def _initial_conversation_copies_for(
+    *,
+    sender: User,
+    recipient: User,
+    nonce: str,
+) -> dict[str, str]:
+    return {
+        "sender": _initial_chat_ciphertext(
+            label="sender-initial",
+            sender=sender,
+            recipient=sender,
+            nonce=nonce,
+        ),
+        "recipient": _initial_chat_ciphertext(
+            label="recipient-initial",
+            sender=sender,
+            recipient=recipient,
+            nonce=nonce,
+        ),
+    }
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -179,18 +232,20 @@ def test_inbox_lists_conversation_for_sender_and_recipient_after_submission(
     _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
     db.session.commit()
 
+    submission_data = get_profile_submission_data(client, user2.primary_username.username)
     response = client.post(
         url_for("profile", username=user2.primary_username.username),
         data={
             "field_0": MSG_CONTACT_METHOD,
             "field_1": MSG_CONTENT,
             "encrypted_conversation_copies": json.dumps(
-                {
-                    "sender": _chat_ciphertext("sender-initial"),
-                    "recipient": _chat_ciphertext("recipient-initial"),
-                }
+                _initial_conversation_copies_for(
+                    sender=user,
+                    recipient=user2,
+                    nonce=submission_data["owner_guard_nonce"],
+                )
             ),
-            **get_profile_submission_data(client, user2.primary_username.username),
+            **submission_data,
         },
         follow_redirects=False,
     )
