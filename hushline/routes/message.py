@@ -204,7 +204,7 @@ def _chat_ciphertext_context_is_bound(
             return False
         context = _chat_ciphertext_context(encrypted_payload)
         if context is None:
-            continue
+            return False
         if context.get("purpose") != "hushline.chat.message":
             return False
         conversation_public_id = context.get("conversation_public_id")
