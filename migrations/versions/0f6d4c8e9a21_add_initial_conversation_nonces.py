@@ -24,7 +24,12 @@ def upgrade() -> None:
         sa.Column("nonce_hash", sa.String(length=64), nullable=False),
         sa.Column("sender_user_id", sa.Integer(), nullable=False),
         sa.Column("recipient_user_id", sa.Integer(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("NOW()"),
+            nullable=False,
+        ),
         sa.Column("consumed_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["recipient_user_id"], ["users.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["sender_user_id"], ["users.id"], ondelete="CASCADE"),

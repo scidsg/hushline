@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import Index, UniqueConstraint
+from sqlalchemy import Index, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from hushline.db import db
@@ -36,6 +36,7 @@ class InitialConversationNonce(Model):
     created_at: Mapped[datetime] = mapped_column(
         db.DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
+        server_default=text("NOW()"),
         nullable=False,
     )
     consumed_at: Mapped[datetime | None] = mapped_column(db.DateTime(timezone=True))
