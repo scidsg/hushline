@@ -11,6 +11,7 @@ from werkzeug.exceptions import HTTPException, InternalServerError
 from werkzeug.wrappers.response import Response
 
 from hushline import admin, premium, routes, settings, storage
+from hushline.auth import CHAT_KEY_SESSION_ID_SESSION_KEY, rotate_chat_key_session_id
 from hushline.cli_encrypted_field import register_encrypted_field_commands
 from hushline.cli_password_hash import register_password_hash_commands
 from hushline.cli_reg import register_reg_commands
@@ -38,6 +39,10 @@ PERMISSIONS_POLICY = ", ".join(
         "interest-cohort=()",
     )
 )
+
+OPENPGP_WASM_SCRIPT_ENDPOINTS = frozenset(("embed_profile", "embed_profile_legacy", "profile"))
+JSDELIVR_SCRIPT_ENDPOINTS = frozenset(("vision",))
+STRIPE_SCRIPT_ENDPOINTS = frozenset(("premium.waiting",))
 
 
 def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
@@ -85,17 +90,24 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
             )
         style_sources = ["'self'", "'unsafe-inline'"]
         font_sources = ["'self'"]
-        script_sources = [
-            "'self'",
-            "https://js.stripe.com",
-            "https://cdn.jsdelivr.net",
-            "'wasm-unsafe-eval'",
-        ]
-        script_element_sources = [
-            "'self'",
-            "https://js.stripe.com",
-            "https://cdn.jsdelivr.net",
-        ]
+        endpoint = request.endpoint or ""
+        script_sources = ["'self'"]
+        script_element_sources = ["'self'"]
+        connect_sources = ["'self'", "data:"]
+        child_sources = ["'none'"]
+        frame_sources = ["'none'"]
+        if endpoint in JSDELIVR_SCRIPT_ENDPOINTS:
+            script_sources.append("https://cdn.jsdelivr.net")
+            script_element_sources.append("https://cdn.jsdelivr.net")
+            connect_sources.append("https://cdn.jsdelivr.net")
+        if endpoint in OPENPGP_WASM_SCRIPT_ENDPOINTS or endpoint in JSDELIVR_SCRIPT_ENDPOINTS:
+            script_sources.append("'wasm-unsafe-eval'")
+        if endpoint in STRIPE_SCRIPT_ENDPOINTS:
+            script_sources.append("https://js.stripe.com")
+            script_element_sources.append("https://js.stripe.com")
+            connect_sources.append("https://api.stripe.com")
+            child_sources = ["https://js.stripe.com"]
+            frame_sources = ["https://js.stripe.com"]
         form_action_sources = ["'self'"]
         if app.config.get("STRIPE_SECRET_KEY"):
             form_action_sources.extend(
@@ -122,9 +134,9 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
                 "worker-src": "'self' blob:",
                 "frame-ancestors": frame_ancestors,
                 "form-action": " ".join(form_action_sources),
-                "connect-src": "'self' https://api.stripe.com https://cdn.jsdelivr.net data:",
-                "child-src": "https://js.stripe.com",
-                "frame-src": "https://js.stripe.com",
+                "connect-src": " ".join(connect_sources),
+                "child-src": " ".join(child_sources),
+                "frame-src": " ".join(frame_sources),
             }.items()
         )
         if frame_ancestors == "'none'":
@@ -282,6 +294,7 @@ def configure_jinja(app: Flask) -> None:
             splash_screen_duration_ms=app.config.get(SPLASH_SCREEN_DURATION_MS, 2000),
             setup_incomplete=False,
             user=None,
+            chat_key_session_id="",
         )
         brand_primary_color = data.get(OrganizationSetting.BRAND_PRIMARY_COLOR, "#7d25c1")
         data["brand_primary_color_dark"] = _brand_dark_color(brand_primary_color)
@@ -290,6 +303,10 @@ def configure_jinja(app: Flask) -> None:
             user = db.session.get(User, session["user_id"])
             data["user"] = user
             if user:
+                if session.get("is_authenticated", False):
+                    if not isinstance(session.get(CHAT_KEY_SESSION_ID_SESSION_KEY), str):
+                        rotate_chat_key_session_id()
+                    data["chat_key_session_id"] = session.get(CHAT_KEY_SESSION_ID_SESSION_KEY, "")
                 username = user.primary_username
                 data["setup_incomplete"] = bool(
                     not username

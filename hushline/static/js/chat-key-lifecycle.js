@@ -9,6 +9,8 @@
   const legacyBrowserStorageKey = "hushline:chat-private-jwk:browser-session";
   const crossTabChannelName = "hushline:chat-key-session";
   const crossTabRequestTimeoutMs = 750;
+  const unlockedKeyMaxAgeMs = 15 * 60 * 1000;
+  const unlockedKeyIdleTimeoutMs = 5 * 60 * 1000;
   const conversationPollMinIntervalMs = 3000;
   const tabId = window.crypto?.randomUUID
     ? window.crypto.randomUUID()
@@ -17,6 +19,9 @@
   let crossTabSharingBound = false;
   let unlockedChatPrivateKey = null;
   let unlockedChatSigningPrivateKey = null;
+  let unlockedChatKeyExpiryTimer = null;
+  let unlockedChatKeyExpiresAt = null;
+  let unlockedChatKeyLastUsedAt = null;
   let pendingLoginPassword = null;
   const state = {
     status: "empty",
@@ -70,6 +75,36 @@
     if (!window.crypto?.subtle) {
       throw new Error("Web Crypto is unavailable.");
     }
+  }
+
+  function chatKeySessionId(sourceDocument = document) {
+    return sourceDocument.body?.dataset.chatKeySessionId || "";
+  }
+
+  function clearUnlockedKeyExpiryTimer() {
+    if (unlockedChatKeyExpiryTimer) {
+      window.clearTimeout(unlockedChatKeyExpiryTimer);
+      unlockedChatKeyExpiryTimer = null;
+    }
+  }
+
+  function scheduleUnlockedKeyExpiry(expiresAt, lastUsedAt) {
+    clearUnlockedKeyExpiryTimer();
+    const now = Date.now();
+    const normalizedExpiresAt = Number(expiresAt);
+    const normalizedLastUsedAt = Number(lastUsedAt);
+    unlockedChatKeyExpiresAt = normalizedExpiresAt;
+    unlockedChatKeyLastUsedAt = normalizedLastUsedAt;
+    const idleExpiresAt = normalizedLastUsedAt + unlockedKeyIdleTimeoutMs;
+    const nextExpiry = Math.min(normalizedExpiresAt, idleExpiresAt);
+    if (!Number.isFinite(nextExpiry) || nextExpiry <= now) {
+      clearChatKeyMaterial();
+      return;
+    }
+    unlockedChatKeyExpiryTimer = window.setTimeout(
+      clearChatKeyMaterial,
+      nextExpiry - now,
+    );
   }
 
   async function deriveWrappingKey(password, salt, kdfParams, usages) {
@@ -155,15 +190,25 @@
     );
   }
 
-  function rememberUnlockedPrivateKeyBundle(privateKeyBundle, chatKey) {
+  function rememberUnlockedPrivateKeyBundle(
+    privateKeyBundle,
+    chatKey,
+    sourceDocument = document,
+  ) {
+    const now = Date.now();
+    const expiresAt = now + unlockedKeyMaxAgeMs;
+    const sessionId = chatKeySessionId(sourceDocument);
     const storedValue = JSON.stringify({
       key_version: chatKey.key_version,
       public_key: chatKey.public_key,
       public_signing_key: chatKey.public_signing_key || null,
       private_key_bundle: privateKeyBundle,
-      expires_at: Number.MAX_SAFE_INTEGER,
+      expires_at: expiresAt,
+      last_used_at: now,
+      session_id: sessionId,
     });
 
+    scheduleUnlockedKeyExpiry(expiresAt, now);
     try {
       sessionStorage.setItem(sessionStorageKey, storedValue);
     } catch (error) {
@@ -191,20 +236,29 @@
 
     try {
       const stored = JSON.parse(storedValue);
+      const now = Date.now();
+      const expiresAt = Number(stored.expires_at);
+      const lastUsedAt = Number(stored.last_used_at);
       if (
         stored?.key_version !== chatKey.key_version ||
         stored.public_key !== chatKey.public_key ||
         (stored.public_signing_key || null) !==
           (chatKey.public_signing_key || null) ||
         !(stored.private_key_bundle || stored.private_jwk) ||
-        !stored.expires_at
+        !Number.isFinite(expiresAt) ||
+        expiresAt > now + unlockedKeyMaxAgeMs ||
+        !Number.isFinite(lastUsedAt) ||
+        stored.session_id !== chatKeySessionId()
       ) {
         return null;
       }
-      if (Date.now() > Number(stored.expires_at)) {
+      if (now > expiresAt || now - lastUsedAt > unlockedKeyIdleTimeoutMs) {
         forgetUnlockedPrivateJwk();
         return null;
       }
+      stored.last_used_at = now;
+      sessionStorage.setItem(sessionStorageKey, JSON.stringify(stored));
+      scheduleUnlockedKeyExpiry(expiresAt, now);
       return normalizePrivateKeyBundle(
         stored.private_key_bundle || stored.private_jwk,
       );
@@ -228,14 +282,57 @@
     return null;
   }
 
-  async function restoreUnlockedChatKeyFromBundle(chatKey, privateKeyBundle) {
+  function touchUnlockedChatKeyUse() {
+    if (!unlockedChatPrivateKey && !unlockedChatSigningPrivateKey) {
+      return false;
+    }
+
+    const now = Date.now();
+    if (
+      !Number.isFinite(unlockedChatKeyExpiresAt) ||
+      !Number.isFinite(unlockedChatKeyLastUsedAt) ||
+      now > unlockedChatKeyExpiresAt ||
+      now - unlockedChatKeyLastUsedAt > unlockedKeyIdleTimeoutMs
+    ) {
+      clearChatKeyMaterial();
+      return false;
+    }
+
+    try {
+      const stored = JSON.parse(
+        sessionStorage.getItem(sessionStorageKey) || "null",
+      );
+      if (stored) {
+        if (
+          Number(stored.expires_at) !== unlockedChatKeyExpiresAt ||
+          stored.session_id !== chatKeySessionId()
+        ) {
+          clearChatKeyMaterial();
+          return false;
+        }
+        stored.last_used_at = now;
+        sessionStorage.setItem(sessionStorageKey, JSON.stringify(stored));
+      }
+    } catch (error) {
+      // The in-memory key remains bounded by its absolute expiry.
+    }
+
+    scheduleUnlockedKeyExpiry(unlockedChatKeyExpiresAt, now);
+    return true;
+  }
+
+  async function restoreUnlockedChatKeyFromBundle(
+    chatKey,
+    privateKeyBundle,
+    sourceDocument = document,
+  ) {
     unlockedChatPrivateKey = await importPrivateKey(
       privateKeyBundle.ecdh_private_jwk,
     );
     unlockedChatSigningPrivateKey = await importSigningPrivateKey(
       privateKeyBundle.signing_private_jwk,
     );
-    rememberUnlockedPrivateKeyBundle(privateKeyBundle, chatKey);
+    rememberUnlockedPrivateKeyBundle(privateKeyBundle, chatKey, sourceDocument);
     state.status = "unlocked";
     state.keyVersion = chatKey.key_version;
     state.lastError = null;
@@ -273,12 +370,14 @@
 
   function postChatKeyBroadcast(message) {
     const channel = chatKeyBroadcastChannel();
+    const sessionId = chatKeySessionId();
     if (!channel) {
       return false;
     }
     channel.postMessage({
       v: 1,
       source_tab_id: tabId,
+      session_id: sessionId,
       ...message,
     });
     return true;
@@ -287,7 +386,8 @@
   function bindCrossTabChatKeySharing() {
     if (
       crossTabSharingBound ||
-      document.body?.dataset.authenticated !== "true"
+      document.body?.dataset.authenticated !== "true" ||
+      !chatKeySessionId()
     ) {
       return;
     }
@@ -302,6 +402,7 @@
       if (
         message.v !== 1 ||
         message.source_tab_id === tabId ||
+        message.session_id !== chatKeySessionId() ||
         message.type !== "request-unlocked-chat-key" ||
         !message.request_id
       ) {
@@ -326,7 +427,8 @@
 
   async function restoreUnlockedChatKeyFromOtherTab(chatKey) {
     const channel = chatKeyBroadcastChannel();
-    if (!channel || !chatKey) {
+    const sessionId = chatKeySessionId();
+    if (!channel || !chatKey || !sessionId) {
       return false;
     }
 
@@ -345,10 +447,13 @@
         if (
           message.v !== 1 ||
           message.source_tab_id === tabId ||
+          message.session_id !== sessionId ||
           message.type !== "unlocked-chat-key" ||
           message.request_id !== requestId ||
           message.chat_key?.key_version !== chatKey.key_version ||
           message.chat_key?.public_key !== chatKey.public_key ||
+          (message.chat_key?.public_signing_key || null) !==
+            (chatKey.public_signing_key || null) ||
           !message.private_key_bundle
         ) {
           return;
@@ -372,9 +477,11 @@
       postChatKeyBroadcast({
         type: "request-unlocked-chat-key",
         request_id: requestId,
+        session_id: sessionId,
         chat_key: {
           key_version: chatKey.key_version,
           public_key: chatKey.public_key,
+          public_signing_key: chatKey.public_signing_key || null,
         },
       });
     });
@@ -393,7 +500,11 @@
     return null;
   }
 
-  async function unlockFromPassword(chatKey, password) {
+  async function unlockFromPassword(
+    chatKey,
+    password,
+    sourceDocument = document,
+  ) {
     if (!chatKey) {
       clearChatKeyMaterial();
       state.status = "no-key";
@@ -404,17 +515,11 @@
     let privateKeyBundle = null;
     try {
       privateKeyBundle = await decryptPrivateKeyBundle(chatKey, password);
-      unlockedChatPrivateKey = await importPrivateKey(
-        privateKeyBundle.ecdh_private_jwk,
+      return restoreUnlockedChatKeyFromBundle(
+        chatKey,
+        privateKeyBundle,
+        sourceDocument,
       );
-      unlockedChatSigningPrivateKey = await importSigningPrivateKey(
-        privateKeyBundle.signing_private_jwk,
-      );
-      rememberUnlockedPrivateKeyBundle(privateKeyBundle, chatKey);
-      state.status = "unlocked";
-      state.keyVersion = chatKey.key_version;
-      state.lastError = null;
-      return true;
     } catch (error) {
       clearChatKeyMaterial();
       state.status = "locked";
@@ -590,6 +695,9 @@
     if (!unlockedChatSigningPrivateKey) {
       return null;
     }
+    if (!touchUnlockedChatKeyUse()) {
+      return null;
+    }
     const signedPayload = {
       v: envelope.v,
       algorithm: envelope.algorithm,
@@ -717,6 +825,9 @@
     if (!unlockedChatPrivateKey) {
       throw new Error("Chat key is locked.");
     }
+    if (!touchUnlockedChatKeyUse()) {
+      throw new Error("Chat key is locked.");
+    }
     assertCryptoSupport();
     const envelope = JSON.parse(encryptedPayload);
     if (envelope.algorithm !== "ECDH-P256-AES-GCM") {
@@ -809,7 +920,11 @@
     if (!chatKey) {
       throw new Error("Created chat key was unavailable.");
     }
-    await restoreUnlockedChatKeyFromBundle(chatKey, created.privateKeyBundle);
+    await restoreUnlockedChatKeyFromBundle(
+      chatKey,
+      created.privateKeyBundle,
+      sourceDocument,
+    );
     return chatKey;
   }
 
@@ -820,7 +935,7 @@
     const chatKeyUrl = chatKeyUrlFromCurrentOrigin();
     const chatKey = await fetchChatKey(chatKeyUrl);
     if (chatKey) {
-      return unlockFromPassword(chatKey, password);
+      return unlockFromPassword(chatKey, password, sourceDocument);
     }
     await provisionChatKey(chatKeyUrl, password, sourceDocument);
     return true;
@@ -841,12 +956,23 @@
   }
 
   function clearChatKeyMaterial() {
+    const hadUnlockedKey = Boolean(
+      unlockedChatPrivateKey ||
+        unlockedChatSigningPrivateKey ||
+        state.status === "unlocked",
+    );
     forgetUnlockedPrivateJwk();
+    clearUnlockedKeyExpiryTimer();
     unlockedChatPrivateKey = null;
     unlockedChatSigningPrivateKey = null;
+    unlockedChatKeyExpiresAt = null;
+    unlockedChatKeyLastUsedAt = null;
     state.status = "empty";
     state.keyVersion = null;
     state.lastError = null;
+    if (hadUnlockedKey) {
+      updateConversationLockedAfterKeyClear();
+    }
   }
 
   function replaceDocument(responseText, responseUrl) {
@@ -900,6 +1026,20 @@
     if (badge) {
       badge.hidden = !visible;
     }
+  }
+
+  function updateConversationLockedAfterKeyClear() {
+    const root = document.getElementById("conversation-chat");
+    if (!root) {
+      return;
+    }
+
+    setConversationComposeEnabled(false);
+    setConversationUnlockVisible(true);
+    setConversationSecureBadgeVisible(false);
+    setConversationStatus(
+      "Chat key expired for this browser session. Secure replies are paused.",
+    );
   }
 
   function currentConversationParticipantId() {
@@ -1560,9 +1700,24 @@
     }
   }
 
-  function bindLogoutCleanup() {
-    document.querySelectorAll("a[href$='/logout']").forEach((link) => {
-      link.addEventListener("click", clearChatKeyMaterial);
+  function bindChatKeyCleanupTriggers() {
+    if (document.documentElement.dataset.chatKeyCleanupBound === "true") {
+      return;
+    }
+    document.documentElement.dataset.chatKeyCleanupBound = "true";
+    document.addEventListener("click", (event) => {
+      const trigger = event.target?.closest?.(
+        "[data-clear-chat-key-material='true']",
+      );
+      if (trigger) {
+        clearChatKeyMaterial();
+      }
+    });
+    document.addEventListener("submit", (event) => {
+      const form = event.target;
+      if (form?.matches?.("[data-clear-chat-key-material='true']")) {
+        clearChatKeyMaterial();
+      }
     });
   }
 
@@ -1585,7 +1740,7 @@
     document
       .querySelector("form[action*='password-reset']")
       ?.addEventListener("submit", clearChatKeyMaterial);
-    bindLogoutCleanup();
+    bindChatKeyCleanupTriggers();
     bindConversation();
   }
 
