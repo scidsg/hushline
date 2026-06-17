@@ -36,17 +36,34 @@
     data-conversation-public-id="{{ conversation.public_id }}"
     data-participant-id="{{ participant.id }}"
   >
-    <div id="conversation-key-locked" class="conversation-unlock-panel" role="status" hidden>
+    <div
+      id="conversation-key-locked"
+      class="conversation-unlock-panel"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      hidden
+    >
       <div>
         <h2>Secure chat unavailable</h2>
         <p>
           This conversation needs your browser chat key before messages can be read.
         </p>
       </div>
-      <p id="conversation-chat-status" class="meta" role="status">
+      <p id="conversation-key-lock-status" class="meta" data-conversation-status>
         Messages are encrypted until your browser chat key unlocks.
       </p>
     </div>
+    <p
+      id="conversation-chat-status"
+      class="visually-hidden"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      data-conversation-status
+    >
+      Messages are encrypted until your browser chat key unlocks.
+    </p>
 
     <script id="conversationParticipantPublicKeys" type="application/json">
       {{ participant_public_keys | tojson }}
@@ -55,13 +72,22 @@
       {{ message_copy_payloads | tojson }}
     </script>
 
-    <article class="conversation-thread" aria-live="polite" aria-label="Conversation messages">
+    <section
+      id="conversation-thread"
+      class="conversation-thread"
+      role="log"
+      aria-label="Conversation messages"
+      aria-live="polite"
+      aria-relevant="additions text"
+      aria-atomic="false"
+    >
       {% for conversation_message, encrypted_copy, is_own_message in message_copies %}
-        <div
+        <article
           class="conversation-message {{ 'is-own-message' if is_own_message else 'is-other-message' }}"
           data-conversation-message-id="{{ conversation_message.id }}"
+          aria-label="{{ 'Your message' if is_own_message else 'Message from ' ~ conversation_name }}"
         >
-          <time data-conversation-message-time class="meta" role="presentation"></time>
+          <time data-conversation-message-time class="meta"></time>
           {% if encrypted_copy %}
             <p class="conversation-message-body">Encrypted message. Waiting for browser chat key.</p>
           {% else %}
@@ -69,9 +95,9 @@
               No encrypted copy is available for your account.
             </p>
           {% endif %}
-        </div>
+        </article>
       {% endfor %}
-    </article>
+    </section>
 
     {% if rotated_participant_keys %}
       <div class="conversation-key-warning" role="status">
@@ -113,17 +139,19 @@
         name="message"
         rows="1"
         maxlength="50000"
+        aria-describedby="conversation-chat-status{% if not can_compose %} conversation-compose-unavailable{% endif %}"
         disabled="disabled"
         placeholder="Message"
         required
       ></textarea>
       {{ conversation_message_form.submit(
         id="conversation-compose-submit",
+        aria_describedby="conversation-chat-status",
         disabled="disabled",
         value="Send"
       ) }}
       {% if not can_compose %}
-        <p class="meta">
+        <p id="conversation-compose-unavailable" class="meta">
           Replies are unavailable until every participant has an active Hush Line chat key.
         </p>
       {% endif %}

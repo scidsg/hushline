@@ -267,7 +267,11 @@ def test_conversation_view_shows_locked_chat_key_state(
     assert response.text.count("is-other-message") == 1
     assert 'rows="1"' in response.text
     assert 'placeholder="Message"' in response.text
-    assert '<button disabled="disabled" id="conversation-compose-submit"' in response.text
+    assert re.search(
+        r'<button(?=[^>]*\bid="conversation-compose-submit")'
+        r'(?=[^>]*\bdisabled="disabled")[^>]*>',
+        response.text,
+    )
     assert 'data-participant-id="' in response.text
     assert "Messages are encrypted until your browser chat key unlocks." in response.text
     assert "JavaScript is required for end-to-end encrypted chat." in response.text

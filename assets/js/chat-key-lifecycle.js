@@ -865,10 +865,10 @@
   }
 
   function setConversationStatus(message) {
-    const status = document.getElementById("conversation-chat-status");
-    if (status) {
+    const statuses = document.querySelectorAll("[data-conversation-status]");
+    statuses.forEach((status) => {
       status.textContent = message;
-    }
+    });
   }
 
   function setConversationUnlockVisible(visible) {
@@ -1099,9 +1099,11 @@
 
     if (body) {
       body.disabled = !enabled;
+      body.setAttribute("aria-disabled", enabled ? "false" : "true");
     }
     if (submit) {
       submit.disabled = !enabled;
+      submit.setAttribute("aria-disabled", enabled ? "false" : "true");
     }
   }
 

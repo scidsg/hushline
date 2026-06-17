@@ -308,6 +308,69 @@ def test_inbox_conversation_rows_have_accessible_status_and_unread_state(
     assert unavailable_link.get_text(" ", strip=True) == "Go to conversation"
 
 
+@pytest.mark.usefixtures("_authenticated_user")
+def test_conversation_view_exposes_accessible_chat_state(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    conversation = _make_inbox_conversation(
+        user,
+        user2,
+        user_has_copy=True,
+        sender_is_other_user=True,
+    )
+
+    response = client.get(
+        url_for("conversation", public_id=conversation.public_id),
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    chat = soup.find(id="conversation-chat")
+    unlock_panel = soup.find(id="conversation-key-locked")
+    status = soup.find(id="conversation-chat-status")
+    visible_status = soup.find(id="conversation-key-lock-status")
+    thread = soup.find(id="conversation-thread")
+    message = soup.select_one("[data-conversation-message-id]")
+    timestamp = message.find("time") if message else None
+    textarea = soup.find(id="conversation-compose-body")
+    submit = soup.find(id="conversation-compose-submit")
+
+    assert chat is not None
+    assert unlock_panel is not None
+    assert unlock_panel.get("role") == "status"
+    assert unlock_panel.get("aria-live") == "polite"
+    assert unlock_panel.get("aria-atomic") == "true"
+    assert visible_status is not None
+    assert visible_status.get("data-conversation-status") == ""
+    assert status is not None
+    assert "visually-hidden" in status.get("class", [])
+    assert status.get("role") == "status"
+    assert status.get("aria-live") == "polite"
+    assert status.get("aria-atomic") == "true"
+    assert status.get("data-conversation-status") == ""
+    assert thread is not None
+    assert thread.name == "section"
+    assert thread.get("role") == "log"
+    assert thread.get("aria-label") == "Conversation messages"
+    assert thread.get("aria-live") == "polite"
+    assert thread.get("aria-relevant") == "additions text"
+    assert thread.get("aria-atomic") == "false"
+    assert message is not None
+    assert message.name == "article"
+    assert message.get("aria-label") == f"Message from {user2.primary_username.username}"
+    assert timestamp is not None
+    assert timestamp.get("role") is None
+    assert textarea is not None
+    assert "conversation-chat-status" in textarea.get("aria-describedby", "")
+    assert textarea.get("aria-disabled") is None
+    assert submit is not None
+    assert submit.get("aria-describedby") == "conversation-chat-status"
+    assert submit.get("aria-disabled") is None
+
+
 def test_guidance_modal_has_accessible_attributes(client: FlaskClient) -> None:
     OrganizationSetting.upsert(OrganizationSetting.GUIDANCE_ENABLED, True)
     OrganizationSetting.upsert(
