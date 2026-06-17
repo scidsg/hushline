@@ -26,12 +26,18 @@ def _authenticate_as(client: FlaskClient, user: User) -> None:
         session["is_authenticated"] = True
 
 
-def _add_chat_key(user: User, public_key: str) -> None:
+def _add_chat_key(
+    user: User,
+    public_key: str,
+    *,
+    public_signing_key: str | None = None,
+) -> None:
     db.session.add(
         ChatKey(
             user=user,
             key_version=1,
             public_key=public_key,
+            public_signing_key=public_signing_key,
             encrypted_private_key="wrapped-private-chat-key",
             kdf_algorithm="PBKDF2-SHA-256",
             kdf_params={"iterations": 310000},
@@ -282,7 +288,7 @@ def test_conversation_view_shows_locked_chat_key_state(
     assert "server-side chat fallback for conversations" in response.text
     assert "Encrypted message. Waiting for browser chat key." in response.text
     assert (
-        "Replies are unavailable until every participant has an active Hush Line chat key."
+        "Replies are unavailable until every participant has an active signing-capable"
         in response.text
     )
     assert "conversation-chat-password" not in response.text
@@ -290,6 +296,37 @@ def test_conversation_view_shows_locked_chat_key_state(
     assert "Proton" not in response.text
     assert "PGP" not in response.text
     assert url_for("conversation_presence", public_id=conversation.public_id) in response.text
+
+
+def test_conversation_view_disables_composer_when_participant_key_cannot_sign(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(
+        user2,
+        '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}',
+        public_signing_key='{"kty":"EC","crv":"P-256","x":"recipient-sign","y":"key"}',
+    )
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+
+    response = client.get(url_for("conversation", public_id=conversation.public_id))
+
+    assert response.status_code == 200
+    assert 'data-can-compose="false"' in response.text
+    assert "active signing-capable" in response.text
+    participant_keys_match = re.search(
+        r'<script id="conversationParticipantPublicKeys" type="application/json">\s*'
+        r"([\s\S]*?)</script>",
+        response.text,
+    )
+    assert participant_keys_match is not None
+    participant_keys = json.loads(participant_keys_match.group(1))
+    assert [participant_key["participant_id"] for participant_key in participant_keys] == [
+        _participant_for(conversation, user2).id
+    ]
 
 
 def test_conversation_view_hides_message_metadata_from_page_payload(

@@ -1133,7 +1133,7 @@
     }
     if (root.dataset.canCompose !== "true") {
       setConversationStatus(
-        "Replies are unavailable until every participant has an active Hush Line chat key.",
+        "Replies are unavailable until every participant has an active signing-capable Hush Line chat key.",
       );
       return;
     }

@@ -378,6 +378,7 @@ def register_message_routes(app: Flask) -> None:
                 thread_participant.user
                 and thread_participant.user.active_chat_key
                 and thread_participant.user.chat_public_key
+                and thread_participant.user.chat_public_signing_key
             )
         ]
         rotated_participant_keys = [
