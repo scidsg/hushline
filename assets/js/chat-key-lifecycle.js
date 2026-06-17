@@ -1034,7 +1034,7 @@
     setConversationUnlockVisible(true);
     setConversationSecureBadgeVisible(false);
     setConversationStatus(
-      "Chat key expired. Log out and log back in to unlock chat.",
+      "Chat key expired for this browser session. Secure replies are paused.",
     );
   }
 
