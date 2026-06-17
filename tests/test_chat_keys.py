@@ -20,11 +20,12 @@ def _chat_key_payload(**overrides: object) -> dict[str, object]:
             '{"kty":"EC","crv":"P-256","x":"signing-public-x","y":"signing-public-y"}'
         ),
         "encrypted_private_key": (
-            '{"algorithm":"AES-GCM","iv":"bm9uY2U=",' '"ciphertext":"d3JhcHBlZC1wcml2YXRlLWtleQ=="}'
+            '{"algorithm":"AES-GCM","iv":"bm9uY2UtMTIzNDU2",'
+            '"ciphertext":"d3JhcHBlZC1wcml2YXRlLWtleQ=="}'
         ),
         "kdf_algorithm": "PBKDF2-SHA-256",
         "kdf_params": {"iterations": 310000, "hash": "SHA-256"},
-        "kdf_salt": "salt",
+        "kdf_salt": "c2FsdC1zYWx0LXNhbHQtIQ==",
         "wrapping_algorithm": "AES-GCM",
     }
     payload.update(overrides)
@@ -136,7 +137,7 @@ def test_authenticated_user_can_provision_chat_key(client: FlaskClient, user: Us
     assert created_key.encrypted_private_key == _chat_key_payload()["encrypted_private_key"]
     assert created_key.kdf_algorithm == "PBKDF2-SHA-256"
     assert created_key.kdf_params == {"iterations": 310000, "hash": "SHA-256"}
-    assert created_key.kdf_salt == "salt"
+    assert created_key.kdf_salt == "c2FsdC1zYWx0LXNhbHQtIQ=="
     assert created_key.wrapping_algorithm == "AES-GCM"
     assert created_key.disabled_at is None
 
@@ -213,8 +214,20 @@ def test_chat_key_payload_rejects_plaintext_private_key_material(
             "kdf_params.hash must be SHA-256.",
         ),
         (
+            {"kdf_salt": "not base64"},
+            "kdf_salt must be non-empty base64.",
+        ),
+        (
+            {"kdf_salt": "QUE="},
+            "kdf_salt must be 16 bytes.",
+        ),
+        (
             {"wrapping_algorithm": "AES-CBC"},
             "wrapping_algorithm must be AES-GCM.",
+        ),
+        (
+            {"encrypted_private_key": "x" * 200_001},
+            "Chat key payload is too large.",
         ),
         (
             {"encrypted_private_key": "wrapped-private-key"},
@@ -223,7 +236,17 @@ def test_chat_key_payload_rejects_plaintext_private_key_material(
         (
             {
                 "encrypted_private_key": (
-                    '{"algorithm":"AES-CBC","iv":"bm9uY2U=",'
+                    '{"algorithm":"AES-GCM","iv":"bm9uY2UtMTIzNDU2",'
+                    '"ciphertext":"d3JhcHBlZC1wcml2YXRlLWtleQ==",'
+                    '"private_key":"plaintext-private-key"}'
+                )
+            },
+            "encrypted_private_key contains unsupported fields.",
+        ),
+        (
+            {
+                "encrypted_private_key": (
+                    '{"algorithm":"AES-CBC","iv":"bm9uY2UtMTIzNDU2",'
                     '"ciphertext":"d3JhcHBlZC1wcml2YXRlLWtleQ=="}'
                 )
             },
@@ -239,7 +262,20 @@ def test_chat_key_payload_rejects_plaintext_private_key_material(
             "encrypted_private_key iv must be non-empty base64.",
         ),
         (
-            {"encrypted_private_key": ('{"algorithm":"AES-GCM","iv":"bm9uY2U=","ciphertext":""}')},
+            {
+                "encrypted_private_key": (
+                    '{"algorithm":"AES-GCM","iv":"QUE=",'
+                    '"ciphertext":"d3JhcHBlZC1wcml2YXRlLWtleQ=="}'
+                )
+            },
+            "encrypted_private_key iv must be 12 bytes.",
+        ),
+        (
+            {
+                "encrypted_private_key": (
+                    '{"algorithm":"AES-GCM","iv":"bm9uY2UtMTIzNDU2","ciphertext":""}'
+                )
+            },
             "encrypted_private_key ciphertext must be non-empty base64.",
         ),
     ],

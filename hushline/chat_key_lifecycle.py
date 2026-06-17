@@ -14,7 +14,10 @@ CHAT_KEY_RECOVERY_STATE_MAX_LENGTH = 64
 CHAT_KEY_KDF_ALGORITHM = "PBKDF2-SHA-256"
 CHAT_KEY_KDF_HASH = "SHA-256"
 CHAT_KEY_KDF_MIN_ITERATIONS = 310_000
+CHAT_KEY_KDF_SALT_BYTES = 16
 CHAT_KEY_WRAPPING_ALGORITHM = "AES-GCM"
+CHAT_KEY_WRAPPING_IV_BYTES = 12
+CHAT_KEY_WRAPPED_PRIVATE_KEY_FIELDS = {"algorithm", "iv", "ciphertext"}
 CHAT_KEY_FORBIDDEN_SECRET_FIELDS = {
     "decrypted_message_text",
     "decrypted_private_key",
@@ -98,13 +101,14 @@ def _valid_public_jwk(value: str, *, expected_use: str) -> bool:
     return True
 
 
-def _non_empty_base64(value: Any) -> bool:
+def _base64_bytes(value: Any) -> bytes | None:
     if not isinstance(value, str) or not value:
-        return False
+        return None
     try:
-        return bool(base64.b64decode(value, validate=True))
+        decoded = base64.b64decode(value, validate=True)
     except (binascii.Error, ValueError):
-        return False
+        return None
+    return decoded or None
 
 
 def _validate_wrapped_private_key(value: str) -> str:
@@ -115,11 +119,16 @@ def _validate_wrapped_private_key(value: str) -> str:
 
     if not isinstance(wrapped_private_key, dict):
         return "encrypted_private_key must be a JSON object."
+    if set(wrapped_private_key) != CHAT_KEY_WRAPPED_PRIVATE_KEY_FIELDS:
+        return "encrypted_private_key contains unsupported fields."
     if wrapped_private_key.get("algorithm") != CHAT_KEY_WRAPPING_ALGORITHM:
         return "encrypted_private_key algorithm must be AES-GCM."
-    if not _non_empty_base64(wrapped_private_key.get("iv")):
+    iv = _base64_bytes(wrapped_private_key.get("iv"))
+    if iv is None:
         return "encrypted_private_key iv must be non-empty base64."
-    if not _non_empty_base64(wrapped_private_key.get("ciphertext")):
+    if len(iv) != CHAT_KEY_WRAPPING_IV_BYTES:
+        return "encrypted_private_key iv must be 12 bytes."
+    if _base64_bytes(wrapped_private_key.get("ciphertext")) is None:
         return "encrypted_private_key ciphertext must be non-empty base64."
     return ""
 
@@ -172,18 +181,6 @@ def validate_chat_key_payload(payload: Any, *, current_user_id: int) -> tuple[di
         return {}, "kdf_salt is required."
     if not isinstance(kdf_params, dict) or not kdf_params:
         return {}, "kdf_params must be a non-empty object."
-    if kdf_params.get("hash") != CHAT_KEY_KDF_HASH:
-        return {}, "kdf_params.hash must be SHA-256."
-    iterations = kdf_params.get("iterations")
-    if not isinstance(iterations, int) or isinstance(iterations, bool):
-        return {}, "kdf_params.iterations must be an integer."
-    if iterations < CHAT_KEY_KDF_MIN_ITERATIONS:
-        return {}, "kdf_params.iterations is below the minimum."
-    if wrapping_algorithm != CHAT_KEY_WRAPPING_ALGORITHM:
-        return {}, "wrapping_algorithm must be AES-GCM."
-    wrapped_private_key_error = _validate_wrapped_private_key(encrypted_private_key)
-    if wrapped_private_key_error:
-        return {}, wrapped_private_key_error
 
     string_fields = {
         "public_key": public_key,
@@ -196,6 +193,24 @@ def validate_chat_key_payload(payload: Any, *, current_user_id: int) -> tuple[di
         string_fields["public_signing_key"] = public_signing_key
     if any(len(value) > CHAT_KEY_STRING_MAX_LENGTH for value in string_fields.values()):
         return {}, "Chat key payload is too large."
+
+    if kdf_params.get("hash") != CHAT_KEY_KDF_HASH:
+        return {}, "kdf_params.hash must be SHA-256."
+    iterations = kdf_params.get("iterations")
+    if not isinstance(iterations, int) or isinstance(iterations, bool):
+        return {}, "kdf_params.iterations must be an integer."
+    if iterations < CHAT_KEY_KDF_MIN_ITERATIONS:
+        return {}, "kdf_params.iterations is below the minimum."
+    salt = _base64_bytes(kdf_salt)
+    if salt is None:
+        return {}, "kdf_salt must be non-empty base64."
+    if len(salt) != CHAT_KEY_KDF_SALT_BYTES:
+        return {}, "kdf_salt must be 16 bytes."
+    if wrapping_algorithm != CHAT_KEY_WRAPPING_ALGORITHM:
+        return {}, "wrapping_algorithm must be AES-GCM."
+    wrapped_private_key_error = _validate_wrapped_private_key(encrypted_private_key)
+    if wrapped_private_key_error:
+        return {}, wrapped_private_key_error
 
     try:
         serialized_kdf_params = json.dumps(kdf_params, sort_keys=True)
