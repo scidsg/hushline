@@ -2472,7 +2472,8 @@ body.conversation-body {
 }
 
 .conversation-unlock-panel h2,
-.conversation-unlock-panel p {
+.conversation-unlock-panel p,
+.conversation-chat > .visually-hidden {
   margin: 0;
 }
 
