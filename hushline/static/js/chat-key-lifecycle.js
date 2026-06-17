@@ -929,6 +929,30 @@
     }
   }
 
+  function conversationMessageSenderSigningFingerprintFromPayload(
+    encryptedPayload,
+  ) {
+    if (!encryptedPayload || typeof encryptedPayload !== "string") {
+      return null;
+    }
+    try {
+      const envelope = JSON.parse(encryptedPayload);
+      return envelope?.context?.sender_public_signing_key_fingerprint || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function participantPublicKeyBySigningFingerprint(fingerprint) {
+    if (!fingerprint) {
+      return null;
+    }
+    return conversationParticipantPublicKeys().find(
+      (participantKey) =>
+        participantKey.public_signing_key_fingerprint === fingerprint,
+    );
+  }
+
   function conversationMessagePayloadFromPlaintext(plaintext) {
     try {
       const parsed = JSON.parse(plaintext);
@@ -1069,7 +1093,13 @@
         const senderParticipantId = conversationMessageSenderIdFromPayload(
           copy.encrypted_payload,
         );
-        const senderKey = participantPublicKeyById(senderParticipantId);
+        const senderKey =
+          participantPublicKeyById(senderParticipantId) ||
+          participantPublicKeyBySigningFingerprint(
+            conversationMessageSenderSigningFingerprintFromPayload(
+              copy.encrypted_payload,
+            ),
+          );
         const plaintext = await decryptChatCiphertext(
           copy.encrypted_payload,
           senderKey?.public_signing_key || null,

@@ -24,6 +24,7 @@ from sqlalchemy.exc import MultipleResultsFound
 from werkzeug.wrappers.response import Response
 
 from hushline.auth import get_session_user
+from hushline.chat_key_lifecycle import chat_key_fingerprint
 from hushline.crypto import encrypt_message
 from hushline.db import db
 from hushline.embeds import (
@@ -59,10 +60,12 @@ from hushline.routes.common import (
     validate_captcha,
 )
 from hushline.routes.forms import DynamicMessageForm
-from hushline.routes.message import _is_chat_ciphertext_envelope
+from hushline.routes.message import _chat_ciphertext_context, _is_chat_ciphertext_envelope
 from hushline.safe_template import safe_render_template
 
 EMBED_CAPTCHA_MAX_AGE_SECONDS = 60 * 60
+INITIAL_CONVERSATION_NONCE_SESSION_KEY = "initial_conversation_nonces"
+INITIAL_CONVERSATION_NONCE_SESSION_LIMIT = 10
 
 
 def register_profile_routes(app: Flask) -> None:
@@ -252,20 +255,154 @@ def register_profile_routes(app: Flask) -> None:
             return None
         return get_session_user()
 
+    def _chat_key_descriptor(user: User | None) -> dict[str, Any] | None:
+        active_key = user.active_chat_key if user is not None else None
+        if active_key is None or not active_key.public_key:
+            return None
+
+        return {
+            "key_version": active_key.key_version,
+            "public_key": active_key.public_key,
+            "public_key_fingerprint": chat_key_fingerprint(active_key.public_key),
+            "public_signing_key": active_key.public_signing_key,
+            "public_signing_key_fingerprint": chat_key_fingerprint(active_key.public_signing_key),
+        }
+
+    def _chat_key_can_sign(user: User | None) -> bool:
+        active_key = user.active_chat_key if user is not None else None
+        return bool(active_key and active_key.public_key and active_key.public_signing_key)
+
     def _chat_submission_base_available(uname: Username, sender: User | None) -> bool:
-        return bool(sender and sender.id != uname.user_id and uname.user.chat_public_key)
+        return bool(
+            sender
+            and sender.id != uname.user_id
+            and _chat_key_can_sign(sender)
+            and uname.user.active_chat_key
+            and uname.user.chat_public_key
+        )
+
+    def _remember_initial_conversation_nonce(nonce: str) -> None:
+        remembered_nonces = session.get(INITIAL_CONVERSATION_NONCE_SESSION_KEY, [])
+        if not isinstance(remembered_nonces, list):
+            remembered_nonces = []
+        remembered_nonces = [
+            remembered_nonce
+            for remembered_nonce in remembered_nonces
+            if isinstance(remembered_nonce, str)
+        ]
+        if nonce not in remembered_nonces:
+            remembered_nonces.append(nonce)
+        session[INITIAL_CONVERSATION_NONCE_SESSION_KEY] = remembered_nonces[
+            -INITIAL_CONVERSATION_NONCE_SESSION_LIMIT:
+        ]
+
+    def _initial_conversation_nonce_is_known(nonce: str) -> bool:
+        remembered_nonces = session.get(INITIAL_CONVERSATION_NONCE_SESSION_KEY, [])
+        return isinstance(remembered_nonces, list) and nonce in remembered_nonces
+
+    def _consume_initial_conversation_nonce(nonce: str) -> bool:
+        remembered_nonces = session.get(INITIAL_CONVERSATION_NONCE_SESSION_KEY, [])
+        if not isinstance(remembered_nonces, list) or nonce not in remembered_nonces:
+            return False
+        remembered_nonces.remove(nonce)
+        session[INITIAL_CONVERSATION_NONCE_SESSION_KEY] = remembered_nonces
+        return True
+
+    def _copy_recipient_for_role(role: str, sender: User, recipient: User) -> User | None:
+        if role == "sender":
+            return sender
+        if role == "recipient":
+            return recipient
+        return None
+
+    def _initial_conversation_copy_context_is_bound(
+        *,
+        role: str,
+        encrypted_payload: str,
+        sender: User,
+        recipient: User,
+        initial_conversation_nonce: str,
+    ) -> bool:
+        context = _chat_ciphertext_context(encrypted_payload)
+        if context is None:
+            return False
+        if context.get("purpose") != "hushline.chat.initial_message":
+            return False
+        if context.get("initial_conversation_nonce") != initial_conversation_nonce:
+            return False
+
+        sender_key = sender.active_chat_key
+        if sender_key is None or not sender_key.public_signing_key:
+            return False
+        if str(context.get("sender_key_version")) != str(sender_key.key_version):
+            return False
+        if context.get("sender_public_key_fingerprint") != chat_key_fingerprint(
+            sender_key.public_key
+        ):
+            return False
+        if context.get("sender_public_signing_key_fingerprint") != chat_key_fingerprint(
+            sender_key.public_signing_key
+        ):
+            return False
+
+        copy_recipient = _copy_recipient_for_role(role, sender, recipient)
+        recipient_key = copy_recipient.active_chat_key if copy_recipient else None
+        if recipient_key is None:
+            return False
+        if str(context.get("recipient_key_version")) != str(recipient_key.key_version):
+            return False
+        return context.get("recipient_public_key_fingerprint") == chat_key_fingerprint(
+            recipient_key.public_key
+        )
+
+    def _initial_conversation_copies_are_bound(
+        *,
+        sender: User,
+        recipient: User,
+        encrypted_conversation_copies: dict[str, str],
+        initial_conversation_nonce: str,
+        consume_nonce: bool = False,
+    ) -> bool:
+        if not initial_conversation_nonce or not _initial_conversation_nonce_is_known(
+            initial_conversation_nonce
+        ):
+            return False
+        if not _chat_key_can_sign(sender):
+            return False
+        if not recipient.active_chat_key or not recipient.chat_public_key:
+            return False
+
+        if set(encrypted_conversation_copies.keys()) != {"recipient", "sender"}:
+            return False
+        if not all(
+            _initial_conversation_copy_context_is_bound(
+                role=role,
+                encrypted_payload=encrypted_payload,
+                sender=sender,
+                recipient=recipient,
+                initial_conversation_nonce=initial_conversation_nonce,
+            )
+            for role, encrypted_payload in encrypted_conversation_copies.items()
+        ):
+            return False
+
+        return not consume_nonce or _consume_initial_conversation_nonce(initial_conversation_nonce)
 
     def _conversation_payload_can_start(
         *,
         sender: User | None,
         recipient: User,
         encrypted_conversation_copies: dict[str, str],
+        initial_conversation_nonce: str,
     ) -> bool:
         if sender is None or sender.id == recipient.id or not recipient.chat_public_key:
             return False
-        if not encrypted_conversation_copies.get("recipient"):
-            return False
-        return not (sender.chat_public_key and not encrypted_conversation_copies.get("sender"))
+        return _initial_conversation_copies_are_bound(
+            sender=sender,
+            recipient=recipient,
+            encrypted_conversation_copies=encrypted_conversation_copies,
+            initial_conversation_nonce=initial_conversation_nonce,
+        )
 
     def _message_submission_block_reason(
         uname: Username, *, allow_chat_submission: bool = False
@@ -282,20 +419,24 @@ def register_profile_routes(app: Flask) -> None:
         sender: User,
         recipient: User,
         encrypted_conversation_copies: dict[str, str],
+        initial_conversation_nonce: str,
     ) -> Conversation | None:
         if sender.id == recipient.id:
             return None
 
         if not recipient.chat_public_key:
             return None
-
-        recipient_payload = encrypted_conversation_copies.get("recipient")
-        if not recipient_payload:
+        if not _initial_conversation_copies_are_bound(
+            sender=sender,
+            recipient=recipient,
+            encrypted_conversation_copies=encrypted_conversation_copies,
+            initial_conversation_nonce=initial_conversation_nonce,
+            consume_nonce=True,
+        ):
             return None
 
-        sender_payload = encrypted_conversation_copies.get("sender")
-        if sender.chat_public_key and not sender_payload:
-            return None
+        recipient_payload = encrypted_conversation_copies["recipient"]
+        sender_payload = encrypted_conversation_copies["sender"]
 
         conversation = Conversation()
         sender_participant = ConversationParticipant()
@@ -379,6 +520,17 @@ def register_profile_routes(app: Flask) -> None:
                 uname.user_id,
                 owner_guard_nonce,
             )
+            sender_chat_key = (
+                _chat_key_descriptor(sender)
+                if sender is not None and sender.id != uname.user_id
+                else None
+            )
+            if (
+                not is_embedded
+                and sender is not None
+                and _chat_submission_base_available(uname, sender)
+            ):
+                _remember_initial_conversation_nonce(owner_guard_nonce)
             rendered = render_template(
                 "embed_profile.html" if is_embedded else "profile.html",
                 profile_header=profile_header,
@@ -396,11 +548,13 @@ def register_profile_routes(app: Flask) -> None:
                 current_user_id=session.get("user_id"),
                 recipient_public_keys=uname.user.message_recipient_keys,
                 recipient_chat_public_key=uname.user.chat_public_key,
+                recipient_chat_key=_chat_key_descriptor(uname.user),
                 sender_chat_public_key=(
                     sender.chat_public_key
                     if sender is not None and sender.id != uname.user_id
                     else None
                 ),
+                sender_chat_key=sender_chat_key,
                 recipient_public_key_entries=(
                     notification_recipient_public_key_entries(uname.user)
                     if (
@@ -501,6 +655,7 @@ def register_profile_routes(app: Flask) -> None:
                     sender=sender,
                     recipient=uname.user,
                     encrypted_conversation_copies=encrypted_conversation_copies,
+                    initial_conversation_nonce=owner_guard_nonce,
                 )
             )
             block_reason = _message_submission_block_reason(
@@ -600,6 +755,7 @@ def register_profile_routes(app: Flask) -> None:
                         sender=sender,
                         recipient=uname.user,
                         encrypted_conversation_copies=encrypted_conversation_copies,
+                        initial_conversation_nonce=owner_guard_nonce,
                     )
 
                 db.session.commit()

@@ -158,6 +158,8 @@
     <script id="recipientPublicKeyEntries" type="application/json">{{ recipient_public_key_entries | tojson }}</script>
     <script id="recipientChatPublicKey" type="application/json">{{ recipient_chat_public_key | tojson }}</script>
     <script id="senderChatPublicKey" type="application/json">{{ sender_chat_public_key | tojson }}</script>
+    <script id="recipientChatKey" type="application/json">{{ recipient_chat_key | tojson }}</script>
+    <script id="senderChatKey" type="application/json">{{ sender_chat_key | tojson }}</script>
 
     {% if not message_submission_block_reason %}
       <div class="captcha">
