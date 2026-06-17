@@ -56,11 +56,12 @@ def _login_chat_key_payload(**overrides: object) -> dict[str, object]:
             '{"kty":"EC","crv":"P-256","x":"login-signing-public-x","y":"login-signing-public-y"}'
         ),
         "encrypted_private_key": (
-            '{"algorithm":"AES-GCM","iv":"login-nonce","ciphertext":"login-wrapped-private-key"}'
+            '{"algorithm":"AES-GCM","iv":"bG9naW4tbm9uY2Uh",'
+            '"ciphertext":"bG9naW4td3JhcHBlZC1wcml2YXRlLWtleQ=="}'
         ),
         "kdf_algorithm": "PBKDF2-SHA-256",
         "kdf_params": {"iterations": 310000, "hash": "SHA-256"},
-        "kdf_salt": "login-salt",
+        "kdf_salt": "bG9naW4tc2FsdC0xMjM0NQ==",
         "wrapping_algorithm": "AES-GCM",
     }
     payload.update(overrides)
@@ -388,7 +389,7 @@ def test_login_with_chat_key_payload_creates_missing_chat_key(
     assert created_key.public_key == _login_chat_key_payload()["public_key"]
     assert created_key.public_signing_key == _login_chat_key_payload()["public_signing_key"]
     assert created_key.encrypted_private_key == _login_chat_key_payload()["encrypted_private_key"]
-    assert created_key.kdf_salt == "login-salt"
+    assert created_key.kdf_salt == "bG9naW4tc2FsdC0xMjM0NQ=="
 
 
 def test_login_with_chat_key_payload_waits_for_successful_2fa(
