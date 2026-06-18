@@ -35,6 +35,14 @@ replies are unavailable until every participant has signing-capable chat keys.
 Hush Line stores conversation messages as encrypted copies for each participant.
 The server does not store conversation plaintext.
 
+## Deleting conversations
+
+Use the conversation action menu to delete a conversation you no longer need to
+retain. Deleting a conversation removes the encrypted follow-up thread and its
+participant message copies. If the conversation began from a one-way intake
+message, the original inbox message remains without an attached conversation
+link.
+
 ## Notifications
 
 Conversation notification emails are generic activity alerts. They tell you to

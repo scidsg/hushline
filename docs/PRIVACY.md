@@ -8,7 +8,7 @@ Effective date: 2026-06-18
 - **What we store**: encrypted message and conversation content plus the account, conversation, and security records listed below.
 - **What we share**: DigitalOcean hosts the service; Stripe handles billing if enabled.
 - **Cookies**: an encrypted session cookie and a local flag for first‑visit anti‑censorship tips.
-- **Your control**: update or delete your account and messages in the app.
+- **Your control**: update or delete your account, messages, and conversations in the app.
 
 ## 1) Who We Are
 

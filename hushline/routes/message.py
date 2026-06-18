@@ -25,6 +25,7 @@ from hushline.crypto import encrypt_message
 from hushline.db import db
 from hushline.forms import (
     ConversationMessageForm,
+    DeleteConversationForm,
     DeleteMessageForm,
     ResendMessageForm,
     UpdateMessageStatusForm,
@@ -47,6 +48,7 @@ from hushline.routes.common import (
 
 _CHAT_CIPHERTEXT_MAX_LENGTH = 200_000
 _CHAT_CIPHERTEXT_CONTEXT_VERSION = 2
+_CHAT_ONLY_MESSAGE_PLACEHOLDER = "Stored in encrypted conversation."
 _CONVERSATION_ACTIVITY_TIMEOUT_SECONDS = 120
 _CONVERSATION_PRESENCE_HEARTBEAT_SECONDS = 60
 _CONVERSATION_NOTIFICATION_BODY = (
@@ -116,6 +118,13 @@ def _mark_conversation_participant_active(
     participant: ConversationParticipant, now: datetime | None = None
 ) -> None:
     participant.last_active_at = now or datetime.now(UTC)
+
+
+def _message_is_chat_only_placeholder(message: Message) -> bool:
+    return bool(message.field_values) and all(
+        field_value.encrypted is False and field_value.value == _CHAT_ONLY_MESSAGE_PLACEHOLDER
+        for field_value in message.field_values
+    )
 
 
 def _conversation_participant_is_active(
@@ -404,6 +413,7 @@ def register_message_routes(app: Flask) -> None:
         ]
         can_compose = len(participant_public_keys) == len(thread.participants)
         conversation_message_form = ConversationMessageForm()
+        delete_conversation_form = DeleteConversationForm()
 
         return render_template(
             "conversation.html",
@@ -420,6 +430,7 @@ def register_message_routes(app: Flask) -> None:
             conversation_username=conversation_username,
             conversation_presence_interval_ms=_conversation_presence_heartbeat_ms(),
             conversation_message_form=conversation_message_form,
+            delete_conversation_form=delete_conversation_form,
         )
 
     @app.route("/conversation/<public_id>/presence", methods=["POST"])
@@ -522,6 +533,34 @@ def register_message_routes(app: Flask) -> None:
             ),
             201,
         )
+
+    @app.route("/conversation/<public_id>/delete", methods=["POST"])
+    @authentication_required
+    def delete_conversation(public_id: str) -> Response:
+        user = db.session.get(User, session["user_id"])
+        if not user:
+            abort(404)
+
+        thread = db.session.scalars(
+            Conversation.for_user_id(user.id).where(Conversation.public_id == public_id)
+        ).one_or_none()
+        if not thread or not thread.participant_for_user_id(user.id):
+            abort(404)
+
+        delete_conversation_form = DeleteConversationForm()
+        if not delete_conversation_form.validate_on_submit():
+            abort(400)
+
+        initial_message = thread.initial_message
+        if initial_message is not None:
+            if _message_is_chat_only_placeholder(initial_message):
+                db.session.delete(initial_message)
+            else:
+                initial_message.conversation = None
+        db.session.delete(thread)
+        db.session.commit()
+        flash("Conversation deleted successfully.")
+        return redirect(url_for("inbox", type="conversations"))
 
     @app.route("/reply/<slug>")
     def message_reply(slug: str) -> str:

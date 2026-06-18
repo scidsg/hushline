@@ -110,6 +110,7 @@ The app and public directory support more than individual profiles. Current disc
 | Recipient     | Delete a message                                                                    | I can remove data I no longer need to retain in the web UI                                         | Message delete                     |
 | Recipient     | See account conversations in my inbox                                               | I can distinguish ongoing account follow-up from anonymous one-time tips                           | Inbox conversation list            |
 | Recipient     | Reply to an account sender after unlocking my chat key                              | I can ask follow-up questions without receiving plaintext on the server                            | Conversation page                  |
+| Recipient     | Delete an account conversation                                                      | I can remove an encrypted follow-up thread I no longer need to retain                              | Conversation action menu           |
 | Recipient     | Receive only generic conversation email alerts                                      | Conversation ciphertext and plaintext are not copied into notification email                       | Conversation notifications         |
 | Recipient     | Change my username                                                                  | I can correct or improve my published address                                                      | Settings -> Authentication         |
 | Recipient     | Change my password                                                                  | I can recover from credential hygiene issues or rotation needs while rewrapping my active chat key | Settings -> Authentication         |
@@ -177,6 +178,8 @@ Hush Line chat keys are browser-generated in-app conversation keys. They are sep
 New account conversation replies require all participants to have active chat keys with public encryption keys and public signing keys. If any participant only has legacy chat-key material, the conversation remains readable where possible, but composing new replies is unavailable until all participants have signing-capable chat keys.
 
 Conversation plaintext is not stored by the server. Conversation messages are stored as per-participant encrypted payloads, and only conversation participants can open the route or append replies. Administrators may manage accounts and trust states, but admin status alone does not grant conversation access.
+
+Deleting an account conversation removes the conversation thread, participant records, and per-participant encrypted conversation message copies. If the conversation began from a one-way intake message, that original message remains in the recipient's inbox without an attached account conversation link.
 
 Password changes require the active Hush Line chat key to be rewrapped in the browser before the password is changed. Password reset cannot rewrap an active chat key because the old password is unavailable; reset locks old chat history encrypted to that key. Old chat history remains unavailable unless a future recovery mechanism is explicitly designed, reviewed, documented, and tested.
 

@@ -49,8 +49,75 @@ function navController() {
     }
   }
 
+  function setupActionMenus() {
+    const actionMenus = document.querySelectorAll(".action-menu");
+    const closeMenu = (menu, button) => {
+      menu.hidden = true;
+      menu.classList.remove("show");
+      button.setAttribute("aria-expanded", "false");
+    };
+
+    actionMenus.forEach((actionMenu) => {
+      const button = actionMenu.querySelector(".action-menu-button");
+      const menu = actionMenu.querySelector(".action-menu-content");
+      if (!button || !menu) {
+        return;
+      }
+
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        const expanded = button.getAttribute("aria-expanded") === "true";
+        actionMenus.forEach((otherMenu) => {
+          if (otherMenu === actionMenu) {
+            return;
+          }
+          const otherButton = otherMenu.querySelector(".action-menu-button");
+          const otherContent = otherMenu.querySelector(".action-menu-content");
+          if (otherButton && otherContent) {
+            closeMenu(otherContent, otherButton);
+          }
+        });
+        menu.hidden = expanded;
+        menu.classList.toggle("show", !expanded);
+        button.setAttribute("aria-expanded", String(!expanded));
+      });
+
+      actionMenu.addEventListener("submit", (event) => {
+        const form = event.target;
+        if (
+          !(form instanceof HTMLFormElement) ||
+          !form.dataset.confirmMessage
+        ) {
+          return;
+        }
+        if (!confirm(form.dataset.confirmMessage)) {
+          event.preventDefault();
+        }
+      });
+
+      window.addEventListener("click", (event) => {
+        if (!actionMenu.contains(event.target)) {
+          closeMenu(menu, button);
+        }
+      });
+
+      window.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          const menuIsOpen = button.getAttribute("aria-expanded") === "true";
+          const focusIsInsideMenu = menu.contains(document.activeElement);
+          if (!menuIsOpen && !focusIsInsideMenu) {
+            return;
+          }
+          closeMenu(menu, button);
+          button.focus();
+        }
+      });
+    });
+  }
+
   setupDropdown();
   setupMobileNav();
+  setupActionMenus();
 }
 
 const FIRST_LOAD_SPLASH_SEEN_KEY = "hushline:first-load-splash-seen";

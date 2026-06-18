@@ -535,6 +535,15 @@ def test_submit_spinner_hooks_exist_for_scoped_forms() -> None:
     assert "@keyframes submit-button-spinner-rotate" in scss
 
 
+def test_action_menu_escape_handling_is_scoped_to_open_menu() -> None:
+    js = (ROOT / "assets/js/global.js").read_text(encoding="utf-8")
+
+    assert 'const menuIsOpen = button.getAttribute("aria-expanded") === "true";' in js
+    assert "const focusIsInsideMenu = menu.contains(document.activeElement);" in js
+    assert "if (!menuIsOpen && !focusIsInsideMenu)" in js
+    assert "closeMenu(menu, button);" in js
+
+
 def test_first_load_splash_hooks_exist() -> None:
     template = (ROOT / "hushline/templates/base.html").read_text(encoding="utf-8")
     js = (ROOT / "assets/js/global.js").read_text(encoding="utf-8")

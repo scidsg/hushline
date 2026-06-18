@@ -20,6 +20,38 @@
         </a>
       {% endif %}
     </div>
+    <div class="conversation-actions action-menu">
+      <button
+        type="button"
+        class="conversation-actions-button action-menu-button"
+        aria-label="Conversation actions"
+        aria-haspopup="menu"
+        aria-expanded="false"
+        aria-controls="conversation-actions-menu"
+      >
+        <span aria-hidden="true">&#8942;</span>
+      </button>
+      <div
+        id="conversation-actions-menu"
+        class="conversation-actions-menu action-menu-content"
+        role="menu"
+        hidden
+      >
+        <form
+          method="POST"
+          action="{{ url_for('delete_conversation', public_id=conversation.public_id) }}"
+          data-confirm-message="Delete this conversation for all participants? This cannot be undone."
+        >
+          <input
+            id="delete_conversation_csrf_token"
+            name="csrf_token"
+            type="hidden"
+            value="{{ global_csrf_token }}"
+          />
+          {{ delete_conversation_form.submit(class="conversation-action-danger", role="menuitem") }}
+        </form>
+      </div>
+    </div>
   </div>
 
   {% set append_message_url = url_for('append_conversation_message', public_id=conversation.public_id) %}
