@@ -158,11 +158,11 @@ def test_docs_screenshots_manifest_includes_decrypted_conversation_scenes() -> N
     assert inbox_scene["waitForSelector"] == ".conversation-summary"
     assert artvandelay_thread["path"] == "/conversation/33333333-3333-4333-8333-333333333333"
     assert artvandelay_thread["waitForSelector"] == (
-        ".conversation-message-body:has-text('The procurement file has three dates')"
+        ".conversation-message-body:has-text('Human Fund')"
     )
     assert newman_thread["path"] == artvandelay_thread["path"]
     assert newman_thread["waitForSelector"] == (
-        ".conversation-message-body:has-text('I can confirm the Feb 9 shipment')"
+        ".conversation-message-body:has-text('Hello, Newman.')"
     )
     assert "create_sample_conversations()" in dev_data
     assert "ECDH-P256-AES-GCM" in dev_data

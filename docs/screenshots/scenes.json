@@ -462,7 +462,7 @@
       "title": "Conversation thread - artvandelay",
       "path": "/conversation/33333333-3333-4333-8333-333333333333",
       "session": "artvandelay",
-      "waitForSelector": ".conversation-message-body:has-text('The procurement file has three dates')"
+      "waitForSelector": ".conversation-message-body:has-text('Human Fund')"
     },
     {
       "slug": "auth-artvandelay-tools-email-validation",
@@ -595,7 +595,7 @@
       "title": "Conversation thread - newman",
       "path": "/conversation/33333333-3333-4333-8333-333333333333",
       "session": "newman",
-      "waitForSelector": ".conversation-message-body:has-text('I can confirm the Feb 9 shipment')"
+      "waitForSelector": ".conversation-message-body:has-text('Hello, Newman.')"
     },
     {
       "slug": "auth-newman-onboarding-profile",
