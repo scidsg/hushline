@@ -27,6 +27,10 @@ Two supported paths:
 
 If you are using Proton Mail, Hush Line can look up your public key for you.
 
+Hush Line also uses separate chat keys for two-way account conversations. These
+keys are generated and unlocked in the browser; they are not Proton Mail private
+keys and are not a replacement for your PGP key.
+
 ## Step 3: notifications
 
 Choose where new tips should be sent. Hush Line works best when you add an email address for notifications. If you imported a Proton key in the previous step, using the same address makes email delivery easier to manage.
@@ -41,3 +45,4 @@ Choose whether to appear in the public user directory. Directory listings help w
 
 - Continue with [Prep Your Account](./prep-your-account.md) for the settings you may still want to tune.
 - Continue with [Secure Your Account](./secure-your-account.md) before broad distribution.
+- Continue with [Two-Way Conversations](../using-your-tip-line/two-way-conversations.md) if you want account-based follow-up.

@@ -19,6 +19,16 @@ Hush Line supports TOTP-based 2FA.
 
 Once enabled, logins require both your password and the current TOTP code.
 
+## Understand password resets and chat history
+
+Two-way account conversations use Hush Line chat keys that are unlocked in your
+browser. If you change your password while your active chat key is available,
+Hush Line can rewrap that key as part of the password-change flow.
+
+If you reset your password because the old password is unavailable, old chat
+history encrypted to the previous key can remain locked. Treat password-manager
+recovery and account access as part of your conversation security plan.
+
 ## Secure the email account tied to notifications
 
 If tips are forwarded to your inbox, that email account becomes part of your security boundary. Apply the same care there:
@@ -34,4 +44,5 @@ Changing a verified username or display name can affect trust signals shown to s
 ## Related docs
 
 - [Prep Your Account](./prep-your-account.md)
+- [Two-Way Conversations](../using-your-tip-line/two-way-conversations.md)
 - [Account Verification](../using-your-tip-line/account-verification.md)

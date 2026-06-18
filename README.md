@@ -1,6 +1,6 @@
 # Hush Line
 
-[Hush Line](https://hushline.app) is an open source whistleblower platform for secure, anonymous, one-way disclosures to journalists, lawyers, and other trusted recipients.
+[Hush Line](https://hushline.app) is an open source whistleblower platform for secure, anonymous disclosures to journalists, lawyers, and other trusted recipients, with optional end-to-end encrypted account conversations for follow-up.
 
 Hosted service: <https://tips.hushline.app>  
 Start here: <https://hushline.app/library/docs/getting-started/start-here/>
@@ -31,16 +31,16 @@ Hush Line is built for safety-critical reporting workflows where trust, anonymit
 
 ## Core Capabilities
 
-| Area                   | What Hush Line Provides                                                                |
-| ---------------------- | -------------------------------------------------------------------------------------- |
-| Anonymous submissions  | No submitter account required for sending disclosures                                  |
-| Encryption             | End-to-end encryption workflow with recipient PGP keys, plus server-side fallback path |
-| Receiver trust         | Verified account workflow and trusted directory UX                                     |
-| Account security       | Password authentication with optional TOTP 2FA                                         |
-| Privacy access         | Tor onion support and privacy-preserving defaults                                      |
-| Communication workflow | Message status management, one-way replies, and optional email forwarding modes        |
-| Org customization      | Branding controls, onboarding guidance, and configurable profile fields                |
-| Operational controls   | Strong CI checks, migration compatibility testing, and workflow security validation    |
+| Area                   | What Hush Line Provides                                                                                        |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Anonymous submissions  | No submitter account required for sending disclosures                                                          |
+| Encryption             | End-to-end encrypted submissions with recipient PGP keys, plus server-side fallback path                       |
+| Receiver trust         | Verified account workflow and trusted directory UX                                                             |
+| Account security       | Password authentication with optional TOTP 2FA                                                                 |
+| Privacy access         | Tor onion support and privacy-preserving defaults                                                              |
+| Communication workflow | Message status management, reply links, signed E2EE account conversations, and optional email forwarding modes |
+| Org customization      | Branding controls, onboarding guidance, and configurable profile fields                                        |
+| Operational controls   | Strong CI checks, migration compatibility testing, and workflow security validation                            |
 
 ## Quickstart (Local)
 
@@ -73,6 +73,7 @@ If you want a slower, guided setup for a brand-new machine, use the AI-ready pro
 ## Security and Privacy
 
 - Threat model: [`docs/THREAT-MODEL.md`](./docs/THREAT-MODEL.md)
+- Two-way chat E2EE: [`docs/TWO-WAY-CHAT-E2EE.md`](./docs/TWO-WAY-CHAT-E2EE.md)
 - Security policy and vulnerability reporting: [`SECURITY.md`](./SECURITY.md)
 - Privacy policy: [`docs/PRIVACY.md`](./docs/PRIVACY.md)
 
@@ -130,6 +131,8 @@ If local audit commands are blocked by network/tooling availability, document th
 - Local contributor onboarding prompt: [`docs/LOCAL-CONTRIBUTOR-ONBOARDING-PROMPT.md`](./docs/LOCAL-CONTRIBUTOR-ONBOARDING-PROMPT.md)
 - Developer notes: [`docs/DEV.md`](./docs/DEV.md)
 - Architecture: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)
+- Two-way chat E2EE: [`docs/TWO-WAY-CHAT-E2EE.md`](./docs/TWO-WAY-CHAT-E2EE.md)
+- Two-way chat E2EE whitepaper: [`docs/HUSH-LINE-TWO-WAY-CHAT-E2EE-WHITEPAPER.md`](./docs/HUSH-LINE-TWO-WAY-CHAT-E2EE-WHITEPAPER.md)
 - Runner automation: [Agent automation and policy](https://github.com/scidsg/hushline-agents)
 - Terms: [`docs/TERMS.md`](./docs/TERMS.md)
 

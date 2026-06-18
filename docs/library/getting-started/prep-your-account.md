@@ -26,6 +26,11 @@ Supported options:
 
 Without a PGP key, people can still see your profile, but they cannot submit tips through it.
 
+Hush Line also uses separate in-browser chat keys for two-way account
+conversations. Chat keys are not Proton Mail private keys and are not the same
+as your PGP key. If you want logged-in senders to continue follow-up inside Hush
+Line, finish chat-key setup and keep your active key unlockable in your browser.
+
 ## 3. Decide how messages should reach you
 
 Hush Line can notify you about new tips in the web inbox and, optionally, by email. In Settings you can:
@@ -54,3 +59,4 @@ Turning on directory visibility makes your tip line easier to find. If you want 
 
 - [Secure Your Account](./secure-your-account.md)
 - [Share Your Tip Line](./share-your-tip-line.md)
+- [Two-Way Conversations](../using-your-tip-line/two-way-conversations.md)
