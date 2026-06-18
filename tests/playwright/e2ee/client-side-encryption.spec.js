@@ -100,6 +100,14 @@ async function openUnlockedConversation(page, url, plaintext) {
   await expectConversationMessage(page, plaintext);
 }
 
+function waitForPresenceHeartbeat(page, conversationPublicId) {
+  return page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.url().endsWith(`/conversation/${conversationPublicId}/presence`),
+  );
+}
+
 async function postJsonFromPage(page, url, csrfToken, payload) {
   return page.evaluate(
     async ({ requestUrl, requestCsrfToken, requestPayload }) => {
@@ -318,10 +326,22 @@ test("logged-in account conversation stays encrypted through browser lifecycle",
     expect(conversationUrl).toContain(`/conversation/${conversationPublicId}`);
 
     await login(recipientPage, "newman");
+    const recipientPresenceResponsePromise = waitForPresenceHeartbeat(
+      recipientPage,
+      conversationPublicId,
+    );
     await openUnlockedConversation(
       recipientPage,
       conversationUrl,
       sentPlaintext,
+    );
+    const recipientPresenceResponse = await recipientPresenceResponsePromise;
+    const renderedPresenceCsrfToken = await recipientPage
+      .locator("#conversation-chat")
+      .evaluate((element) => element.dataset.csrfToken);
+    expect(recipientPresenceResponse.status()).toBe(200);
+    expect(recipientPresenceResponse.request().headers()["x-csrftoken"]).toBe(
+      renderedPresenceCsrfToken,
     );
 
     const replyRequestPromise = recipientPage.waitForRequest(
@@ -342,6 +362,7 @@ test("logged-in account conversation stays encrypted through browser lifecycle",
       .locator("#conversation-chat")
       .evaluate((element) => ({
         messageUrl: element.dataset.messageUrl,
+        presenceUrl: element.dataset.presenceUrl,
         participantId: element.dataset.participantId,
       }));
     const csrfToken = await recipientPage
@@ -400,6 +421,15 @@ test("logged-in account conversation stays encrypted through browser lifecycle",
     );
     expect(malformedResponse.status).toBe(400);
     expectNoPlaintext(malformedResponse.text, sensitiveValues);
+
+    const invalidPresenceResponse = await postJsonFromPage(
+      recipientPage,
+      rootData.presenceUrl,
+      "invalid-presence-csrf-token",
+      {},
+    );
+    expect(invalidPresenceResponse.status).toBe(400);
+    expect(invalidPresenceResponse.text).toContain("Invalid CSRF token.");
 
     const tamperedCopies = JSON.parse(
       JSON.stringify(replyPayload.encrypted_copies),
