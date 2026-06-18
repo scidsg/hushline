@@ -103,6 +103,11 @@ function navController() {
 
       window.addEventListener("keydown", (event) => {
         if (event.key === "Escape") {
+          const menuIsOpen = button.getAttribute("aria-expanded") === "true";
+          const focusIsInsideMenu = menu.contains(document.activeElement);
+          if (!menuIsOpen && !focusIsInsideMenu) {
+            return;
+          }
           closeMenu(menu, button);
           button.focus();
         }

@@ -13,6 +13,7 @@ from hushline.model import (
     ConversationMessage,
     ConversationMessageCopy,
     ConversationParticipant,
+    FieldValue,
     Message,
     NotificationRecipient,
     User,
@@ -612,6 +613,40 @@ def test_participant_can_delete_conversation(
     assert retained_message.conversation_id is None
 
 
+def test_delete_conversation_removes_chat_only_placeholder_initial_message(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    conversation = _make_conversation(user, user2)
+    conversation_id = conversation.id
+    initial_message = Message(username_id=user2.primary_username.id)
+    initial_message.conversation = conversation
+    db.session.add(initial_message)
+    db.session.flush()
+    placeholder_value = FieldValue(
+        user2.primary_username.message_fields[-1],
+        initial_message,
+        "Stored in encrypted conversation.",
+        False,
+    )
+    db.session.add(placeholder_value)
+    db.session.commit()
+    initial_message_id = initial_message.id
+    placeholder_value_id = placeholder_value.id
+    _authenticate_as(client, user)
+
+    response = client.post(
+        url_for("delete_conversation", public_id=conversation.public_id),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert db.session.get(Conversation, conversation_id) is None
+    assert db.session.get(Message, initial_message_id) is None
+    assert db.session.get(FieldValue, placeholder_value_id) is None
+
+
 def test_delete_conversation_requires_participant(
     client: FlaskClient,
     user: User,
@@ -674,8 +709,13 @@ def test_delete_conversation_accepts_rendered_csrf_token(
     app.config["WTF_CSRF_ENABLED"] = True
     try:
         page_response = client.get(url_for("conversation", public_id=conversation.public_id))
+        assert page_response.text.count('id="csrf_token"') == 1
+        assert 'id="delete_conversation_csrf_token"' in page_response.text
         token_match = re.search(
-            r'<input id="csrf_token" name="csrf_token" type="hidden" value="([^"]+)">',
+            (
+                r'<input\s+[^>]*id="delete_conversation_csrf_token"'
+                r'[^>]*name="csrf_token"[^>]*value="([^"]+)"'
+            ),
             page_response.text,
         )
         assert token_match is not None

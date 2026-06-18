@@ -48,6 +48,7 @@ from hushline.routes.common import (
 
 _CHAT_CIPHERTEXT_MAX_LENGTH = 200_000
 _CHAT_CIPHERTEXT_CONTEXT_VERSION = 2
+_CHAT_ONLY_MESSAGE_PLACEHOLDER = "Stored in encrypted conversation."
 _CONVERSATION_ACTIVITY_TIMEOUT_SECONDS = 120
 _CONVERSATION_PRESENCE_HEARTBEAT_SECONDS = 60
 _CONVERSATION_NOTIFICATION_BODY = (
@@ -117,6 +118,13 @@ def _mark_conversation_participant_active(
     participant: ConversationParticipant, now: datetime | None = None
 ) -> None:
     participant.last_active_at = now or datetime.now(UTC)
+
+
+def _message_is_chat_only_placeholder(message: Message) -> bool:
+    return bool(message.field_values) and all(
+        field_value.encrypted is False and field_value.value == _CHAT_ONLY_MESSAGE_PLACEHOLDER
+        for field_value in message.field_values
+    )
 
 
 def _conversation_participant_is_active(
@@ -543,8 +551,12 @@ def register_message_routes(app: Flask) -> None:
         if not delete_conversation_form.validate_on_submit():
             abort(400)
 
-        if thread.initial_message is not None:
-            thread.initial_message.conversation = None
+        initial_message = thread.initial_message
+        if initial_message is not None:
+            if _message_is_chat_only_placeholder(initial_message):
+                db.session.delete(initial_message)
+            else:
+                initial_message.conversation = None
         db.session.delete(thread)
         db.session.commit()
         flash("Conversation deleted successfully.")
