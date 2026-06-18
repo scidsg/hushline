@@ -551,8 +551,9 @@ def test_password_reset_sets_new_password_and_consumes_token(
 def test_password_reset_locks_active_chat_key_without_server_recovery(
     client: FlaskClient, user: User, user_password: str
 ) -> None:
+    user_id = user.id
     chat_key = ChatKey(
-        user=user,
+        user_id=user_id,
         key_version=1,
         public_key="public-chat-key",
         encrypted_private_key='{"algorithm":"AES-GCM","iv":"old","ciphertext":"old"}',
@@ -562,7 +563,7 @@ def test_password_reset_locks_active_chat_key_without_server_recovery(
         wrapping_algorithm="AES-GCM",
     )
     reset_token, raw_token = PasswordResetToken.create_for_user(
-        user.id,
+        user_id,
         ttl=timedelta(hours=1),
     )
     db.session.add_all([chat_key, reset_token])
@@ -592,8 +593,10 @@ def test_password_reset_locks_active_chat_key_without_server_recovery(
 def test_password_reset_leaves_existing_conversation_history_locked(
     client: FlaskClient, user: User, user2: User
 ) -> None:
+    user_id = user.id
+    user2_id = user2.id
     chat_key = ChatKey(
-        user=user,
+        user_id=user_id,
         key_version=1,
         public_key='{"kty":"EC","crv":"P-256","x":"old-sender","y":"key"}',
         encrypted_private_key='{"algorithm":"AES-GCM","iv":"old","ciphertext":"old"}',
@@ -603,7 +606,7 @@ def test_password_reset_leaves_existing_conversation_history_locked(
         wrapping_algorithm="AES-GCM",
     )
     recipient_chat_key = ChatKey(
-        user=user2,
+        user_id=user2_id,
         key_version=1,
         public_key='{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}',
         encrypted_private_key='{"algorithm":"AES-GCM","iv":"recipient","ciphertext":"wrapped"}',
@@ -615,11 +618,11 @@ def test_password_reset_leaves_existing_conversation_history_locked(
     conversation = Conversation()
     sender_participant = ConversationParticipant()
     sender_participant.conversation = conversation
-    sender_participant.user = user
+    sender_participant.user_id = user_id
     sender_participant.has_usable_public_key = True
     recipient_participant = ConversationParticipant()
     recipient_participant.conversation = conversation
-    recipient_participant.user = user2
+    recipient_participant.user_id = user2_id
     recipient_participant.has_usable_public_key = True
     conversation_message = ConversationMessage()
     conversation_message.conversation = conversation
@@ -636,7 +639,7 @@ def test_password_reset_leaves_existing_conversation_history_locked(
     )
     conversation_message.encrypted_copies.extend([sender_copy, recipient_copy])
     reset_token, raw_token = PasswordResetToken.create_for_user(
-        user.id,
+        user_id,
         ttl=timedelta(hours=1),
     )
     db.session.add_all([chat_key, recipient_chat_key, conversation, reset_token])
