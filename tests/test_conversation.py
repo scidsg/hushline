@@ -47,6 +47,19 @@ def _add_chat_key(
     )
 
 
+def _add_reply_capable_chat_keys(sender: User, recipient: User) -> None:
+    _add_chat_key(
+        sender,
+        '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}',
+        public_signing_key='{"kty":"EC","crv":"P-256","x":"sender-sign","y":"key"}',
+    )
+    _add_chat_key(
+        recipient,
+        '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}',
+        public_signing_key='{"kty":"EC","crv":"P-256","x":"recipient-sign","y":"key"}',
+    )
+
+
 def _enable_conversation_notifications(
     user: User,
     *,
@@ -532,8 +545,7 @@ def test_participant_can_append_encrypted_conversation_message(
     user: User,
     user2: User,
 ) -> None:
-    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
-    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _add_reply_capable_chat_keys(user, user2)
     conversation = _make_conversation(user, user2)
     plaintext = "plaintext follow-up must not be stored"
     _authenticate_as(client, user)
@@ -562,8 +574,7 @@ def test_append_conversation_message_rejects_unsigned_legacy_envelopes(
     user: User,
     user2: User,
 ) -> None:
-    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
-    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _add_reply_capable_chat_keys(user, user2)
     conversation = _make_conversation(user, user2)
     _authenticate_as(client, user)
 
@@ -578,13 +589,46 @@ def test_append_conversation_message_rejects_unsigned_legacy_envelopes(
     assert message_count == 1
 
 
-def test_append_conversation_message_rejects_mismatched_bound_context(
+@patch("hushline.routes.message.send_email_to_user_recipients")
+def test_append_conversation_message_rejects_legacy_participant_with_bogus_signature(
+    mock_send_email_to_user_recipients: MagicMock,
     client: FlaskClient,
     user: User,
     user2: User,
 ) -> None:
     _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
-    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _add_chat_key(
+        user2,
+        '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}',
+        public_signing_key='{"kty":"EC","crv":"P-256","x":"recipient-sign","y":"key"}',
+    )
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+
+    response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "bogus-signature")},
+    )
+
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Conversation replies are unavailable."}
+    assert (
+        db.session.scalar(
+            db.select(db.func.count())
+            .select_from(ConversationMessage)
+            .where(ConversationMessage.conversation_id == conversation.id)
+        )
+        == 1
+    )
+    mock_send_email_to_user_recipients.assert_not_called()
+
+
+def test_append_conversation_message_rejects_mismatched_bound_context(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_reply_capable_chat_keys(user, user2)
     conversation = _make_conversation(user, user2)
     sender_participant = _participant_for(conversation, user)
     encrypted_copies = _bound_copies_for(conversation, sender_participant, "follow-up")
@@ -616,8 +660,7 @@ def test_participant_can_append_context_bound_conversation_message(
     user: User,
     user2: User,
 ) -> None:
-    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
-    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _add_reply_capable_chat_keys(user, user2)
     conversation = _make_conversation(user, user2)
     sender_participant = _participant_for(conversation, user)
     _authenticate_as(client, user)
@@ -649,8 +692,7 @@ def test_participant_can_append_legacy_context_bound_conversation_message(
     user: User,
     user2: User,
 ) -> None:
-    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
-    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _add_reply_capable_chat_keys(user, user2)
     conversation = _make_conversation(user, user2)
     sender_participant = _participant_for(conversation, user)
     _authenticate_as(client, user)
@@ -685,8 +727,7 @@ def test_append_conversation_message_sends_generic_notification_to_other_partici
     user: User,
     user2: User,
 ) -> None:
-    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
-    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _add_reply_capable_chat_keys(user, user2)
     _enable_conversation_notifications(
         user,
         email="sender@example.com",
@@ -728,8 +769,7 @@ def test_append_conversation_message_suppresses_notification_for_active_recipien
     user: User,
     user2: User,
 ) -> None:
-    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
-    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _add_reply_capable_chat_keys(user, user2)
     _enable_conversation_notifications(
         user2,
         email="recipient@example.com",
@@ -758,8 +798,7 @@ def test_append_conversation_message_suppresses_notification_for_active_recipien
     user: User,
     user2: User,
 ) -> None:
-    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
-    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _add_reply_capable_chat_keys(user, user2)
     _enable_conversation_notifications(
         user2,
         email="recipient@example.com",
@@ -789,8 +828,7 @@ def test_append_conversation_message_notifies_after_stale_recipient_activity(
     user: User,
     user2: User,
 ) -> None:
-    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
-    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _add_reply_capable_chat_keys(user, user2)
     _enable_conversation_notifications(
         user2,
         email="recipient@example.com",
@@ -820,8 +858,7 @@ def test_append_conversation_message_does_not_notify_sender(
     user: User,
     user2: User,
 ) -> None:
-    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
-    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _add_reply_capable_chat_keys(user, user2)
     _enable_conversation_notifications(
         user,
         email="sender@example.com",
@@ -849,8 +886,7 @@ def test_append_conversation_message_include_content_mode_still_sends_safe_gener
     user: User,
     user2: User,
 ) -> None:
-    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
-    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _add_reply_capable_chat_keys(user, user2)
     _enable_conversation_notifications(
         user2,
         email="recipient@example.com",
@@ -887,8 +923,7 @@ def test_append_conversation_message_encrypts_generic_body_for_full_body_mode(
     user: User,
     user2: User,
 ) -> None:
-    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
-    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _add_reply_capable_chat_keys(user, user2)
     _enable_conversation_notifications(
         user2,
         email="recipient@example.com",
@@ -927,8 +962,7 @@ def test_append_conversation_message_notification_failure_does_not_rollback_mess
     user: User,
     user2: User,
 ) -> None:
-    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
-    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _add_reply_capable_chat_keys(user, user2)
     _enable_conversation_notifications(
         user2,
         email="recipient@example.com",
@@ -959,8 +993,7 @@ def test_append_conversation_message_rejects_invalid_payload_without_leaking_con
     user: User,
     user2: User,
 ) -> None:
-    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
-    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _add_reply_capable_chat_keys(user, user2)
     conversation = _make_conversation(user, user2)
     _authenticate_as(client, user)
     leaked_content = "plaintext disclosure"
@@ -986,8 +1019,7 @@ def test_append_conversation_message_requires_encrypted_copy_for_every_participa
     user: User,
     user2: User,
 ) -> None:
-    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
-    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _add_reply_capable_chat_keys(user, user2)
     conversation = _make_conversation(user, user2)
     participant = _participant_for(conversation, user)
     encrypted_copies = _reply_copies_for(conversation, user, "missing-recipient")
@@ -1012,8 +1044,7 @@ def test_append_conversation_message_ignores_extra_plaintext_fields(
     user: User,
     user2: User,
 ) -> None:
-    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
-    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _add_reply_capable_chat_keys(user, user2)
     conversation = _make_conversation(user, user2)
     plaintext = "plaintext reply must never be stored or rendered"
     _authenticate_as(client, user)
@@ -1052,8 +1083,7 @@ def test_append_conversation_message_requires_csrf_when_enabled(
     user: User,
     user2: User,
 ) -> None:
-    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
-    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _add_reply_capable_chat_keys(user, user2)
     conversation = _make_conversation(user, user2)
     _authenticate_as(client, user)
     prior_setting = app.config.get("WTF_CSRF_ENABLED")
@@ -1078,8 +1108,7 @@ def test_append_conversation_message_rejects_non_participant(
     user2: User,
     admin_user: User,
 ) -> None:
-    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
-    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _add_reply_capable_chat_keys(user, user2)
     conversation = _make_conversation(user, user2)
     _authenticate_as(client, admin_user)
 
@@ -1098,8 +1127,7 @@ def test_append_conversation_message_redirects_unauthenticated_user(
     user: User,
     user2: User,
 ) -> None:
-    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
-    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    _add_reply_capable_chat_keys(user, user2)
     conversation = _make_conversation(user, user2)
 
     response = client.post(
