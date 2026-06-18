@@ -16,9 +16,14 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 VERSION_FILE = REPO_ROOT / "hushline" / "version.py"
 DEFAULT_RELEASE_ALLOWED_SIGNERS = REPO_ROOT / ".github" / "release-allowed-signers"
 DEFAULT_PROD_URL = "https://tips.hushline.app/"
+CANONICAL_REPOSITORY = "scidsg/hushline"
 SEMVER_PARTS = 3
 VERSION_PATTERN = re.compile(r'__version__\s*=\s*"(?P<version>\d+\.\d+\.\d+)"')
-LIVE_VERSION_PATTERN = re.compile(r">\s*v(?P<version>\d+\.\d+\.\d+)\s*<")
+LIVE_VERSION_PATTERN = re.compile(
+    r'<a\b(?=[^>]*\bhref=["\']https://github\.com/scidsg/hushline["\'])'
+    r"[^>]*>\s*v(?P<version>\d+\.\d+\.\d+)\s*</a\s*>",
+    re.IGNORECASE | re.DOTALL,
+)
 RELEASE_AUTH_NAMESPACE = "hushline-release"
 RELEASE_AUTH_PRINCIPAL = "hushline-release"
 MIN_ALLOWED_SIGNER_PARTS = 3
@@ -138,7 +143,52 @@ def ensure_release_branch(runner: Runner, expected_branch: str) -> str:
     return branch
 
 
-def ensure_tag_and_release_available(runner: Runner, tag: str) -> None:
+def _normalize_github_repository(remote_url: str) -> str | None:
+    normalized = remote_url.strip()
+    if normalized.endswith(".git"):
+        normalized = normalized.removesuffix(".git")
+    if normalized.startswith("git@github.com:"):
+        return normalized.removeprefix("git@github.com:")
+    if normalized.startswith("ssh://git@github.com/"):
+        return normalized.removeprefix("ssh://git@github.com/")
+    if normalized.startswith("https://github.com/"):
+        return normalized.removeprefix("https://github.com/")
+    return None
+
+
+def ensure_canonical_origin(
+    runner: Runner,
+    canonical_repository: str = CANONICAL_REPOSITORY,
+) -> None:
+    remote_url = runner(["git", "remote", "get-url", "origin"], True, None).stdout.strip()
+    if _normalize_github_repository(remote_url) != canonical_repository:
+        raise ReleaseError(
+            "make release must run from the canonical origin remote "
+            f"{canonical_repository!r}; origin is {remote_url!r}."
+        )
+
+
+def ensure_release_branch_synced(runner: Runner, branch: str, remote: str = "origin") -> None:
+    runner(["git", "fetch", remote, branch], True, None)
+    local_sha = runner(["git", "rev-parse", branch], True, None).stdout.strip()
+    remote_sha = runner(["git", "rev-parse", f"{remote}/{branch}"], True, None).stdout.strip()
+    if local_sha != remote_sha:
+        raise ReleaseError(
+            f"Local {branch!r} must match {remote}/{branch} before running make release. "
+            f"Run `git fetch {remote} && git pull --ff-only` first."
+        )
+
+
+def _gh_release_view_not_found(result: CommandResult) -> bool:
+    output = f"{result.stdout}\n{result.stderr}".lower()
+    return "release not found" in output or "http 404" in output or "not found" in output
+
+
+def ensure_tag_and_release_available(
+    runner: Runner,
+    tag: str,
+    canonical_repository: str = CANONICAL_REPOSITORY,
+) -> None:
     local_tag = runner(["git", "rev-parse", "--verify", f"refs/tags/{tag}"], False, None)
     if local_tag.returncode == 0:
         raise ReleaseError(f"Local tag already exists: {tag}")
@@ -153,9 +203,18 @@ def ensure_tag_and_release_available(runner: Runner, tag: str) -> None:
     if remote_tag.returncode not in {2}:
         raise ReleaseError((remote_tag.stderr or remote_tag.stdout).strip())
 
-    existing_release = runner(["gh", "release", "view", tag], False, None)
+    existing_release = runner(
+        ["gh", "release", "view", tag, "--repo", canonical_repository],
+        False,
+        None,
+    )
     if existing_release.returncode == 0:
         raise ReleaseError(f"GitHub release already exists: {tag}")
+    if not _gh_release_view_not_found(existing_release):
+        raise ReleaseError(
+            "Could not confirm GitHub release availability before mutating the repository: "
+            f"{(existing_release.stderr or existing_release.stdout).strip()}"
+        )
 
 
 def _release_path_from_env(name: str, default: Path | None = None) -> Path | None:
@@ -305,6 +364,8 @@ def release(
 
     ensure_clean_worktree(runner)
     branch = ensure_release_branch(runner, release_branch)
+    ensure_canonical_origin(runner)
+    ensure_release_branch_synced(runner, branch)
 
     local_version = read_local_version()
     live_version = extract_live_version(fetcher(prod_url))
@@ -330,12 +391,23 @@ def release(
 
     write_local_version(next_version)
     runner(["git", "add", str(VERSION_FILE.relative_to(REPO_ROOT))], True, None)
-    runner(["git", "commit", "-m", f"Update version to {tag}"], True, None)
+    runner(["git", "commit", "-S", "-m", f"Update version to {tag}"], True, None)
     runner(["git", "tag", tag], True, None)
     runner(["git", "push", "origin", branch], True, None)
     runner(["git", "push", "origin", tag], True, None)
     runner(
-        ["gh", "release", "create", tag, "--title", tag, "--generate-notes", "--latest"],
+        [
+            "gh",
+            "release",
+            "create",
+            tag,
+            "--repo",
+            CANONICAL_REPOSITORY,
+            "--title",
+            tag,
+            "--generate-notes",
+            "--latest",
+        ],
         True,
         None,
     )

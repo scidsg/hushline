@@ -57,8 +57,7 @@ def test_release_target_invokes_release_helper_with_prod_defaults() -> None:
     assert "RELEASE_BRANCH ?= main" in make_text
     assert "RELEASE_ALLOWED_SIGNERS ?= .github/release-allowed-signers" in make_text
     assert (
-        "RELEASE_SIGNING_KEY ?= $(HOME)/.ssh/hushline-release/primary-release-yubikey"
-        in make_text
+        "RELEASE_SIGNING_KEY ?= $(HOME)/.ssh/hushline-release/primary-release-yubikey" in make_text
     )
     assert "RELEASE_DRY_RUN ?=" in make_text
     assert "release: ## Bump patch version, tag, and publish a GitHub release" in target_section

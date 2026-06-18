@@ -36,6 +36,25 @@ def test_extract_live_version_reads_footer_version() -> None:
     )
 
 
+def test_extract_live_version_ignores_profile_text_before_footer() -> None:
+    release_script = _load_release_module()
+
+    assert (
+        release_script.extract_live_version(
+            """
+            <main>
+              <h1>v0.7.3</h1>
+              <p>user-controlled bio says v0.7.2</p>
+            </main>
+            <footer>
+              <a href="https://github.com/scidsg/hushline">v0.7.4</a>
+            </footer>
+            """
+        )
+        == "0.7.4"
+    )
+
+
 def test_next_patch_version_increments_patch_component() -> None:
     release_script = _load_release_module()
 
@@ -100,12 +119,20 @@ def test_release_checks_live_version_bumps_commits_tags_pushes_and_publishes(
             return release_script.CommandResult(0, "")
         if command == ("git", "branch", "--show-current"):
             return release_script.CommandResult(0, "main\n")
+        if command == ("git", "remote", "get-url", "origin"):
+            return release_script.CommandResult(0, "https://github.com/scidsg/hushline.git\n")
+        if command == ("git", "fetch", "origin", "main"):
+            return release_script.CommandResult(0, "")
+        if command == ("git", "rev-parse", "main"):
+            return release_script.CommandResult(0, "abc123\n")
+        if command == ("git", "rev-parse", "origin/main"):
+            return release_script.CommandResult(0, "abc123\n")
         if command == ("git", "rev-parse", "--verify", "refs/tags/v0.7.5"):
             return release_script.CommandResult(1, "", "not found")
         if command == ("git", "ls-remote", "--exit-code", "--tags", "origin", "v0.7.5"):
             return release_script.CommandResult(2, "", "")
-        if command == ("gh", "release", "view", "v0.7.5"):
-            return release_script.CommandResult(1, "", "not found")
+        if command == ("gh", "release", "view", "v0.7.5", "--repo", "scidsg/hushline"):
+            return release_script.CommandResult(1, "", "release not found")
         if command[:3] == ("ssh-keygen", "-Y", "sign"):
             challenge_path = Path(command[-1])
             Path(f"{challenge_path}.sig").write_text("fake signature", encoding="utf-8")
@@ -126,14 +153,18 @@ def test_release_checks_live_version_bumps_commits_tags_pushes_and_publishes(
     assert verification_challenges == [
         "hushline-release-authorization-v1\n" "tag=v0.7.5\n" "branch=main\n" "local_version=0.7.4\n"
     ]
-    assert commands[:5] == [
+    assert commands[:9] == [
         ("git", "status", "--porcelain"),
         ("git", "branch", "--show-current"),
+        ("git", "remote", "get-url", "origin"),
+        ("git", "fetch", "origin", "main"),
+        ("git", "rev-parse", "main"),
+        ("git", "rev-parse", "origin/main"),
         ("git", "rev-parse", "--verify", "refs/tags/v0.7.5"),
         ("git", "ls-remote", "--exit-code", "--tags", "origin", "v0.7.5"),
-        ("gh", "release", "view", "v0.7.5"),
+        ("gh", "release", "view", "v0.7.5", "--repo", "scidsg/hushline"),
     ]
-    assert commands[5][:6] == (
+    assert commands[9][:6] == (
         "ssh-keygen",
         "-Y",
         "sign",
@@ -141,8 +172,8 @@ def test_release_checks_live_version_bumps_commits_tags_pushes_and_publishes(
         str(signing_key),
         "-n",
     )
-    assert commands[5][6] == "hushline-release"
-    assert commands[6][:-1] == (
+    assert commands[9][6] == "hushline-release"
+    assert commands[10][:-1] == (
         "ssh-keygen",
         "-Y",
         "verify",
@@ -154,13 +185,24 @@ def test_release_checks_live_version_bumps_commits_tags_pushes_and_publishes(
         "hushline-release",
         "-s",
     )
-    assert commands[7:] == [
+    assert commands[11:] == [
         ("git", "add", "hushline/version.py"),
-        ("git", "commit", "-m", "Update version to v0.7.5"),
+        ("git", "commit", "-S", "-m", "Update version to v0.7.5"),
         ("git", "tag", "v0.7.5"),
         ("git", "push", "origin", "main"),
         ("git", "push", "origin", "v0.7.5"),
-        ("gh", "release", "create", "v0.7.5", "--title", "v0.7.5", "--generate-notes", "--latest"),
+        (
+            "gh",
+            "release",
+            "create",
+            "v0.7.5",
+            "--repo",
+            "scidsg/hushline",
+            "--title",
+            "v0.7.5",
+            "--generate-notes",
+            "--latest",
+        ),
     ]
 
 
@@ -203,12 +245,20 @@ def test_release_dry_run_checks_authorization_without_side_effects(
             return release_script.CommandResult(0, "")
         if command == ("git", "branch", "--show-current"):
             return release_script.CommandResult(0, "main\n")
+        if command == ("git", "remote", "get-url", "origin"):
+            return release_script.CommandResult(0, "https://github.com/scidsg/hushline.git\n")
+        if command == ("git", "fetch", "origin", "main"):
+            return release_script.CommandResult(0, "")
+        if command == ("git", "rev-parse", "main"):
+            return release_script.CommandResult(0, "abc123\n")
+        if command == ("git", "rev-parse", "origin/main"):
+            return release_script.CommandResult(0, "abc123\n")
         if command == ("git", "rev-parse", "--verify", "refs/tags/v0.7.5"):
             return release_script.CommandResult(1, "", "not found")
         if command == ("git", "ls-remote", "--exit-code", "--tags", "origin", "v0.7.5"):
             return release_script.CommandResult(2, "", "")
-        if command == ("gh", "release", "view", "v0.7.5"):
-            return release_script.CommandResult(1, "", "not found")
+        if command == ("gh", "release", "view", "v0.7.5", "--repo", "scidsg/hushline"):
+            return release_script.CommandResult(1, "", "release not found")
         if command[:3] == ("ssh-keygen", "-Y", "sign"):
             challenge_path = Path(command[-1])
             Path(f"{challenge_path}.sig").write_text("fake signature", encoding="utf-8")
@@ -231,15 +281,19 @@ def test_release_dry_run_checks_authorization_without_side_effects(
     assert verification_challenges == [
         "hushline-release-authorization-v1\n" "tag=v0.7.5\n" "branch=main\n" "local_version=0.7.4\n"
     ]
-    assert len(commands) == 7
-    assert commands[:5] == [
+    assert len(commands) == 11
+    assert commands[:9] == [
         ("git", "status", "--porcelain"),
         ("git", "branch", "--show-current"),
+        ("git", "remote", "get-url", "origin"),
+        ("git", "fetch", "origin", "main"),
+        ("git", "rev-parse", "main"),
+        ("git", "rev-parse", "origin/main"),
         ("git", "rev-parse", "--verify", "refs/tags/v0.7.5"),
         ("git", "ls-remote", "--exit-code", "--tags", "origin", "v0.7.5"),
-        ("gh", "release", "view", "v0.7.5"),
+        ("gh", "release", "view", "v0.7.5", "--repo", "scidsg/hushline"),
     ]
-    assert commands[5][:6] == (
+    assert commands[9][:6] == (
         "ssh-keygen",
         "-Y",
         "sign",
@@ -247,7 +301,7 @@ def test_release_dry_run_checks_authorization_without_side_effects(
         str(signing_key),
         "-n",
     )
-    assert commands[6][:-1] == (
+    assert commands[10][:-1] == (
         "ssh-keygen",
         "-Y",
         "verify",
@@ -280,6 +334,14 @@ def test_release_blocks_when_live_version_does_not_match_local(
             return release_script.CommandResult(0, "")
         if command == ("git", "branch", "--show-current"):
             return release_script.CommandResult(0, "main\n")
+        if command == ("git", "remote", "get-url", "origin"):
+            return release_script.CommandResult(0, "https://github.com/scidsg/hushline.git\n")
+        if command == ("git", "fetch", "origin", "main"):
+            return release_script.CommandResult(0, "")
+        if command == ("git", "rev-parse", "main"):
+            return release_script.CommandResult(0, "abc123\n")
+        if command == ("git", "rev-parse", "origin/main"):
+            return release_script.CommandResult(0, "abc123\n")
         raise AssertionError(f"unexpected command: {command}")
 
     with pytest.raises(
@@ -289,6 +351,107 @@ def test_release_blocks_when_live_version_does_not_match_local(
         release_script.release(
             runner=runner,
             fetcher=lambda _url: '<a href="https://github.com/scidsg/hushline">v0.7.3</a>',
+        )
+
+    assert version_file.read_text(encoding="utf-8") == '__version__ = "0.7.4"\n'
+
+
+def test_release_blocks_noncanonical_origin() -> None:
+    release_script = _load_release_module()
+
+    def runner(args: Sequence[str], check: bool, stdin: str | None = None) -> object:
+        assert stdin is None
+        command = tuple(args)
+        if command == ("git", "status", "--porcelain"):
+            return release_script.CommandResult(0, "")
+        if command == ("git", "branch", "--show-current"):
+            return release_script.CommandResult(0, "main\n")
+        if command == ("git", "remote", "get-url", "origin"):
+            return release_script.CommandResult(0, "git@github.com:someone/fork.git\n")
+        raise AssertionError(f"unexpected command: {command}")
+
+    with pytest.raises(
+        release_script.ReleaseError,
+        match="canonical origin remote",
+    ):
+        release_script.release(
+            runner=runner,
+            fetcher=lambda _url: pytest.fail("production should not be fetched"),
+        )
+
+
+def test_release_blocks_when_local_branch_does_not_match_origin() -> None:
+    release_script = _load_release_module()
+
+    def runner(args: Sequence[str], check: bool, stdin: str | None = None) -> object:
+        assert stdin is None
+        command = tuple(args)
+        if command == ("git", "status", "--porcelain"):
+            return release_script.CommandResult(0, "")
+        if command == ("git", "branch", "--show-current"):
+            return release_script.CommandResult(0, "main\n")
+        if command == ("git", "remote", "get-url", "origin"):
+            return release_script.CommandResult(0, "https://github.com/scidsg/hushline.git\n")
+        if command == ("git", "fetch", "origin", "main"):
+            return release_script.CommandResult(0, "")
+        if command == ("git", "rev-parse", "main"):
+            return release_script.CommandResult(0, "local-sha\n")
+        if command == ("git", "rev-parse", "origin/main"):
+            return release_script.CommandResult(0, "remote-sha\n")
+        raise AssertionError(f"unexpected command: {command}")
+
+    with pytest.raises(
+        release_script.ReleaseError,
+        match="must match origin/main",
+    ):
+        release_script.release(
+            runner=runner,
+            fetcher=lambda _url: pytest.fail("production should not be fetched"),
+        )
+
+
+def test_release_blocks_ambiguous_github_release_view_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    release_script = _load_release_module()
+    version_file = tmp_path / "hushline" / "version.py"
+    version_file.parent.mkdir()
+    version_file.write_text('__version__ = "0.7.4"\n', encoding="utf-8")
+
+    monkeypatch.setattr(release_script, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(release_script, "VERSION_FILE", version_file)
+
+    def runner(args: Sequence[str], check: bool, stdin: str | None = None) -> object:
+        assert stdin is None
+        command = tuple(args)
+        if command == ("git", "status", "--porcelain"):
+            return release_script.CommandResult(0, "")
+        if command == ("git", "branch", "--show-current"):
+            return release_script.CommandResult(0, "main\n")
+        if command == ("git", "remote", "get-url", "origin"):
+            return release_script.CommandResult(0, "https://github.com/scidsg/hushline.git\n")
+        if command == ("git", "fetch", "origin", "main"):
+            return release_script.CommandResult(0, "")
+        if command == ("git", "rev-parse", "main"):
+            return release_script.CommandResult(0, "abc123\n")
+        if command == ("git", "rev-parse", "origin/main"):
+            return release_script.CommandResult(0, "abc123\n")
+        if command == ("git", "rev-parse", "--verify", "refs/tags/v0.7.5"):
+            return release_script.CommandResult(1, "", "not found")
+        if command == ("git", "ls-remote", "--exit-code", "--tags", "origin", "v0.7.5"):
+            return release_script.CommandResult(2, "", "")
+        if command == ("gh", "release", "view", "v0.7.5", "--repo", "scidsg/hushline"):
+            return release_script.CommandResult(1, "", "HTTP 403: forbidden")
+        raise AssertionError(f"unexpected command: {command}")
+
+    with pytest.raises(
+        release_script.ReleaseError,
+        match="Could not confirm GitHub release availability",
+    ):
+        release_script.release(
+            runner=runner,
+            fetcher=lambda _url: '<a href="https://github.com/scidsg/hushline">v0.7.4</a>',
         )
 
     assert version_file.read_text(encoding="utf-8") == '__version__ = "0.7.4"\n'
