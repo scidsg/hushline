@@ -1,0 +1,87 @@
+---
+name: Release Governance
+
+on:
+  pull_request_target:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  release-admin-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require admin actor for release-governed files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          REPOSITORY: ${{ github.repository }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          governed_path_pattern='^(\.github/release-allowed-signers|\.github/workflows/(build-release|bump-personal-server-after-release|bump-staging-after-release|docs-screenshots|publish-docs-screenshots|release-governance)\.yml|Makefile|hushline/version\.py|scripts/release\.py)$'
+
+          if [ "$EVENT_NAME" = "pull_request_target" ]; then
+            actor="$(jq -r '.sender.login' "$GITHUB_EVENT_PATH")"
+            pr_number="$(jq -r '.pull_request.number' "$GITHUB_EVENT_PATH")"
+            expected_file_count="$(jq -r '.pull_request.changed_files' "$GITHUB_EVENT_PATH")"
+            file_records="$(
+              gh api --paginate "repos/${REPOSITORY}/pulls/${pr_number}/files" \
+                --jq '.[] | [.filename, (.previous_filename // "")] | @tsv'
+            )"
+            returned_file_count="$(printf '%s\n' "$file_records" | sed '/^$/d' | wc -l | tr -d ' ')"
+            if [ "$expected_file_count" -ge 3000 ] || [ "$returned_file_count" -ne "$expected_file_count" ]; then
+              {
+                echo "Could not inspect the complete PR file list."
+                echo "Expected ${expected_file_count} files and received ${returned_file_count} records."
+              } >&2
+              exit 1
+            fi
+          else
+            actor="$GITHUB_ACTOR"
+            before_sha="$(jq -r '.before' "$GITHUB_EVENT_PATH")"
+            compare_json="$(
+              gh api "repos/${REPOSITORY}/compare/${before_sha}...${HEAD_SHA}"
+            )"
+            returned_file_count="$(jq -r '.files | length' <<<"$compare_json")"
+            if [ "$returned_file_count" -ge 300 ]; then
+              echo "Could not inspect the complete push file list; GitHub compare results may be truncated." >&2
+              exit 1
+            fi
+            file_records="$(
+              jq -r '.files[] | [.filename, (.previous_filename // "")] | @tsv' <<<"$compare_json"
+            )"
+          fi
+
+          governed_files="$(
+            printf '%s\n' "$file_records" |
+              awk -F '\t' '{ print $1; if ($2 != "") print $2 }' |
+              rg "$governed_path_pattern" ||
+              true
+          )"
+          if [ -z "$governed_files" ]; then
+            echo "No release-governed files changed."
+            exit 0
+          fi
+
+          permission="$(
+            gh api "repos/${REPOSITORY}/collaborators/${actor}/permission" \
+              --jq '.permission'
+          )"
+
+          if [ "$permission" != "admin" ]; then
+            {
+              echo "Release-governed files changed by ${actor}, who has ${permission} repository permission."
+              echo "Only repository admins may author release-governed changes:"
+              printf '%s\n' "$governed_files"
+            } >&2
+            exit 1
+          fi
+
+          echo "Release-governed changes authorized for repository admin ${actor}."
