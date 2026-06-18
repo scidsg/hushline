@@ -210,12 +210,13 @@ def _add_conversation_message(
     conversation_message.conversation = conversation
     conversation_message.sender_participant = sender_participant
     conversation_message.created_at = created_at
+    db.session.add(conversation_message)
     for recipient_participant in conversation.participants:
         encrypted_copy = ConversationMessageCopy()
+        encrypted_copy.message = conversation_message
         encrypted_copy.recipient_participant = recipient_participant
         encrypted_copy.encrypted_payload = _ciphertext(f"{label}-{recipient_participant.id}")
-        conversation_message.encrypted_copies.append(encrypted_copy)
-    db.session.add(conversation_message)
+        db.session.add(encrypted_copy)
     db.session.commit()
     return conversation_message
 
