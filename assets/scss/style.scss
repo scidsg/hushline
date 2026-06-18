@@ -2396,7 +2396,7 @@ body.conversation-body {
   box-sizing: border-box;
   z-index: 4;
   border-bottom: 1px solid var(--color-border-light);
-  padding: 1rem;
+  padding: 0.75rem 1.25rem;
 }
 
 .conversation-actions {
@@ -3923,6 +3923,11 @@ input#captcha_answer {
   }
 
   header {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .conversation-header {
     padding-left: 1rem;
     padding-right: 1rem;
   }
