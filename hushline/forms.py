@@ -110,6 +110,10 @@ class DeleteMessageForm(FlaskForm):
     submit = SubmitField("Delete", widget=Button())
 
 
+class DeleteConversationForm(FlaskForm):
+    submit = SubmitField("Delete", widget=Button())
+
+
 class ResendMessageForm(FlaskForm):
     submit = SubmitField("Resend to Email", widget=Button())
 
