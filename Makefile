@@ -23,6 +23,7 @@ RELEASE_PROD_URL ?= https://tips.hushline.app/
 RELEASE_BRANCH ?= main
 RELEASE_ALLOWED_SIGNERS ?= .github/release-allowed-signers
 RELEASE_SIGNING_KEY ?=
+RELEASE_DRY_RUN ?=
 
 .PHONY: help
 help: ## Print the help message
@@ -164,6 +165,7 @@ release: ## Bump patch version, tag, and publish a GitHub release
 	HUSHLINE_RELEASE_BRANCH="$(RELEASE_BRANCH)" \
 	HUSHLINE_RELEASE_ALLOWED_SIGNERS="$(RELEASE_ALLOWED_SIGNERS)" \
 	HUSHLINE_RELEASE_SIGNING_KEY="$(RELEASE_SIGNING_KEY)" \
+	HUSHLINE_RELEASE_DRY_RUN="$(RELEASE_DRY_RUN)" \
 	python3 scripts/release.py
 
 .PHONY: audit-python

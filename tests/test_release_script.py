@@ -146,6 +146,103 @@ def test_release_checks_live_version_bumps_commits_tags_pushes_and_publishes(
     ]
 
 
+def test_release_dry_run_checks_authorization_without_side_effects(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    release_script = _load_release_module()
+    repo_root = tmp_path
+    version_file = repo_root / "hushline" / "version.py"
+    version_file.parent.mkdir()
+    version_file.write_text('__version__ = "0.7.4"\n', encoding="utf-8")
+    allowed_signers = repo_root / ".github" / "release-allowed-signers"
+    allowed_signers.parent.mkdir()
+    allowed_signers.write_text(
+        "\n".join(
+            (
+                "hushline-release sk-ssh-ed25519@openssh.com AAAAC3NzaPrimary primary-yubikey",
+                "hushline-release sk-ecdsa-sha2-nistp256@openssh.com "
+                "AAAAC3NzaBackup backup-yubikey",
+                "",
+            )
+        ),
+        encoding="utf-8",
+    )
+    signing_key = repo_root / "primary-yubikey"
+    signing_key.write_text("private key handle placeholder", encoding="utf-8")
+    commands: list[tuple[str, ...]] = []
+    verification_challenges: list[str] = []
+
+    monkeypatch.setattr(release_script, "REPO_ROOT", repo_root)
+    monkeypatch.setattr(release_script, "VERSION_FILE", version_file)
+    monkeypatch.setenv("HUSHLINE_RELEASE_ALLOWED_SIGNERS", str(allowed_signers))
+    monkeypatch.setenv("HUSHLINE_RELEASE_SIGNING_KEY", str(signing_key))
+
+    def runner(args: Sequence[str], check: bool, stdin: str | None = None) -> object:
+        command = tuple(args)
+        commands.append(command)
+        if command == ("git", "status", "--porcelain"):
+            return release_script.CommandResult(0, "")
+        if command == ("git", "branch", "--show-current"):
+            return release_script.CommandResult(0, "main\n")
+        if command == ("git", "rev-parse", "--verify", "refs/tags/v0.7.5"):
+            return release_script.CommandResult(1, "", "not found")
+        if command == ("git", "ls-remote", "--exit-code", "--tags", "origin", "v0.7.5"):
+            return release_script.CommandResult(2, "", "")
+        if command == ("gh", "release", "view", "v0.7.5"):
+            return release_script.CommandResult(1, "", "not found")
+        if command[:3] == ("ssh-keygen", "-Y", "sign"):
+            challenge_path = Path(command[-1])
+            Path(f"{challenge_path}.sig").write_text("fake signature", encoding="utf-8")
+            return release_script.CommandResult(0, "")
+        if command[:3] == ("ssh-keygen", "-Y", "verify"):
+            assert stdin is not None
+            verification_challenges.append(stdin)
+            return release_script.CommandResult(0, "Good signature")
+        raise AssertionError(f"unexpected dry-run command: {command}")
+
+    assert (
+        release_script.release(
+            runner=runner,
+            fetcher=lambda _url: '<a href="https://github.com/scidsg/hushline">v0.7.4</a>',
+            dry_run=True,
+        )
+        == "v0.7.5"
+    )
+    assert version_file.read_text(encoding="utf-8") == '__version__ = "0.7.4"\n'
+    assert verification_challenges == [
+        "hushline-release-authorization-v1\n" "tag=v0.7.5\n" "branch=main\n" "local_version=0.7.4\n"
+    ]
+    assert len(commands) == 7
+    assert commands[:5] == [
+        ("git", "status", "--porcelain"),
+        ("git", "branch", "--show-current"),
+        ("git", "rev-parse", "--verify", "refs/tags/v0.7.5"),
+        ("git", "ls-remote", "--exit-code", "--tags", "origin", "v0.7.5"),
+        ("gh", "release", "view", "v0.7.5"),
+    ]
+    assert commands[5][:6] == (
+        "ssh-keygen",
+        "-Y",
+        "sign",
+        "-f",
+        str(signing_key),
+        "-n",
+    )
+    assert commands[6][:-1] == (
+        "ssh-keygen",
+        "-Y",
+        "verify",
+        "-f",
+        str(allowed_signers),
+        "-I",
+        "hushline-release",
+        "-n",
+        "hushline-release",
+        "-s",
+    )
+
+
 def test_release_blocks_when_live_version_does_not_match_local(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

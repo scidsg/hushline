@@ -57,9 +57,11 @@ def test_release_target_invokes_release_helper_with_prod_defaults() -> None:
     assert "RELEASE_BRANCH ?= main" in make_text
     assert "RELEASE_ALLOWED_SIGNERS ?= .github/release-allowed-signers" in make_text
     assert "RELEASE_SIGNING_KEY ?=" in make_text
+    assert "RELEASE_DRY_RUN ?=" in make_text
     assert "release: ## Bump patch version, tag, and publish a GitHub release" in target_section
     assert 'HUSHLINE_RELEASE_PROD_URL="$(RELEASE_PROD_URL)"' in target_section
     assert 'HUSHLINE_RELEASE_BRANCH="$(RELEASE_BRANCH)"' in target_section
     assert 'HUSHLINE_RELEASE_ALLOWED_SIGNERS="$(RELEASE_ALLOWED_SIGNERS)"' in target_section
     assert 'HUSHLINE_RELEASE_SIGNING_KEY="$(RELEASE_SIGNING_KEY)"' in target_section
+    assert 'HUSHLINE_RELEASE_DRY_RUN="$(RELEASE_DRY_RUN)"' in target_section
     assert "python3 scripts/release.py" in target_section

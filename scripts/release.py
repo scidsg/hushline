@@ -163,6 +163,20 @@ def _release_path_from_env(name: str, default: Path | None = None) -> Path | Non
     return Path(value).expanduser()
 
 
+def _release_bool_from_env(name: str) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return False
+    normalized = value.strip().lower()
+    if not normalized:
+        return False
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ReleaseError(f"{name} must be one of: 1, true, yes, on, 0, false, no, off.")
+
+
 def _validate_release_allowed_signers(
     allowed_signers: Path,
     principal: str = RELEASE_AUTH_PRINCIPAL,
@@ -273,10 +287,17 @@ def release_auth_config_from_env() -> ReleaseAuthConfig:
     return ReleaseAuthConfig(signing_key=signing_key, allowed_signers=allowed_signers)
 
 
-def release(runner: Runner = run_command, fetcher: Fetcher = fetch_url) -> str:
+def release(
+    runner: Runner = run_command,
+    fetcher: Fetcher = fetch_url,
+    *,
+    dry_run: bool | None = None,
+) -> str:
     prod_url = os.environ.get("HUSHLINE_RELEASE_PROD_URL", DEFAULT_PROD_URL)
     release_branch = os.environ.get("HUSHLINE_RELEASE_BRANCH", "main")
     auth_config = release_auth_config_from_env()
+    if dry_run is None:
+        dry_run = _release_bool_from_env("HUSHLINE_RELEASE_DRY_RUN")
 
     ensure_clean_worktree(runner)
     branch = ensure_release_branch(runner, release_branch)
@@ -300,6 +321,9 @@ def release(runner: Runner = run_command, fetcher: Fetcher = fetch_url) -> str:
         config=auth_config,
     )
 
+    if dry_run:
+        return tag
+
     write_local_version(next_version)
     runner(["git", "add", str(VERSION_FILE.relative_to(REPO_ROOT))], True, None)
     runner(["git", "commit", "-m", f"Update version to {tag}"], True, None)
@@ -316,12 +340,19 @@ def release(runner: Runner = run_command, fetcher: Fetcher = fetch_url) -> str:
 
 def main() -> int:
     try:
-        tag = release()
+        dry_run = _release_bool_from_env("HUSHLINE_RELEASE_DRY_RUN")
+        tag = release(dry_run=dry_run)
     except ReleaseError as error:
         print(f"release failed: {error}", file=sys.stderr)
         return 1
 
-    print(f"Published Hush Line release {tag}")
+    if dry_run:
+        print(
+            f"Dry run passed for Hush Line release {tag}; "
+            "no version, tag, push, or GitHub release was created."
+        )
+    else:
+        print(f"Published Hush Line release {tag}")
     return 0
 
 
