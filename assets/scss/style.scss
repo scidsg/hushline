@@ -2322,6 +2322,7 @@ a.logoutLink {
 .conversation-page {
   --conversation-content-max-width: 960px;
   --conversation-header-offset: 8rem;
+  --conversation-bottom-fade-height: 100px;
   --conversation-content-padding-inline: max(
     var(--container-padding),
     calc((100vw - var(--conversation-content-max-width)) / 2 + var(--container-padding))
@@ -2509,7 +2510,7 @@ body.conversation-body {
   position: absolute;
   left: 50%;
   bottom: 5rem;
-  z-index: 0;
+  z-index: 4;
   margin: 0;
   pointer-events: none;
   transform: translateX(-50%) scale(0.95);
@@ -2574,8 +2575,9 @@ body.conversation-body {
   min-height: 0;
   overflow-y: auto;
   padding: 0.75rem var(--conversation-content-padding-inline);
+  padding-bottom: var(--conversation-bottom-fade-height);
   position: relative;
-  scroll-padding-bottom: 6rem;
+  scroll-padding-bottom: var(--conversation-bottom-fade-height);
   z-index: 1;
   padding-top: 8rem;
 }
@@ -2654,6 +2656,19 @@ body.conversation-body {
   border-top: 1px solid var(--color-border-light);
 }
 
+.conversation-composer::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  z-index: 1;
+  width: 100vw;
+  height: var(--conversation-bottom-fade-height);
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), white);
+  transform: translateX(-50%);
+}
+
 .conversation-composer label.visually-hidden,
 .conversation-composer .meta {
   grid-column: 1 / -1;
@@ -2730,6 +2745,7 @@ body.conversation-body {
   .conversation-thread {
     padding: 0.625rem;
     padding-top: 8rem;
+    padding-bottom: var(--conversation-bottom-fade-height);
   }
 
   .conversation-composer {
@@ -2809,6 +2825,14 @@ body.conversation-body {
   .conversation-composer {
     border-top-color: var(--color-border-dark-1);
     background: var(--color-dark-bg-alt-transparent-1);
+  }
+
+  .conversation-composer::before {
+    background: linear-gradient(
+      to bottom,
+      rgba(39, 39, 39, 0),
+      var(--color-dark-bg-alt)
+    );
   }
 
   .conversation-composer textarea {
