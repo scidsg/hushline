@@ -22,7 +22,7 @@ REFRESH_GLOBALEAKS_ARGS ?=
 RELEASE_PROD_URL ?= https://tips.hushline.app/
 RELEASE_BRANCH ?= main
 RELEASE_ALLOWED_SIGNERS ?= .github/release-allowed-signers
-RELEASE_SIGNING_KEY ?=
+RELEASE_SIGNING_KEY ?= $(HOME)/.ssh/hushline-release/primary-release-yubikey
 RELEASE_DRY_RUN ?=
 
 .PHONY: help
@@ -167,6 +167,10 @@ release: ## Bump patch version, tag, and publish a GitHub release
 	HUSHLINE_RELEASE_SIGNING_KEY="$(RELEASE_SIGNING_KEY)" \
 	HUSHLINE_RELEASE_DRY_RUN="$(RELEASE_DRY_RUN)" \
 	python3 scripts/release.py
+
+.PHONY: release-dry-run
+release-dry-run: ## Check release preflight and YubiKey authorization without publishing
+	$(MAKE) release RELEASE_DRY_RUN=1
 
 .PHONY: audit-python
 audit-python: ## Run Python dependency audit (CI-equivalent)

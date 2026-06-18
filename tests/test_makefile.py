@@ -56,7 +56,10 @@ def test_release_target_invokes_release_helper_with_prod_defaults() -> None:
     assert "RELEASE_PROD_URL ?= https://tips.hushline.app/" in make_text
     assert "RELEASE_BRANCH ?= main" in make_text
     assert "RELEASE_ALLOWED_SIGNERS ?= .github/release-allowed-signers" in make_text
-    assert "RELEASE_SIGNING_KEY ?=" in make_text
+    assert (
+        "RELEASE_SIGNING_KEY ?= $(HOME)/.ssh/hushline-release/primary-release-yubikey"
+        in make_text
+    )
     assert "RELEASE_DRY_RUN ?=" in make_text
     assert "release: ## Bump patch version, tag, and publish a GitHub release" in target_section
     assert 'HUSHLINE_RELEASE_PROD_URL="$(RELEASE_PROD_URL)"' in target_section
@@ -65,3 +68,13 @@ def test_release_target_invokes_release_helper_with_prod_defaults() -> None:
     assert 'HUSHLINE_RELEASE_SIGNING_KEY="$(RELEASE_SIGNING_KEY)"' in target_section
     assert 'HUSHLINE_RELEASE_DRY_RUN="$(RELEASE_DRY_RUN)"' in target_section
     assert "python3 scripts/release.py" in target_section
+
+
+def test_release_dry_run_target_invokes_release_with_dry_run_enabled() -> None:
+    target_section = _target_section("release-dry-run")
+
+    assert (
+        "release-dry-run: ## Check release preflight and YubiKey authorization without publishing"
+        in target_section
+    )
+    assert "$(MAKE) release RELEASE_DRY_RUN=1" in target_section
