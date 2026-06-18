@@ -215,10 +215,16 @@ test("logged-in account conversation stays encrypted through browser lifecycle",
 }) => {
   test.setTimeout(60000);
 
+  const contactPlaintext = `P0 account conversation contact ${Date.now()}`;
   const sentPlaintext = `P0 account conversation initial ${Date.now()}`;
   const replyPlaintext = `P0 account conversation reply ${Date.now()}`;
   const tamperedPlaintext = `P0 malformed reply leakage ${Date.now()}`;
-  const sensitiveValues = [sentPlaintext, replyPlaintext, tamperedPlaintext];
+  const sensitiveValues = [
+    contactPlaintext,
+    sentPlaintext,
+    replyPlaintext,
+    tamperedPlaintext,
+  ];
 
   const senderContext = await browser.newContext();
   const recipientContext = await browser.newContext();
@@ -253,7 +259,7 @@ test("logged-in account conversation stays encrypted through browser lifecycle",
       )
       .toContain("public_signing_key");
 
-    await senderPage.fill("#field_0", "Secure account conversation contact");
+    await senderPage.fill("#field_0", contactPlaintext);
     await senderPage.fill("#field_1", sentPlaintext);
     await senderPage.fill(
       "#captcha_answer",
@@ -380,14 +386,16 @@ test("logged-in account conversation stays encrypted through browser lifecycle",
     await senderRefresh.catch(() => undefined);
     await expectConversationMessage(senderPage, replyPlaintext);
 
+    const malformedCopies = JSON.parse(
+      JSON.stringify(replyPayload.encrypted_copies),
+    );
+    malformedCopies[participantIds[0]] = tamperedPlaintext;
     const malformedResponse = await postJsonFromPage(
       recipientPage,
       rootData.messageUrl,
       csrfToken,
       {
-        encrypted_copies: {
-          [participantIds[0]]: tamperedPlaintext,
-        },
+        encrypted_copies: malformedCopies,
       },
     );
     expect(malformedResponse.status).toBe(400);
