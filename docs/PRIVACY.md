@@ -1,11 +1,11 @@
 # Hush Line Privacy Policy
 
-Effective date: 2026-02-16
+Effective date: 2026-06-18
 
 ## Privacy Nutrition Facts
 
-- **What you provide**: usernames, optional email, optional PGP key, and message content.
-- **What we store**: encrypted message content plus the account and security records listed below.
+- **What you provide**: usernames, optional email, optional PGP key, Hush Line chat public-key metadata and encrypted private-key payloads for account conversations, and message content.
+- **What we store**: encrypted message and conversation content plus the account, conversation, and security records listed below.
 - **What we share**: DigitalOcean hosts the service; Stripe handles billing if enabled.
 - **Cookies**: an encrypted session cookie and a local flag for first‑visit anti‑censorship tips.
 - **Your control**: update or delete your account and messages in the app.
@@ -19,6 +19,7 @@ Hush Line is a 501(c)(3) non-profit in the US. This policy explains how we handl
 - **Account records**: user ID, usernames, optional display name, optional bio, and profile visibility flags for directory and verification.
 - **Security and auth data**: password hash, TOTP secret if enabled, and authentication logs with timestamp, success flag, and the TOTP code and timecode for successful 2FA logins. We do not store IP addresses or user‑agent strings in the database.
 - **Messaging data**: message IDs, public IDs, reply slugs, message status, status change time, and message content stored as encrypted field values.
+- **Conversation data**: conversation IDs, participant records, per-participant encrypted conversation message copies, timestamps, unread/activity state, and chat-key public metadata used to support account conversations.
 - **Profile field definitions**: custom field labels, types, required and enabled flags, choices, and sort order.
 - **Notification settings**: email notification toggles and SMTP configuration such as server, port, username, password, sender, and encryption mode, stored encrypted at rest.
 - **Invite codes**: invite code and expiration date when enabled.
@@ -44,17 +45,19 @@ We rely on third‑party providers to run Hush Line:
 
 These providers may collect data as part of their services. We do not control their data practices; please review their policies.
 
-If you enable email notifications, messages are sent via SMTP (either your custom SMTP settings or our configured provider). This transmits message content through email systems you choose or we operate.
+If you enable email notifications for one-way message intake, messages may be sent via SMTP (either your custom SMTP settings or our configured provider), depending on your notification settings. This can transmit message content through email systems you choose or we operate.
+
+Two-way account conversation notifications are generic activity alerts. They do not include conversation plaintext or conversation ciphertext.
 
 If you enable premium billing, payment processing is handled by Stripe. We do not store full payment details.
 
 ## 5) Security
 
-We encrypt stored message content and sensitive account fields (email, SMTP credentials, PGP key, TOTP secret). No system is perfectly secure, but we design Hush Line to minimize data exposure.
+We encrypt stored message content and sensitive account fields (email, SMTP credentials, PGP key, TOTP secret). Two-way account conversations are stored as per-participant encrypted payloads; Hush Line does not store conversation plaintext. No system is perfectly secure, but we design Hush Line to minimize data exposure.
 
 ## 6) Retention & Deletion
 
-Messages and accounts remain until you delete them. When you delete content, we remove it from active systems.
+Messages, conversations, and accounts remain until you delete them or the relevant account is deleted. When you delete content, we remove it from active systems.
 
 ## 7) Cookies & Local Storage
 
@@ -103,6 +106,10 @@ The following source files implement rights-related functionality referenced in 
 
 - Data access/export (Right of Access / Right to Know / Data Portability):
   [`hushline/settings/data_export.py`](https://github.com/scidsg/hushline/blob/main/hushline/settings/data_export.py)
+- Account conversations and chat-key records:
+  [`hushline/model/conversation.py`](https://github.com/scidsg/hushline/blob/main/hushline/model/conversation.py),
+  [`hushline/model/chat_key.py`](https://github.com/scidsg/hushline/blob/main/hushline/model/chat_key.py),
+  [`hushline/routes/message.py`](https://github.com/scidsg/hushline/blob/main/hushline/routes/message.py)
 - Account deletion (Right to Erasure / Right to Delete):
   [`hushline/settings/delete_account.py`](https://github.com/scidsg/hushline/blob/main/hushline/settings/delete_account.py)
 - Cascading deletion of related records:

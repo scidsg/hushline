@@ -6,6 +6,7 @@ Source category: <https://hushline.app/library/docs/using-your-tip-line/your-inb
 
 - [Your Inbox](./your-inbox.md)
 - [Reading Messages](./reading-messages.md)
+- [Two-Way Conversations](./two-way-conversations.md)
 - [Tools](./tools.md)
 - [Email Validation](./email-validation.md)
 - [Vision Assistant](./vision-assistant.md)

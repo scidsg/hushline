@@ -9,6 +9,8 @@ Primary assets include:
 - Disclosure content and metadata (message status, reply slugs, timestamps).
 - Recipient accounts, password hashes, 2FA secrets, session identifiers.
 - Recipient PGP keys, SMTP credentials, and notification settings.
+- Hush Line chat public keys, chat public signing keys, encrypted chat private
+  key material, and per-participant encrypted conversation copies.
 - Public directory/profile data and verification markers.
 - Encryption/session secrets (`ENCRYPTION_KEY`, `SESSION_FERNET_KEY`) and service API keys (SMTP, Stripe).
 - Billing records, audit logs, and automation artifacts.
@@ -19,6 +21,8 @@ Primary assets include:
 
 - **Submitter browser → Hush Line app:** anonymous POSTs to `/to/<username>` and other public endpoints (`hushline/routes/profile.py`).
 - **Recipient session → Hush Line app:** authenticated inbox/settings routes (`hushline/routes/*`, `hushline/settings/*`).
+- **Conversation participant browser → Hush Line app:** authenticated
+  conversation, presence, and reply routes (`hushline/routes/message.py`).
 - **Admin session → Hush Line app:** privileged settings/admin actions (`hushline/admin.py`, `hushline/settings/branding.py`).
 - **App → Postgres:** ORM‑mediated data access (`hushline/db.py`, `hushline/model/*`).
 - **App → Blob storage:** S3 or filesystem driver (`hushline/storage.py`).
@@ -95,6 +99,12 @@ Primary assets include:
 - Mitigations: embeds require global admin enablement, a currently paid Super User account, per-profile or per-alias opt-in, exact origin allowlists, recipient PGP keys, no-referrer iframe snippets, sandboxed iframes, compact trust chrome, and CSP `frame-ancestors` limited to configured origins.
 - Abuse controls throttle submissions by profile, source network bucket, and deployment. Operational counters use hashed profile/source labels and must not log disclosure content, custom-field values, reply slugs, full referrers, parent-page titles, analytics identifiers, or sender contact details.
 - Hosted redirect links remain safer for personal servers and operators who do not understand origin allowlists, CSP, iframe sandboxing, and analytics restrictions.
+
+11. **Two-way account conversations** (`routes/profile.py`, `routes/message.py`, `model/conversation.py`):
+
+- Risks: an attacker tries to read or append to a conversation without being a participant, replay encrypted copies across conversations, substitute chat keys, force legacy unsigned reply paths, or use notifications as an abuse channel.
+- Mitigations: routes are authenticated and participant-scoped; initial conversation copies use nonce and key-fingerprint binding; reply envelopes bind conversation and participant context; new replies require all participants to have signing-capable chat keys; notifications are generic and suppress active-recipient alerts.
+- Residual exposure: conversation participants, timestamps, unread/activity state, and message counts remain server-visible metadata. Client-side chat encryption depends on trustworthy JavaScript served by Hush Line.
 
 ### Attacker stories (examples)
 

@@ -79,6 +79,7 @@ The app and public directory support more than individual profiles. Current disc
 | Existing user    | Request password reset help without exposing whether my username exists        | I receive a generic response while Hush Line avoids treating notification recipients as recovery factors | Password reset flow                                   |
 | Logged-in sender | Start an account conversation with another account after submitting a message  | I can follow up inside Hush Line without relying only on the one-time anonymous reply link               | Public message form, conversation page                |
 | Logged-in sender | Unlock my Hush Line chat key in the browser before reading or replying         | Conversation plaintext stays out of server-side storage and is only decrypted in my browser              | Conversation page                                     |
+| Logged-in sender | See when account conversation follow-up is unavailable                         | I do not mistake a legacy or unkeyed conversation for a safe two-way chat                                | Public message form, conversation page                |
 
 ### Authenticated Recipients: All Users
 
@@ -172,6 +173,8 @@ The app and public directory support more than individual profiles. Current disc
 Two-way conversations are for logged-in Hush Line account holders who submit to another account while both sides can use Hush Line chat keys. Anonymous submissions continue to use the existing message inbox and reply-link flow; they do not create account conversations.
 
 Hush Line chat keys are browser-generated in-app conversation keys. They are separate from PGP keys used for message intake, exports, and notification email compatibility. Proton Key Lookup imports public PGP keys only; Hush Line must not ask users to export, paste, or upload Proton Mail private keys or any other external private key for account conversations.
+
+New account conversation replies require all participants to have active chat keys with public encryption keys and public signing keys. If any participant only has legacy chat-key material, the conversation remains readable where possible, but composing new replies is unavailable until all participants have signing-capable chat keys.
 
 Conversation plaintext is not stored by the server. Conversation messages are stored as per-participant encrypted payloads, and only conversation participants can open the route or append replies. Administrators may manage accounts and trust states, but admin status alone does not grant conversation access.
 
