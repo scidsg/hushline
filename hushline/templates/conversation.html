@@ -40,7 +40,7 @@
         <form
           method="POST"
           action="{{ url_for('delete_conversation', public_id=conversation.public_id) }}"
-          data-confirm-message="Delete this conversation for all participants? This cannot be undone."
+          data-confirm-message="Delete this conversation from your inbox? Messages you sent will appear deleted to other participants."
         >
           <input
             id="delete_conversation_csrf_token"
@@ -127,7 +127,7 @@
             <p class="conversation-message-body">Encrypted message. Waiting for browser chat key.</p>
           {% else %}
             <p class="conversation-message-body unavailable">
-              No encrypted copy is available for your account.
+              This message was deleted.
             </p>
           {% endif %}
         </article>

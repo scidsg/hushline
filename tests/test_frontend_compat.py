@@ -467,6 +467,7 @@ def test_conversation_replies_and_polling_update_thread_in_place() -> None:
     assert "thread.replaceChildren(" in js
     assert "currentCopies.textContent = nextCopies.textContent;" in js
     assert "conversationMessagesSignature(nextDocument)" in js
+    assert 'getElementById("conversationMessageCopies")?.textContent' in js
     assert "window.location.reload()" not in js
     assert "thread.scrollTo({" in js
     assert "top: thread.scrollHeight" in js
@@ -477,6 +478,7 @@ def test_conversation_replies_and_polling_update_thread_in_place() -> None:
     assert "bindConversationPolling(root);" in static_js
     assert "window.setInterval(refreshIfVisible, intervalMs);" in static_js
     assert "thread.replaceChildren(" in static_js
+    assert 'getElementById("conversationMessageCopies")?.textContent' in static_js
     assert "window.location.reload()" not in static_js
     assert "thread.scrollTo({" in static_js
     assert "scrollHeight" in static_js

@@ -1067,7 +1067,10 @@
   }
 
   function conversationMessagesSignature(sourceDocument = document) {
-    return conversationMessageIds(sourceDocument).join(",");
+    const copies =
+      sourceDocument.getElementById("conversationMessageCopies")?.textContent ||
+      "";
+    return `${conversationMessageIds(sourceDocument).join(",")}:${copies}`;
   }
 
   function conversationMessageSenderIdFromPayload(encryptedPayload) {

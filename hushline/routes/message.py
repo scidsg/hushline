@@ -82,6 +82,25 @@ def _conversation_other_participants(
     ]
 
 
+def _conversation_active_participants(thread: Conversation) -> list[ConversationParticipant]:
+    return [
+        thread_participant
+        for thread_participant in thread.participants
+        if thread_participant.deleted_at is None
+    ]
+
+
+def _locked_conversation_participants(thread: Conversation) -> list[ConversationParticipant]:
+    return list(
+        db.session.scalars(
+            db.select(ConversationParticipant)
+            .where(ConversationParticipant.conversation_id == thread.id)
+            .order_by(ConversationParticipant.id)
+            .with_for_update()
+        )
+    )
+
+
 def _is_conversation_background_refresh() -> bool:
     return request.headers.get("X-Hushline-Conversation-Refresh", "").lower() == "true"
 
@@ -384,7 +403,8 @@ def register_message_routes(app: Flask) -> None:
             }
             for thread_participant in thread.participants
             if (
-                thread_participant.user
+                thread_participant.deleted_at is None
+                and thread_participant.user
                 and thread_participant.user.active_chat_key
                 and thread_participant.user.chat_public_key
                 and thread_participant.user.chat_public_signing_key
@@ -406,12 +426,16 @@ def register_message_routes(app: Flask) -> None:
             thread_participant.user.active_chat_key
             for thread_participant in thread.participants
             if (
-                thread_participant.user
+                thread_participant.deleted_at is None
+                and thread_participant.user
                 and thread_participant.user.active_chat_key
                 and thread_participant.user.active_chat_key.key_version > 1
             )
         ]
-        can_compose = len(participant_public_keys) == len(thread.participants)
+        active_participants = _conversation_active_participants(thread)
+        can_compose = len(active_participants) == len(thread.participants) and len(
+            participant_public_keys
+        ) == len(thread.participants)
         conversation_message_form = ConversationMessageForm()
         delete_conversation_form = DeleteConversationForm()
 
@@ -491,13 +515,17 @@ def register_message_routes(app: Flask) -> None:
             str(thread_participant.id)
             for thread_participant in thread.participants
             if (
-                thread_participant.user
+                thread_participant.deleted_at is None
+                and thread_participant.user
                 and thread_participant.user.active_chat_key
                 and thread_participant.user.chat_public_key
                 and thread_participant.user.chat_public_signing_key
             )
         }
-        if len(reply_capable_participant_ids) != len(thread.participants):
+        active_participants = _conversation_active_participants(thread)
+        if len(active_participants) != len(thread.participants) or len(
+            reply_capable_participant_ids
+        ) != len(thread.participants):
             return jsonify({"error": "Conversation replies are unavailable."}), 400
 
         if set(encrypted_copies.keys()) != reply_capable_participant_ids:
@@ -551,13 +579,53 @@ def register_message_routes(app: Flask) -> None:
         if not delete_conversation_form.validate_on_submit():
             abort(400)
 
+        locked_participants = _locked_conversation_participants(thread)
+        participant = next(
+            (
+                thread_participant
+                for thread_participant in locked_participants
+                if thread_participant.user_id == user.id
+            ),
+            None,
+        )
+        if participant is None:
+            abort(404)
+
         initial_message = thread.initial_message
-        if initial_message is not None:
-            if _message_is_chat_only_placeholder(initial_message):
-                db.session.delete(initial_message)
-            else:
-                initial_message.conversation = None
-        db.session.delete(thread)
+        if initial_message is not None and not _message_is_chat_only_placeholder(initial_message):
+            initial_message.conversation = None
+
+        participant.deleted_at = datetime.now(UTC)
+        participant.last_read_at = participant.deleted_at
+        participant.last_read_message = _conversation_latest_message(thread)
+
+        participant_message_ids = db.select(ConversationMessage.id).where(
+            ConversationMessage.sender_participant_id == participant.id
+        )
+        db.session.execute(
+            db.delete(ConversationMessageCopy).where(
+                ConversationMessageCopy.conversation_message_id.in_(participant_message_ids)
+            ),
+            execution_options={"synchronize_session": False},
+        )
+        db.session.execute(
+            db.delete(ConversationMessageCopy).where(
+                ConversationMessageCopy.recipient_participant_id == participant.id
+            ),
+            execution_options={"synchronize_session": False},
+        )
+
+        db.session.flush()
+        if not any(
+            thread_participant.deleted_at is None for thread_participant in locked_participants
+        ):
+            initial_message = thread.initial_message
+            if initial_message is not None:
+                if _message_is_chat_only_placeholder(initial_message):
+                    db.session.delete(initial_message)
+                else:
+                    initial_message.conversation = None
+            db.session.delete(thread)
         db.session.commit()
         flash("Conversation deleted successfully.")
         return redirect(url_for("inbox", type="conversations"))
