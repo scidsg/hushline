@@ -214,7 +214,15 @@
 
   .mobileNav {
     background-image: url("../img/icon-menu.png");
+  }
+
+  .mobileNav,
+  .conversation-actions-button {
     border: var(--border-button);
+  }
+
+  .conversation-actions-button {
+    color: var(--color-text);
   }
 
   .icon.chevron {
@@ -826,6 +834,10 @@
 
   .mobileNav {
     background-image: url("../img/icon-menu-light.png");
+  }
+
+  .mobileNav,
+  .conversation-actions-button {
     color: var(--color-brand-dark-min-saturation);
     border: var(--border-button-dark);
     box-shadow: 0px 2px 0px 0px oklch(from var(--color-brand-dark-min-saturation) l c h / 0.25);
@@ -2375,7 +2387,7 @@ body.conversation-body {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  align-items: flex-start;
+  align-items: center;
   position: fixed;
   top: var(--conversation-top-offset);
   left: 0;
@@ -2390,6 +2402,7 @@ body.conversation-body {
   position: relative;
   flex: 0 0 auto;
   margin-left: auto;
+  align-self: center;
 }
 
 .conversation-actions-button {
@@ -2401,21 +2414,11 @@ body.conversation-body {
   min-width: 2.75rem;
   min-height: 2.75rem;
   margin: 0;
-  border: 1px solid var(--color-border-light);
   border-radius: 50%;
   padding: 0;
-  background: white;
-  color: var(--color-text);
-  box-shadow: none;
-  font-family: var(--font-sans-bold);
+  background-color: transparent;
   font-size: 1.35rem;
   line-height: 1;
-}
-
-.conversation-actions-button:hover,
-.conversation-actions-button:focus-visible {
-  border-color: var(--color-brand);
-  background: var(--color-brand-bg);
 }
 
 .conversation-actions-menu {
@@ -2758,18 +2761,6 @@ body.conversation-body {
     border-color: var(--color-border-dark-1);
     background: var(--color-highlight-dark);
     color: var(--color-text-dark);
-  }
-
-  .conversation-actions-button {
-    border-color: var(--color-border-dark-1);
-    background: var(--color-dark-bg-alt);
-    color: var(--color-text-dark);
-  }
-
-  .conversation-actions-button:hover,
-  .conversation-actions-button:focus-visible {
-    border-color: var(--color-brand-dark-min-saturation);
-    background: var(--color-highlight-dark);
   }
 
   .conversation-actions-menu {
