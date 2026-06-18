@@ -5,6 +5,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 from types import ModuleType
+from urllib.error import URLError
 
 import pytest
 
@@ -39,6 +40,23 @@ def test_next_patch_version_increments_patch_component() -> None:
     release_script = _load_release_module()
 
     assert release_script.next_patch_version("0.7.4") == "0.7.5"
+
+
+def test_fetch_url_reports_release_error_on_url_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    release_script = _load_release_module()
+
+    def failing_urlopen(url: str, timeout: int) -> object:
+        assert url == "https://tips.hushline.app/"
+        assert timeout == 15
+        raise URLError("temporary name resolution failure")
+
+    monkeypatch.setattr(release_script, "urlopen", failing_urlopen)
+
+    with pytest.raises(
+        release_script.ReleaseError,
+        match="Could not fetch production URL https://tips.hushline.app/",
+    ):
+        release_script.fetch_url("https://tips.hushline.app/")
 
 
 def test_release_checks_live_version_bumps_commits_tags_pushes_and_publishes(

@@ -9,6 +9,7 @@ import tempfile
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.error import URLError
 from urllib.request import urlopen
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -78,8 +79,11 @@ def run_command(
 
 
 def fetch_url(url: str) -> str:
-    with urlopen(url, timeout=15) as response:  # noqa: S310
-        return response.read().decode("utf-8", errors="replace")
+    try:
+        with urlopen(url, timeout=15) as response:  # noqa: S310
+            return response.read().decode("utf-8", errors="replace")
+    except URLError as error:
+        raise ReleaseError(f"Could not fetch production URL {url}: {error}") from error
 
 
 def read_local_version(version_file: Path | None = None) -> str:
