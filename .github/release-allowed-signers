@@ -1,0 +1,9 @@
+# Hush Line release authorization keys.
+#
+# Add exactly the primary and backup YubiKey-backed SSH public keys here.
+# Normal software keys such as ssh-ed25519 are intentionally rejected by
+# scripts/release.py.
+#
+# Format:
+# hushline-release sk-ssh-ed25519@openssh.com AAAA... primary-release-yubikey
+# hushline-release sk-ecdsa-sha2-nistp256@openssh.com AAAA... backup-release-yubikey

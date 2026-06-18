@@ -19,6 +19,10 @@ REFRESH_PUBLIC_RECORD_CORRECTION_SUMMARY_OUTPUT ?= /tmp/public-record-quarterly-
 REFRESH_PUBLIC_RECORD_CORRECTION_REPORT_JSON_OUTPUT ?= /tmp/public-record-quarterly-refresh.json
 REFRESH_SECUREDROP_ARGS ?=
 REFRESH_GLOBALEAKS_ARGS ?=
+RELEASE_PROD_URL ?= https://tips.hushline.app/
+RELEASE_BRANCH ?= main
+RELEASE_ALLOWED_SIGNERS ?= .github/release-allowed-signers
+RELEASE_SIGNING_KEY ?=
 
 .PHONY: help
 help: ## Print the help message
@@ -153,6 +157,14 @@ refresh-globaleaks-listings: ## Refresh GlobaLeaks instance artifact from public
 .PHONY: refresh-newsroom-listings
 refresh-newsroom-listings: ## Refresh newsroom directory artifact from public source pages
 	$(CMD) poetry run python ./scripts/refresh_newsroom_directory_listings.py $(REFRESH_NEWSROOM_ARGS)
+
+.PHONY: release
+release: ## Bump patch version, tag, and publish a GitHub release
+	HUSHLINE_RELEASE_PROD_URL="$(RELEASE_PROD_URL)" \
+	HUSHLINE_RELEASE_BRANCH="$(RELEASE_BRANCH)" \
+	HUSHLINE_RELEASE_ALLOWED_SIGNERS="$(RELEASE_ALLOWED_SIGNERS)" \
+	HUSHLINE_RELEASE_SIGNING_KEY="$(RELEASE_SIGNING_KEY)" \
+	python3 scripts/release.py
 
 .PHONY: audit-python
 audit-python: ## Run Python dependency audit (CI-equivalent)
