@@ -283,7 +283,7 @@ def register_profile_routes(app: Flask) -> None:
     def _initial_conversation_nonce_hash(nonce: str) -> str:
         return sha256(f"hushline:initial-conversation:{nonce}".encode()).hexdigest()
 
-    def _remember_initial_conversation_nonce(nonce: str, sender: User, recipient: User) -> None:
+    def _remember_initial_conversation_nonce(nonce: str, sender: User, recipient: User) -> bool:
         db.session.add(
             InitialConversationNonce(
                 nonce_hash=_initial_conversation_nonce_hash(nonce),
@@ -292,9 +292,11 @@ def register_profile_routes(app: Flask) -> None:
             )
         )
         try:
-            db.session.commit()
+            db.session.flush()
         except IntegrityError:
             db.session.rollback()
+            return False
+        return True
 
     def _initial_conversation_nonce_is_known(nonce: str, sender: User, recipient: User) -> bool:
         nonce_id = db.session.scalar(
@@ -375,8 +377,11 @@ def register_profile_routes(app: Flask) -> None:
         recipient: User,
         encrypted_conversation_copies: dict[str, str],
         initial_conversation_nonce: str,
+        require_known_nonce: bool = True,
     ) -> bool:
-        if not initial_conversation_nonce or not _initial_conversation_nonce_is_known(
+        if not initial_conversation_nonce:
+            return False
+        if require_known_nonce and not _initial_conversation_nonce_is_known(
             initial_conversation_nonce,
             sender,
             recipient,
@@ -409,6 +414,7 @@ def register_profile_routes(app: Flask) -> None:
         recipient: User,
         encrypted_conversation_copies: dict[str, str],
         initial_conversation_nonce: str,
+        require_known_nonce: bool = True,
     ) -> bool:
         if sender is None or sender.id == recipient.id or not recipient.chat_public_key:
             return False
@@ -417,6 +423,7 @@ def register_profile_routes(app: Flask) -> None:
             recipient=recipient,
             encrypted_conversation_copies=encrypted_conversation_copies,
             initial_conversation_nonce=initial_conversation_nonce,
+            require_known_nonce=require_known_nonce,
         )
 
     def _message_submission_block_reason(
@@ -541,12 +548,6 @@ def register_profile_routes(app: Flask) -> None:
                 if sender is not None and sender.id != uname.user_id
                 else None
             )
-            if (
-                not is_embedded
-                and sender is not None
-                and _chat_submission_base_available(uname, sender)
-            ):
-                _remember_initial_conversation_nonce(owner_guard_nonce, sender, uname.user)
             rendered = render_template(
                 "embed_profile.html" if is_embedded else "profile.html",
                 profile_header=profile_header,
@@ -672,7 +673,15 @@ def register_profile_routes(app: Flask) -> None:
                     recipient=uname.user,
                     encrypted_conversation_copies=encrypted_conversation_copies,
                     initial_conversation_nonce=owner_guard_nonce,
+                    require_known_nonce=False,
                 )
+            )
+            initial_conversation_submission = not is_embedded and _conversation_payload_can_start(
+                sender=sender,
+                recipient=uname.user,
+                encrypted_conversation_copies=encrypted_conversation_copies,
+                initial_conversation_nonce=owner_guard_nonce,
+                require_known_nonce=False,
             )
             block_reason = _message_submission_block_reason(
                 uname, allow_chat_submission=chat_only_submission
@@ -725,6 +734,18 @@ def register_profile_routes(app: Flask) -> None:
                             reason="captcha",
                         )
                     flash("⛔️ Invalid CAPTCHA answer.", "error")
+                    return _render_profile(400)
+
+                if (
+                    initial_conversation_submission
+                    and sender is not None
+                    and not _remember_initial_conversation_nonce(
+                        owner_guard_nonce,
+                        sender,
+                        uname.user,
+                    )
+                ):
+                    flash("⛔️ This tip line changed while you were composing. Please reload.")
                     return _render_profile(400)
 
                 # Create a message
