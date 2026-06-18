@@ -823,7 +823,7 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert 'slide.removeAttribute("inert");' in directory_verified_js
     assert "[data-featured-original-tabindex]" in directory_verified_js
     assert re.search(
-        r"\.featured-directory \.user \{[^}]*box-shadow: var\(--shadow-dynamic\);",
+        r"\.featured-directory \.user \{[^}]*box-shadow: var\(--shadow-dynamic-card\);",
         scss,
     )
     assert re.search(r"\.featured-directory \{[^}]*overflow: visible;", scss)
