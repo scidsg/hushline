@@ -38,10 +38,11 @@ The server does not store conversation plaintext.
 ## Deleting conversations
 
 Use the conversation action menu to delete a conversation you no longer need to
-retain. Deleting a conversation removes the encrypted follow-up thread and its
-participant message copies. If the conversation began from a one-way intake
-message, the original inbox message remains without an attached conversation
-link.
+retain. Deleting a conversation removes it from your inbox and deletes your
+encrypted copies. Messages you sent appear as deleted placeholders to other
+participants so they can keep the thread and any messages still available to
+them. Hush Line removes the shared conversation only after every participant has
+deleted their side.
 
 ## Notifications
 

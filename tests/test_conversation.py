@@ -330,7 +330,7 @@ def test_conversation_header_includes_actions_menu(
     assert 'id="conversation-actions-menu"' in response.text
     assert 'role="menu"' in response.text
     assert url_for("delete_conversation", public_id=conversation.public_id) in response.text
-    assert "Delete this conversation for all participants? This cannot be undone." in response.text
+    assert "Delete this conversation from your inbox?" in response.text
     assert 'role="menuitem"' in response.text
     assert ">Delete</button>" in response.text
 
@@ -564,13 +564,15 @@ def test_conversation_presence_requires_csrf_when_enabled(
     assert "Invalid CSRF token." in response.text
 
 
-def test_participant_can_delete_conversation(
+def test_participant_delete_removes_only_their_side_of_conversation(
     client: FlaskClient,
     user: User,
     user2: User,
 ) -> None:
     conversation = _make_conversation(user, user2)
     conversation_id = conversation.id
+    sender_participant = _participant_for(conversation, user)
+    recipient_participant = _participant_for(conversation, user2)
     initial_message = Message(username_id=user2.primary_username.id)
     initial_message.conversation = conversation
     db.session.add(initial_message)
@@ -591,29 +593,48 @@ def test_participant_can_delete_conversation(
 
     assert response.status_code == 302
     assert response.headers["Location"].endswith(url_for("inbox", type="conversations"))
-    assert db.session.get(Conversation, conversation_id) is None
+    retained_conversation = db.session.get(Conversation, conversation_id)
+    assert retained_conversation is not None
+    db.session.refresh(sender_participant)
+    assert sender_participant.deleted_at is not None
     assert (
         db.session.scalar(
             db.select(db.func.count())
             .select_from(ConversationParticipant)
             .where(ConversationParticipant.conversation_id == conversation_id)
         )
-        == 0
+        == 2
     )
     assert all(
-        db.session.get(ConversationMessage, message_id) is None
+        db.session.get(ConversationMessage, message_id) is not None
         for message_id in conversation_message_ids
     )
     assert all(
         db.session.get(ConversationMessageCopy, copy_id) is None
         for copy_id in conversation_copy_ids
     )
+    assert db.session.scalars(Conversation.for_user_id(user.id)).all() == []
+    assert db.session.scalars(Conversation.for_user_id(user2.id)).all() == [retained_conversation]
     retained_message = db.session.get(Message, initial_message_id)
     assert retained_message is not None
-    assert retained_message.conversation_id is None
+    assert retained_message.conversation_id == conversation_id
+
+    _authenticate_as(client, user2)
+    recipient_response = client.get(url_for("conversation", public_id=conversation.public_id))
+
+    assert recipient_response.status_code == 200
+    assert "This message was deleted." in recipient_response.text
+    assert (
+        db.session.scalar(
+            db.select(db.func.count())
+            .select_from(ConversationMessageCopy)
+            .where(ConversationMessageCopy.recipient_participant_id == recipient_participant.id)
+        )
+        == 0
+    )
 
 
-def test_delete_conversation_removes_chat_only_placeholder_initial_message(
+def test_delete_conversation_removes_chat_only_placeholder_after_all_participants_delete(
     client: FlaskClient,
     user: User,
     user2: User,
@@ -636,6 +657,17 @@ def test_delete_conversation_removes_chat_only_placeholder_initial_message(
     placeholder_value_id = placeholder_value.id
     _authenticate_as(client, user)
 
+    response = client.post(
+        url_for("delete_conversation", public_id=conversation.public_id),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert db.session.get(Conversation, conversation_id) is not None
+    assert db.session.get(Message, initial_message_id) is not None
+    assert db.session.get(FieldValue, placeholder_value_id) is not None
+
+    _authenticate_as(client, user2)
     response = client.post(
         url_for("delete_conversation", public_id=conversation.public_id),
         follow_redirects=False,
@@ -729,7 +761,39 @@ def test_delete_conversation_accepts_rendered_csrf_token(
         app.config["WTF_CSRF_ENABLED"] = prior_setting
 
     assert response.status_code == 302
-    assert db.session.get(Conversation, conversation_id) is None
+    assert db.session.get(Conversation, conversation_id) is not None
+    participant = db.session.scalar(
+        db.select(ConversationParticipant).where(
+            ConversationParticipant.conversation_id == conversation_id,
+            ConversationParticipant.user_id == user.id,
+        )
+    )
+    assert participant is not None
+    assert participant.deleted_at is not None
+
+
+def test_append_conversation_message_rejects_when_participant_deleted_their_side(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_reply_capable_chat_keys(user, user2)
+    conversation = _make_conversation(user, user2)
+    sender_participant = _participant_for(conversation, user)
+    sender_participant.deleted_at = datetime.now(timezone.utc)
+    db.session.commit()
+    _authenticate_as(client, user2)
+
+    page_response = client.get(url_for("conversation", public_id=conversation.public_id))
+    response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(conversation, user2, "after-delete")},
+    )
+
+    assert page_response.status_code == 200
+    assert 'data-can-compose="false"' in page_response.text
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Conversation replies are unavailable."}
 
 
 def test_participant_can_append_encrypted_conversation_message(

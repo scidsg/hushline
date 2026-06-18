@@ -48,6 +48,20 @@ def test_conversation_membership_is_user_id_based(app: Flask, user: User, user2:
     assert conversation.participant_for_user_id(999_999) is None
 
 
+def test_conversation_membership_excludes_locally_deleted_participants(
+    app: Flask, user: User, user2: User
+) -> None:
+    conversation, participant, _ = _make_conversation(user, user2)
+    participant.deleted_at = datetime.now(timezone.utc)
+    db.session.commit()
+
+    user_conversations = db.session.scalars(Conversation.for_user_id(user.id)).all()
+    user2_conversations = db.session.scalars(Conversation.for_user_id(user2.id)).all()
+
+    assert user_conversations == []
+    assert user2_conversations == [conversation]
+
+
 def test_conversation_message_has_encrypted_copies(
     app: Flask,
     user: User,

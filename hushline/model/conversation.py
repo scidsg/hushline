@@ -54,6 +54,7 @@ class Conversation(Model):
             db.select(cls)
             .join(ConversationParticipant)
             .where(ConversationParticipant.user_id == user_id)
+            .where(ConversationParticipant.deleted_at.is_(None))
         )
 
     def participant_for_user_id(self, user_id: int) -> "ConversationParticipant | None":
@@ -86,6 +87,7 @@ class ConversationParticipant(Model):
         index=True,
     )
     last_active_at: Mapped[datetime | None] = mapped_column(db.DateTime(timezone=True))
+    deleted_at: Mapped[datetime | None] = mapped_column(db.DateTime(timezone=True))
     has_usable_public_key: Mapped[bool] = mapped_column(
         db.Boolean,
         nullable=False,

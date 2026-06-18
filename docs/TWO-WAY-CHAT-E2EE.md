@@ -132,6 +132,13 @@ Conversation notifications are generic. They do not include conversation
 plaintext or conversation ciphertext, even when a user has enabled message
 content notifications for one-way tip intake.
 
+Conversation deletion is participant-local. When a participant deletes a
+conversation, Hush Line removes that participant's inbox access and encrypted
+copies, and removes encrypted copies for messages authored by that participant
+so other participants see deleted-message placeholders. The shared conversation
+record remains for remaining participants until every participant has deleted
+their side.
+
 ## Privacy and Security Properties
 
 Two-way chat is designed to provide:
@@ -172,6 +179,8 @@ Before shipping conversation workflow changes, reviewers should verify:
 - replies are unavailable unless all participants have signing-capable chat
   keys;
 - conversation rows and notifications do not reveal plaintext;
+- deleting a conversation removes only the deleting participant's local access
+  and authored encrypted payloads until every participant deletes their side;
 - password change still requires chat-key rewrap;
 - password reset still locks old chat history encrypted to the old key; and
 - accessibility remains 100 and performance remains at least 95 for affected
