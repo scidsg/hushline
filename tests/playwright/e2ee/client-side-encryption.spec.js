@@ -1,6 +1,8 @@
 const { expect, test } = require("@playwright/test");
 
 const PGP_ARMOR_HEADER = "-----BEGIN PGP MESSAGE-----";
+const CHAT_ENVELOPE_ALGORITHM = "ECDH-P256-AES-GCM";
+const TEST_PASSWORD = "Test-testtesttesttest-1";
 const contactPlaintext = "P0 frontend e2ee contact sentinel";
 const messagePlaintext = "P0 frontend e2ee message sentinel";
 
@@ -11,6 +13,117 @@ function captchaAnswer(labelText) {
     `CAPTCHA label should be parseable: ${labelText}`,
   ).not.toBeNull();
   return String(Number(match[1]) + Number(match[2]));
+}
+
+function parseEnvelope(value) {
+  expect(typeof value).toBe("string");
+  const envelope = JSON.parse(value);
+  expect(envelope).toMatchObject({
+    v: 2,
+    algorithm: CHAT_ENVELOPE_ALGORITHM,
+  });
+  expect(envelope.ephemeral_public_key).toBeTruthy();
+  expect(envelope.iv).toBeTruthy();
+  expect(envelope.ciphertext).toBeTruthy();
+  expect(envelope.signature).toBeTruthy();
+  expect(envelope.context).toBeTruthy();
+  return envelope;
+}
+
+function expectNoPlaintext(value, plaintextValues) {
+  for (const plaintext of plaintextValues) {
+    expect(value).not.toContain(plaintext);
+  }
+}
+
+function formValueFromPostBody(postBody, name) {
+  const params = new URLSearchParams(postBody);
+  if (params.has(name)) {
+    return params.get(name) || "";
+  }
+
+  const marker = `name="${name}"`;
+  const markerIndex = postBody.indexOf(marker);
+  if (markerIndex === -1) {
+    return "";
+  }
+  const valueStart = postBody.indexOf("\r\n\r\n", markerIndex);
+  if (valueStart === -1) {
+    return "";
+  }
+  const valueEnd = postBody.indexOf("\r\n------", valueStart + 4);
+  if (valueEnd === -1) {
+    return "";
+  }
+  return postBody.slice(valueStart + 4, valueEnd);
+}
+
+async function suppressGuidanceModal(page) {
+  await page.evaluate(() => {
+    localStorage.setItem("hasFinishedGuidance", "true");
+    document.getElementById("guidance-modal")?.classList.remove("show");
+  });
+}
+
+async function login(page, username) {
+  await page.addInitScript(() => {
+    localStorage.setItem("hasFinishedGuidance", "true");
+  });
+  await page.goto("/login", { waitUntil: "networkidle" });
+  await suppressGuidanceModal(page);
+  await page.fill("#username", username);
+  await page.fill("#password", TEST_PASSWORD);
+
+  await Promise.all([
+    page.waitForFunction(() => document.body?.dataset.authenticated === "true"),
+    page.locator('button[type="submit"]').click(),
+  ]);
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Boolean(sessionStorage.getItem("hushline:chat-private-jwk")),
+      ),
+    )
+    .toBe(true);
+}
+
+async function expectConversationMessage(page, plaintext) {
+  await expect(
+    page.locator(".conversation-message-body", { hasText: plaintext }),
+  ).toBeVisible();
+}
+
+async function openUnlockedConversation(page, url, plaintext) {
+  await page.goto(url, { waitUntil: "networkidle" });
+  await expect(page.locator("#conversation-chat")).toBeVisible();
+  await expect(page.locator("#conversation-compose-body")).toBeEnabled();
+  await expectConversationMessage(page, plaintext);
+}
+
+async function postJsonFromPage(page, url, csrfToken, payload) {
+  return page.evaluate(
+    async ({ requestUrl, requestCsrfToken, requestPayload }) => {
+      const response = await fetch(requestUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-CSRFToken": requestCsrfToken,
+        },
+        body: JSON.stringify(requestPayload),
+      });
+      return {
+        status: response.status,
+        text: await response.text(),
+      };
+    },
+    {
+      requestUrl: url,
+      requestCsrfToken: csrfToken,
+      requestPayload: payload,
+    },
+  );
 }
 
 test("JS-enabled profile submissions encrypt fields before the POST leaves the browser", async ({
@@ -35,10 +148,7 @@ test("JS-enabled profile submissions encrypt fields before the POST leaves the b
   });
 
   await page.goto("/to/admin", { waitUntil: "networkidle" });
-  await page.evaluate(() => {
-    localStorage.setItem("hasFinishedGuidance", "true");
-    document.getElementById("guidance-modal")?.classList.remove("show");
-  });
+  await suppressGuidanceModal(page);
 
   await expect(page.locator("#messageForm")).toBeVisible();
   await expect
@@ -83,10 +193,12 @@ test("JS-enabled profile submissions encrypt fields before the POST leaves the b
   ).toEqual([]);
   expect(capturedPostBody).toBeTruthy();
 
-  const params = new URLSearchParams(capturedPostBody);
-  const encryptedContact = params.get("field_0") || "";
-  const encryptedMessage = params.get("field_1") || "";
-  const encryptedEmailBody = params.get("encrypted_email_body") || "";
+  const encryptedContact = formValueFromPostBody(capturedPostBody, "field_0");
+  const encryptedMessage = formValueFromPostBody(capturedPostBody, "field_1");
+  const encryptedEmailBody = formValueFromPostBody(
+    capturedPostBody,
+    "encrypted_email_body",
+  );
 
   expect(encryptedContact).toContain(PGP_ARMOR_HEADER);
   expect(encryptedMessage).toContain(PGP_ARMOR_HEADER);
@@ -96,4 +208,211 @@ test("JS-enabled profile submissions encrypt fields before the POST leaves the b
   expect(encryptedMessage).not.toContain(messagePlaintext);
   expect(encryptedEmailBody).not.toContain(contactPlaintext);
   expect(encryptedEmailBody).not.toContain(messagePlaintext);
+});
+
+test("logged-in account conversation stays encrypted through browser lifecycle", async ({
+  browser,
+}) => {
+  test.setTimeout(60000);
+
+  const sentPlaintext = `P0 account conversation initial ${Date.now()}`;
+  const replyPlaintext = `P0 account conversation reply ${Date.now()}`;
+  const tamperedPlaintext = `P0 malformed reply leakage ${Date.now()}`;
+  const sensitiveValues = [sentPlaintext, replyPlaintext, tamperedPlaintext];
+
+  const senderContext = await browser.newContext();
+  const recipientContext = await browser.newContext();
+  const senderPage = await senderContext.newPage();
+  const recipientPage = await recipientContext.newPage();
+
+  try {
+    await login(senderPage, "artvandelay");
+
+    let capturedInitialPostBody = null;
+    senderPage.on("request", (request) => {
+      if (request.method() === "POST" && request.url().endsWith("/to/newman")) {
+        capturedInitialPostBody = request.postData() || "";
+      }
+    });
+
+    await senderPage.goto("/to/newman", { waitUntil: "networkidle" });
+    await suppressGuidanceModal(senderPage);
+    await expect(senderPage.locator("#messageForm")).toBeVisible();
+    await expect
+      .poll(() =>
+        senderPage.evaluate(
+          () => document.getElementById("senderChatKey")?.textContent || "",
+        ),
+      )
+      .toContain("public_signing_key");
+    await expect
+      .poll(() =>
+        senderPage.evaluate(
+          () => document.getElementById("recipientChatKey")?.textContent || "",
+        ),
+      )
+      .toContain("public_signing_key");
+
+    await senderPage.fill("#field_0", "Secure account conversation contact");
+    await senderPage.fill("#field_1", sentPlaintext);
+    await senderPage.fill(
+      "#captcha_answer",
+      captchaAnswer(
+        await senderPage.locator('label[for="captcha_answer"]').innerText(),
+      ),
+    );
+
+    await Promise.all([
+      senderPage.waitForRequest(
+        (request) =>
+          request.method() === "POST" && request.url().endsWith("/to/newman"),
+      ),
+      senderPage.locator("#submitBtn").click(),
+    ]);
+    await expect(senderPage.locator("#conversation-chat")).toBeVisible();
+    await expectConversationMessage(senderPage, sentPlaintext);
+
+    expect(capturedInitialPostBody).toBeTruthy();
+    expectNoPlaintext(capturedInitialPostBody, sensitiveValues);
+
+    expect(formValueFromPostBody(capturedInitialPostBody, "field_0")).toBe(
+      "Stored in encrypted conversation.",
+    );
+    expect(formValueFromPostBody(capturedInitialPostBody, "field_1")).toBe(
+      "Stored in encrypted conversation.",
+    );
+
+    const initialCopies = JSON.parse(
+      formValueFromPostBody(
+        capturedInitialPostBody,
+        "encrypted_conversation_copies",
+      ) || "{}",
+    );
+    expect(Object.keys(initialCopies).sort()).toEqual(["recipient", "sender"]);
+    for (const role of ["recipient", "sender"]) {
+      const envelope = parseEnvelope(initialCopies[role]);
+      expect(envelope.context).toMatchObject({
+        purpose: "hushline.chat.initial_message",
+      });
+      expect(envelope.context.initial_conversation_nonce).toBeTruthy();
+      expect(envelope.context.sender_key_version).toBeTruthy();
+      expect(envelope.context.sender_public_key_fingerprint).toBeTruthy();
+      expect(
+        envelope.context.sender_public_signing_key_fingerprint,
+      ).toBeTruthy();
+      expect(envelope.context.recipient_key_version).toBeTruthy();
+      expect(envelope.context.recipient_public_key_fingerprint).toBeTruthy();
+      expectNoPlaintext(JSON.stringify(envelope), sensitiveValues);
+    }
+
+    const conversationUrl = senderPage.url();
+    const conversationPublicId = await senderPage
+      .locator("#conversation-chat")
+      .evaluate((element) => element.dataset.conversationPublicId);
+    expect(conversationUrl).toContain(`/conversation/${conversationPublicId}`);
+
+    await login(recipientPage, "newman");
+    await openUnlockedConversation(
+      recipientPage,
+      conversationUrl,
+      sentPlaintext,
+    );
+
+    const replyRequestPromise = recipientPage.waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        request
+          .url()
+          .endsWith(`/conversation/${conversationPublicId}/messages`),
+    );
+    await recipientPage.fill("#conversation-compose-body", replyPlaintext);
+    await recipientPage.locator("#conversation-compose-submit").click();
+    const replyRequest = await replyRequestPromise;
+    const replyPostBody = replyRequest.postData() || "";
+    expectNoPlaintext(replyPostBody, sensitiveValues);
+
+    const replyPayload = JSON.parse(replyPostBody);
+    const rootData = await recipientPage
+      .locator("#conversation-chat")
+      .evaluate((element) => ({
+        messageUrl: element.dataset.messageUrl,
+        participantId: element.dataset.participantId,
+      }));
+    const csrfToken = await recipientPage
+      .locator('#conversation-compose-form input[name="csrf_token"]')
+      .inputValue();
+    const participantKeys = await recipientPage.evaluate(() =>
+      JSON.parse(
+        document.getElementById("conversationParticipantPublicKeys")
+          ?.textContent || "[]",
+      ),
+    );
+    const participantIds = participantKeys
+      .map((participant) => String(participant.participant_id))
+      .sort();
+    expect(Object.keys(replyPayload.encrypted_copies).sort()).toEqual(
+      participantIds,
+    );
+
+    for (const [recipientParticipantId, encryptedPayload] of Object.entries(
+      replyPayload.encrypted_copies,
+    )) {
+      const envelope = parseEnvelope(encryptedPayload);
+      expect(envelope.context).toMatchObject({
+        purpose: "hushline.chat.message",
+        conversation_public_id: conversationPublicId,
+        sender_participant_id: rootData.participantId,
+        recipient_participant_id: recipientParticipantId,
+      });
+      expect(envelope.context.recipient_key_version).toBeTruthy();
+      expect(envelope.context.recipient_public_key_fingerprint).toBeTruthy();
+      expectNoPlaintext(JSON.stringify(envelope), sensitiveValues);
+    }
+
+    await expectConversationMessage(recipientPage, replyPlaintext);
+
+    const senderRefresh = senderPage.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.url().endsWith(`/conversation/${conversationPublicId}`),
+    );
+    await senderPage.reload({ waitUntil: "networkidle" });
+    await senderRefresh.catch(() => undefined);
+    await expectConversationMessage(senderPage, replyPlaintext);
+
+    const malformedResponse = await postJsonFromPage(
+      recipientPage,
+      rootData.messageUrl,
+      csrfToken,
+      {
+        encrypted_copies: {
+          [participantIds[0]]: tamperedPlaintext,
+        },
+      },
+    );
+    expect(malformedResponse.status).toBe(400);
+    expectNoPlaintext(malformedResponse.text, sensitiveValues);
+
+    const tamperedCopies = JSON.parse(
+      JSON.stringify(replyPayload.encrypted_copies),
+    );
+    const tamperedRecipientId = participantIds[0];
+    const tamperedEnvelope = JSON.parse(tamperedCopies[tamperedRecipientId]);
+    tamperedEnvelope.context.conversation_public_id =
+      "00000000-0000-4000-8000-000000000000";
+    tamperedCopies[tamperedRecipientId] = JSON.stringify(tamperedEnvelope);
+    const tamperedResponse = await postJsonFromPage(
+      recipientPage,
+      rootData.messageUrl,
+      csrfToken,
+      {
+        encrypted_copies: tamperedCopies,
+      },
+    );
+    expect(tamperedResponse.status).toBe(400);
+    expectNoPlaintext(tamperedResponse.text, sensitiveValues);
+  } finally {
+    await senderContext.close();
+    await recipientContext.close();
+  }
 });
