@@ -2,24 +2,10 @@
 name: Release Governance
 
 on:
-  pull_request:
-    paths:
-      - ".github/release-allowed-signers"
-      - ".github/workflows/build-release.yml"
-      - ".github/workflows/release-governance.yml"
-      - "Makefile"
-      - "hushline/version.py"
-      - "scripts/release.py"
+  pull_request_target:
   push:
     branches:
       - main
-    paths:
-      - ".github/release-allowed-signers"
-      - ".github/workflows/build-release.yml"
-      - ".github/workflows/release-governance.yml"
-      - "Makefile"
-      - "hushline/version.py"
-      - "scripts/release.py"
 
 permissions:
   contents: read
@@ -39,25 +25,46 @@ jobs:
         run: |
           set -euo pipefail
 
-          governed_path_pattern='^(\.github/release-allowed-signers|\.github/workflows/(build-release|release-governance)\.yml|Makefile|hushline/version\.py|scripts/release\.py)$'
+          governed_path_pattern='^(\.github/release-allowed-signers|\.github/workflows/(build-release|bump-personal-server-after-release|bump-staging-after-release|docs-screenshots|publish-docs-screenshots|release-governance)\.yml|Makefile|hushline/version\.py|scripts/release\.py)$'
 
-          if [ "$EVENT_NAME" = "pull_request" ]; then
-            actor="$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")"
+          if [ "$EVENT_NAME" = "pull_request_target" ]; then
+            actor="$(jq -r '.sender.login' "$GITHUB_EVENT_PATH")"
             pr_number="$(jq -r '.pull_request.number' "$GITHUB_EVENT_PATH")"
-            files="$(
+            expected_file_count="$(jq -r '.pull_request.changed_files' "$GITHUB_EVENT_PATH")"
+            file_records="$(
               gh api --paginate "repos/${REPOSITORY}/pulls/${pr_number}/files" \
-                --jq '.[].filename'
+                --jq '.[] | [.filename, (.previous_filename // "")] | @tsv'
             )"
+            returned_file_count="$(printf '%s\n' "$file_records" | sed '/^$/d' | wc -l | tr -d ' ')"
+            if [ "$expected_file_count" -ge 3000 ] || [ "$returned_file_count" -ne "$expected_file_count" ]; then
+              {
+                echo "Could not inspect the complete PR file list."
+                echo "Expected ${expected_file_count} files and received ${returned_file_count} records."
+              } >&2
+              exit 1
+            fi
           else
             actor="$GITHUB_ACTOR"
             before_sha="$(jq -r '.before' "$GITHUB_EVENT_PATH")"
-            files="$(
-              gh api "repos/${REPOSITORY}/compare/${before_sha}...${HEAD_SHA}" \
-                --jq '.files[].filename'
+            compare_json="$(
+              gh api "repos/${REPOSITORY}/compare/${before_sha}...${HEAD_SHA}"
+            )"
+            returned_file_count="$(jq -r '.files | length' <<<"$compare_json")"
+            if [ "$returned_file_count" -ge 300 ]; then
+              echo "Could not inspect the complete push file list; GitHub compare results may be truncated." >&2
+              exit 1
+            fi
+            file_records="$(
+              jq -r '.files[] | [.filename, (.previous_filename // "")] | @tsv' <<<"$compare_json"
             )"
           fi
 
-          governed_files="$(printf '%s\n' "$files" | rg "$governed_path_pattern" || true)"
+          governed_files="$(
+            printf '%s\n' "$file_records" |
+              awk -F '\t' '{ print $1; if ($2 != "") print $2 }' |
+              rg "$governed_path_pattern" ||
+              true
+          )"
           if [ -z "$governed_files" ]; then
             echo "No release-governed files changed."
             exit 0
