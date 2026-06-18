@@ -476,15 +476,20 @@ def register_message_routes(app: Flask) -> None:
         if not isinstance(encrypted_copies, dict):
             return jsonify({"error": "Invalid encrypted message payload."}), 400
 
-        participant_public_keys = {
-            str(thread_participant.id): thread_participant.user.chat_public_key
+        reply_capable_participant_ids = {
+            str(thread_participant.id)
             for thread_participant in thread.participants
-            if thread_participant.user and thread_participant.user.chat_public_key
+            if (
+                thread_participant.user
+                and thread_participant.user.active_chat_key
+                and thread_participant.user.chat_public_key
+                and thread_participant.user.chat_public_signing_key
+            )
         }
-        if len(participant_public_keys) != len(thread.participants):
+        if len(reply_capable_participant_ids) != len(thread.participants):
             return jsonify({"error": "Conversation replies are unavailable."}), 400
 
-        if set(encrypted_copies.keys()) != set(participant_public_keys.keys()):
+        if set(encrypted_copies.keys()) != reply_capable_participant_ids:
             return jsonify({"error": "Invalid encrypted message payload."}), 400
 
         if not all(_is_chat_ciphertext_envelope(value) for value in encrypted_copies.values()):
