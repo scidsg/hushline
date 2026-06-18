@@ -1017,7 +1017,7 @@ def create_sample_conversations() -> None:
             ),
             (
                 "newman",
-                "Not a coffee can. A very official envelope labeled \"miscellaneous grievances.\"",
+                'Not a coffee can. A very official envelope labeled "miscellaneous grievances."',
                 base_time + timedelta(minutes=37),
             ),
         ],
