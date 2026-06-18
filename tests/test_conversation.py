@@ -617,13 +617,16 @@ def test_participant_delete_removes_only_their_side_of_conversation(
     assert db.session.scalars(Conversation.for_user_id(user2.id)).all() == [retained_conversation]
     retained_message = db.session.get(Message, initial_message_id)
     assert retained_message is not None
-    assert retained_message.conversation_id == conversation_id
+    assert retained_message.conversation_id is None
 
     _authenticate_as(client, user2)
     recipient_response = client.get(url_for("conversation", public_id=conversation.public_id))
+    inbox_response = client.get(url_for("inbox"))
 
     assert recipient_response.status_code == 200
     assert "This message was deleted." in recipient_response.text
+    assert inbox_response.status_code == 200
+    assert url_for("message", public_id=retained_message.public_id) in inbox_response.text
     assert (
         db.session.scalar(
             db.select(db.func.count())
@@ -677,6 +680,56 @@ def test_delete_conversation_removes_chat_only_placeholder_after_all_participant
     assert db.session.get(Conversation, conversation_id) is None
     assert db.session.get(Message, initial_message_id) is None
     assert db.session.get(FieldValue, placeholder_value_id) is None
+
+
+def test_delete_conversation_detaches_initial_message_for_owner(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    conversation = _make_conversation(user, user2)
+    initial_message = Message(username_id=user2.primary_username.id)
+    initial_message.conversation = conversation
+    db.session.add(initial_message)
+    db.session.commit()
+    initial_message_id = initial_message.id
+    _authenticate_as(client, user2)
+
+    response = client.post(
+        url_for("delete_conversation", public_id=conversation.public_id),
+        follow_redirects=False,
+    )
+    inbox_response = client.get(url_for("inbox"))
+
+    assert response.status_code == 302
+    retained_message = db.session.get(Message, initial_message_id)
+    assert retained_message is not None
+    assert retained_message.conversation_id is None
+    assert db.session.get(Conversation, conversation.id) is not None
+    assert db.session.scalars(Conversation.for_user_id(user2.id)).all() == []
+    assert inbox_response.status_code == 200
+    assert url_for("message", public_id=retained_message.public_id) in inbox_response.text
+
+
+def test_delete_conversation_cleans_up_when_other_participant_already_deleted(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    conversation = _make_conversation(user, user2)
+    conversation_id = conversation.id
+    other_participant = _participant_for(conversation, user2)
+    other_participant.deleted_at = datetime.now(timezone.utc)
+    db.session.commit()
+    _authenticate_as(client, user)
+
+    response = client.post(
+        url_for("delete_conversation", public_id=conversation.public_id),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert db.session.get(Conversation, conversation_id) is None
 
 
 def test_delete_conversation_requires_participant(

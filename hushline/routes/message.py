@@ -90,6 +90,17 @@ def _conversation_active_participants(thread: Conversation) -> list[Conversation
     ]
 
 
+def _locked_conversation_participants(thread: Conversation) -> list[ConversationParticipant]:
+    return list(
+        db.session.scalars(
+            db.select(ConversationParticipant)
+            .where(ConversationParticipant.conversation_id == thread.id)
+            .order_by(ConversationParticipant.id)
+            .with_for_update()
+        )
+    )
+
+
 def _is_conversation_background_refresh() -> bool:
     return request.headers.get("X-Hushline-Conversation-Refresh", "").lower() == "true"
 
@@ -568,9 +579,21 @@ def register_message_routes(app: Flask) -> None:
         if not delete_conversation_form.validate_on_submit():
             abort(400)
 
-        participant = thread.participant_for_user_id(user.id)
+        locked_participants = _locked_conversation_participants(thread)
+        participant = next(
+            (
+                thread_participant
+                for thread_participant in locked_participants
+                if thread_participant.user_id == user.id
+            ),
+            None,
+        )
         if participant is None:
             abort(404)
+
+        initial_message = thread.initial_message
+        if initial_message is not None and not _message_is_chat_only_placeholder(initial_message):
+            initial_message.conversation = None
 
         participant.deleted_at = datetime.now(UTC)
         participant.last_read_at = participant.deleted_at
@@ -592,7 +615,10 @@ def register_message_routes(app: Flask) -> None:
             execution_options={"synchronize_session": False},
         )
 
-        if not _conversation_active_participants(thread):
+        db.session.flush()
+        if not any(
+            thread_participant.deleted_at is None for thread_participant in locked_participants
+        ):
             initial_message = thread.initial_message
             if initial_message is not None:
                 if _message_is_chat_only_placeholder(initial_message):
