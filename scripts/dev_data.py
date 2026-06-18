@@ -997,27 +997,27 @@ def create_sample_conversations() -> None:
         messages=[
             (
                 "newman",
-                "The procurement file has three dates that do not match the public agenda.",
+                'Hello, "Art" ;)',
                 base_time,
             ),
             (
                 "artvandelay",
-                "I am in the thread now. Share only what you can safely document.",
+                "Hello, Newman.",
                 base_time + timedelta(minutes=8),
             ),
             (
                 "newman",
-                "I can confirm the Feb 9 shipment was approved before the safety review closed.",
+                "I think I have information you might find interesting about the Human Fund.",
                 base_time + timedelta(minutes=19),
             ),
             (
                 "artvandelay",
-                "Received. I will cross-check the contract number and keep this conversation here.",
+                "The charity? Please tell me the funds are not just in a coffee can.",
                 base_time + timedelta(minutes=24),
             ),
             (
                 "newman",
-                "There is also an internal memo saying the vendor was preselected.",
+                "Not a coffee can. A very official envelope labeled \"miscellaneous grievances.\"",
                 base_time + timedelta(minutes=37),
             ),
         ],
