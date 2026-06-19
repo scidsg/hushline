@@ -1,8 +1,12 @@
+import base64
 import json
 import re
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 
@@ -18,6 +22,70 @@ from hushline.model import (
     NotificationRecipient,
     User,
 )
+
+_SENDER_SIGNING_PRIVATE_KEY = ec.derive_private_key(1, ec.SECP256R1())
+_RECIPIENT_SIGNING_PRIVATE_KEY = ec.derive_private_key(2, ec.SECP256R1())
+
+
+def _b64url(value: bytes) -> str:
+    return base64.urlsafe_b64encode(value).decode("ascii").rstrip("=")
+
+
+def _public_signing_jwk(private_key: ec.EllipticCurvePrivateKey) -> str:
+    public_numbers = private_key.public_key().public_numbers()
+    return json.dumps(
+        {
+            "kty": "EC",
+            "crv": "P-256",
+            "x": _b64url(public_numbers.x.to_bytes(32, "big")),
+            "y": _b64url(public_numbers.y.to_bytes(32, "big")),
+            "key_ops": ["verify"],
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+_SENDER_PUBLIC_SIGNING_KEY = _public_signing_jwk(_SENDER_SIGNING_PRIVATE_KEY)
+_RECIPIENT_PUBLIC_SIGNING_KEY = _public_signing_jwk(_RECIPIENT_SIGNING_PRIVATE_KEY)
+
+
+def _canonical_chat_json(value: object) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _sign_chat_envelope(
+    envelope: dict[str, object],
+    private_key: ec.EllipticCurvePrivateKey,
+) -> str:
+    signed_payload = {
+        "v": envelope["v"],
+        "algorithm": envelope["algorithm"],
+        "ephemeral_public_key": envelope["ephemeral_public_key"],
+        "iv": envelope["iv"],
+        "ciphertext": envelope["ciphertext"],
+        "context": envelope["context"],
+    }
+    der_signature = private_key.sign(
+        _canonical_chat_json(signed_payload).encode("utf-8"),
+        ec.ECDSA(hashes.SHA256()),
+    )
+    r_value, s_value = decode_dss_signature(der_signature)
+    return base64.b64encode(r_value.to_bytes(32, "big") + s_value.to_bytes(32, "big")).decode(
+        "ascii"
+    )
+
+
+def _signing_private_key_for_participant(
+    conversation: Conversation,
+    participant: ConversationParticipant,
+) -> ec.EllipticCurvePrivateKey:
+    participant_ids = [thread_participant.id for thread_participant in conversation.participants]
+    return (
+        _SENDER_SIGNING_PRIVATE_KEY
+        if participant_ids.index(participant.id) == 0
+        else _RECIPIENT_SIGNING_PRIVATE_KEY
+    )
 
 
 def _authenticate_as(client: FlaskClient, user: User) -> None:
@@ -53,12 +121,12 @@ def _add_reply_capable_chat_keys(sender: User, recipient: User) -> None:
     _add_chat_key(
         sender,
         '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}',
-        public_signing_key='{"kty":"EC","crv":"P-256","x":"sender-sign","y":"key"}',
+        public_signing_key=_SENDER_PUBLIC_SIGNING_KEY,
     )
     _add_chat_key(
         recipient,
         '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}',
-        public_signing_key='{"kty":"EC","crv":"P-256","x":"recipient-sign","y":"key"}',
+        public_signing_key=_RECIPIENT_PUBLIC_SIGNING_KEY,
     )
 
 
@@ -93,33 +161,20 @@ def _ciphertext(label: str) -> str:
 
 def _bound_ciphertext(
     *,
-    conversation_public_id: str | None = None,
-    conversation_id: int | None = None,
-    sender_participant_id: int,
-    recipient_participant_id: int,
+    context: dict[str, str],
     label: str,
+    signing_private_key: ec.EllipticCurvePrivateKey,
 ) -> str:
-    context = {
-        "purpose": "hushline.chat.message",
-        "sender_participant_id": str(sender_participant_id),
-        "recipient_participant_id": str(recipient_participant_id),
+    envelope: dict[str, object] = {
+        "v": 2,
+        "algorithm": "ECDH-P256-AES-GCM",
+        "ephemeral_public_key": '{"kty":"EC","crv":"P-256","x":"ephemeral","y":"key"}',
+        "iv": f"iv-{label}",
+        "ciphertext": f"ciphertext-{label}",
+        "context": context,
     }
-    if conversation_public_id is not None:
-        context["conversation_public_id"] = conversation_public_id
-    else:
-        context["conversation_id"] = str(conversation_id)
-
-    return json.dumps(
-        {
-            "v": 2,
-            "algorithm": "ECDH-P256-AES-GCM",
-            "ephemeral_public_key": '{"kty":"EC","crv":"P-256","x":"ephemeral","y":"key"}',
-            "iv": f"iv-{label}",
-            "ciphertext": f"ciphertext-{label}",
-            "context": context,
-            "signature": f"signature-{label}",
-        }
-    )
+    envelope["signature"] = _sign_chat_envelope(envelope, signing_private_key)
+    return json.dumps(envelope)
 
 
 def _make_conversation(
@@ -165,20 +220,47 @@ def _copies_for(conversation: Conversation, label: str) -> dict[str, str]:
     }
 
 
+def _bound_context(
+    conversation: Conversation,
+    sender_participant: ConversationParticipant,
+    recipient_participant: ConversationParticipant,
+    *,
+    use_legacy_conversation_id: bool,
+) -> dict[str, str]:
+    context = {
+        "purpose": "hushline.chat.message",
+        "sender_participant_id": str(sender_participant.id),
+        "recipient_participant_id": str(recipient_participant.id),
+    }
+    if use_legacy_conversation_id:
+        context["conversation_id"] = str(conversation.id)
+    else:
+        context["conversation_public_id"] = conversation.public_id
+    return context
+
+
 def _bound_copies_for(
     conversation: Conversation,
     sender_participant: ConversationParticipant,
     label: str,
     *,
     use_legacy_conversation_id: bool = False,
+    signing_private_key: ec.EllipticCurvePrivateKey | None = None,
 ) -> dict[str, str]:
+    signing_private_key = signing_private_key or _signing_private_key_for_participant(
+        conversation,
+        sender_participant,
+    )
     return {
         str(participant.id): _bound_ciphertext(
-            conversation_id=conversation.id if use_legacy_conversation_id else None,
-            conversation_public_id=None if use_legacy_conversation_id else conversation.public_id,
-            sender_participant_id=sender_participant.id,
-            recipient_participant_id=participant.id,
+            context=_bound_context(
+                conversation,
+                sender_participant,
+                participant,
+                use_legacy_conversation_id=use_legacy_conversation_id,
+            ),
             label=f"{label}-{participant.id}",
+            signing_private_key=signing_private_key,
         )
         for participant in conversation.participants
     }
@@ -897,6 +979,89 @@ def test_append_conversation_message_rejects_unsigned_legacy_envelopes(
     assert response.get_json() == {"error": "Invalid encrypted message payload."}
     message_count = db.session.scalar(db.select(db.func.count()).select_from(ConversationMessage))
     assert message_count == 1
+
+
+@patch("hushline.routes.message.send_email_to_user_recipients")
+def test_append_conversation_message_rejects_bogus_signature_before_persistence(
+    mock_send_email_to_user_recipients: MagicMock,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_reply_capable_chat_keys(user, user2)
+    _enable_conversation_notifications(
+        user2,
+        email="recipient@example.com",
+        include_content=False,
+        encrypt_entire_body=False,
+    )
+    conversation = _make_conversation(user, user2)
+    encrypted_copies = _reply_copies_for(conversation, user, "bogus-signature")
+    for recipient_participant_id, encrypted_payload in encrypted_copies.items():
+        envelope = json.loads(encrypted_payload)
+        envelope["signature"] = base64.b64encode(b"0" * 64).decode("ascii")
+        encrypted_copies[recipient_participant_id] = json.dumps(envelope)
+    _authenticate_as(client, user)
+
+    response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": encrypted_copies},
+    )
+
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Invalid encrypted message payload."}
+    assert (
+        db.session.scalar(
+            db.select(db.func.count())
+            .select_from(ConversationMessage)
+            .where(ConversationMessage.conversation_id == conversation.id)
+        )
+        == 1
+    )
+    assert (
+        db.session.scalar(
+            db.select(db.func.count())
+            .select_from(ConversationMessageCopy)
+            .join(ConversationMessage)
+            .where(ConversationMessage.conversation_id == conversation.id)
+        )
+        == 2
+    )
+    mock_send_email_to_user_recipients.assert_not_called()
+
+
+def test_append_conversation_message_rejects_signature_from_other_participant_key(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_reply_capable_chat_keys(user, user2)
+    conversation = _make_conversation(user, user2)
+    sender_participant = _participant_for(conversation, user)
+    _authenticate_as(client, user)
+
+    response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={
+            "encrypted_copies": _bound_copies_for(
+                conversation,
+                sender_participant,
+                "wrong-signing-key",
+                signing_private_key=_RECIPIENT_SIGNING_PRIVATE_KEY,
+            )
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Invalid encrypted message payload."}
+    assert (
+        db.session.scalar(
+            db.select(db.func.count())
+            .select_from(ConversationMessage)
+            .where(ConversationMessage.conversation_id == conversation.id)
+        )
+        == 1
+    )
 
 
 @patch("hushline.routes.message.send_email_to_user_recipients")
