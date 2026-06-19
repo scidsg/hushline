@@ -10,7 +10,16 @@ from helpers import get_profile_submission_data
 from hushline import auth
 from hushline.chat_key_lifecycle import chat_key_fingerprint
 from hushline.db import db
-from hushline.model import ChatKey, FieldValue, Message, MessageStatus, User, Username
+from hushline.model import (
+    ChatKey,
+    Conversation,
+    FieldValue,
+    Message,
+    MessageStatus,
+    User,
+    Username,
+)
+from hushline.routes.inbox import _conversation_latest_message, _inbox_conversation_summary
 
 MSG_CONTACT_METHOD = "I prefer Signal."
 MSG_CONTENT = "This is a test message."
@@ -104,6 +113,18 @@ def _initial_conversation_copies_for(
             nonce=nonce,
         ),
     }
+
+
+def test_conversation_latest_message_returns_none_for_empty_thread() -> None:
+    assert _conversation_latest_message(Conversation()) is None
+
+
+def test_inbox_conversation_summary_returns_none_for_non_participant(user: User) -> None:
+    conversation = Conversation()
+    db.session.add(conversation)
+    db.session.commit()
+
+    assert _inbox_conversation_summary(conversation, user) is None
 
 
 @pytest.mark.usefixtures("_authenticated_user")
