@@ -3,7 +3,18 @@
 {% block settings_content %}
   <h3>Branding</h3>
 
-  <h4>Diretory Intro Text</h4>
+  <h4>Directory Heading</h4>
+  <form
+    method="POST"
+    class="formBody"
+  >
+    {{ update_directory_heading_form.hidden_tag() }}
+    {{ update_directory_heading_form.heading.label }}
+    {{ update_directory_heading_form.heading }}
+    {{ update_directory_heading_form.submit }}
+  </form>
+
+  <h4>Directory Intro Text</h4>
   <form
     method="POST"
     class="formBody"
