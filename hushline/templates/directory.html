@@ -86,7 +86,7 @@
 {% endmacro %}
 
 {% block content %}
-  <h2 id="directory-title">Whistleblower Support Directory</h2>
+  <h2 id="directory-title">{{ directory_heading }}</h2>
 
   {% if intro_text %}
     {{ intro_text | markdown }}

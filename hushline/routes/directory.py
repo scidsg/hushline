@@ -892,6 +892,7 @@ def register_directory_routes(app: Flask) -> None:
         )
         return render_template(
             "directory.html",
+            directory_heading=OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_HEADING),
             intro_text=OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO_TEXT),
             pgp_usernames=pgp_usernames,
             info_usernames=info_usernames,

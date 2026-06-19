@@ -132,6 +132,21 @@ def test_settings_profile_keeps_frame_restrictions(client: FlaskClient) -> None:
     assert response.headers["X-Frame-Options"] == "DENY"
 
 
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_settings_branding_keeps_csp_enforced(client: FlaskClient) -> None:
+    response = client.get(url_for("settings.branding"))
+    assert response.status_code == 200
+
+    directives = _csp_directives(response.headers)
+    csp = response.headers["Content-Security-Policy"]
+    assert directives["script-src"] == "'self'"
+    assert directives["script-src-elem"] == "'self'"
+    assert "frame-ancestors 'none'" in csp
+    assert "https://js.stripe.com" not in csp
+    assert "https://cdn.jsdelivr.net" not in csp
+    assert "'unsafe-eval'" not in csp
+
+
 @pytest.mark.usefixtures("_authenticated_user")
 def test_vision_page_allows_jsdelivr_only_for_tooling(client: FlaskClient) -> None:
     response = client.get(url_for("vision"))

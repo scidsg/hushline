@@ -33,6 +33,7 @@ from hushline.settings.forms import (
     UpdateBrandAppNameForm,
     UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
+    UpdateDirectoryHeadingForm,
     UpdateDirectoryTextForm,
     UpdateProfileHeaderForm,
     UpdateSplashLogoForm,

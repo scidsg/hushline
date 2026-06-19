@@ -36,6 +36,7 @@ from hushline.settings.forms import (
     SetHomepageUsernameForm,
     UpdateBrandAppNameForm,
     UpdateBrandPrimaryColorForm,
+    UpdateDirectoryHeadingForm,
     UpdateDirectoryTextForm,
     UpdateProfileHeaderForm,
     UserGuidanceForm,
@@ -657,6 +658,16 @@ def test_contract_admin_branding_guidance_and_registration_controls(
     client: FlaskClient, app: Flask, admin: User, user: User
 ) -> None:
     app.config["USER_VERIFICATION_ENABLED"] = True
+
+    directory_heading = "Contract Directory"
+    heading_response = client.post(
+        url_for("settings.branding"),
+        data={"heading": directory_heading, UpdateDirectoryHeadingForm.submit.name: ""},
+        follow_redirects=True,
+    )
+    assert heading_response.status_code == 200
+    assert "Directory heading updated" in heading_response.text
+    assert OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_HEADING) == directory_heading
 
     directory_text = "Contract directory intro"
     branding_response = client.post(

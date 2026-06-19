@@ -32,6 +32,7 @@ from hushline.settings.forms import (
     UpdateBrandAppNameForm,
     UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
+    UpdateDirectoryHeadingForm,
     UpdateDirectoryTextForm,
     UpdateProfileHeaderForm,
     UpdateSplashLogoForm,
@@ -58,6 +59,9 @@ def register_branding_routes(bp: Blueprint) -> None:
 
         update_directory_text_form = UpdateDirectoryTextForm(
             markdown=OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_INTRO_TEXT)
+        )
+        update_directory_heading_form = UpdateDirectoryHeadingForm(
+            heading=OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_HEADING)
         )
         update_brand_logo_form = UpdateBrandLogoForm()
         delete_brand_logo_form = DeleteBrandLogoForm()
@@ -105,6 +109,33 @@ def register_branding_routes(bp: Blueprint) -> None:
                         abort(503)
                     db.session.commit()
                     flash("👍 Directory intro text was reset to defaults.")
+            elif (
+                update_directory_heading_form.submit.name in request.form
+                and update_directory_heading_form.validate()
+            ):
+                raw_heading = update_directory_heading_form.heading.data or ""
+                if heading := raw_heading.strip():
+                    OrganizationSetting.upsert(
+                        key=OrganizationSetting.DIRECTORY_HEADING,
+                        value=heading,
+                    )
+                    db.session.commit()
+                    flash("👍 Directory heading updated.")
+                else:
+                    row_count = db.session.execute(
+                        db.delete(OrganizationSetting).where(
+                            OrganizationSetting.key == OrganizationSetting.DIRECTORY_HEADING
+                        )
+                    ).rowcount
+                    if row_count > 1:
+                        current_app.logger.error(
+                            "Would have deleted multiple rows for OrganizationSetting key="
+                            + OrganizationSetting.DIRECTORY_HEADING
+                        )
+                        db.session.rollback()
+                        abort(503)
+                    db.session.commit()
+                    flash("👍 Directory heading was reset to defaults.")
             elif (
                 update_brand_logo_form.submit.name in request.form
                 and update_brand_logo_form.validate()
@@ -306,6 +337,7 @@ def register_branding_routes(bp: Blueprint) -> None:
             "settings/branding.html",
             user=user,
             update_directory_text_form=update_directory_text_form,
+            update_directory_heading_form=update_directory_heading_form,
             update_brand_logo_form=update_brand_logo_form,
             delete_brand_logo_form=delete_brand_logo_form,
             update_splash_logo_form=update_splash_logo_form,

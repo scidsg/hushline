@@ -23,6 +23,7 @@ class OrganizationSetting(Model):
     BRAND_SPLASH_LOGO = "brand_splash_logo"
     BRAND_SPLASH_LOGO_CACHE_BUSTER = "brand_splash_logo_cache_buster"
     BRAND_SPLASH_SCREEN_ENABLED = "brand_splash_screen_enabled"
+    DIRECTORY_HEADING = "directory_heading"
     DIRECTORY_INTRO_TEXT = "directory_intro_text"
     EMBEDDABLE_FORMS_ENABLED = "embeddable_forms_enabled"
     GUIDANCE_ENABLED = "guidance_enabled"
@@ -43,6 +44,7 @@ class OrganizationSetting(Model):
         BRAND_PRIMARY_COLOR: "#7d25c1",
         BRAND_PROFILE_HEADER_TEMPLATE: "Submit a message to {{ display_name_or_username }}",
         BRAND_SPLASH_SCREEN_ENABLED: False,
+        DIRECTORY_HEADING: "Directory",
         EMBEDDABLE_FORMS_ENABLED: False,
         GUIDANCE_ENABLED: False,
         GUIDANCE_EXIT_BUTTON_TEXT: "Leave",
