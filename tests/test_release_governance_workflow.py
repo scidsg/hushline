@@ -57,11 +57,11 @@ def test_release_governance_workflow_runs_for_every_pr() -> None:
     assert "paths:" not in trigger_section
 
 
-def test_release_governance_workflow_uses_triggering_actor() -> None:
+def test_release_governance_workflow_authorizes_pr_author_not_triggering_actor() -> None:
     workflow_text = _workflow_text()
 
-    assert 'actor="$(jq -r \'.sender.login\' "$GITHUB_EVENT_PATH")"' in workflow_text
-    assert ".pull_request.user.login" not in workflow_text
+    assert 'actor="$(jq -r \'.pull_request.user.login\' "$GITHUB_EVENT_PATH")"' in workflow_text
+    assert ".sender.login" not in workflow_text
 
 
 def test_release_governance_workflow_uses_pr_files_api_with_renames() -> None:
