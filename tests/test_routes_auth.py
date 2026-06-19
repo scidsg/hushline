@@ -395,6 +395,40 @@ def test_login_with_chat_key_payload_creates_missing_chat_key(
     assert created_key.kdf_salt == "bG9naW4tc2FsdC0xMjM0NQ=="
 
 
+def test_login_ignores_malformed_chat_key_payload(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": user_password,
+            "chat_key_payload": "{not-json",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert db.session.scalars(db.select(ChatKey).filter_by(user_id=user.id)).all() == []
+
+
+def test_login_ignores_invalid_chat_key_payload(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": user_password,
+            "chat_key_payload": json.dumps(_login_chat_key_payload(private_key="plaintext")),
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert db.session.scalars(db.select(ChatKey).filter_by(user_id=user.id)).all() == []
+
+
 def test_login_with_chat_key_payload_waits_for_successful_2fa(
     client: FlaskClient, user: User, user_password: str
 ) -> None:

@@ -7,6 +7,12 @@ from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 
+from hushline.chat_key_lifecycle import (
+    CHAT_KEY_METADATA_MAX_LENGTH,
+    CHAT_KEY_RECOVERY_STATE_MAX_LENGTH,
+    payload_contains_forbidden_secret_field,
+    validate_chat_key_payload,
+)
 from hushline.db import db
 from hushline.model import ChatKey, User
 
@@ -34,6 +40,121 @@ def _chat_key_payload(**overrides: object) -> dict[str, object]:
 
 def _chat_key_columns() -> set[str]:
     return {column.name for column in db.metadata.tables["chat_keys"].columns}
+
+
+def test_forbidden_secret_field_detection_recurses_through_nested_lists() -> None:
+    assert payload_contains_forbidden_secret_field(
+        {"safe": [{"nested": [{"plaintext-private-key": "secret"}]}]}
+    )
+    assert not payload_contains_forbidden_secret_field({"safe": [{"nested": ["metadata"]}]})
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected_error"),
+    [
+        ([], "Expected a JSON object."),
+        ({"public_key": "not-json"}, "public_key must be a P-256 ECDH public JWK."),
+        ({"public_key": "[]"}, "public_key must be a P-256 ECDH public JWK."),
+        (
+            {"public_key": '{"kty":"OKP","crv":"Ed25519","x":"public-x","y":"public-y"}'},
+            "public_key must be a P-256 ECDH public JWK.",
+        ),
+        (
+            {"public_key": '{"kty":"EC","crv":"P-256","x":"public-x"}'},
+            "public_key must be a P-256 ECDH public JWK.",
+        ),
+        (
+            {
+                "public_key": (
+                    '{"kty":"EC","crv":"P-256","x":"public-x","y":"public-y",' '"key_ops":[1]}'
+                )
+            },
+            "public_key must be a P-256 ECDH public JWK.",
+        ),
+        (
+            {
+                "public_key": (
+                    '{"kty":"EC","crv":"P-256","x":"public-x","y":"public-y",'
+                    '"key_ops":["encrypt"]}'
+                )
+            },
+            "public_key must be a P-256 ECDH public JWK.",
+        ),
+        (
+            {
+                "public_signing_key": (
+                    '{"kty":"EC","crv":"P-256","x":"signing-public-x",'
+                    '"y":"signing-public-y","key_ops":["sign"]}'
+                )
+            },
+            "public_signing_key must be a P-256 ECDSA public JWK.",
+        ),
+        ({"public_key": ""}, "public_key is required."),
+        ({"encrypted_private_key": ""}, "encrypted_private_key is required."),
+        ({"kdf_algorithm": ""}, "kdf_algorithm is required."),
+        ({"kdf_salt": ""}, "kdf_salt is required."),
+        ({"kdf_params": {}}, "kdf_params must be a non-empty object."),
+        (
+            {"kdf_params": {"iterations": True, "hash": "SHA-256"}},
+            "kdf_params.iterations must be an integer.",
+        ),
+        (
+            {"kdf_params": {"iterations": 310000, "hash": "SHA-256", "bad": object()}},
+            "kdf_params must be JSON serializable.",
+        ),
+        (
+            {
+                "kdf_params": {
+                    "iterations": 310000,
+                    "hash": "SHA-256",
+                    "metadata": "x" * CHAT_KEY_METADATA_MAX_LENGTH,
+                }
+            },
+            "kdf_params is too large.",
+        ),
+        (
+            {"recovery_state": "x" * (CHAT_KEY_RECOVERY_STATE_MAX_LENGTH + 1)},
+            "recovery_state is too large.",
+        ),
+        (
+            {"encrypted_private_key": "[]"},
+            "encrypted_private_key must be a JSON object.",
+        ),
+    ],
+)
+def test_validate_chat_key_payload_rejects_malformed_edges(
+    payload: object, expected_error: str
+) -> None:
+    if isinstance(payload, dict):
+        submitted_payload_dict = _chat_key_payload()
+        submitted_payload_dict.update(payload)
+        submitted_payload: object = submitted_payload_dict
+    else:
+        submitted_payload = payload
+
+    cleaned_payload, error = validate_chat_key_payload(submitted_payload, current_user_id=1)
+
+    assert cleaned_payload == {}
+    assert error == expected_error
+
+
+def test_validate_chat_key_payload_accepts_nested_kdf_fields() -> None:
+    payload = _chat_key_payload()
+    payload.pop("kdf_algorithm")
+    payload.pop("kdf_salt")
+    payload.pop("kdf_params")
+    payload["kdf"] = {
+        "algorithm": "PBKDF2-SHA-256",
+        "salt": "c2FsdC1zYWx0LXNhbHQtIQ==",
+        "params": {"iterations": 310000, "hash": "SHA-256"},
+    }
+
+    cleaned_payload, error = validate_chat_key_payload(payload, current_user_id=1)
+
+    assert error == ""
+    assert cleaned_payload["kdf_algorithm"] == "PBKDF2-SHA-256"
+    assert cleaned_payload["kdf_salt"] == "c2FsdC1zYWx0LXNhbHQtIQ=="
+    assert cleaned_payload["kdf_params"] == {"iterations": 310000, "hash": "SHA-256"}
 
 
 @pytest.mark.usefixtures("_authenticated_user")

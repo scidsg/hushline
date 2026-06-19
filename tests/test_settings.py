@@ -621,6 +621,80 @@ def test_change_password_rewrap_rejects_plaintext_chat_key_material(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_change_password_rewrap_rejects_malformed_json(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    chat_key = ChatKey(
+        user=user,
+        key_version=1,
+        public_key="public-chat-key",
+        encrypted_private_key='{"algorithm":"AES-GCM","iv":"old","ciphertext":"old"}',
+        kdf_algorithm="PBKDF2-SHA-256",
+        kdf_params={"iterations": 310000, "hash": "SHA-256"},
+        kdf_salt="old-salt",
+        wrapping_algorithm="AES-GCM",
+    )
+    db.session.add(chat_key)
+    db.session.commit()
+    original_password_hash = user.password_hash
+    data = form_to_data(
+        ChangePasswordForm(
+            data={
+                "old_password": user_password,
+                "new_password": "ChangedPassword123!!",
+            }
+        )
+    )
+    data["rewrapped_chat_key"] = "{not-json"
+
+    response = client.post(url_for("settings.auth"), data=data, follow_redirects=True)
+
+    assert response.status_code == 400
+    assert "Chat key rewrap payload is invalid." in response.text
+    db.session.refresh(user)
+    assert user.password_hash == original_password_hash
+    db.session.refresh(chat_key)
+    assert chat_key.disabled_at is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_password_rewrap_rejects_invalid_payload(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    chat_key = ChatKey(
+        user=user,
+        key_version=1,
+        public_key="public-chat-key",
+        encrypted_private_key='{"algorithm":"AES-GCM","iv":"old","ciphertext":"old"}',
+        kdf_algorithm="PBKDF2-SHA-256",
+        kdf_params={"iterations": 310000, "hash": "SHA-256"},
+        kdf_salt="old-salt",
+        wrapping_algorithm="AES-GCM",
+    )
+    db.session.add(chat_key)
+    db.session.commit()
+    original_password_hash = user.password_hash
+    data = form_to_data(
+        ChangePasswordForm(
+            data={
+                "old_password": user_password,
+                "new_password": "ChangedPassword123!!",
+            }
+        )
+    )
+    data["rewrapped_chat_key"] = json.dumps({"public_key": "not-json"})
+
+    response = client.post(url_for("settings.auth"), data=data, follow_redirects=True)
+
+    assert response.status_code == 400
+    assert "public_key must be a P-256 ECDH public JWK." in response.text
+    db.session.refresh(user)
+    assert user.password_hash == original_password_hash
+    db.session.refresh(chat_key)
+    assert chat_key.disabled_at is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_change_password_allows_account_access_when_chat_key_is_locked(
     client: FlaskClient, user: User, user_password: str
 ) -> None:
