@@ -14,6 +14,7 @@ from flask.testing import FlaskClient
 from hushline.db import db
 from hushline.model import (
     ChatKey,
+    ChatRateLimitAttempt,
     Conversation,
     ConversationMessage,
     ConversationMessageCopy,
@@ -1304,6 +1305,208 @@ def test_participant_can_append_encrypted_conversation_message(
     for encrypted_copy in messages[-1].encrypted_copies:
         assert "ECDH-P256-AES-GCM" in encrypted_copy.encrypted_payload
         assert plaintext not in encrypted_copy.encrypted_payload
+
+
+@patch("hushline.routes.message.send_email_to_user_recipients")
+def test_append_conversation_message_rate_limits_participant_without_persistence_or_notification(
+    mock_send_email_to_user_recipients: MagicMock,
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_PARTICIPANT_MAX"] = 1
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_MAX"] = 20
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_USER_MAX"] = 20
+    _add_reply_capable_chat_keys(user, user2)
+    _enable_conversation_notifications(
+        user2,
+        email="recipient@example.com",
+        include_content=False,
+        encrypt_entire_body=False,
+    )
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+
+    first_response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "first-rate-limited")},
+    )
+    mock_send_email_to_user_recipients.reset_mock()
+    second_response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "second-rate-limited")},
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 429
+    assert second_response.get_json() == {
+        "error": "Too many chat messages. Please wait before sending another reply."
+    }
+    message_count = db.session.scalar(
+        db.select(db.func.count())
+        .select_from(ConversationMessage)
+        .where(ConversationMessage.conversation_id == conversation.id)
+    )
+    copy_count = db.session.scalar(
+        db.select(db.func.count())
+        .select_from(ConversationMessageCopy)
+        .join(ConversationMessage)
+        .where(ConversationMessage.conversation_id == conversation.id)
+    )
+    attempt_count = db.session.scalar(db.select(db.func.count()).select_from(ChatRateLimitAttempt))
+    assert message_count == 2
+    assert copy_count == 4
+    assert attempt_count == 1
+    mock_send_email_to_user_recipients.assert_not_called()
+
+
+def test_append_conversation_message_rate_limit_is_scoped_to_sender_participant(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_PARTICIPANT_MAX"] = 1
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_MAX"] = 20
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_USER_MAX"] = 20
+    _add_reply_capable_chat_keys(user, user2)
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+
+    first_response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "sender-one")},
+    )
+    _authenticate_as(client, user2)
+    second_response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(conversation, user2, "sender-two")},
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 201
+
+
+def test_append_conversation_message_rate_limits_user_across_conversations(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_PARTICIPANT_MAX"] = 20
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_MAX"] = 20
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_USER_MAX"] = 1
+    _add_reply_capable_chat_keys(user, user2)
+    first_conversation = _make_conversation(user, user2)
+    second_conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+
+    first_response = client.post(
+        url_for("append_conversation_message", public_id=first_conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(first_conversation, user, "first-chat")},
+    )
+    second_response = client.post(
+        url_for("append_conversation_message", public_id=second_conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(second_conversation, user, "second-chat")},
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 429
+
+
+def test_append_conversation_message_rate_limits_conversation_bursts(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_PARTICIPANT_MAX"] = 20
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_MAX"] = 1
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_USER_MAX"] = 20
+    _add_reply_capable_chat_keys(user, user2)
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+
+    first_response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "first-burst")},
+    )
+    _authenticate_as(client, user2)
+    second_response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(conversation, user2, "second-burst")},
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 429
+
+
+def test_append_conversation_message_rate_limit_resets_after_window(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_PARTICIPANT_WINDOW_SECONDS"] = 1
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_WINDOW_SECONDS"] = 1
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_USER_WINDOW_SECONDS"] = 1
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_PARTICIPANT_MAX"] = 1
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_MAX"] = 20
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_USER_MAX"] = 20
+    _add_reply_capable_chat_keys(user, user2)
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+
+    first_response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "old-window")},
+    )
+    db.session.execute(
+        db.update(ChatRateLimitAttempt).values(
+            created_at=datetime.now(timezone.utc) - timedelta(seconds=5)
+        )
+    )
+    db.session.commit()
+    second_response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "new-window")},
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 201
+
+
+def test_append_conversation_message_invalid_payload_does_not_burn_send_quota(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_PARTICIPANT_MAX"] = 1
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_MAX"] = 1
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_USER_MAX"] = 1
+    _add_reply_capable_chat_keys(user, user2)
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+    invalid_copies = _reply_copies_for(conversation, user, "invalid-retry")
+    recipient_participant = conversation.participant_for_user_id(user2.id)
+    assert recipient_participant is not None
+    invalid_copies[str(recipient_participant.id)] = "{}"
+
+    invalid_response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": invalid_copies},
+    )
+    corrected_response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "corrected-retry")},
+    )
+
+    assert invalid_response.status_code == 400
+    assert corrected_response.status_code == 201
+    attempt_count = db.session.scalar(db.select(db.func.count()).select_from(ChatRateLimitAttempt))
+    assert attempt_count == 1
 
 
 def test_append_conversation_message_rejects_unsigned_legacy_envelopes(

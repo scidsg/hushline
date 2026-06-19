@@ -38,6 +38,7 @@ from hushline.forms import (
     UpdateMessageStatusForm,
 )
 from hushline.model import (
+    ChatRateLimitAttempt,
     Conversation,
     ConversationMessage,
     ConversationMessageCopy,
@@ -60,6 +61,12 @@ _P256_RAW_SIGNATURE_LENGTH_BYTES = 64
 _CHAT_ONLY_MESSAGE_PLACEHOLDER = "Stored in encrypted conversation."
 _CONVERSATION_ACTIVITY_TIMEOUT_SECONDS = 120
 _CONVERSATION_PRESENCE_HEARTBEAT_SECONDS = 60
+_CONVERSATION_MESSAGE_RATE_LIMIT_PARTICIPANT_WINDOW_SECONDS = 60
+_CONVERSATION_MESSAGE_RATE_LIMIT_PARTICIPANT_MAX = 10
+_CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_WINDOW_SECONDS = 60
+_CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_MAX = 30
+_CONVERSATION_MESSAGE_RATE_LIMIT_USER_WINDOW_SECONDS = 3600
+_CONVERSATION_MESSAGE_RATE_LIMIT_USER_MAX = 200
 _CONVERSATION_NOTIFICATION_BODY = (
     "You have new Hush Line conversation activity. "
     "Log in and unlock your Hush Line chat key to read it."
@@ -134,6 +141,119 @@ def _conversation_presence_heartbeat_ms() -> int:
     except (TypeError, ValueError):
         seconds = _CONVERSATION_PRESENCE_HEARTBEAT_SECONDS
     return max(1, seconds) * 1000
+
+
+def _conversation_rate_limit_config(name: str, default: int) -> int:
+    value = current_app.config.get(name, default)
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _conversation_message_rate_limit_exceeded(
+    *,
+    thread: Conversation,
+    participant: ConversationParticipant,
+    user: User,
+) -> bool:
+    windows = {
+        "participant": max(
+            _conversation_rate_limit_config(
+                "CONVERSATION_MESSAGE_RATE_LIMIT_PARTICIPANT_WINDOW_SECONDS",
+                _CONVERSATION_MESSAGE_RATE_LIMIT_PARTICIPANT_WINDOW_SECONDS,
+            ),
+            1,
+        ),
+        "conversation": max(
+            _conversation_rate_limit_config(
+                "CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_WINDOW_SECONDS",
+                _CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_WINDOW_SECONDS,
+            ),
+            1,
+        ),
+        "user": max(
+            _conversation_rate_limit_config(
+                "CONVERSATION_MESSAGE_RATE_LIMIT_USER_WINDOW_SECONDS",
+                _CONVERSATION_MESSAGE_RATE_LIMIT_USER_WINDOW_SECONDS,
+            ),
+            1,
+        ),
+    }
+    limits = {
+        "participant": _conversation_rate_limit_config(
+            "CONVERSATION_MESSAGE_RATE_LIMIT_PARTICIPANT_MAX",
+            _CONVERSATION_MESSAGE_RATE_LIMIT_PARTICIPANT_MAX,
+        ),
+        "conversation": _conversation_rate_limit_config(
+            "CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_MAX",
+            _CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_MAX,
+        ),
+        "user": _conversation_rate_limit_config(
+            "CONVERSATION_MESSAGE_RATE_LIMIT_USER_MAX",
+            _CONVERSATION_MESSAGE_RATE_LIMIT_USER_MAX,
+        ),
+    }
+    now = datetime.now(UTC)
+    oldest_window = now - timedelta(seconds=max(windows.values()))
+    db.session.execute(
+        db.delete(ChatRateLimitAttempt).where(ChatRateLimitAttempt.created_at < oldest_window)
+    )
+
+    participant_count = db.session.scalar(
+        db.select(db.func.count())
+        .select_from(ChatRateLimitAttempt)
+        .where(
+            ChatRateLimitAttempt.sender_participant_id == participant.id,
+            ChatRateLimitAttempt.conversation_id == thread.id,
+            ChatRateLimitAttempt.created_at >= now - timedelta(seconds=windows["participant"]),
+        )
+    )
+    conversation_count = db.session.scalar(
+        db.select(db.func.count())
+        .select_from(ChatRateLimitAttempt)
+        .where(
+            ChatRateLimitAttempt.conversation_id == thread.id,
+            ChatRateLimitAttempt.created_at >= now - timedelta(seconds=windows["conversation"]),
+        )
+    )
+    user_count = db.session.scalar(
+        db.select(db.func.count())
+        .select_from(ChatRateLimitAttempt)
+        .where(
+            ChatRateLimitAttempt.user_id == user.id,
+            ChatRateLimitAttempt.created_at >= now - timedelta(seconds=windows["user"]),
+        )
+    )
+    return (
+        (
+            limits["participant"] > 0
+            and participant_count is not None
+            and participant_count >= limits["participant"]
+        )
+        or (
+            limits["conversation"] > 0
+            and conversation_count is not None
+            and conversation_count >= limits["conversation"]
+        )
+        or (limits["user"] > 0 and user_count is not None and user_count >= limits["user"])
+    )
+
+
+def _record_conversation_message_rate_limit_attempt(
+    *,
+    thread: Conversation,
+    participant: ConversationParticipant,
+    user: User,
+) -> None:
+    db.session.add(
+        ChatRateLimitAttempt(
+            conversation_id=thread.id,
+            sender_participant_id=participant.id,
+            user_id=user.id,
+            created_at=datetime.now(UTC),
+        )
+    )
 
 
 def _as_utc(value: datetime) -> datetime:
@@ -645,6 +765,20 @@ def register_message_routes(app: Flask) -> None:
         if set(encrypted_copies.keys()) != reply_capable_participant_ids:
             return jsonify({"error": "Invalid encrypted message payload."}), 400
 
+        if _conversation_message_rate_limit_exceeded(
+            thread=thread, participant=participant, user=user
+        ):
+            return (
+                jsonify(
+                    {
+                        "error": (
+                            "Too many chat messages. " "Please wait before sending another reply."
+                        )
+                    }
+                ),
+                429,
+            )
+
         if not all(_is_chat_ciphertext_envelope(value) for value in encrypted_copies.values()):
             return jsonify({"error": "Invalid encrypted message payload."}), 400
         if not _chat_ciphertext_context_is_bound(
@@ -661,16 +795,21 @@ def register_message_routes(app: Flask) -> None:
         ):
             return jsonify({"error": "Invalid encrypted message payload."}), 400
 
+        _record_conversation_message_rate_limit_attempt(
+            thread=thread,
+            participant=participant,
+            user=user,
+        )
         conversation_message = ConversationMessage()
         conversation_message.conversation = thread
         conversation_message.sender_participant = participant
+        db.session.add(conversation_message)
         _mark_conversation_participant_active(participant)
         for recipient_participant in thread.participants:
             encrypted_copy = ConversationMessageCopy()
+            conversation_message.encrypted_copies.append(encrypted_copy)
             encrypted_copy.recipient_participant = recipient_participant
             encrypted_copy.encrypted_payload = encrypted_copies[str(recipient_participant.id)]
-            conversation_message.encrypted_copies.append(encrypted_copy)
-        db.session.add(conversation_message)
         db.session.commit()
         _notify_conversation_participants(thread, participant)
 
