@@ -74,6 +74,32 @@ def test_linear_revision_history(app: Flask) -> None:
     assert heads[0] == ALL_REVISIONS[-1]
 
 
+def test_organization_settings_migration_supports_directory_heading(app: Flask) -> None:
+    cfg = typing.cast(alembic.config.Config, migrate.get_config())
+    command.upgrade(cfg, "0b1321c8de13")
+
+    db.session.execute(
+        text(
+            """
+            INSERT INTO organization_settings (key, value)
+            VALUES ('directory_heading', to_jsonb('Custom Directory'::text))
+            """
+        )
+    )
+    db.session.commit()
+
+    stored_value = db.session.scalar(
+        text(
+            """
+            SELECT value #>> '{}'
+            FROM organization_settings
+            WHERE key = 'directory_heading'
+            """
+        )
+    )
+    assert stored_value == "Custom Directory"
+
+
 @pytest.mark.parametrize("revision", TESTABLE_REVISIONS)
 def test_upgrade_with_data(revision: str, app: Flask) -> None:
     previous_revision = ALL_REVISIONS[ALL_REVISIONS.index(revision) - 2]

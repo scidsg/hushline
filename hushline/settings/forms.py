@@ -480,6 +480,15 @@ class UpdateDirectoryTextForm(FlaskForm):
     submit = SubmitField("Update Text", name="update_directory_text", widget=Button())
 
 
+class UpdateDirectoryHeadingForm(FlaskForm):
+    heading = StringField(
+        "Directory Heading",
+        filters=[strip_whitespace],
+        validators=[OptionalField(), Length(max=100)],
+    )
+    submit = SubmitField("Update Heading", name="update_directory_heading", widget=Button())
+
+
 class SetHomepageUsernameForm(FlaskForm):
     username = StringField(validators=[DataRequired()])
     submit = SubmitField("Set Username", name="set_homepage_user", widget=Button())

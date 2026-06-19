@@ -43,6 +43,7 @@ from hushline.settings import (
     UpdateBrandAppNameForm,
     UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
+    UpdateDirectoryHeadingForm,
     UpdateDirectoryTextForm,
     UpdateProfileHeaderForm,
     UpdateSplashLogoForm,
@@ -3241,7 +3242,85 @@ def test_update_guidance_prompt_rejects_text_over_expanded_length(
 
 
 @pytest.mark.usefixtures("_authenticated_admin")
-def test_diretory_intro_text(client: FlaskClient, admin: User) -> None:
+def test_directory_heading(client: FlaskClient, admin: User) -> None:
+    settings_resp = client.get(url_for("settings.branding"))
+    assert settings_resp.status_code == 200
+    settings_soup = BeautifulSoup(settings_resp.text, "html.parser")
+    heading_field = settings_soup.find("input", attrs={"name": "heading"})
+    assert heading_field is not None
+    assert heading_field["value"] == "Directory"
+
+    alert = "<script>alert(1)</script>"
+    uuid = str(uuid4())
+    custom_heading = f"Secure Contact Directory & {alert} {uuid}"
+    resp = client.post(
+        url_for("settings.branding"),
+        data={
+            "heading": f"  {custom_heading}  ",
+            UpdateDirectoryHeadingForm.submit.name: "",
+        },
+    )
+    assert resp.status_code == 200
+    assert "Directory heading updated" in resp.text
+
+    val = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_HEADING)
+    assert val == custom_heading
+
+    resp = client.get(url_for("directory"))
+    assert resp.status_code == 200
+    assert uuid in resp.text
+    assert alert not in resp.text
+    assert "Secure Contact Directory &amp;" in resp.text
+    assert "&lt;script&gt;" in resp.text
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_directory_heading_reset_to_default(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "hushline.settings.branding.UpdateDirectoryHeadingForm.validate",
+        lambda *_a, **_k: True,
+    )
+    OrganizationSetting.upsert(OrganizationSetting.DIRECTORY_HEADING, "to be cleared")
+    db.session.commit()
+
+    resp = client.post(
+        url_for("settings.branding"),
+        data={"heading": "   ", UpdateDirectoryHeadingForm.submit.name: ""},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Directory heading was reset to defaults" in resp.text
+    assert OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_HEADING) == "Directory"
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_directory_heading_reset_aborts_when_multiple_rows_would_delete(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "hushline.settings.branding.UpdateDirectoryHeadingForm.validate",
+        lambda *_a, **_k: True,
+    )
+
+    class _Result:
+        rowcount = 2
+
+    monkeypatch.setattr(
+        "hushline.settings.branding.db.session.execute", lambda *_a, **_k: _Result()
+    )
+
+    resp = client.post(
+        url_for("settings.branding"),
+        data={"heading": "", UpdateDirectoryHeadingForm.submit.name: ""},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 503
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_directory_intro_text(client: FlaskClient, admin: User) -> None:
     alert = "<script>alert(1)</stript>"
     uuid = str(uuid4())
     data = alert + " " + uuid
