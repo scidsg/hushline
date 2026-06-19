@@ -63,14 +63,15 @@ def test_release_governance_workflow_authorizes_pr_author_not_triggering_actor()
     assert 'actor="$(jq -r \'.pull_request.user.login\' "$GITHUB_EVENT_PATH")"' in workflow_text
 
 
-def test_release_governance_workflow_requires_admin_synchronize_actor() -> None:
+def test_release_governance_workflow_requires_admin_triggering_actor_for_all_pr_events() -> None:
     workflow_text = _workflow_text()
 
     assert 'event_action="$(jq -r \'.action\' "$GITHUB_EVENT_PATH")"' in workflow_text
-    assert 'synchronizing_actor="$(jq -r \'.sender.login\' "$GITHUB_EVENT_PATH")"' in workflow_text
-    assert '[ "${event_action}" = "synchronize" ]' in workflow_text
-    assert "repos/${REPOSITORY}/collaborators/${synchronizing_actor}/permission" in workflow_text
-    assert 'if [ "$synchronizing_permission" != "admin" ]; then' in workflow_text
+    assert 'triggering_actor="$(jq -r \'.sender.login\' "$GITHUB_EVENT_PATH")"' in workflow_text
+    assert 'if [ "${EVENT_NAME}" = "pull_request_target" ]; then' in workflow_text
+    assert '[ "${event_action}" = "synchronize" ]' not in workflow_text
+    assert "repos/${REPOSITORY}/collaborators/${triggering_actor}/permission" in workflow_text
+    assert 'if [ "$triggering_permission" != "admin" ]; then' in workflow_text
     assert "Only repository admins may update release-governed changes" in workflow_text
 
 
