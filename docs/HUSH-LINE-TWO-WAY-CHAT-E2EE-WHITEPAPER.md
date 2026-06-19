@@ -200,9 +200,10 @@ by signed envelope fields for signing-capable chat keys. This design helps
 detect attempts to replay or swap ciphertext across conversations, sender
 positions, or recipient positions.
 
-The server validates structure, participant sets, and context binding before
-storing new copies. The browser decrypts and handles signature-aware message
-processing with the participant's unlocked chat key material.
+The server validates structure, participant sets, context binding, and
+signatures with the sender participant's registered public chat signing key
+before storing new copies. The browser decrypts and handles signature-aware
+message processing with the participant's unlocked chat key material.
 
 ## Notifications
 

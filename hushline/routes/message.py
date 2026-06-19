@@ -1,8 +1,15 @@
+import base64
+import binascii
+import json
 import re
 import smtplib
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
 from flask import (
     Flask,
     abort,
@@ -48,6 +55,8 @@ from hushline.routes.common import (
 
 _CHAT_CIPHERTEXT_MAX_LENGTH = 200_000
 _CHAT_CIPHERTEXT_CONTEXT_VERSION = 2
+_P256_COORDINATE_LENGTH_BYTES = 32
+_P256_RAW_SIGNATURE_LENGTH_BYTES = 64
 _CHAT_ONLY_MESSAGE_PLACEHOLDER = "Stored in encrypted conversation."
 _CONVERSATION_ACTIVITY_TIMEOUT_SECONDS = 120
 _CONVERSATION_PRESENCE_HEARTBEAT_SECONDS = 60
@@ -219,6 +228,111 @@ def _chat_ciphertext_context(value: str) -> dict[str, Any] | None:
         return None
     context = envelope.get("context")
     return context if isinstance(context, dict) else None
+
+
+def _canonical_chat_signature_payload(envelope: dict[str, Any]) -> bytes | None:
+    try:
+        return json.dumps(
+            {
+                "v": envelope["v"],
+                "algorithm": envelope["algorithm"],
+                "ephemeral_public_key": envelope["ephemeral_public_key"],
+                "iv": envelope["iv"],
+                "ciphertext": envelope["ciphertext"],
+                "context": envelope["context"],
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode("utf-8")
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def _decode_jwk_coordinate(value: Any) -> int | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        padded_value = value + "=" * (-len(value) % 4)
+        coordinate = base64.b64decode(padded_value, altchars=b"-_", validate=True)
+    except (binascii.Error, ValueError):
+        return None
+    if len(coordinate) != _P256_COORDINATE_LENGTH_BYTES:
+        return None
+    return int.from_bytes(coordinate, "big")
+
+
+def _chat_signing_public_key(public_signing_key: str | None) -> ec.EllipticCurvePublicKey | None:
+    if not public_signing_key:
+        return None
+    try:
+        jwk = current_app.json.loads(public_signing_key)
+    except ValueError:
+        return None
+    if not isinstance(jwk, dict) or jwk.get("kty") != "EC" or jwk.get("crv") != "P-256":
+        return None
+
+    x_coordinate = _decode_jwk_coordinate(jwk.get("x"))
+    y_coordinate = _decode_jwk_coordinate(jwk.get("y"))
+    if x_coordinate is None or y_coordinate is None:
+        return None
+    try:
+        return ec.EllipticCurvePublicNumbers(
+            x_coordinate,
+            y_coordinate,
+            ec.SECP256R1(),
+        ).public_key()
+    except ValueError:
+        return None
+
+
+def _chat_ciphertext_signature_is_valid(value: str, public_signing_key: str | None) -> bool:
+    verification_key = _chat_signing_public_key(public_signing_key)
+    if verification_key is None:
+        return False
+
+    try:
+        envelope = current_app.json.loads(value)
+    except ValueError:
+        return False
+    if not isinstance(envelope, dict) or envelope.get("v") != _CHAT_CIPHERTEXT_CONTEXT_VERSION:
+        return False
+
+    signed_payload = _canonical_chat_signature_payload(envelope)
+    if signed_payload is None:
+        return False
+
+    signature_value = envelope.get("signature")
+    if not isinstance(signature_value, str):
+        return False
+    try:
+        signature = base64.b64decode(signature_value, validate=True)
+    except (binascii.Error, TypeError, ValueError):
+        return False
+    if len(signature) != _P256_RAW_SIGNATURE_LENGTH_BYTES:
+        return False
+
+    der_signature = encode_dss_signature(
+        int.from_bytes(signature[:_P256_COORDINATE_LENGTH_BYTES], "big"),
+        int.from_bytes(signature[_P256_COORDINATE_LENGTH_BYTES:], "big"),
+    )
+    try:
+        verification_key.verify(der_signature, signed_payload, ec.ECDSA(hashes.SHA256()))
+    except InvalidSignature:
+        return False
+    return True
+
+
+def _chat_ciphertext_signatures_are_valid(
+    encrypted_copies: dict[str, object],
+    *,
+    public_signing_key: str | None,
+) -> bool:
+    return all(
+        isinstance(encrypted_payload, str)
+        and _chat_ciphertext_signature_is_valid(encrypted_payload, public_signing_key)
+        for encrypted_payload in encrypted_copies.values()
+    )
 
 
 def _chat_ciphertext_context_is_bound(
@@ -537,6 +651,13 @@ def register_message_routes(app: Flask) -> None:
             encrypted_copies,
             conversation=thread,
             sender_participant_id=participant.id,
+        ):
+            return jsonify({"error": "Invalid encrypted message payload."}), 400
+        if not _chat_ciphertext_signatures_are_valid(
+            encrypted_copies,
+            public_signing_key=(
+                participant.user.chat_public_signing_key if participant.user else None
+            ),
         ):
             return jsonify({"error": "Invalid encrypted message payload."}), 400
 

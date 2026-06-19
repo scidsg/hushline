@@ -94,9 +94,11 @@ also covered by the signed envelope fields for signing-capable chat keys. This
 helps prevent a database or storage attacker from replaying a valid ciphertext
 into a different conversation, sender slot, or recipient slot without detection.
 
-The server performs structural validation and participant/context checks before
-storing copies. The browser performs plaintext decryption and signature-aware
-message handling with the participant's unlocked chat key material.
+The server performs structural validation, participant/context checks, and
+signature verification with the sender participant's registered public chat
+signing key before storing copies. The browser performs plaintext decryption
+and signature-aware message handling with the participant's unlocked chat key
+material.
 
 ## Key Lifecycle
 
