@@ -714,7 +714,9 @@ def test_conversation_header_includes_actions_menu(
 
     assert response.status_code == 200
     assert 'class="conversation-actions action-menu"' in response.text
+    assert 'class="conversation-actions-button action-menu-button"' in response.text
     assert 'aria-label="Conversation actions"' in response.text
+    assert "&#8942;" not in response.text
     assert 'aria-haspopup="menu"' in response.text
     assert 'id="conversation-actions-menu"' in response.text
     assert 'role="menu"' in response.text

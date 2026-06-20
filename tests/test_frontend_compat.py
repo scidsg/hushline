@@ -30,6 +30,19 @@ def test_theme_select_rules_set_closed_control_text_color() -> None:
     )
 
 
+def test_conversation_action_button_uses_light_and_dark_icon_assets() -> None:
+    images_js = (ROOT / "assets/js/images.js").read_text(encoding="utf-8")
+    scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
+
+    assert 'import "./../img/icon-vert-dots.png";' in images_js
+    assert 'import "./../img/icon-vert-dots-light.png";' in images_js
+    assert 'background-image: url("../img/icon-vert-dots.png");' in scss
+    assert 'background-image: url("../img/icon-vert-dots-light.png");' in scss
+    assert "background-position: center;" in scss
+    assert "background-repeat: no-repeat;" in scss
+    assert "background-size: 2.75rem 2.75rem;" in scss
+
+
 def test_webpack_compose_services_use_lockfile_guard_script() -> None:
     script = (ROOT / "scripts/webpack_dev_start.sh").read_text(encoding="utf-8")
 
