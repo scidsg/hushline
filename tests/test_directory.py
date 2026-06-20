@@ -284,14 +284,16 @@ def _client_sorted_all_display_names(rows: list[dict[str, object | None]]) -> li
 def test_directory_accessible(client: FlaskClient) -> None:
     response = client.get(url_for("directory"))
     assert response.status_code == 200
-    assert "Whistleblower Support Directory" in response.text
+    soup = BeautifulSoup(response.text, "html.parser")
+    title = soup.find(id="directory-title")
+    assert title is not None
+    assert title.get_text(strip=True) == "Directory"
     assert "Attorneys" in response.text
     assert "Journalists" in response.text
     assert "GlobaLeaks" in response.text
     assert "SecureDrop" in response.text
     assert "🤖 Automated" in response.text
 
-    soup = BeautifulSoup(response.text, "html.parser")
     verified_panel = soup.find(id="verified")
     all_panel = soup.find(id="all")
     assert verified_panel is not None

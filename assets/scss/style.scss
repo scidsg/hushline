@@ -216,6 +216,10 @@
     background-image: url("../img/icon-menu.png");
   }
 
+  .conversation-actions-button {
+    background-image: url("../img/icon-vert-dots.png");
+  }
+
   .mobileNav,
   .conversation-actions-button {
     border: var(--border-button);
@@ -834,6 +838,10 @@
 
   .mobileNav {
     background-image: url("../img/icon-menu-light.png");
+  }
+
+  .conversation-actions-button {
+    background-image: url("../img/icon-vert-dots-light.png");
   }
 
   .mobileNav,
@@ -2410,6 +2418,9 @@ body.conversation-body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 2.75rem 2.75rem;
   width: 2.75rem;
   height: 2.75rem;
   min-width: 2.75rem;
@@ -2418,8 +2429,6 @@ body.conversation-body {
   border-radius: 50%;
   padding: 0;
   background-color: transparent;
-  font-size: 1.35rem;
-  line-height: 1;
 }
 
 .conversation-actions-menu {

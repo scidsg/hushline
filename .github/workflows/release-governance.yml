@@ -22,6 +22,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           REPOSITORY: ${{ github.repository }}
           HEAD_SHA: ${{ github.sha }}
+          WORKFLOW_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
         run: |
           set -euo pipefail
 
@@ -30,7 +31,8 @@ jobs:
           if [ "$EVENT_NAME" = "pull_request_target" ]; then
             actor="$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")"
             event_action="$(jq -r '.action' "$GITHUB_EVENT_PATH")"
-            synchronizing_actor="$(jq -r '.sender.login' "$GITHUB_EVENT_PATH")"
+            event_sender="$(jq -r '.sender.login' "$GITHUB_EVENT_PATH")"
+            triggering_actor="$WORKFLOW_TRIGGERING_ACTOR"
             pr_number="$(jq -r '.pull_request.number' "$GITHUB_EVENT_PATH")"
             expected_file_count="$(jq -r '.pull_request.changed_files' "$GITHUB_EVENT_PATH")"
             file_records="$(
@@ -86,18 +88,33 @@ jobs:
             exit 1
           fi
 
-          if [ "${EVENT_NAME}" = "pull_request_target" ] && [ "${event_action}" = "synchronize" ]; then
-            synchronizing_permission="$(
-              gh api "repos/${REPOSITORY}/collaborators/${synchronizing_actor}/permission" \
+          if [ "${EVENT_NAME}" = "pull_request_target" ]; then
+            sender_permission="$(
+              gh api "repos/${REPOSITORY}/collaborators/${event_sender}/permission" \
                 --jq '.permission'
             )"
-            if [ "$synchronizing_permission" != "admin" ]; then
+            if [ "$sender_permission" != "admin" ]; then
               {
-                echo "Release-governed files synchronized by ${synchronizing_actor}, who has ${synchronizing_permission} repository permission."
+                echo "Release-governed files triggered by ${event_sender} on ${event_action}, who has ${sender_permission} repository permission."
                 echo "Only repository admins may update release-governed changes:"
                 printf '%s\n' "$governed_files"
               } >&2
               exit 1
+            fi
+
+            if [ "$triggering_actor" != "$event_sender" ]; then
+              rerun_permission="$(
+                gh api "repos/${REPOSITORY}/collaborators/${triggering_actor}/permission" \
+                  --jq '.permission'
+              )"
+              if [ "$rerun_permission" != "admin" ]; then
+                {
+                  echo "Release-governed files rerun by ${triggering_actor}, who has ${rerun_permission} repository permission."
+                  echo "Only repository admins may rerun release-governed checks:"
+                  printf '%s\n' "$governed_files"
+                } >&2
+                exit 1
+              fi
             fi
           fi
 

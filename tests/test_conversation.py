@@ -4,15 +4,18 @@ import re
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
+import pytest
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
 from flask import Flask, url_for
 from flask.testing import FlaskClient
+from sqlalchemy import text
 
 from hushline.db import db
 from hushline.model import (
     ChatKey,
+    ChatRateLimitAttempt,
     Conversation,
     ConversationMessage,
     ConversationMessageCopy,
@@ -21,6 +24,21 @@ from hushline.model import (
     Message,
     NotificationRecipient,
     User,
+)
+from hushline.routes.message import (
+    _as_utc,
+    _canonical_chat_signature_payload,
+    _chat_ciphertext_context,
+    _chat_ciphertext_context_is_bound,
+    _chat_ciphertext_signature_is_valid,
+    _chat_ciphertext_signatures_are_valid,
+    _chat_signing_public_key,
+    _consume_conversation_message_rate_limit,
+    _conversation_activity_timeout,
+    _conversation_notification_body,
+    _conversation_presence_heartbeat_ms,
+    _decode_jwk_coordinate,
+    _is_chat_ciphertext_envelope,
 )
 
 _SENDER_SIGNING_PRIVATE_KEY = ec.derive_private_key(1, ec.SECP256R1())
@@ -156,6 +174,29 @@ def _ciphertext(label: str) -> str:
             "iv": f"iv-{label}",
             "ciphertext": f"ciphertext-{label}",
         }
+    )
+
+
+def _context_bound_ciphertext(
+    conversation: Conversation,
+    sender_participant: ConversationParticipant,
+    recipient_participant: ConversationParticipant,
+    label: str,
+    *,
+    context_overrides: dict[str, str] | None = None,
+) -> str:
+    context = {
+        "purpose": "hushline.chat.message",
+        "conversation_public_id": conversation.public_id,
+        "sender_participant_id": str(sender_participant.id),
+        "recipient_participant_id": str(recipient_participant.id),
+    }
+    if context_overrides:
+        context.update(context_overrides)
+    return _bound_ciphertext(
+        context=context,
+        label=label,
+        signing_private_key=_signing_private_key_for_participant(conversation, sender_participant),
     )
 
 
@@ -303,6 +344,273 @@ def _add_conversation_message(
     return conversation_message
 
 
+def test_conversation_timing_helpers_fall_back_to_safe_defaults(app: Flask) -> None:
+    app.config["CONVERSATION_ACTIVITY_TIMEOUT_SECONDS"] = "not-a-number"
+    app.config["CONVERSATION_PRESENCE_HEARTBEAT_SECONDS"] = "not-a-number"
+
+    assert _conversation_activity_timeout() == timedelta(seconds=120)
+    assert _conversation_presence_heartbeat_ms() == 60_000
+
+
+def test_as_utc_treats_naive_datetimes_as_utc() -> None:
+    naive_datetime = datetime(2026, 1, 1, 12, 0)
+
+    assert _as_utc(naive_datetime) == datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        "{not-json",
+        "[]",
+        json.dumps({"algorithm": "ECDH-P256-AES-GCM"}),
+        json.dumps(
+            {
+                "algorithm": "AES-GCM",
+                "ephemeral_public_key": "ephemeral",
+                "iv": "iv",
+                "ciphertext": "ciphertext",
+            }
+        ),
+        json.dumps(
+            {
+                "v": 3,
+                "algorithm": "ECDH-P256-AES-GCM",
+                "ephemeral_public_key": "ephemeral",
+                "iv": "iv",
+                "ciphertext": "ciphertext",
+            }
+        ),
+        json.dumps(
+            {
+                "v": 2,
+                "algorithm": "ECDH-P256-AES-GCM",
+                "ephemeral_public_key": "ephemeral",
+                "iv": "iv",
+                "ciphertext": "ciphertext",
+                "context": {},
+            }
+        ),
+    ],
+)
+def test_chat_ciphertext_envelope_rejects_malformed_values(app: Flask, value: str) -> None:
+    _ = app
+
+    assert not _is_chat_ciphertext_envelope(value)
+
+
+def test_chat_ciphertext_context_rejects_malformed_values(app: Flask) -> None:
+    _ = app
+
+    assert _chat_ciphertext_context("{not-json") is None
+    assert _chat_ciphertext_context("[]") is None
+    assert _chat_ciphertext_context(json.dumps({"v": 1, "context": {"safe": "metadata"}})) is None
+
+
+def test_canonical_chat_signature_payload_rejects_missing_fields() -> None:
+    assert _canonical_chat_signature_payload({"v": 2}) is None
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["", "not-base64", base64.urlsafe_b64encode(b"short").decode()],
+)
+def test_decode_jwk_coordinate_rejects_invalid_values(value: str) -> None:
+    assert _decode_jwk_coordinate(value) is None
+
+
+@pytest.mark.parametrize(
+    "public_signing_key",
+    [
+        None,
+        "{not-json",
+        "[]",
+        '{"kty":"OKP","crv":"Ed25519","x":"x","y":"y"}',
+        '{"kty":"EC","crv":"P-256","x":"not-base64","y":"not-base64"}',
+        json.dumps(
+            {
+                "kty": "EC",
+                "crv": "P-256",
+                "x": _b64url((0).to_bytes(32, "big")),
+                "y": _b64url((0).to_bytes(32, "big")),
+            }
+        ),
+    ],
+)
+def test_chat_signing_public_key_rejects_invalid_jwks(
+    app: Flask, public_signing_key: str | None
+) -> None:
+    _ = app
+
+    assert _chat_signing_public_key(public_signing_key) is None
+
+
+def test_chat_ciphertext_signature_rejects_invalid_payloads(app: Flask) -> None:
+    _ = app
+
+    valid_payload = _bound_ciphertext(
+        context={
+            "purpose": "hushline.chat.message",
+            "conversation_public_id": "thread-public-id",
+            "sender_participant_id": "1",
+            "recipient_participant_id": "2",
+        },
+        label="signature-branches",
+        signing_private_key=_SENDER_SIGNING_PRIVATE_KEY,
+    )
+    valid_envelope = json.loads(valid_payload)
+
+    assert not _chat_ciphertext_signature_is_valid(valid_payload, None)
+    assert not _chat_ciphertext_signature_is_valid("{not-json", _SENDER_PUBLIC_SIGNING_KEY)
+    assert not _chat_ciphertext_signature_is_valid(json.dumps({"v": 1}), _SENDER_PUBLIC_SIGNING_KEY)
+
+    missing_payload_field = dict(valid_envelope)
+    missing_payload_field.pop("ciphertext")
+    assert not _chat_ciphertext_signature_is_valid(
+        json.dumps(missing_payload_field), _SENDER_PUBLIC_SIGNING_KEY
+    )
+
+    non_string_signature = dict(valid_envelope)
+    non_string_signature["signature"] = 123
+    assert not _chat_ciphertext_signature_is_valid(
+        json.dumps(non_string_signature), _SENDER_PUBLIC_SIGNING_KEY
+    )
+
+    invalid_base64_signature = dict(valid_envelope)
+    invalid_base64_signature["signature"] = "not base64"
+    assert not _chat_ciphertext_signature_is_valid(
+        json.dumps(invalid_base64_signature), _SENDER_PUBLIC_SIGNING_KEY
+    )
+
+    wrong_length_signature = dict(valid_envelope)
+    wrong_length_signature["signature"] = base64.b64encode(b"short").decode("ascii")
+    assert not _chat_ciphertext_signature_is_valid(
+        json.dumps(wrong_length_signature), _SENDER_PUBLIC_SIGNING_KEY
+    )
+
+    bogus_signature = dict(valid_envelope)
+    bogus_signature["signature"] = base64.b64encode(b"0" * 64).decode("ascii")
+    assert not _chat_ciphertext_signature_is_valid(
+        json.dumps(bogus_signature), _SENDER_PUBLIC_SIGNING_KEY
+    )
+
+
+def test_chat_ciphertext_signatures_reject_non_string_copy(app: Flask) -> None:
+    _ = app
+
+    assert not _chat_ciphertext_signatures_are_valid(
+        {"1": object()},
+        public_signing_key=_SENDER_PUBLIC_SIGNING_KEY,
+    )
+
+
+@pytest.mark.parametrize(
+    "context_overrides",
+    [
+        {"purpose": "wrong-purpose"},
+        {"conversation_public_id": "wrong-conversation"},
+        {"sender_participant_id": "999999"},
+        {"recipient_participant_id": "999999"},
+    ],
+)
+def test_chat_ciphertext_context_binding_rejects_mismatches(
+    user: User,
+    user2: User,
+    context_overrides: dict[str, str],
+) -> None:
+    conversation = _make_conversation(user, user2)
+    sender_participant = _participant_for(conversation, user)
+    recipient_participant = _participant_for(conversation, user2)
+
+    assert not _chat_ciphertext_context_is_bound(
+        {
+            str(recipient_participant.id): _context_bound_ciphertext(
+                conversation,
+                sender_participant,
+                recipient_participant,
+                "context-mismatch",
+                context_overrides=context_overrides,
+            )
+        },
+        conversation=conversation,
+        sender_participant_id=sender_participant.id,
+    )
+
+
+def test_chat_ciphertext_context_binding_rejects_non_string_payload(
+    user: User,
+    user2: User,
+) -> None:
+    conversation = _make_conversation(user, user2)
+    sender_participant = _participant_for(conversation, user)
+
+    assert not _chat_ciphertext_context_is_bound(
+        {"1": object()},
+        conversation=conversation,
+        sender_participant_id=sender_participant.id,
+    )
+
+
+def test_chat_ciphertext_context_binding_rejects_legacy_conversation_id_mismatch(
+    user: User,
+    user2: User,
+) -> None:
+    conversation = _make_conversation(user, user2)
+    sender_participant = _participant_for(conversation, user)
+    recipient_participant = _participant_for(conversation, user2)
+    encrypted_payload = _bound_ciphertext(
+        context={
+            "purpose": "hushline.chat.message",
+            "conversation_id": "999999",
+            "sender_participant_id": str(sender_participant.id),
+            "recipient_participant_id": str(recipient_participant.id),
+        },
+        label="legacy-conversation-id-mismatch",
+        signing_private_key=_SENDER_SIGNING_PRIVATE_KEY,
+    )
+
+    assert not _chat_ciphertext_context_is_bound(
+        {str(recipient_participant.id): encrypted_payload},
+        conversation=conversation,
+        sender_participant_id=sender_participant.id,
+    )
+
+
+def test_conversation_notification_body_is_generic_without_encryption_target(user: User) -> None:
+    user.email_include_message_content = True
+    user.email_encrypt_entire_body = True
+
+    body = _conversation_notification_body(user)
+
+    assert body == (
+        "You have new Hush Line conversation activity. "
+        "Log in and unlock your Hush Line chat key to read it."
+    )
+
+
+@patch("hushline.routes.message.encrypt_message")
+def test_conversation_notification_body_falls_back_when_encryption_fails(
+    mock_encrypt_message: MagicMock,
+    user: User,
+) -> None:
+    _enable_conversation_notifications(
+        user,
+        email="recipient@example.com",
+        include_content=True,
+        encrypt_entire_body=True,
+        pgp_key="recipient-pgp-key",
+    )
+    mock_encrypt_message.side_effect = RuntimeError("encryption failed")
+
+    body = _conversation_notification_body(user)
+
+    assert body == (
+        "You have new Hush Line conversation activity. "
+        "Log in and unlock your Hush Line chat key to read it."
+    )
+
+
 def test_conversation_route_authorizes_only_participants(
     client: FlaskClient,
     user: User,
@@ -408,7 +716,9 @@ def test_conversation_header_includes_actions_menu(
 
     assert response.status_code == 200
     assert 'class="conversation-actions action-menu"' in response.text
+    assert 'class="conversation-actions-button action-menu-button"' in response.text
     assert 'aria-label="Conversation actions"' in response.text
+    assert "&#8942;" not in response.text
     assert 'aria-haspopup="menu"' in response.text
     assert 'id="conversation-actions-menu"' in response.text
     assert 'role="menu"' in response.text
@@ -932,6 +1242,46 @@ def test_append_conversation_message_rejects_when_participant_deleted_their_side
     assert response.get_json() == {"error": "Conversation replies are unavailable."}
 
 
+def test_append_conversation_message_rejects_non_object_payload(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_reply_capable_chat_keys(user, user2)
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+
+    response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json=[],
+    )
+
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Invalid encrypted message payload."}
+    message_count = db.session.scalar(db.select(db.func.count()).select_from(ConversationMessage))
+    assert message_count == 1
+
+
+def test_append_conversation_message_rejects_non_object_encrypted_copies(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_reply_capable_chat_keys(user, user2)
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+
+    response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": []},
+    )
+
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Invalid encrypted message payload."}
+    message_count = db.session.scalar(db.select(db.func.count()).select_from(ConversationMessage))
+    assert message_count == 1
+
+
 def test_participant_can_append_encrypted_conversation_message(
     client: FlaskClient,
     user: User,
@@ -959,6 +1309,241 @@ def test_participant_can_append_encrypted_conversation_message(
     for encrypted_copy in messages[-1].encrypted_copies:
         assert "ECDH-P256-AES-GCM" in encrypted_copy.encrypted_payload
         assert plaintext not in encrypted_copy.encrypted_payload
+
+
+@patch("hushline.routes.message.send_email_to_user_recipients")
+def test_append_conversation_message_rate_limits_participant_without_persistence_or_notification(
+    mock_send_email_to_user_recipients: MagicMock,
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_PARTICIPANT_MAX"] = 1
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_MAX"] = 20
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_USER_MAX"] = 20
+    _add_reply_capable_chat_keys(user, user2)
+    _enable_conversation_notifications(
+        user2,
+        email="recipient@example.com",
+        include_content=False,
+        encrypt_entire_body=False,
+    )
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+
+    first_response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "first-rate-limited")},
+    )
+    mock_send_email_to_user_recipients.reset_mock()
+    second_response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "second-rate-limited")},
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 429
+    assert second_response.get_json() == {
+        "error": "Too many chat messages. Please wait before sending another reply."
+    }
+    message_count = db.session.scalar(
+        db.select(db.func.count())
+        .select_from(ConversationMessage)
+        .where(ConversationMessage.conversation_id == conversation.id)
+    )
+    copy_count = db.session.scalar(
+        db.select(db.func.count())
+        .select_from(ConversationMessageCopy)
+        .join(ConversationMessage)
+        .where(ConversationMessage.conversation_id == conversation.id)
+    )
+    attempt_count = db.session.scalar(db.select(db.func.count()).select_from(ChatRateLimitAttempt))
+    assert message_count == 2
+    assert copy_count == 4
+    assert attempt_count == 1
+    mock_send_email_to_user_recipients.assert_not_called()
+
+
+def test_append_conversation_message_rate_limit_is_scoped_to_sender_participant(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_PARTICIPANT_MAX"] = 1
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_MAX"] = 20
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_USER_MAX"] = 20
+    _add_reply_capable_chat_keys(user, user2)
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+
+    first_response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "sender-one")},
+    )
+    _authenticate_as(client, user2)
+    second_response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(conversation, user2, "sender-two")},
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 201
+
+
+def test_append_conversation_message_rate_limits_user_across_conversations(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_PARTICIPANT_MAX"] = 20
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_MAX"] = 20
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_USER_MAX"] = 1
+    _add_reply_capable_chat_keys(user, user2)
+    first_conversation = _make_conversation(user, user2)
+    second_conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+
+    first_response = client.post(
+        url_for("append_conversation_message", public_id=first_conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(first_conversation, user, "first-chat")},
+    )
+    second_response = client.post(
+        url_for("append_conversation_message", public_id=second_conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(second_conversation, user, "second-chat")},
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 429
+
+
+def test_append_conversation_message_rate_limits_conversation_bursts(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_PARTICIPANT_MAX"] = 20
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_MAX"] = 1
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_USER_MAX"] = 20
+    _add_reply_capable_chat_keys(user, user2)
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+
+    first_response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "first-burst")},
+    )
+    _authenticate_as(client, user2)
+    second_response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(conversation, user2, "second-burst")},
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 429
+
+
+def test_append_conversation_message_rate_limit_resets_after_window(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_PARTICIPANT_WINDOW_SECONDS"] = 1
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_WINDOW_SECONDS"] = 1
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_USER_WINDOW_SECONDS"] = 1
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_PARTICIPANT_MAX"] = 1
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_MAX"] = 20
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_USER_MAX"] = 20
+    _add_reply_capable_chat_keys(user, user2)
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+
+    first_response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "old-window")},
+    )
+    db.session.execute(
+        db.update(ChatRateLimitAttempt).values(
+            created_at=datetime.now(timezone.utc) - timedelta(seconds=5)
+        )
+    )
+    db.session.commit()
+    second_response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "new-window")},
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 201
+
+
+def test_append_conversation_message_invalid_payload_does_not_burn_send_quota(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_PARTICIPANT_MAX"] = 1
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_MAX"] = 1
+    app.config["CONVERSATION_MESSAGE_RATE_LIMIT_USER_MAX"] = 1
+    _add_reply_capable_chat_keys(user, user2)
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+    invalid_copies = _reply_copies_for(conversation, user, "invalid-retry")
+    recipient_participant = conversation.participant_for_user_id(user2.id)
+    assert recipient_participant is not None
+    invalid_copies[str(recipient_participant.id)] = "{}"
+
+    invalid_response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": invalid_copies},
+    )
+    corrected_response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "corrected-retry")},
+    )
+
+    assert invalid_response.status_code == 400
+    assert corrected_response.status_code == 201
+    attempt_count = db.session.scalar(db.select(db.func.count()).select_from(ChatRateLimitAttempt))
+    assert attempt_count == 1
+
+
+def test_chat_rate_limit_reservation_takes_postgres_advisory_locks(
+    user: User,
+    user2: User,
+) -> None:
+    bind = db.session.get_bind()
+    if bind is None or bind.dialect.name != "postgresql":
+        pytest.skip("PostgreSQL advisory locks are only available with the PostgreSQL dialect.")
+
+    _add_reply_capable_chat_keys(user, user2)
+    conversation = _make_conversation(user, user2)
+    participant = conversation.participant_for_user_id(user.id)
+    assert participant is not None
+
+    limited = _consume_conversation_message_rate_limit(
+        thread=conversation,
+        participant=participant,
+        user=user,
+    )
+
+    advisory_lock_count = db.session.scalar(
+        text(
+            "SELECT count(*) "
+            "FROM pg_locks "
+            "WHERE locktype = 'advisory' "
+            "AND pid = pg_backend_pid() "
+            "AND granted"
+        )
+    )
+    assert not limited
+    assert advisory_lock_count is not None
+    assert advisory_lock_count >= 3
 
 
 def test_append_conversation_message_rejects_unsigned_legacy_envelopes(

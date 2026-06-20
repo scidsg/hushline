@@ -43,6 +43,7 @@ from hushline.settings import (
     UpdateBrandAppNameForm,
     UpdateBrandLogoForm,
     UpdateBrandPrimaryColorForm,
+    UpdateDirectoryHeadingForm,
     UpdateDirectoryTextForm,
     UpdateProfileHeaderForm,
     UpdateSplashLogoForm,
@@ -614,6 +615,80 @@ def test_change_password_rewrap_rejects_plaintext_chat_key_material(
 
     assert response.status_code == 400
     assert "Plaintext chat key material is not accepted." in response.text
+    db.session.refresh(user)
+    assert user.password_hash == original_password_hash
+    db.session.refresh(chat_key)
+    assert chat_key.disabled_at is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_password_rewrap_rejects_malformed_json(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    chat_key = ChatKey(
+        user=user,
+        key_version=1,
+        public_key="public-chat-key",
+        encrypted_private_key='{"algorithm":"AES-GCM","iv":"old","ciphertext":"old"}',
+        kdf_algorithm="PBKDF2-SHA-256",
+        kdf_params={"iterations": 310000, "hash": "SHA-256"},
+        kdf_salt="old-salt",
+        wrapping_algorithm="AES-GCM",
+    )
+    db.session.add(chat_key)
+    db.session.commit()
+    original_password_hash = user.password_hash
+    data = form_to_data(
+        ChangePasswordForm(
+            data={
+                "old_password": user_password,
+                "new_password": "ChangedPassword123!!",
+            }
+        )
+    )
+    data["rewrapped_chat_key"] = "{not-json"
+
+    response = client.post(url_for("settings.auth"), data=data, follow_redirects=True)
+
+    assert response.status_code == 400
+    assert "Chat key rewrap payload is invalid." in response.text
+    db.session.refresh(user)
+    assert user.password_hash == original_password_hash
+    db.session.refresh(chat_key)
+    assert chat_key.disabled_at is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_change_password_rewrap_rejects_invalid_payload(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    chat_key = ChatKey(
+        user=user,
+        key_version=1,
+        public_key="public-chat-key",
+        encrypted_private_key='{"algorithm":"AES-GCM","iv":"old","ciphertext":"old"}',
+        kdf_algorithm="PBKDF2-SHA-256",
+        kdf_params={"iterations": 310000, "hash": "SHA-256"},
+        kdf_salt="old-salt",
+        wrapping_algorithm="AES-GCM",
+    )
+    db.session.add(chat_key)
+    db.session.commit()
+    original_password_hash = user.password_hash
+    data = form_to_data(
+        ChangePasswordForm(
+            data={
+                "old_password": user_password,
+                "new_password": "ChangedPassword123!!",
+            }
+        )
+    )
+    data["rewrapped_chat_key"] = json.dumps({"public_key": "not-json"})
+
+    response = client.post(url_for("settings.auth"), data=data, follow_redirects=True)
+
+    assert response.status_code == 400
+    assert "public_key must be a P-256 ECDH public JWK." in response.text
     db.session.refresh(user)
     assert user.password_hash == original_password_hash
     db.session.refresh(chat_key)
@@ -3167,7 +3242,85 @@ def test_update_guidance_prompt_rejects_text_over_expanded_length(
 
 
 @pytest.mark.usefixtures("_authenticated_admin")
-def test_diretory_intro_text(client: FlaskClient, admin: User) -> None:
+def test_directory_heading(client: FlaskClient, admin: User) -> None:
+    settings_resp = client.get(url_for("settings.branding"))
+    assert settings_resp.status_code == 200
+    settings_soup = BeautifulSoup(settings_resp.text, "html.parser")
+    heading_field = settings_soup.find("input", attrs={"name": "heading"})
+    assert heading_field is not None
+    assert heading_field["value"] == "Directory"
+
+    alert = "<script>alert(1)</script>"
+    uuid = str(uuid4())
+    custom_heading = f"Secure Contact Directory & {alert} {uuid}"
+    resp = client.post(
+        url_for("settings.branding"),
+        data={
+            "heading": f"  {custom_heading}  ",
+            UpdateDirectoryHeadingForm.submit.name: "",
+        },
+    )
+    assert resp.status_code == 200
+    assert "Directory heading updated" in resp.text
+
+    val = OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_HEADING)
+    assert val == custom_heading
+
+    resp = client.get(url_for("directory"))
+    assert resp.status_code == 200
+    assert uuid in resp.text
+    assert alert not in resp.text
+    assert "Secure Contact Directory &amp;" in resp.text
+    assert "&lt;script&gt;" in resp.text
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_directory_heading_reset_to_default(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "hushline.settings.branding.UpdateDirectoryHeadingForm.validate",
+        lambda *_a, **_k: True,
+    )
+    OrganizationSetting.upsert(OrganizationSetting.DIRECTORY_HEADING, "to be cleared")
+    db.session.commit()
+
+    resp = client.post(
+        url_for("settings.branding"),
+        data={"heading": "   ", UpdateDirectoryHeadingForm.submit.name: ""},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Directory heading was reset to defaults" in resp.text
+    assert OrganizationSetting.fetch_one(OrganizationSetting.DIRECTORY_HEADING) == "Directory"
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_directory_heading_reset_aborts_when_multiple_rows_would_delete(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "hushline.settings.branding.UpdateDirectoryHeadingForm.validate",
+        lambda *_a, **_k: True,
+    )
+
+    class _Result:
+        rowcount = 2
+
+    monkeypatch.setattr(
+        "hushline.settings.branding.db.session.execute", lambda *_a, **_k: _Result()
+    )
+
+    resp = client.post(
+        url_for("settings.branding"),
+        data={"heading": "", UpdateDirectoryHeadingForm.submit.name: ""},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 503
+
+
+@pytest.mark.usefixtures("_authenticated_admin")
+def test_directory_intro_text(client: FlaskClient, admin: User) -> None:
     alert = "<script>alert(1)</stript>"
     uuid = str(uuid4())
     data = alert + " " + uuid
