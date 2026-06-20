@@ -1,7 +1,7 @@
 {
   "release": "one-off-directory",
   "baseUrl": "http://localhost:8080",
-  "capturedAt": "2026-06-01T04:08:15.983Z",
+  "capturedAt": "2026-06-20T16:21:20.191Z",
   "viewports": [
     {
       "id": "desktop",
@@ -33,6 +33,48 @@
     }
   },
   "scenes": [
+    {
+      "title": "Inbox - artvandelay conversations",
+      "slug": "auth-artvandelay-inbox-conversations",
+      "path": "/inbox?type=conversations",
+      "session": "artvandelay",
+      "viewport": "desktop",
+      "theme": "light",
+      "files": [
+        {
+          "mode": "fold",
+          "file": "artvandelay/auth-artvandelay-inbox-conversations-desktop-light-fold.png"
+        }
+      ]
+    },
+    {
+      "title": "Conversation thread - artvandelay",
+      "slug": "auth-artvandelay-conversation-thread",
+      "path": "/conversation/33333333-3333-4333-8333-333333333333",
+      "session": "artvandelay",
+      "viewport": "desktop",
+      "theme": "light",
+      "files": [
+        {
+          "mode": "fold",
+          "file": "artvandelay/auth-artvandelay-conversation-thread-desktop-light-fold.png"
+        }
+      ]
+    },
+    {
+      "title": "Conversation thread - artvandelay",
+      "slug": "auth-artvandelay-conversation-thread",
+      "path": "/conversation/33333333-3333-4333-8333-333333333333",
+      "session": "artvandelay",
+      "viewport": "mobile",
+      "theme": "light",
+      "files": [
+        {
+          "mode": "fold",
+          "file": "artvandelay/auth-artvandelay-conversation-thread-mobile-light-fold.png"
+        }
+      ]
+    },
     {
       "title": "Onboarding - Step 1 Profile (newman)",
       "slug": "auth-newman-onboarding-profile",
