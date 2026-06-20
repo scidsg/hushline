@@ -1,5 +1,6 @@
 import base64
 import binascii
+import hashlib
 import json
 import re
 import smtplib
@@ -67,6 +68,7 @@ _CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_WINDOW_SECONDS = 60
 _CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_MAX = 30
 _CONVERSATION_MESSAGE_RATE_LIMIT_USER_WINDOW_SECONDS = 3600
 _CONVERSATION_MESSAGE_RATE_LIMIT_USER_MAX = 200
+_CONVERSATION_MESSAGE_RATE_LIMIT_LOCK_NAMESPACE = "hushline:chat-message-rate-limit"
 _CONVERSATION_NOTIFICATION_BODY = (
     "You have new Hush Line conversation activity. "
     "Log in and unlock your Hush Line chat key to read it."
@@ -151,12 +153,45 @@ def _conversation_rate_limit_config(name: str, default: int) -> int:
         return default
 
 
-def _conversation_message_rate_limit_exceeded(
+def _conversation_message_rate_limit_lock_key(scope: str, *values: int) -> int:
+    payload = ":".join(
+        [_CONVERSATION_MESSAGE_RATE_LIMIT_LOCK_NAMESPACE, scope, *(str(value) for value in values)]
+    ).encode("utf-8")
+    return int.from_bytes(hashlib.blake2b(payload, digest_size=8).digest(), "big", signed=True)
+
+
+def _lock_conversation_message_rate_limit_buckets(
+    *,
+    thread: Conversation,
+    participant: ConversationParticipant,
+    user: User,
+) -> None:
+    bind = db.session.get_bind()
+    if bind is None or bind.dialect.name != "postgresql":
+        return
+
+    lock_keys = sorted(
+        {
+            _conversation_message_rate_limit_lock_key("participant", participant.id, thread.id),
+            _conversation_message_rate_limit_lock_key("conversation", thread.id),
+            _conversation_message_rate_limit_lock_key("user", user.id),
+        }
+    )
+    for lock_key in lock_keys:
+        db.session.execute(db.select(db.func.pg_advisory_xact_lock(lock_key)))
+
+
+def _consume_conversation_message_rate_limit(
     *,
     thread: Conversation,
     participant: ConversationParticipant,
     user: User,
 ) -> bool:
+    _lock_conversation_message_rate_limit_buckets(
+        thread=thread,
+        participant=participant,
+        user=user,
+    )
     windows = {
         "participant": max(
             _conversation_rate_limit_config(
@@ -225,7 +260,7 @@ def _conversation_message_rate_limit_exceeded(
             ChatRateLimitAttempt.created_at >= now - timedelta(seconds=windows["user"]),
         )
     )
-    return (
+    limited = (
         (
             limits["participant"] > 0
             and participant_count is not None
@@ -238,22 +273,16 @@ def _conversation_message_rate_limit_exceeded(
         )
         or (limits["user"] > 0 and user_count is not None and user_count >= limits["user"])
     )
-
-
-def _record_conversation_message_rate_limit_attempt(
-    *,
-    thread: Conversation,
-    participant: ConversationParticipant,
-    user: User,
-) -> None:
-    db.session.add(
-        ChatRateLimitAttempt(
-            conversation_id=thread.id,
-            sender_participant_id=participant.id,
-            user_id=user.id,
-            created_at=datetime.now(UTC),
+    if not limited:
+        db.session.add(
+            ChatRateLimitAttempt(
+                conversation_id=thread.id,
+                sender_participant_id=participant.id,
+                user_id=user.id,
+                created_at=now,
+            )
         )
-    )
+    return limited
 
 
 def _as_utc(value: datetime) -> datetime:
@@ -765,20 +794,6 @@ def register_message_routes(app: Flask) -> None:
         if set(encrypted_copies.keys()) != reply_capable_participant_ids:
             return jsonify({"error": "Invalid encrypted message payload."}), 400
 
-        if _conversation_message_rate_limit_exceeded(
-            thread=thread, participant=participant, user=user
-        ):
-            return (
-                jsonify(
-                    {
-                        "error": (
-                            "Too many chat messages. " "Please wait before sending another reply."
-                        )
-                    }
-                ),
-                429,
-            )
-
         if not all(_is_chat_ciphertext_envelope(value) for value in encrypted_copies.values()):
             return jsonify({"error": "Invalid encrypted message payload."}), 400
         if not _chat_ciphertext_context_is_bound(
@@ -795,11 +810,20 @@ def register_message_routes(app: Flask) -> None:
         ):
             return jsonify({"error": "Invalid encrypted message payload."}), 400
 
-        _record_conversation_message_rate_limit_attempt(
-            thread=thread,
-            participant=participant,
-            user=user,
-        )
+        if _consume_conversation_message_rate_limit(
+            thread=thread, participant=participant, user=user
+        ):
+            return (
+                jsonify(
+                    {
+                        "error": (
+                            "Too many chat messages. " "Please wait before sending another reply."
+                        )
+                    }
+                ),
+                429,
+            )
+
         conversation_message = ConversationMessage()
         conversation_message.conversation = thread
         conversation_message.sender_participant = participant
