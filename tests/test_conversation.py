@@ -10,6 +10,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
 from flask import Flask, url_for
 from flask.testing import FlaskClient
+from sqlalchemy import text
 
 from hushline.db import db
 from hushline.model import (
@@ -32,6 +33,7 @@ from hushline.routes.message import (
     _chat_ciphertext_signature_is_valid,
     _chat_ciphertext_signatures_are_valid,
     _chat_signing_public_key,
+    _consume_conversation_message_rate_limit,
     _conversation_activity_timeout,
     _conversation_notification_body,
     _conversation_presence_heartbeat_ms,
@@ -1509,6 +1511,39 @@ def test_append_conversation_message_invalid_payload_does_not_burn_send_quota(
     assert corrected_response.status_code == 201
     attempt_count = db.session.scalar(db.select(db.func.count()).select_from(ChatRateLimitAttempt))
     assert attempt_count == 1
+
+
+def test_chat_rate_limit_reservation_takes_postgres_advisory_locks(
+    user: User,
+    user2: User,
+) -> None:
+    bind = db.session.get_bind()
+    if bind is None or bind.dialect.name != "postgresql":
+        pytest.skip("PostgreSQL advisory locks are only available with the PostgreSQL dialect.")
+
+    _add_reply_capable_chat_keys(user, user2)
+    conversation = _make_conversation(user, user2)
+    participant = conversation.participant_for_user_id(user.id)
+    assert participant is not None
+
+    limited = _consume_conversation_message_rate_limit(
+        thread=conversation,
+        participant=participant,
+        user=user,
+    )
+
+    advisory_lock_count = db.session.scalar(
+        text(
+            "SELECT count(*) "
+            "FROM pg_locks "
+            "WHERE locktype = 'advisory' "
+            "AND pid = pg_backend_pid() "
+            "AND granted"
+        )
+    )
+    assert not limited
+    assert advisory_lock_count is not None
+    assert advisory_lock_count >= 3
 
 
 def test_append_conversation_message_rejects_unsigned_legacy_envelopes(
