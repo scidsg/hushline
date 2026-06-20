@@ -1,7 +1,7 @@
 {
   "release": "one-off-directory",
   "baseUrl": "http://localhost:8080",
-  "capturedAt": "2026-06-20T16:21:20.191Z",
+  "capturedAt": "2026-06-20T18:39:10.230Z",
   "viewports": [
     {
       "id": "desktop",
@@ -72,6 +72,34 @@
         {
           "mode": "fold",
           "file": "artvandelay/auth-artvandelay-conversation-thread-mobile-light-fold.png"
+        }
+      ]
+    },
+    {
+      "title": "Conversation thread - newman",
+      "slug": "auth-newman-conversation-thread",
+      "path": "/conversation/33333333-3333-4333-8333-333333333333",
+      "session": "newman",
+      "viewport": "desktop",
+      "theme": "light",
+      "files": [
+        {
+          "mode": "fold",
+          "file": "newman/auth-newman-conversation-thread-desktop-light-fold.png"
+        }
+      ]
+    },
+    {
+      "title": "Conversation thread - newman",
+      "slug": "auth-newman-conversation-thread",
+      "path": "/conversation/33333333-3333-4333-8333-333333333333",
+      "session": "newman",
+      "viewport": "mobile",
+      "theme": "light",
+      "files": [
+        {
+          "mode": "fold",
+          "file": "newman/auth-newman-conversation-thread-mobile-light-fold.png"
         }
       ]
     },
