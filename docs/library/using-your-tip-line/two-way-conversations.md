@@ -33,7 +33,13 @@ replies are unavailable until every participant has signing-capable chat keys.
 4. Send replies only after the composer is available.
 
 Hush Line stores conversation messages as encrypted copies for each participant.
-The server does not store conversation plaintext.
+The server does not store conversation plaintext. New replies must be signed by
+the sender's Hush Line chat signing key, and Hush Line verifies those signatures
+before accepting the encrypted copies.
+
+Hush Line also rate-limits chat replies to reduce message flooding,
+notification spam, and storage abuse by an authenticated conversation
+participant.
 
 ## Deleting conversations
 
