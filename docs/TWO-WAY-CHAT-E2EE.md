@@ -81,6 +81,14 @@ submission and reply-link workflow when message intake is otherwise enabled.
 Conversation payloads are encrypted in the browser as structured envelopes.
 Current reply envelopes use `ECDH-P256-AES-GCM` and versioned context binding.
 
+The current reply envelope uses:
+
+- P-256 ECDH to derive a per-recipient AES-GCM message key;
+- a fresh 96-bit AES-GCM IV for each encrypted copy;
+- canonicalized versioned context as AES-GCM additional authenticated data;
+- P-256 ECDSA with SHA-256 to sign the canonical envelope fields; and
+- base64-encoded raw ECDSA signatures in version 2 envelopes.
+
 Each encrypted copy is specific to one recipient participant. Versioned
 conversation envelopes include context for:
 
@@ -99,6 +107,13 @@ signature verification with the sender participant's registered public chat
 signing key before storing copies. The browser performs plaintext decryption
 and signature-aware message handling with the participant's unlocked chat key
 material.
+
+Initial conversation creation is also client-encrypted and context-bound, but it
+is created through the profile submission path. That path is guarded by the
+logged-in sender session, submission integrity controls, a single-use initial
+conversation nonce, and sender/recipient chat-key metadata checks. Follow-up
+replies use the append route's stricter server-side signature verification
+before storage.
 
 ## Key Lifecycle
 
@@ -124,7 +139,8 @@ The server stores:
 - per-participant encrypted message copies,
 - timestamps and activity markers,
 - unread/read cursor state, and
-- generic notification state.
+- generic notification state, and
+- chat-message rate-limit attempt records.
 
 The server does not store conversation plaintext. Administrators can govern
 accounts, directory trust states, registration, branding, and moderation
@@ -141,6 +157,14 @@ so other participants see deleted-message placeholders. The shared conversation
 record remains for remaining participants until every participant has deleted
 their side.
 
+Chat message acceptance is rate-limited across sender-participant,
+conversation, and user scopes. On PostgreSQL, the append route takes
+transaction-scoped advisory locks for those buckets before it counts and records
+an accepted attempt. This keeps the decision and reservation in the same
+critical section for concurrent requests. Requests over the configured limits
+are rejected before encrypted message copies are stored or notifications are
+sent.
+
 ## Privacy and Security Properties
 
 Two-way chat is designed to provide:
@@ -149,12 +173,16 @@ Two-way chat is designed to provide:
   payloads are encrypted per participant.
 - **Conversation integrity checks:** versioned envelopes bind ciphertext to the
   expected conversation and participant context.
+- **Server-verified reply provenance:** new replies must verify against the
+  sender participant's registered public chat signing key before storage.
 - **Receiver authenticity support:** public chat-key fingerprints and signing
   keys make key changes and envelope provenance more visible to participants.
 - **Participant-only access:** authenticated routes are scoped to conversation
   participants.
 - **Operational minimization:** notifications and inbox rows avoid plaintext
   previews.
+- **Abuse resistance:** accepted chat writes are rate-limited before storage and
+  notification side effects.
 
 These properties depend on users unlocking the correct chat key in a trustworthy
 browser session and on Hush Line serving uncompromised client code.
@@ -171,6 +199,8 @@ browser session and on Hush Line serving uncompromised client code.
   history.
 - Chat key substitution remains a serious attack if a participant ignores
   fingerprint changes or if a future key-transparency mechanism is not in place.
+- Rate limits reduce chat and notification flooding but do not replace account
+  moderation, infrastructure-level abuse controls, or incident response.
 
 ## Review Checklist
 
@@ -180,9 +210,12 @@ Before shipping conversation workflow changes, reviewers should verify:
 - conversations are available only to authenticated participants;
 - replies are unavailable unless all participants have signing-capable chat
   keys;
+- new reply signatures are verified server-side before storage;
 - conversation rows and notifications do not reveal plaintext;
 - deleting a conversation removes only the deleting participant's local access
   and authored encrypted payloads until every participant deletes their side;
+- chat message rate limits reject over-limit replies before storage and
+  notification side effects;
 - password change still requires chat-key rewrap;
 - password reset still locks old chat history encrypted to the old key; and
 - accessibility remains 100 and performance remains at least 95 for affected
