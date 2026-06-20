@@ -23,6 +23,7 @@ from flask import (
     url_for,
 )
 from flask_wtf.csrf import validate_csrf
+from sqlalchemy import text
 from werkzeug.wrappers.response import Response
 from wtforms.validators import ValidationError
 
@@ -151,6 +152,28 @@ def _conversation_rate_limit_config(name: str, default: int) -> int:
         return default
 
 
+def _lock_conversation_message_rate_limit(
+    *,
+    thread: Conversation,
+    user: User,
+) -> None:
+    bind = db.session.get_bind()
+    if bind is None or bind.dialect.name != "postgresql":
+        return
+
+    lock_keys = sorted(
+        (
+            (1, thread.id),
+            (2, user.id),
+        )
+    )
+    for namespace, lock_id in lock_keys:
+        db.session.execute(
+            text("SELECT pg_advisory_xact_lock(:namespace, :lock_id)"),
+            {"namespace": namespace, "lock_id": lock_id},
+        )
+
+
 def _conversation_message_rate_limit_exceeded(
     *,
     thread: Conversation,
@@ -194,6 +217,7 @@ def _conversation_message_rate_limit_exceeded(
             _CONVERSATION_MESSAGE_RATE_LIMIT_USER_MAX,
         ),
     }
+    _lock_conversation_message_rate_limit(thread=thread, user=user)
     now = datetime.now(UTC)
     oldest_window = now - timedelta(seconds=max(windows.values()))
     db.session.execute(

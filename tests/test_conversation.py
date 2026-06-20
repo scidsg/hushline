@@ -2,6 +2,7 @@ import base64
 import json
 import re
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -37,6 +38,7 @@ from hushline.routes.message import (
     _conversation_presence_heartbeat_ms,
     _decode_jwk_coordinate,
     _is_chat_ciphertext_envelope,
+    _lock_conversation_message_rate_limit,
 )
 
 _SENDER_SIGNING_PRIVATE_KEY = ec.derive_private_key(1, ec.SECP256R1())
@@ -1307,6 +1309,29 @@ def test_participant_can_append_encrypted_conversation_message(
     for encrypted_copy in messages[-1].encrypted_copies:
         assert "ECDH-P256-AES-GCM" in encrypted_copy.encrypted_payload
         assert plaintext not in encrypted_copy.encrypted_payload
+
+
+def test_conversation_message_rate_limit_uses_postgres_transaction_advisory_locks(
+    app: Flask,
+    user: User,
+    user2: User,
+) -> None:
+    _add_reply_capable_chat_keys(user, user2)
+    conversation = _make_conversation(user, user2)
+
+    with app.app_context(), patch.object(
+        db.session,
+        "get_bind",
+        return_value=SimpleNamespace(dialect=SimpleNamespace(name="postgresql")),
+    ), patch.object(db.session, "execute") as mock_execute:
+        _lock_conversation_message_rate_limit(thread=conversation, user=user)
+
+    assert mock_execute.call_count == 2
+    assert [call.args[1] for call in mock_execute.call_args_list] == [
+        {"namespace": 1, "lock_id": conversation.id},
+        {"namespace": 2, "lock_id": user.id},
+    ]
+    assert all("pg_advisory_xact_lock" in str(call.args[0]) for call in mock_execute.call_args_list)
 
 
 @patch("hushline.routes.message.send_email_to_user_recipients")
