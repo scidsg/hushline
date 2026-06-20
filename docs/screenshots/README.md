@@ -25,6 +25,8 @@ Each release stores images by session under `releases/<version>/<session>/`.
 ![Conversation inbox](./releases/latest/artvandelay/auth-artvandelay-inbox-conversations-desktop-light-fold.png)
 ![Conversation thread](./releases/latest/artvandelay/auth-artvandelay-conversation-thread-desktop-light-fold.png)
 ![Conversation thread mobile](./releases/latest/artvandelay/auth-artvandelay-conversation-thread-mobile-light-fold.png)
+![Conversation thread from Newman](./releases/latest/newman/auth-newman-conversation-thread-desktop-light-fold.png)
+![Conversation thread from Newman mobile](./releases/latest/newman/auth-newman-conversation-thread-mobile-light-fold.png)
 
 ## Required accounts
 
