@@ -44,6 +44,17 @@ def test_default_users_seed_paid_artvandelay_with_three_notification_recipients(
     ]
 
 
+def test_default_users_seed_not_newman_for_onboarding_screenshots() -> None:
+    dev_data = _load_dev_data_module()
+    users = dev_data.default_users()
+
+    not_newman = next(user for user in users if user["username"] == "not_newman")
+
+    assert all(user["username"] != "newman" for user in users)
+    assert not_newman["is_verified"] is False
+    assert not_newman["onboarding_complete"] is False
+
+
 def test_default_users_seed_featured_verified_directory_accounts() -> None:
     dev_data = _load_dev_data_module()
     users = dev_data.default_users()

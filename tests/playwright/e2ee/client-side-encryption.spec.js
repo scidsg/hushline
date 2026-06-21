@@ -244,12 +244,15 @@ test("logged-in account conversation stays encrypted through browser lifecycle",
 
     let capturedInitialPostBody = null;
     senderPage.on("request", (request) => {
-      if (request.method() === "POST" && request.url().endsWith("/to/newman")) {
+      if (
+        request.method() === "POST" &&
+        request.url().endsWith("/to/not_newman")
+      ) {
         capturedInitialPostBody = request.postData() || "";
       }
     });
 
-    await senderPage.goto("/to/newman", { waitUntil: "networkidle" });
+    await senderPage.goto("/to/not_newman", { waitUntil: "networkidle" });
     await suppressGuidanceModal(senderPage);
     await expect(senderPage.locator("#messageForm")).toBeVisible();
     await expect
@@ -279,7 +282,8 @@ test("logged-in account conversation stays encrypted through browser lifecycle",
     await Promise.all([
       senderPage.waitForRequest(
         (request) =>
-          request.method() === "POST" && request.url().endsWith("/to/newman"),
+          request.method() === "POST" &&
+          request.url().endsWith("/to/not_newman"),
       ),
       senderPage.locator("#submitBtn").click(),
     ]);
@@ -325,7 +329,7 @@ test("logged-in account conversation stays encrypted through browser lifecycle",
       .evaluate((element) => element.dataset.conversationPublicId);
     expect(conversationUrl).toContain(`/conversation/${conversationPublicId}`);
 
-    await login(recipientPage, "newman");
+    await login(recipientPage, "not_newman");
     const recipientPresenceResponsePromise = waitForPresenceHeartbeat(
       recipientPage,
       conversationPublicId,
