@@ -162,11 +162,11 @@ def default_users() -> list[dict[str, object]]:
             "pgp_key": PGP_KEY,
         },
         {
-            "username": "newman",
+            "username": "not_newman",
             "password": "Test-testtesttesttest-1",
             "is_admin": False,
             "is_verified": False,
-            # Keep newman as an intentionally incomplete account for onboarding screenshots.
+            # Keep not_newman as an intentionally incomplete account for onboarding screenshots.
             "onboarding_complete": False,
         },
         {
@@ -935,7 +935,7 @@ def _seed_demo_conversation(
 
     participants = {
         "artvandelay": artvandelay_participant,
-        "newman": newman_participant,
+        "not_newman": newman_participant,
     }
     for sender_username, content, created_at in messages:
         sender_participant = participants[sender_username]
@@ -974,7 +974,7 @@ def create_sample_conversations() -> None:
     ).one_or_none()
     newman_username = db.session.scalars(
         select(Username).where(
-            func.lower(Username._username) == "newman",
+            func.lower(Username._username) == "not_newman",
             Username.is_primary.is_(True),
         )
     ).one_or_none()
@@ -983,10 +983,10 @@ def create_sample_conversations() -> None:
 
     identities = {
         "artvandelay": _demo_chat_identity(DOCS_SCREENSHOT_PASSWORD),
-        "newman": _demo_chat_identity(DOCS_SCREENSHOT_PASSWORD),
+        "not_newman": _demo_chat_identity(DOCS_SCREENSHOT_PASSWORD),
     }
     _reset_demo_chat_key(artvandelay_username.user, identities["artvandelay"])
-    _reset_demo_chat_key(newman_username.user, identities["newman"])
+    _reset_demo_chat_key(newman_username.user, identities["not_newman"])
 
     base_time = datetime(2026, 2, 16, 17, 30, tzinfo=timezone.utc)
     _seed_demo_conversation(
@@ -996,29 +996,62 @@ def create_sample_conversations() -> None:
         identities=identities,
         messages=[
             (
-                "newman",
-                'Hello, "Art" ;)',
+                "not_newman",
+                (
+                    "Hello, Mr. Vandelay. I have obtained information suggesting that your "
+                    "employee, George Costanza, distributed fraudulent Human Fund donation "
+                    "cards. Unless this matter is addressed, I intend to submit my findings "
+                    "through the USPS within twenty-four hours."
+                ),
                 base_time,
             ),
             (
                 "artvandelay",
-                "Hello, Newman.",
+                (
+                    "Thank you for bringing this to my attention, not_newman. The Human Fund "
+                    "takes allegations of misconduct very seriously. If Mr. Costanza "
+                    "misrepresented charitable donations, I assure you we will investigate the "
+                    "matter thoroughly."
+                ),
                 base_time + timedelta(minutes=8),
             ),
             (
-                "newman",
-                "I think I have information you might find interesting about the Human Fund.",
+                "not_newman",
+                (
+                    "I appreciate your professionalism. To verify the claims, I sent an "
+                    "associate to investigate. Kramer reports that the donations were "
+                    "fictitious and that no evidence of Human Fund activity could be found."
+                ),
                 base_time + timedelta(minutes=19),
             ),
             (
                 "artvandelay",
-                "The charity? Please tell me the funds are not just in a coffee can.",
+                (
+                    "I see. While I respect Mr. Kramer’s efforts, an absence of evidence is not "
+                    "necessarily evidence of absence. Many charitable organizations operate "
+                    "with limited public visibility. If you can provide any documentation, I’d "
+                    "be happy to review it."
+                ),
                 base_time + timedelta(minutes=24),
             ),
             (
-                "newman",
-                'Not a coffee can. A very official envelope labeled "miscellaneous grievances."',
+                "not_newman",
+                (
+                    "So your position is that the Human Fund is a legitimate charity and that "
+                    "George Costanza may have acted without authorization?"
+                ),
                 base_time + timedelta(minutes=37),
+            ),
+            (
+                "artvandelay",
+                (
+                    "At this stage, yes. Based on the information you’ve provided, it would be "
+                    "premature to conclude otherwise. If George has done something improper, "
+                    "we’ll address it appropriately. If not, I’m sure a careful review will "
+                    "clear up the misunderstanding. Either way, thank you for reporting it in "
+                    "good faith."
+                ),
+                base_time + timedelta(minutes=48),
             ),
         ],
     )
@@ -1029,7 +1062,7 @@ def create_sample_conversations() -> None:
         identities=identities,
         messages=[
             (
-                "newman",
+                "not_newman",
                 "I found the records-retention note. It says the backup exports run weekly.",
                 base_time - timedelta(days=1),
             ),
