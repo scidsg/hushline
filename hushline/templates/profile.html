@@ -110,6 +110,19 @@
     </p>
   {% endif %}
 
+  {% if show_account_conversation_hint %}
+    {% set profile_auth_redirect = url_for('profile', username=username.username) %}
+    <p class="meta contextBanner">
+      🔒
+      {% if registration_enabled %}
+        <a href="{{ url_for('register', next=profile_auth_redirect) }}">Create an account</a> or
+      {% endif %}
+      <a href="{{ url_for('login', next=profile_auth_redirect) }}">log in</a> to start an
+      end-to-end encrypted conversation with {{ display_name_or_username }}{% if anonymous_tip_available %},
+      or leave an anonymous tip below{% endif %}.
+    </p>
+  {% endif %}
+
   <form
     method="POST"
     action="{% if is_embedded %}{{ url_for('embed_profile', username=username.username) }}{% else %}{{ url_for('profile', username=username.username) }}{% endif %}"

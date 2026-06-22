@@ -601,7 +601,7 @@
       aria-labelledby="verified-tab"
     >
       {% if not logged_in %}
-        <p class="meta dirMeta">
+        <p class="meta contextBanner">
           ⭐️ Verified account owners have verified their identities with a member of our staff.
           <a
             href="https://hushline.app/library/docs/using-your-tip-line/account-verification"
@@ -674,7 +674,7 @@
       role="tabpanel"
       aria-labelledby="public-records-tab"
     >
-      <p class="meta dirMeta">
+      <p class="meta contextBanner">
         🧪 Beta: This tab includes self-reported attorneys and automated listings pulled from public records.
         {% if correction_contact_url %}<a href="{{ correction_contact_url }}">Request a correction</a>.{% endif %}
       </p>
@@ -736,7 +736,7 @@
 
   {% if directory_verified_tab_enabled %}
     <div id="newsrooms" class="tab-content" role="tabpanel" aria-labelledby="newsrooms-tab">
-      <p class="meta dirMeta">
+      <p class="meta contextBanner">
         🧪 Beta: This tab includes self-reported journalists, self-reported newsrooms, and automated listings from public journalism directories{% if newsroom_automated_sources %}, including {% for source in newsroom_automated_sources %}<a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">{{ source.label }}</a>{% if not loop.last %}{% if loop.revindex0 == 1 %} and {% else %}, {% endif %}{% endif %}{% endfor %}{% endif %}. {% if correction_contact_url %}<a href="{{ correction_contact_url }}">Request a correction</a>.{% endif %}
       </p>
 
@@ -797,7 +797,7 @@
 
   {% if directory_verified_tab_enabled %}
     <div id="globaleaks" class="tab-content" role="tabpanel" aria-labelledby="globaleaks-tab">
-      <p class="meta dirMeta">
+      <p class="meta contextBanner">
         🧪 Beta: This list contains manual and automated entries and should not be considered exhaustive or authoritative.
         {% if correction_contact_url %}<a href="{{ correction_contact_url }}">Request a correction</a>.{% endif %}
       </p>
@@ -827,7 +827,7 @@
 
   {% if directory_verified_tab_enabled %}
     <div id="securedrop" class="tab-content" role="tabpanel" aria-labelledby="securedrop-tab">
-      <p class="meta dirMeta">
+      <p class="meta contextBanner">
         🧪 Beta: These listings are automated from the Freedom of the Press Foundation's public
         <a href="https://securedrop.org/api/v1/directory/?format=json">SecureDrop API</a>.
         {% if correction_contact_url %}<a href="{{ correction_contact_url }}">Request a correction</a>.{% endif %}
@@ -864,7 +864,7 @@
     {% if directory_verified_tab_enabled %}data-lazy-directory-panel="true"{% endif %}
   >
     {% if directory_verified_tab_enabled %}
-      <p class="meta dirMeta">
+      <p class="meta contextBanner">
         🧪 Beta: This list contains automated entries.
         {% if correction_contact_url %}<a href="{{ correction_contact_url }}">Request a correction</a>.{% endif %}
       </p>

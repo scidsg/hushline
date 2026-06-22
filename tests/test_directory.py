@@ -572,7 +572,7 @@ def test_directory_public_record_banner_links_to_admin(
     public_records_panel = soup.find(id="public-records")
     assert public_records_panel is not None
 
-    banner = public_records_panel.select_one(".dirMeta")
+    banner = public_records_panel.select_one(".contextBanner")
     assert banner is not None
     banner_link = banner.select_one("a")
     assert banner_link is not None
@@ -597,7 +597,7 @@ def test_directory_securedrop_banner_links_to_admin_without_tor_copy(
     securedrop_panel = soup.find(id="securedrop")
     assert securedrop_panel is not None
 
-    banner = securedrop_panel.select_one(".dirMeta")
+    banner = securedrop_panel.select_one(".contextBanner")
     assert banner is not None
     banner_links = banner.select("a")
     links_by_text = {link.text.strip().rstrip("."): link.get("href") for link in banner_links}
@@ -626,9 +626,9 @@ def test_directory_globaleaks_banner_links_to_admin_without_tor_copy(
     globaleaks_panel = soup.find(id="globaleaks")
     assert globaleaks_panel is not None
 
-    banner = globaleaks_panel.select_one(".dirMeta")
+    banner = globaleaks_panel.select_one(".contextBanner")
     assert banner is not None
-    banner_links = globaleaks_panel.select(".dirMeta a")
+    banner_links = globaleaks_panel.select(".contextBanner a")
     links_by_text = {
         link.text.replace("\u2060", "").strip().rstrip("."): link.get("href")
         for link in banner_links
@@ -661,9 +661,9 @@ def test_directory_newsrooms_banner_links_to_admin(
     newsroom_panel = soup.find(id="newsrooms")
     assert newsroom_panel is not None
 
-    banner = newsroom_panel.select_one(".dirMeta")
+    banner = newsroom_panel.select_one(".contextBanner")
     assert banner is not None
-    banner_links = newsroom_panel.select(".dirMeta a")
+    banner_links = newsroom_panel.select(".contextBanner a")
     links_by_text = {
         link.text.replace("\u2060", "").strip().rstrip("."): link.get("href")
         for link in banner_links
@@ -701,7 +701,7 @@ def test_directory_all_tab_banner_links_to_admin(client: FlaskClient, admin_user
     all_panel = soup.find(id="all")
     assert all_panel is not None
 
-    banner = all_panel.select_one(".dirMeta")
+    banner = all_panel.select_one(".contextBanner")
     assert banner is not None
     banner_link = banner.select_one("a")
     assert banner_link is not None
@@ -726,7 +726,7 @@ def test_directory_correction_links_ignore_non_admin_admin_username(
     soup = BeautifulSoup(response.text, "html.parser")
     correction_links = [
         link.get("href")
-        for link in soup.select(".dirMeta a")
+        for link in soup.select(".contextBanner a")
         if link.get_text(strip=True) == "Request a correction"
     ]
     assert correction_links
@@ -752,7 +752,7 @@ def test_directory_hides_tab_bar_when_verified_tabs_disabled(client: FlaskClient
 
     all_panel = soup.find(id="all")
     assert all_panel is not None
-    assert all_panel.select_one(".dirMeta") is None
+    assert all_panel.select_one(".contextBanner") is None
     assert "🏛️ Public Record Attorneys" not in all_panel.get_text(" ", strip=True)
     assert "📰 Newsroom Listings" not in all_panel.get_text(" ", strip=True)
     assert "🌐 GlobaLeaks" not in all_panel.get_text(" ", strip=True)
@@ -4781,20 +4781,20 @@ def test_securedrop_listing_page_is_read_only(client: FlaskClient) -> None:
     assert 'id="messageForm"' not in response.text
     assert "Send Message" not in response.text
 
-    dir_meta = soup.select_one(".dirMeta")
-    assert dir_meta is not None
-    dir_meta_text = dir_meta.get_text(" ", strip=True)
-    assert dir_meta_text.startswith("🧪 Beta:")
-    assert "This listing is automated." in dir_meta_text
-    assert "Onion addresses require" in dir_meta_text
-    assert "Tor Browser" in dir_meta_text
-    assert "risk in your jurisdiction" in dir_meta_text
-    assert "Do your research before downloading." in dir_meta_text
+    context_banner = soup.select_one(".contextBanner")
+    assert context_banner is not None
+    context_banner_text = context_banner.get_text(" ", strip=True)
+    assert context_banner_text.startswith("🧪 Beta:")
+    assert "This listing is automated." in context_banner_text
+    assert "Onion addresses require" in context_banner_text
+    assert "Tor Browser" in context_banner_text
+    assert "risk in your jurisdiction" in context_banner_text
+    assert "Do your research before downloading." in context_banner_text
 
-    dir_meta_link = dir_meta.find("a")
-    assert dir_meta_link is not None
-    assert dir_meta_link.text.strip() == "Tor Browser"
-    assert dir_meta_link.get("href") == "https://www.torproject.org/download/"
+    context_banner_link = context_banner.find("a")
+    assert context_banner_link is not None
+    assert context_banner_link.text.strip() == "Tor Browser"
+    assert context_banner_link.get("href") == "https://www.torproject.org/download/"
 
 
 def test_globaleaks_listing_page_is_read_only(
@@ -4819,14 +4819,14 @@ def test_globaleaks_listing_page_is_read_only(
     assert 'id="messageForm"' not in response.text
     assert "Send Message" not in response.text
 
-    dir_meta = soup.select_one(".dirMeta")
-    assert dir_meta is not None
-    dir_meta_text = dir_meta.get_text(" ", strip=True)
-    assert dir_meta_text.startswith("🧪 Beta:")
-    assert "This listing is automated." in dir_meta_text
-    assert "Onion addresses require" not in dir_meta_text
-    assert "Tor Browser" not in dir_meta_text
-    assert dir_meta.find("a") is None
+    context_banner = soup.select_one(".contextBanner")
+    assert context_banner is not None
+    context_banner_text = context_banner.get_text(" ", strip=True)
+    assert context_banner_text.startswith("🧪 Beta:")
+    assert "This listing is automated." in context_banner_text
+    assert "Onion addresses require" not in context_banner_text
+    assert "Tor Browser" not in context_banner_text
+    assert context_banner.find("a") is None
 
 
 def test_globaleaks_listing_page_mentions_tor_for_onion_submission(
@@ -4842,17 +4842,17 @@ def test_globaleaks_listing_page_mentions_tor_for_onion_submission(
     assert response.status_code == 200
     soup = BeautifulSoup(response.text, "html.parser")
 
-    dir_meta = soup.select_one(".dirMeta")
-    assert dir_meta is not None
-    dir_meta_text = dir_meta.get_text(" ", strip=True)
-    assert dir_meta_text.startswith("🧪 Beta:")
-    assert "This listing is automated." in dir_meta_text
-    assert "Onion addresses require" in dir_meta_text
-    assert "Tor Browser" in dir_meta_text
-    dir_meta_link = dir_meta.find("a")
-    assert dir_meta_link is not None
-    assert dir_meta_link.text.strip() == "Tor Browser"
-    assert dir_meta_link.get("href") == "https://www.torproject.org/download/"
+    context_banner = soup.select_one(".contextBanner")
+    assert context_banner is not None
+    context_banner_text = context_banner.get_text(" ", strip=True)
+    assert context_banner_text.startswith("🧪 Beta:")
+    assert "This listing is automated." in context_banner_text
+    assert "Onion addresses require" in context_banner_text
+    assert "Tor Browser" in context_banner_text
+    context_banner_link = context_banner.find("a")
+    assert context_banner_link is not None
+    assert context_banner_link.text.strip() == "Tor Browser"
+    assert context_banner_link.get("href") == "https://www.torproject.org/download/"
 
 
 def test_globaleaks_listing_route_hidden_when_verified_tabs_disabled(
@@ -4894,12 +4894,12 @@ def test_newsroom_listing_page_is_read_only(
     assert 'id="messageForm"' not in response.text
     assert "Send Message" not in response.text
 
-    dir_meta = soup.select_one(".dirMeta")
-    assert dir_meta is not None
-    dir_meta_text = dir_meta.get_text(" ", strip=True)
-    assert dir_meta_text.startswith("🧪 Beta:")
-    assert "INN Find Your News directory" in dir_meta_text
-    source_link = dir_meta.select_one("a")
+    context_banner = soup.select_one(".contextBanner")
+    assert context_banner is not None
+    context_banner_text = context_banner.get_text(" ", strip=True)
+    assert context_banner_text.startswith("🧪 Beta:")
+    assert "INN Find Your News directory" in context_banner_text
+    source_link = context_banner.select_one("a")
     assert source_link is not None
     assert source_link.get_text(" ", strip=True) == "INN Find Your News directory."
     assert "Directory Profile" in page_text
@@ -4928,10 +4928,10 @@ def test_newsroom_listing_page_renders_source_aware_copy_for_network_entries(
     assert "France, Germany" in page_text
     assert "State / Region" not in page_text
 
-    dir_meta = soup.select_one(".dirMeta")
-    assert dir_meta is not None
-    dir_meta_text = dir_meta.get_text(" ", strip=True)
-    assert "Directory of European Journalism Networks" in dir_meta_text
+    context_banner = soup.select_one(".contextBanner")
+    assert context_banner is not None
+    context_banner_text = context_banner.get_text(" ", strip=True)
+    assert "Directory of European Journalism Networks" in context_banner_text
 
 
 def test_newsroom_listing_route_hidden_when_verified_tabs_disabled(

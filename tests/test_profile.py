@@ -506,6 +506,76 @@ def test_logged_in_profile_submit_without_recipient_pgp_uses_chat_only_conversat
     assert msg_content not in response.text
 
 
+def test_anonymous_profile_with_chat_key_and_pgp_prompts_login_for_conversation_and_tip(
+    client: FlaskClient, user: User
+) -> None:
+    user.primary_username.display_name = "Secure Desk"
+    _set_pgp_key(user)
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    db.session.commit()
+    db.session.expire_all()
+
+    response = client.get(url_for("profile", username=user.primary_username.username))
+
+    assert response.status_code == 200
+    hint = BeautifulSoup(response.text, "html.parser").select_one("p.contextBanner")
+    assert hint is not None
+    assert "instr" not in (hint.get("class") or [])
+    page_text = " ".join(BeautifulSoup(response.text, "html.parser").get_text(" ").split())
+    assert (
+        "start an end-to-end encrypted conversation with Secure Desk, "
+        "or leave an anonymous tip below"
+    ) in page_text
+    assert (
+        url_for(
+            "login",
+            next=url_for("profile", username=user.primary_username.username, _external=False),
+            _external=False,
+        )
+        in response.text
+    )
+
+
+def test_anonymous_profile_with_chat_key_without_pgp_omits_anonymous_tip_clause(
+    client: FlaskClient, user: User
+) -> None:
+    user.primary_username.display_name = "Secure Desk"
+    user.pgp_key = None
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    db.session.commit()
+    db.session.expire_all()
+
+    response = client.get(url_for("profile", username=user.primary_username.username))
+
+    assert response.status_code == 200
+    page_text = " ".join(BeautifulSoup(response.text, "html.parser").get_text(" ").split())
+    assert "start an end-to-end encrypted conversation with Secure Desk" in page_text
+    assert "leave an anonymous tip below" not in page_text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_authenticated_profile_hides_login_conversation_prompt(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    db.session.commit()
+
+    response = client.get(url_for("profile", username=user2.primary_username.username))
+
+    assert response.status_code == 200
+    assert "start an end-to-end encrypted conversation" not in response.text
+
+
+def test_anonymous_profile_without_chat_key_hides_login_conversation_prompt(
+    client: FlaskClient, user: User
+) -> None:
+    response = client.get(url_for("profile", username=user.primary_username.username))
+
+    assert response.status_code == 200
+    page_text = " ".join(BeautifulSoup(response.text, "html.parser").get_text(" ").split())
+    assert "start an end-to-end encrypted conversation" not in page_text
+
+
 @pytest.mark.usefixtures("_authenticated_user")
 def test_profile_get_does_not_persist_initial_chat_nonce(
     client: FlaskClient, user: User, user2: User

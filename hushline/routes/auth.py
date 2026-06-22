@@ -31,6 +31,7 @@ from hushline.auth import (
     rotate_chat_key_session_id,
     rotate_user_session_id,
     set_session_user,
+    stash_post_auth_redirect_target,
 )
 from hushline.chat_key_lifecycle import retire_active_chat_key, validate_chat_key_payload
 from hushline.db import db
@@ -305,11 +306,17 @@ def _get_math_problem(force_new: bool = False) -> str:
 
 
 def register_auth_routes(app: Flask) -> None:
+    def _stash_next_post_auth_redirect() -> None:
+        if request.method == "GET":
+            stash_post_auth_redirect_target(request.args.get("next"))
+
     @app.route("/register", methods=["GET", "POST"])
     def register() -> Response | str:
         if session.get("is_authenticated", False) and get_session_user():
             flash("👉 You are already logged in.")
             return redirect(url_for("inbox"))
+
+        _stash_next_post_auth_redirect()
 
         # Check if this is the first user for template/rendering hints.
         first_user = db.session.query(User).count() == 0
@@ -444,6 +451,8 @@ def register_auth_routes(app: Flask) -> None:
         if session.get("is_authenticated", False) and get_session_user():
             flash("👉 You are already logged in.")
             return redirect(url_for("inbox"))
+
+        _stash_next_post_auth_redirect()
 
         form = LoginForm()
         if request.method == "POST" and form.validate():

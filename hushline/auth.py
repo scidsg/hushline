@@ -51,17 +51,22 @@ def set_session_user(*, user: User, username: str, is_authenticated: bool) -> No
         session.pop(CHAT_KEY_SESSION_ID_SESSION_KEY, None)
 
 
+def stash_post_auth_redirect_target(redirect_target: str | None) -> None:
+    if not isinstance(redirect_target, str):
+        return
+    if not redirect_target.startswith("/") or redirect_target.startswith("//"):
+        return
+
+    session[POST_AUTH_REDIRECT_SESSION_KEY] = redirect_target
+
+
 def stash_post_auth_redirect() -> None:
     if request.method != "GET":
         return
     if request.endpoint == "logout":
         return
 
-    redirect_target = request.full_path.removesuffix("?")
-    if not redirect_target.startswith("/") or redirect_target.startswith("//"):
-        return
-
-    session[POST_AUTH_REDIRECT_SESSION_KEY] = redirect_target
+    stash_post_auth_redirect_target(request.full_path.removesuffix("?"))
 
 
 def pop_post_auth_redirect(*, default_endpoint: str = "inbox") -> str:
