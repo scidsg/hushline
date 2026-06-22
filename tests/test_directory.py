@@ -2546,6 +2546,66 @@ def test_directory_users_json_filters_all_rows_by_listing_type_query_params(
     assert display_names == {"Illinois Newsroom", "Journalist User", "Newsroom User"}
 
 
+def test_directory_users_json_filters_all_rows_by_hushline_users_listing_type(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    verified_user = _directory_username(
+        username="verified-user",
+        display_name="Verified Hush Line User",
+        is_verified=True,
+        country="US",
+        subdivision="CA",
+        city="Los Angeles",
+    )
+    unverified_user = _directory_username(
+        username="unverified-user",
+        display_name="Unverified Hush Line User",
+        is_verified=False,
+        country="US",
+        subdivision="IL",
+        city="Chicago",
+    )
+    public_record_listing = PublicRecordListing(
+        id="public-record-california",
+        slug="public-record~california",
+        name="California Attorney",
+        website="https://california.example",
+        description="California whistleblower attorney.",
+        city="San Francisco",
+        state="CA",
+        practice_tags=("Whistleblowing",),
+        source_label="Official source",
+    )
+    newsroom_listing = _newsroom_listing_with_geography(
+        suffix="illinois",
+        name="Illinois Newsroom",
+        city="Chicago",
+        country="United States",
+        subdivision="Illinois",
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames",
+        lambda: (verified_user, unverified_user),
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_public_record_listings",
+        lambda: (public_record_listing,),
+    )
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (newsroom_listing,),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+
+    response = client.get(f"{url_for('directory_users')}?all_listing_type=hushline_users")
+    assert response.status_code == 200
+
+    display_names = {row["display_name"] for row in response.json or []}
+    assert display_names == {"Verified Hush Line User", "Unverified Hush Line User"}
+
+
 def test_directory_users_json_filters_all_rows_by_combined_geography_and_listing_type_query_params(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -2834,6 +2894,62 @@ def test_directory_all_filters_json_updates_country_counts_for_verified_listing_
     }
 
 
+def test_directory_all_filters_json_includes_hushline_users_listing_type(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    verified_user = _directory_username(
+        username="verified-user",
+        display_name="Verified User",
+        is_verified=True,
+        country="US",
+        subdivision="CA",
+        city="San Francisco",
+    )
+    unverified_user = _directory_username(
+        username="unverified-user",
+        display_name="Unverified User",
+        is_verified=False,
+        country="US",
+        subdivision="IL",
+        city="Chicago",
+    )
+    newsroom_listing = _newsroom_listing_with_geography(
+        suffix="illinois",
+        name="Illinois Newsroom",
+        city="Chicago",
+        country="United States",
+        subdivision="Illinois",
+    )
+
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_directory_usernames",
+        lambda: (verified_user, unverified_user),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_public_record_listings", lambda: ())
+    monkeypatch.setattr(
+        "hushline.routes.directory.get_newsroom_directory_listings",
+        lambda: (newsroom_listing,),
+    )
+    monkeypatch.setattr("hushline.routes.directory.get_securedrop_directory_listings", lambda: ())
+    monkeypatch.setattr("hushline.routes.directory.get_globaleaks_directory_listings", lambda: ())
+
+    response = client.get(f"{url_for('directory_all_filters')}?all_listing_type=hushline_users")
+    assert response.status_code == 200
+    assert response.json == {
+        "countries": [{"code": "United States", "label": "United States", "count": 2}],
+        "regions": {
+            "United States": [
+                {"code": "CA", "label": "California", "count": 1},
+                {"code": "IL", "label": "Illinois", "count": 1},
+            ]
+        },
+        "listing_types": [
+            {"code": "hushline_users", "label": "Hush Line users", "count": 2},
+            {"code": "verified", "label": "Verified", "count": 1},
+        ],
+    }
+
+
 def test_directory_all_filters_json_is_empty_when_verified_tabs_disabled(
     client: FlaskClient,
 ) -> None:
@@ -2945,6 +3061,30 @@ def test_newsrooms_listing_includes_self_reported_journalism_accounts() -> None:
         directory_routes._all_directory_entry_matches_listing_type(
             {"entry_type": "user", "account_category": AccountCategory.ACTIVIST.value},
             "newsrooms",
+        )
+        is False
+    )
+
+
+def test_hushline_users_listing_type_includes_verified_and_unverified_users_only() -> None:
+    assert (
+        directory_routes._all_directory_entry_matches_listing_type(
+            {"entry_type": "user", "is_verified": True},
+            "hushline_users",
+        )
+        is True
+    )
+    assert (
+        directory_routes._all_directory_entry_matches_listing_type(
+            {"entry_type": "user", "is_verified": False},
+            "hushline_users",
+        )
+        is True
+    )
+    assert (
+        directory_routes._all_directory_entry_matches_listing_type(
+            {"entry_type": "newsroom", "is_newsroom": True},
+            "hushline_users",
         )
         is False
     )
