@@ -557,6 +557,7 @@ def test_anonymous_profile_with_chat_key_without_pgp_omits_anonymous_tip_clause(
 def test_authenticated_profile_hides_login_conversation_prompt(
     client: FlaskClient, user: User, user2: User
 ) -> None:
+    _set_pgp_key(user2)
     _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
     db.session.commit()
 
@@ -564,6 +565,40 @@ def test_authenticated_profile_hides_login_conversation_prompt(
 
     assert response.status_code == 200
     assert "start an end-to-end encrypted conversation" not in response.text
+    assert "Two-way conversations pending activation" not in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_authenticated_profile_without_recipient_chat_key_shows_pending_activation_banner(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    _set_pgp_key(user2)
+    db.session.commit()
+
+    response = client.get(url_for("profile", username=user2.primary_username.username))
+
+    assert response.status_code == 200
+    banner = BeautifulSoup(response.text, "html.parser").select_one("p.contextBanner")
+    assert banner is not None
+    assert banner.get_text(" ", strip=True) == (
+        "⏳ Two-way conversations pending activation. Submit a tip below."
+    )
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_authenticated_info_only_profile_omits_pending_activation_tip_clause(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    user2.pgp_key = None
+    db.session.commit()
+
+    response = client.get(url_for("profile", username=user2.primary_username.username))
+
+    assert response.status_code == 200
+    banner = BeautifulSoup(response.text, "html.parser").select_one("p.contextBanner")
+    assert banner is not None
+    assert banner.get_text(" ", strip=True) == "⏳ Two-way conversations pending activation."
+    assert "Submit a tip below" not in banner.get_text(" ", strip=True)
 
 
 def test_anonymous_profile_without_chat_key_hides_login_conversation_prompt(
