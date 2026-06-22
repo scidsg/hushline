@@ -195,6 +195,7 @@ def test_settings_chat_key_provisioning_generates_decryptable_ecdh_key() -> None
 
 def test_chat_key_lifecycle_restores_unlocked_key_for_authenticated_tab_session() -> None:
     js = (ROOT / "assets/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
+    static_js = (ROOT / "hushline/static/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
     base_template = (ROOT / "hushline/templates/base.html").read_text(encoding="utf-8")
     login_template = (ROOT / "hushline/templates/login.html").read_text(encoding="utf-8")
     password_reset_template = (ROOT / "hushline/templates/password_reset.html").read_text(
@@ -245,6 +246,8 @@ def test_chat_key_lifecycle_restores_unlocked_key_for_authenticated_tab_session(
     assert "createChatKeyPayload(password)" in js
     assert "populateLoginChatKeyPayload(form, password)" in js
     assert "payloadInput.value = JSON.stringify(created.payload);" in js
+    assert 'new CustomEvent("hushline:document-replaced")' in js
+    assert 'new CustomEvent("hushline:document-replaced")' in static_js
     assert 'name="chat_key_payload"' in login_template
     assert 'id="login-chat-key-payload"' in login_template
     assert "pendingLoginPassword" in js
@@ -574,6 +577,9 @@ def test_global_header_account_menu_uses_shared_action_menu_treatment() -> None:
     assert 'class="dropdown-icon"' in template
     assert "setupDropdown" not in js
     assert "dropdownIcon" not in js
+    assert 'dataset.navControllerInit === "true"' in js
+    assert 'dataset.actionMenuInit === "true"' in js
+    assert 'document.addEventListener("hushline:document-replaced"' in js
     assert ".action-menu-content" in scss
     assert ".dropdown-icon" in scss
     assert "filter: invert(1);" in scss
