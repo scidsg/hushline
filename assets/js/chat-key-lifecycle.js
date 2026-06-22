@@ -980,6 +980,7 @@
     document.head.replaceWith(document.importNode(parsedDocument.head, true));
     document.body.replaceWith(document.importNode(parsedDocument.body, true));
     window.history.replaceState({}, "", responseUrl);
+    document.dispatchEvent(new CustomEvent("hushline:document-replaced"));
     bindPage();
   }
 

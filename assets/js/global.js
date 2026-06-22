@@ -4,6 +4,10 @@ function navController() {
     const navList = document.querySelector("header nav ul");
 
     if (mobileNavToggle && navList) {
+      if (mobileNavToggle.dataset.navControllerInit === "true") {
+        return;
+      }
+      mobileNavToggle.dataset.navControllerInit = "true";
       mobileNavToggle.addEventListener("click", function (event) {
         event.preventDefault();
         navList.classList.toggle("show");
@@ -27,6 +31,10 @@ function navController() {
       if (!button || !menu) {
         return;
       }
+      if (actionMenu.dataset.actionMenuInit === "true") {
+        return;
+      }
+      actionMenu.dataset.actionMenuInit = "true";
 
       button.addEventListener("click", (event) => {
         event.preventDefault();
@@ -528,6 +536,10 @@ document.addEventListener("DOMContentLoaded", function () {
       guidanceDiv.addEventListener("keydown", trapFocus);
     }
   }
+});
+
+document.addEventListener("hushline:document-replaced", function () {
+  navController();
 });
 
 document.addEventListener("DOMContentLoaded", () => {
