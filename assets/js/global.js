@@ -1,40 +1,4 @@
 function navController() {
-  function setupDropdown() {
-    const dropdownToggle = document.querySelector(".dropdown .dropbtn");
-    if (!dropdownToggle) return;
-
-    const dropdownContent = document.querySelector(".dropdown-content");
-    const dropdownIcon = document.querySelector(".dropdown-icon");
-
-    if (dropdownContent && dropdownIcon) {
-      dropdownToggle.addEventListener("click", function (event) {
-        event.preventDefault();
-        dropdownContent.classList.toggle("show");
-        dropdownContent.style.animation = dropdownContent.classList.contains(
-          "show",
-        )
-          ? "fadeInSlideDown 0.3s ease forwards"
-          : "fadeOutSlideUp 0.3s ease forwards";
-        dropdownIcon.classList.toggle("rotate-icon");
-        const expanded = this.getAttribute("aria-expanded") === "true" || false;
-        this.setAttribute("aria-expanded", !expanded);
-        dropdownContent.hidden = expanded;
-      });
-
-      window.addEventListener("click", function (event) {
-        if (
-          !dropdownToggle.contains(event.target) &&
-          dropdownContent.classList.contains("show")
-        ) {
-          dropdownContent.classList.remove("show");
-          dropdownIcon.classList.remove("rotate-icon");
-          dropdownToggle.setAttribute("aria-expanded", "false");
-          dropdownContent.hidden = true;
-        }
-      });
-    }
-  }
-
   function setupMobileNav() {
     const mobileNavToggle = document.querySelector(".mobileNav");
     const navList = document.querySelector("header nav ul");
@@ -115,7 +79,6 @@ function navController() {
     });
   }
 
-  setupDropdown();
   setupMobileNav();
   setupActionMenus();
 }

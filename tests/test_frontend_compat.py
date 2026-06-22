@@ -559,6 +559,23 @@ def test_action_menu_escape_handling_is_scoped_to_open_menu() -> None:
     assert "closeMenu(menu, button);" in js
 
 
+def test_global_header_account_menu_uses_shared_action_menu_treatment() -> None:
+    template = (ROOT / "hushline/templates/base.html").read_text(encoding="utf-8")
+    js = (ROOT / "assets/js/global.js").read_text(encoding="utf-8")
+    scss = (ROOT / "assets/scss/style.scss").read_text(encoding="utf-8")
+
+    assert 'class="dropdown action-menu"' in template
+    assert 'class="dropbtn action-menu-button"' in template
+    assert 'class="dropdown-content action-menu-content"' in template
+    assert 'role="menu"' in template
+    assert 'role="menuitem"' in template
+    assert 'class="dropdown-icon"' in template
+    assert "setupDropdown" not in js
+    assert "dropdownIcon" not in js
+    assert ".action-menu-content" in scss
+    assert "#primary-nav.show .dropbtn" in scss
+
+
 def test_first_load_splash_hooks_exist() -> None:
     template = (ROOT / "hushline/templates/base.html").read_text(encoding="utf-8")
     js = (ROOT / "assets/js/global.js").read_text(encoding="utf-8")
