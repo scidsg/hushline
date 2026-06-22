@@ -244,14 +244,14 @@
     border: none;
   }
 
-  .dirMeta,
+  .contextBanner,
   p.instr {
     background-color: rgb(255, 249, 234);
     border: 1px solid rgba(232, 212, 180, 0.8);
     color: var(--color-text-light);
   }
 
-  .directory-search.is-sticky+.tab-content .dirMeta {
+  .directory-search.is-sticky+.tab-content .contextBanner {
     margin-top: 0.125rem;
   }
 
@@ -845,8 +845,8 @@
     border: none;
   }
 
-  .dirMeta,
-  p.dirMeta.meta,
+  .contextBanner,
+  p.contextBanner.meta,
   p.instr {
     background-color: var(--color-dark-bg-alt-1);
     border: var(--border-dark-1);
@@ -2004,14 +2004,14 @@ h3+.meta {
   margin-top: 0.75rem;
 }
 
-.dirMeta,
+.contextBanner,
 p.instr {
   margin: 1rem 0;
   border-radius: 0.25rem;
   padding: 0.9125rem 1rem;
 }
 
-.dirMeta {
+.contextBanner {
   margin-top: 0;
 }
 
@@ -2019,7 +2019,7 @@ h2.submit+p.instr {
   margin: 0.75rem 0 0.5rem 0;
 }
 
-h2.submit+p.dirMeta {
+h2.submit+p.contextBanner {
   margin: 0.75rem 0 0.5rem 0;
 }
 
@@ -6087,7 +6087,7 @@ header nav ul li.dropdown ul {
   margin-top: 0 !important;
 }
 
-.directory-search.is-sticky+.tab-content .dirMeta {
+.directory-search.is-sticky+.tab-content .contextBanner {
   margin-top: 0;
 }
 

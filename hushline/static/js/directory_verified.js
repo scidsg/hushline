@@ -1013,7 +1013,7 @@
 
     function panelIntroMarkup(panelId) {
       return (
-        document.getElementById(panelId)?.querySelector(".dirMeta")
+        document.getElementById(panelId)?.querySelector(".contextBanner")
           ?.outerHTML || ""
       );
     }

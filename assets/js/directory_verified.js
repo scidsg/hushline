@@ -915,7 +915,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function panelIntroMarkup(panelId) {
-    return document.getElementById(panelId)?.querySelector(".dirMeta")?.outerHTML || "";
+    return document.getElementById(panelId)?.querySelector(".contextBanner")?.outerHTML || "";
   }
 
   function buildDefaultPanelMarkup(tab) {

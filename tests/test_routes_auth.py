@@ -18,6 +18,7 @@ from hushline.auth import (
     PENDING_PASSWORD_REHASH_SOURCE_DIGEST_SESSION_KEY,
     POST_AUTH_REDIRECT_SESSION_KEY,
     stash_post_auth_redirect,
+    stash_post_auth_redirect_target,
 )
 from hushline.config import PASSWORD_HASH_REHASH_ON_AUTH_ENABLED
 from hushline.db import db
@@ -336,6 +337,41 @@ def test_login_redirects_to_original_protected_page(
         assert POST_AUTH_REDIRECT_SESSION_KEY not in sess
         assert isinstance(sess[CHAT_KEY_SESSION_ID_SESSION_KEY], str)
         assert sess[CHAT_KEY_SESSION_ID_SESSION_KEY]
+
+
+def test_login_next_redirects_after_auth(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    target = url_for("profile", username=user.primary_username.username, _external=False)
+
+    response = client.get(url_for("login", next=target), follow_redirects=False)
+    assert response.status_code == 200
+
+    with client.session_transaction() as sess:
+        assert sess[POST_AUTH_REDIRECT_SESSION_KEY] == target
+
+    response = client.post(
+        url_for("login"),
+        data={"username": user.primary_username.username, "password": user_password},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(target)
+
+    with client.session_transaction() as sess:
+        assert POST_AUTH_REDIRECT_SESSION_KEY not in sess
+
+
+def test_register_next_stashes_post_auth_redirect(client: FlaskClient, user: User) -> None:
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_ENABLED, True)
+    db.session.commit()
+    target = url_for("profile", username=user.primary_username.username, _external=False)
+
+    response = client.get(url_for("register", next=target), follow_redirects=False)
+
+    assert response.status_code == 200
+    with client.session_transaction() as sess:
+        assert sess[POST_AUTH_REDIRECT_SESSION_KEY] == target
 
 
 def test_login_password_step_for_2fa_does_not_revoke_existing_sessions(
@@ -857,6 +893,19 @@ def test_stash_post_auth_redirect_rejects_unsafe_target_and_preserves_session(ap
             ),
         ):
             stash_post_auth_redirect()
+
+        assert session["sentinel"] == "keep"
+        assert session[POST_AUTH_REDIRECT_SESSION_KEY] == "/already-set"
+
+
+def test_stash_post_auth_redirect_target_rejects_unsafe_target(app: Flask) -> None:
+    with app.test_request_context("/login", method="GET"):
+        session["sentinel"] = "keep"
+        session[POST_AUTH_REDIRECT_SESSION_KEY] = "/already-set"
+
+        stash_post_auth_redirect_target("//example.com/phish")
+        stash_post_auth_redirect_target("https://example.com/phish")
+        stash_post_auth_redirect_target(None)
 
         assert session["sentinel"] == "keep"
         assert session[POST_AUTH_REDIRECT_SESSION_KEY] == "/already-set"
