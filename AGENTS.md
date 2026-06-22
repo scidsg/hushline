@@ -89,7 +89,8 @@ This file provides operating guidance for coding agents working in the Hush Line
 ## Required Checks Before PR
 
 - `make lint` passes
-- Full `make test` for all changes
+- Focused tests for the changed scope pass
+- Full GitHub CI must pass before merge
 - If touching behavior-critical code, run CI-style coverage command above
 
 ## Testing Expectations
@@ -165,8 +166,9 @@ When behavior changes or features are added/removed, update relevant documentati
 
 ## PR Guidance
 
-- Before opening a PR, always run `make lint` and `make test` and fix any issues first.
-- Before requesting merge, ensure the PR branch is conflict-free with `main` (for example, `git fetch origin && git rebase origin/main`). If the branch changes, rerun `make lint` and `make test`.
+- Before opening a PR, always run `make lint` and focused tests and fix any issues.
+- Run local full `make test` for behavior-critical changes, broad changes, or CI failures that need local reproduction.
+- Before requesting merge, ensure the PR branch is conflict-free with `main` (for example, `git fetch origin && git rebase origin/main`). If the branch changes, rerun `make lint` and focused tests.
 - All commits must be cryptographically signed (GPG or SSH signing) and verifiable on the remote.
 - Include what changed.
 - Include why it changed.
@@ -178,4 +180,6 @@ When behavior changes or features are added/removed, update relevant documentati
 - Do not prepend `[codex]` or other agent-identifying prefixes to PR titles.
 - Check when the PR was created and explicitly flag if it appears stale or no longer relevant before proceeding.
 - Never interpolate untrusted GitHub event text fields (issue/PR/comment title or body) directly in shell `run:` steps in workflows.
-- Enforce branch protection required checks before merge: `Workflow Security Checks`, CodeQL scanning, and `Run Linter and Tests`.
+- Enforce required checks before merge: `Workflow Security Checks`, CodeQL scanning, `make lint`, and any focused-test or domain-specific checks required for the changed scope.
+- After opening a PR, monitor required GitHub checks and any focused-test or domain-specific checks until they finish. If there are any failures, address those failures and update the PR. This is required because local focused tests intentionally offload broader regression coverage to GitHub CI.
+- After opening a PR, monitor for unresolved comments from Codex reviews or humans until the PR is merged. Address actionable feedback, reply with the change made or the reason no change is needed, and resolve threads only after they are handled.

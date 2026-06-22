@@ -74,7 +74,8 @@ If you want a slower, guided setup for a brand-new machine, use the AI-ready pro
 ## Security and Privacy
 
 - Threat model: [`docs/THREAT-MODEL.md`](./docs/THREAT-MODEL.md)
-- Two-way chat E2EE: [`docs/TWO-WAY-CHAT-E2EE.md`](./docs/TWO-WAY-CHAT-E2EE.md)
+- Two-way chat E2EE implementation reference: [`docs/TWO-WAY-CHAT-E2EE.md`](./docs/TWO-WAY-CHAT-E2EE.md)
+- Two-way chat E2EE technical whitepaper: [`docs/HUSH-LINE-TWO-WAY-CHAT-E2EE-WHITEPAPER.md`](./docs/HUSH-LINE-TWO-WAY-CHAT-E2EE-WHITEPAPER.md)
 - Security policy and vulnerability reporting: [`SECURITY.md`](./SECURITY.md)
 - Privacy policy: [`docs/PRIVACY.md`](./docs/PRIVACY.md)
 

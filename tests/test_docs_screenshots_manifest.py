@@ -162,7 +162,8 @@ def test_docs_screenshots_manifest_includes_decrypted_conversation_scenes() -> N
     )
     assert newman_thread["path"] == artvandelay_thread["path"]
     assert newman_thread["waitForSelector"] == (
-        ".conversation-message-body:has-text('Hello, Newman.')"
+        ".conversation-message-body:has-text("
+        "'George Costanza may have acted without authorization')"
     )
     assert "create_sample_conversations()" in dev_data
     assert "ECDH-P256-AES-GCM" in dev_data
