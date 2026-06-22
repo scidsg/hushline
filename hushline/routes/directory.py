@@ -58,6 +58,7 @@ _LEGACY_COUNTRY_NAME_BY_CODE = {
     "US": "United States",
 }
 _ALL_LISTING_TYPE_LABELS = (
+    ("hushline_users", "Hush Line users"),
     ("verified", "Verified"),
     ("attorneys", "Attorneys"),
     ("newsrooms", "Journalists"),
@@ -676,6 +677,9 @@ def _all_directory_entry_geography(
 def _all_directory_entry_matches_listing_type(
     entry: dict[str, object | None], listing_type: str
 ) -> bool:
+    if listing_type == "hushline_users":
+        return entry.get("entry_type") == "user"
+
     if listing_type == "verified":
         return entry.get("entry_type") == "user" and bool(entry.get("is_verified"))
 
