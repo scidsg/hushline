@@ -17,6 +17,7 @@ from hushline.auth import (
     PENDING_PASSWORD_REHASH_SESSION_KEY,
     PENDING_PASSWORD_REHASH_SOURCE_DIGEST_SESSION_KEY,
     POST_AUTH_REDIRECT_SESSION_KEY,
+    pop_post_auth_redirect,
     stash_post_auth_redirect,
     stash_post_auth_redirect_target,
 )
@@ -372,6 +373,52 @@ def test_register_next_stashes_post_auth_redirect(client: FlaskClient, user: Use
     assert response.status_code == 200
     with client.session_transaction() as sess:
         assert sess[POST_AUTH_REDIRECT_SESSION_KEY] == target
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        r"/\attacker.example/path",
+        "/%5Cattacker.example/path",
+    ],
+)
+def test_login_next_rejects_backslash_redirect_target(
+    client: FlaskClient, user: User, user_password: str, target: str
+) -> None:
+    response = client.get(url_for("login", next=target), follow_redirects=False)
+    assert response.status_code == 200
+
+    with client.session_transaction() as sess:
+        assert POST_AUTH_REDIRECT_SESSION_KEY not in sess
+
+    response = client.post(
+        url_for("login"),
+        data={"username": user.primary_username.username, "password": user_password},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("inbox"))
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        r"/\attacker.example/path",
+        "/%5Cattacker.example/path",
+    ],
+)
+def test_register_next_rejects_backslash_redirect_target(
+    client: FlaskClient, user: User, target: str
+) -> None:
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_ENABLED, True)
+    db.session.commit()
+
+    response = client.get(url_for("register", next=target), follow_redirects=False)
+
+    assert response.status_code == 200
+    with client.session_transaction() as sess:
+        assert POST_AUTH_REDIRECT_SESSION_KEY not in sess
 
 
 def test_login_password_step_for_2fa_does_not_revoke_existing_sessions(
@@ -905,10 +952,30 @@ def test_stash_post_auth_redirect_target_rejects_unsafe_target(app: Flask) -> No
 
         stash_post_auth_redirect_target("//example.com/phish")
         stash_post_auth_redirect_target("https://example.com/phish")
+        stash_post_auth_redirect_target(r"/\example.com/phish")
+        stash_post_auth_redirect_target("/%5Cexample.com/phish")
         stash_post_auth_redirect_target(None)
 
         assert session["sentinel"] == "keep"
         assert session[POST_AUTH_REDIRECT_SESSION_KEY] == "/already-set"
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        "//example.com/phish",
+        "https://example.com/phish",
+        r"/\example.com/phish",
+        "/%5Cexample.com/phish",
+        "/safe-path\r\nLocation: https://example.com/phish",
+    ],
+)
+def test_pop_post_auth_redirect_rejects_unsafe_target(app: Flask, target: str) -> None:
+    with app.test_request_context("/login", method="POST"):
+        session[POST_AUTH_REDIRECT_SESSION_KEY] = target
+
+        assert pop_post_auth_redirect() == url_for("inbox")
+        assert POST_AUTH_REDIRECT_SESSION_KEY not in session
 
 
 @pytest.mark.parametrize(
