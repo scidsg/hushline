@@ -537,12 +537,20 @@ def register_profile_routes(app: Flask) -> None:
                     not is_embedded and _chat_submission_base_available(uname, sender)
                 ),
             )
+            normal_tip_available = _message_submission_block_reason(uname) is None
             anonymous_tip_available = message_submission_block_reason is None
             show_account_conversation_hint = (
                 not is_embedded
                 and sender is None
                 and message_submission_block_reason != "suspended"
                 and _chat_key_can_sign(uname.user)
+            )
+            show_chat_key_pending_activation_hint = (
+                not is_embedded
+                and sender is not None
+                and sender.id != uname.user_id
+                and message_submission_block_reason != "suspended"
+                and not _chat_key_can_sign(uname.user)
             )
             owner_guard_nonce = secrets.token_urlsafe(16)
             owner_guard_signature = _owner_guard_signature(
@@ -591,7 +599,9 @@ def register_profile_routes(app: Flask) -> None:
                 math_problem=math_problem,
                 message_submission_block_reason=message_submission_block_reason,
                 anonymous_tip_available=anonymous_tip_available,
+                normal_tip_available=normal_tip_available,
                 show_account_conversation_hint=show_account_conversation_hint,
+                show_chat_key_pending_activation_hint=show_chat_key_pending_activation_hint,
                 owner_guard_nonce=owner_guard_nonce,
                 owner_guard_signature=owner_guard_signature,
                 is_embedded=is_embedded,
