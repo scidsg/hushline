@@ -567,12 +567,16 @@ def test_global_header_account_menu_uses_shared_action_menu_treatment() -> None:
     assert 'class="dropdown action-menu"' in template
     assert 'class="dropbtn action-menu-button"' in template
     assert 'class="dropdown-content action-menu-content"' in template
-    assert 'role="menu"' in template
-    assert 'role="menuitem"' in template
+    assert 'aria-label="Account menu"' not in template
+    assert 'aria-haspopup="menu"' not in template
+    assert 'role="menu"' not in template
+    assert 'role="menuitem"' not in template
     assert 'class="dropdown-icon"' in template
     assert "setupDropdown" not in js
     assert "dropdownIcon" not in js
     assert ".action-menu-content" in scss
+    assert ".dropdown-icon" in scss
+    assert "filter: invert(1);" in scss
     assert "#primary-nav.show .dropbtn" in scss
 
 

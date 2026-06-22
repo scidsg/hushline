@@ -292,8 +292,6 @@
                   type="button"
                   aria-expanded="false"
                   aria-controls="dropdown-content"
-                  aria-haspopup="menu"
-                  aria-label="Account menu"
                   class="dropbtn action-menu-button"
                 >
                   <span class="dropbtn-label">@{{ session['username'] }}</span>
@@ -307,17 +305,15 @@
                 <div
                   id="dropdown-content"
                   class="dropdown-content action-menu-content"
-                  role="menu"
                   hidden
                 >
-                  <ul role="none">
-                    <li role="none">
-                      <a href="{{ url_for('settings.profile') }}" role="menuitem">Settings</a>
+                  <ul>
+                    <li>
+                      <a href="{{ url_for('settings.profile') }}">Settings</a>
                     </li>
-                    <li role="none">
+                    <li>
                       <a
                         href="{{ url_for('logout') }}"
-                        role="menuitem"
                         data-clear-chat-key-material="true"
                         >Logout</a
                       >

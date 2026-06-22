@@ -3996,6 +3996,10 @@ input#captcha_answer {
     color: var(--color-text-dark);
   }
 
+  .dropdown-icon {
+    filter: invert(1);
+  }
+
   #primary-nav.show,
   .action-menu-content {
     border-color: var(--color-border-dark-1);
