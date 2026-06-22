@@ -2890,7 +2890,10 @@ def test_directory_all_filters_json_updates_country_counts_for_verified_listing_
     assert response.json == {
         "countries": [{"code": "United States", "label": "United States", "count": 1}],
         "regions": {"United States": [{"code": "CA", "label": "California", "count": 1}]},
-        "listing_types": [{"code": "verified", "label": "Verified", "count": 1}],
+        "listing_types": [
+            {"code": "hushline_users", "label": "Hush Line users", "count": 1},
+            {"code": "verified", "label": "Verified", "count": 1},
+        ],
     }
 
 
