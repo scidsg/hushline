@@ -1,6 +1,6 @@
 # Hush Line Two-Way Chat: End-to-End Encryption for Safer Disclosures
 
-Last updated: 2026-06-18
+Last updated: 2026-06-20
 
 ## Abstract
 
@@ -22,6 +22,10 @@ This whitepaper explains the product motivation, security model, cryptographic
 architecture, key lifecycle, operational boundaries, and known limitations of
 Hush Line two-way chat.
 
+This document is suitable as a technical preview for journalists, security
+reviewers, and partner organizations. It is not a formal cryptographic proof or
+third-party audit.
+
 ## Executive Summary
 
 Whistleblowing systems need more than secure intake. They also need usable
@@ -38,15 +42,17 @@ Hush Line now supports two complementary paths:
   follow-up in Hush Line with browser-based end-to-end encrypted conversation
   messages.
 
-The two-way chat design has five core security goals:
+The two-way chat design has seven core security goals:
 
 - Store conversation content only as per-participant encrypted payloads.
 - Restrict conversation routes to authenticated participants.
 - Require signing-capable Hush Line chat keys for new replies.
 - Bind encrypted envelopes to their intended conversation, sender, and
   recipient.
+- Verify new reply signatures server-side before storing ciphertext.
 - Keep notifications generic so plaintext and ciphertext are not copied into
   email.
+- Rate-limit chat writes to reduce message, storage, and notification flooding.
 
 The feature improves follow-up usability without weakening the anonymous intake
 flow. It also makes clear tradeoffs: account conversations expose operational
@@ -151,6 +157,17 @@ Administrators can govern accounts, registration, directory trust states,
 branding, and moderation settings. Admin status alone does not grant hidden
 access to conversation content.
 
+The current encrypted chat envelope is built from Web Crypto primitives:
+
+- P-256 ECDH is used to derive an AES-GCM message key for each recipient copy.
+- AES-GCM uses a fresh 96-bit IV for each encrypted copy.
+- Version 2 envelopes include canonicalized context as AES-GCM additional
+  authenticated data.
+- P-256 ECDSA with SHA-256 signs the canonical envelope fields for
+  signing-capable chat keys.
+- New replies are accepted only after the server verifies those signatures with
+  the sender participant's registered public chat signing key.
+
 ## Chat Keys and PGP Keys
 
 Hush Line uses different keys for different jobs.
@@ -159,8 +176,15 @@ PGP keys protect one-way message intake, encrypted exports, and optional
 encrypted notification email content. Proton Key Lookup helps users import
 public PGP keys for those workflows.
 
-Hush Line chat keys protect account conversation messages in the browser. They
-are browser-generated in-app conversation keys and are separate from PGP keys.
+Hush Line chat keys protect account conversation messages in the browser. A chat
+key contains browser-generated key material for two jobs:
+
+- a P-256 ECDH key pair used to encrypt and decrypt conversation payloads; and
+- a P-256 ECDSA signing key pair used to sign and verify versioned chat
+  envelopes.
+
+The private chat key bundle is encrypted for the user's account-password
+workflow before it is stored. Hush Line chat keys are separate from PGP keys, and
 Hush Line must not ask users to export, paste, or upload Proton Mail private
 keys or any other external private key for chat.
 
@@ -176,6 +200,12 @@ chat-capable, the browser prepares encrypted initial conversation copies for the
 sender and recipient. The initial conversation payload is bound to a one-time
 nonce and participant key metadata before the server stores it.
 
+Initial conversation creation is guarded by the logged-in sender session, the
+profile submission's integrity controls, a single-use initial conversation
+nonce, and context binding to the sender and recipient chat-key metadata. Follow
+up replies use the stricter append path described below, including server-side
+signature verification before storage.
+
 This gives the sender a conversation thread tied to the submission while keeping
 the plaintext in the browser. The recipient sees the conversation in the inbox
 without a plaintext preview and unlocks their chat key to read it.
@@ -186,7 +216,15 @@ reply/status-link workflow when message intake is otherwise enabled.
 ## Reply Envelopes
 
 Current reply envelopes use `ECDH-P256-AES-GCM` with versioned context binding.
-Each encrypted copy is specific to one recipient participant.
+Each encrypted copy is specific to one recipient participant and contains:
+
+- `algorithm`: currently `ECDH-P256-AES-GCM`;
+- `ephemeral_public_key`: the sender browser's ephemeral P-256 ECDH public key;
+- `iv`: the AES-GCM IV;
+- `ciphertext`: the AES-GCM ciphertext and authentication tag;
+- `v`: the envelope context version for signed replies;
+- `context`: the conversation and participant binding data; and
+- `signature`: a raw P-256 ECDSA/SHA-256 signature encoded as base64.
 
 Versioned envelopes include context for:
 
@@ -195,10 +233,11 @@ Versioned envelopes include context for:
 - the recipient participant, and
 - the envelope purpose.
 
-That context is supplied as AES-GCM additional authenticated data and is covered
-by signed envelope fields for signing-capable chat keys. This design helps
-detect attempts to replay or swap ciphertext across conversations, sender
-positions, or recipient positions.
+That context is canonicalized, supplied as AES-GCM additional authenticated data,
+and covered by signed envelope fields for signing-capable chat keys. The signed
+payload includes the version, algorithm, ephemeral public key, IV, ciphertext,
+and context. This design helps detect attempts to replay or swap ciphertext
+across conversations, sender positions, or recipient positions.
 
 The server validates structure, participant sets, context binding, and
 signatures with the sender participant's registered public chat signing key
@@ -217,6 +256,22 @@ for one-way tip intake.
 
 Generic notifications reduce accidental leakage into SMTP logs, mailboxes,
 forwarding rules, mobile lock screens, and third-party mail search indexes.
+
+## Abuse Controls
+
+Two-way chat includes database-backed write limits to reduce message, storage,
+and notification flooding by an authenticated conversation participant. Hush
+Line tracks recent accepted chat-message attempts across three scopes:
+
+- the sender participant within a conversation,
+- the conversation as a whole, and
+- the authenticated user account.
+
+On PostgreSQL deployments, the append route takes transaction-scoped advisory
+locks for the relevant rate-limit buckets before counting and recording an
+accepted attempt. This keeps the rate-limit decision and reservation together
+for concurrent requests. Requests that exceed the configured limits are rejected
+before message rows, encrypted copies, or notifications are created.
 
 ## Password Changes, Resets, and Recovery
 
@@ -258,6 +313,13 @@ Versioned encrypted envelopes bind ciphertext to conversation and participant
 context. This limits replay and swapping attacks against stored conversation
 copies.
 
+### Server-Verified Reply Provenance
+
+New replies must be signed by the sender participant's active chat signing key.
+The server verifies the signature before storing encrypted copies or sending
+notifications, and the browser verifies signatures again when processing
+versioned envelopes.
+
 ### Signing-Capable Replies
 
 New replies require signing-capable chat keys for all participants. This avoids
@@ -268,6 +330,13 @@ current integrity policy.
 
 Conversation notifications avoid both plaintext and ciphertext. They reveal
 activity, not content.
+
+### Bounded Write Abuse
+
+Chat message acceptance is rate-limited across participant, conversation, and
+user scopes. This does not make abuse impossible, but it reduces burst message,
+storage, and notification amplification from an already-authenticated
+participant.
 
 ## What the Server Still Knows
 
@@ -301,7 +370,16 @@ specific to the expected conversation, sender, and recipient.
 
 Legacy chat-key material may support reading older content, but new replies
 require all participants to have signing-capable chat keys. The server and UI
-must enforce the same availability policy.
+enforce the same availability policy, and the append route verifies reply
+signatures before accepting new ciphertext.
+
+### Message and Notification Flooding
+
+An authenticated participant may try to send many valid encrypted replies to
+consume storage or trigger repeated notifications. Hush Line mitigates this with
+rate limits across participant, conversation, and user scopes. On PostgreSQL,
+transaction advisory locks serialize the affected rate-limit buckets so parallel
+requests cannot all consume the same apparent remaining capacity.
 
 ### Chat Key Substitution
 
@@ -334,6 +412,11 @@ Before promoting the feature, verify:
 - new replies are unavailable unless every participant has signing-capable chat
   keys;
 - inbox rows and notifications do not reveal conversation plaintext;
+- new reply signatures are verified before encrypted copies are stored;
+- chat message rate limits apply before message rows or notifications are
+  created;
+- deleting a conversation removes only the deleting participant's local access
+  and authored encrypted payloads until every participant deletes their side;
 - password changes require chat-key rewrap;
 - password resets leave old chat history locked to the old key;
 - security headers and CSP remain enforced; and

@@ -28,7 +28,7 @@
       "passwordEnv": "SCREENSHOT_ARTVANDELAY_PASSWORD"
     },
     "newman": {
-      "username": "newman",
+      "username": "not_newman",
       "password": "Test-testtesttesttest-1",
       "passwordEnv": "SCREENSHOT_NEWMAN_PASSWORD"
     }
@@ -578,28 +578,28 @@
     },
     {
       "slug": "auth-newman-profile",
-      "title": "Profile - newman (authenticated)",
-      "path": "/to/newman",
+      "title": "Profile - not_newman (authenticated)",
+      "path": "/to/not_newman",
       "session": "newman",
       "waitForSelector": "h2.submit"
     },
     {
       "slug": "auth-newman-inbox",
-      "title": "Inbox - newman",
+      "title": "Inbox - not_newman",
       "path": "/inbox",
       "session": "newman",
       "waitForSelector": ".inbox-content"
     },
     {
       "slug": "auth-newman-conversation-thread",
-      "title": "Conversation thread - newman",
+      "title": "Conversation thread - not_newman",
       "path": "/conversation/33333333-3333-4333-8333-333333333333",
       "session": "newman",
-      "waitForSelector": ".conversation-message-body:has-text('Hello, Newman.')"
+      "waitForSelector": ".conversation-message-body:has-text('George Costanza may have acted without authorization')"
     },
     {
       "slug": "auth-newman-onboarding-profile",
-      "title": "Onboarding - Step 1 Profile (newman)",
+      "title": "Onboarding - Step 1 Profile (not_newman)",
       "path": "/onboarding?step=profile",
       "session": "newman",
       "waitForSelector": "#display_name",
@@ -617,70 +617,70 @@
     },
     {
       "slug": "auth-newman-onboarding-encryption",
-      "title": "Onboarding - Step 2 Encryption (newman)",
+      "title": "Onboarding - Step 2 Encryption (not_newman)",
       "path": "/onboarding?step=encryption",
       "session": "newman",
       "waitForSelector": "#searchInput"
     },
     {
       "slug": "auth-newman-onboarding-notifications",
-      "title": "Onboarding - Step 3 Notifications (newman)",
+      "title": "Onboarding - Step 3 Notifications (not_newman)",
       "path": "/onboarding?step=notifications",
       "session": "newman",
       "waitForSelector": "#email_address"
     },
     {
       "slug": "auth-newman-onboarding-directory",
-      "title": "Onboarding - Step 4 Directory (newman)",
+      "title": "Onboarding - Step 4 Directory (not_newman)",
       "path": "/onboarding?step=directory",
       "session": "newman",
       "waitForSelector": "#show_in_directory"
     },
     {
       "slug": "auth-newman-settings-profile",
-      "title": "Settings - Profile (newman)",
+      "title": "Settings - Profile (not_newman)",
       "path": "/settings/profile",
       "session": "newman",
       "waitForSelector": ".settings-tabs"
     },
     {
       "slug": "auth-newman-settings-aliases",
-      "title": "Settings - Aliases (newman)",
+      "title": "Settings - Aliases (not_newman)",
       "path": "/settings/aliases",
       "session": "newman",
       "waitForSelector": ".settings-tabs"
     },
     {
       "slug": "auth-newman-settings-auth",
-      "title": "Settings - Authentication (newman)",
+      "title": "Settings - Authentication (not_newman)",
       "path": "/settings/auth",
       "session": "newman",
       "waitForSelector": ".settings-tabs"
     },
     {
       "slug": "auth-newman-settings-encryption",
-      "title": "Settings - Encryption (newman)",
+      "title": "Settings - Encryption (not_newman)",
       "path": "/settings/encryption",
       "session": "newman",
       "waitForSelector": ".settings-tabs"
     },
     {
       "slug": "auth-newman-settings-replies",
-      "title": "Settings - Message Statuses (newman)",
+      "title": "Settings - Message Statuses (not_newman)",
       "path": "/settings/replies",
       "session": "newman",
       "waitForSelector": ".settings-tabs"
     },
     {
       "slug": "auth-newman-settings-notifications",
-      "title": "Settings - Notifications (newman)",
+      "title": "Settings - Notifications (not_newman)",
       "path": "/settings/notifications",
       "session": "newman",
       "waitForSelector": ".settings-tabs"
     },
     {
       "slug": "auth-newman-settings-advanced",
-      "title": "Settings - Advanced (newman)",
+      "title": "Settings - Advanced (not_newman)",
       "path": "/settings/advanced",
       "session": "newman",
       "waitForSelector": ".settings-tabs"
@@ -1061,8 +1061,8 @@
     },
     {
       "slug": "guest-profile-newman",
-      "title": "Profile - newman",
-      "path": "/to/newman",
+      "title": "Profile - not_newman",
+      "path": "/to/not_newman",
       "session": "guest",
       "waitForSelector": "h2.submit"
     },

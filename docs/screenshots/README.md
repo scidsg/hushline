@@ -20,11 +20,17 @@ Each release stores images by session under `releases/<version>/<session>/`.
 
 ![Directory featured carousel](./releases/latest/guest/guest-directory-featured-carousel-desktop-light-fold.png)
 
+## Profiles
+
+![Art Vandelay profile mobile](./releases/latest/guest/guest-profile-artvandelay-mobile-light-fold.png)
+
 ## Conversations
 
 ![Conversation inbox](./releases/latest/artvandelay/auth-artvandelay-inbox-conversations-desktop-light-fold.png)
 ![Conversation thread](./releases/latest/artvandelay/auth-artvandelay-conversation-thread-desktop-light-fold.png)
 ![Conversation thread mobile](./releases/latest/artvandelay/auth-artvandelay-conversation-thread-mobile-light-fold.png)
+![Conversation thread from Newman](./releases/latest/newman/auth-newman-conversation-thread-desktop-light-fold.png)
+![Conversation thread from Newman mobile](./releases/latest/newman/auth-newman-conversation-thread-mobile-light-fold.png)
 
 ## Required accounts
 
