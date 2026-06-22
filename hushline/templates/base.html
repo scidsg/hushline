@@ -287,12 +287,12 @@
                   >Profile</a
                 >
               </li>
-              <li class="dropdown">
+              <li class="dropdown action-menu">
                 <button
                   type="button"
                   aria-expanded="false"
                   aria-controls="dropdown-content"
-                  class="dropbtn"
+                  class="dropbtn action-menu-button"
                 >
                   <span class="dropbtn-label">@{{ session['username'] }}</span>
                   <img
@@ -302,7 +302,11 @@
                     aria-hidden="true"
                   />
                 </button>
-                <div id="dropdown-content" class="dropdown-content" hidden>
+                <div
+                  id="dropdown-content"
+                  class="dropdown-content action-menu-content"
+                  hidden
+                >
                   <ul>
                     <li>
                       <a href="{{ url_for('settings.profile') }}">Settings</a>
