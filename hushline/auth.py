@@ -2,6 +2,7 @@ import secrets
 from functools import wraps
 from hmac import compare_digest
 from typing import Any, Callable
+from urllib.parse import unquote, urlsplit
 
 from flask import abort, current_app, flash, redirect, request, session, url_for
 
@@ -12,6 +13,8 @@ PENDING_PASSWORD_REHASH_SESSION_KEY = "pending_password_rehash"  # noqa: S105
 PENDING_PASSWORD_REHASH_SOURCE_DIGEST_SESSION_KEY = "pending_password_rehash_source_digest"  # noqa: S105
 POST_AUTH_REDIRECT_SESSION_KEY = "post_auth_redirect"
 CHAT_KEY_SESSION_ID_SESSION_KEY = "chat_key_session_id"
+ASCII_CONTROL_MAX = 31
+ASCII_DELETE = 127
 AUTH_SESSION_KEYS = (
     "user_id",
     "session_id",
@@ -51,10 +54,26 @@ def set_session_user(*, user: User, username: str, is_authenticated: bool) -> No
         session.pop(CHAT_KEY_SESSION_ID_SESSION_KEY, None)
 
 
-def stash_post_auth_redirect_target(redirect_target: str | None) -> None:
+def _is_safe_post_auth_redirect_target(redirect_target: str | None) -> bool:
     if not isinstance(redirect_target, str):
-        return
+        return False
     if not redirect_target.startswith("/") or redirect_target.startswith("//"):
+        return False
+
+    parsed_target = urlsplit(redirect_target)
+    if parsed_target.scheme or parsed_target.netloc:
+        return False
+
+    decoded_target = unquote(redirect_target)
+    if "\\" in redirect_target or "\\" in decoded_target:
+        return False
+    return not any(
+        ord(char) <= ASCII_CONTROL_MAX or ord(char) == ASCII_DELETE for char in decoded_target
+    )
+
+
+def stash_post_auth_redirect_target(redirect_target: str | None) -> None:
+    if not _is_safe_post_auth_redirect_target(redirect_target):
         return
 
     session[POST_AUTH_REDIRECT_SESSION_KEY] = redirect_target
@@ -71,11 +90,7 @@ def stash_post_auth_redirect() -> None:
 
 def pop_post_auth_redirect(*, default_endpoint: str = "inbox") -> str:
     redirect_target = session.pop(POST_AUTH_REDIRECT_SESSION_KEY, None)
-    if (
-        isinstance(redirect_target, str)
-        and redirect_target.startswith("/")
-        and not redirect_target.startswith("//")
-    ):
+    if _is_safe_post_auth_redirect_target(redirect_target):
         return redirect_target
 
     return url_for(default_endpoint)
