@@ -601,6 +601,32 @@ def test_authenticated_info_only_profile_omits_pending_activation_tip_clause(
     assert "Submit a tip below" not in banner.get_text(" ", strip=True)
 
 
+@pytest.mark.usefixtures("_authenticated_user")
+def test_authenticated_legacy_chat_only_profile_omits_pending_activation_tip_clause(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    user2.pgp_key = None
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(
+        user2,
+        '{"kty":"EC","crv":"P-256","x":"legacy-recipient","y":"key"}',
+        public_signing_key=None,
+    )
+    assert user2.active_chat_key is not None
+    user2.active_chat_key.public_signing_key = None
+    db.session.commit()
+
+    response = client.get(url_for("profile", username=user2.primary_username.username))
+
+    assert response.status_code == 200
+    banner = BeautifulSoup(response.text, "html.parser").select_one("p.contextBanner")
+    assert banner is not None
+    assert banner.get_text(" ", strip=True) == "⏳ Two-way conversations pending activation."
+    assert "Submit a tip below" not in banner.get_text(" ", strip=True)
+    assert 'id="messageForm"' in response.text
+    assert "pgp-disabled-overlay" not in response.text
+
+
 def test_anonymous_profile_without_chat_key_hides_login_conversation_prompt(
     client: FlaskClient, user: User
 ) -> None:
