@@ -14,7 +14,8 @@
       ('settings.guidance', 'User Guidance', user.is_admin),
       ('settings.registration', 'Registration', user.is_admin and registration_settings_enabled),
       ('settings.advanced', 'Advanced', True),
-      ('settings.admin', 'Admin', user.is_admin)
+      ('settings.metrics', 'Metrics', user.is_admin),
+      ('settings.admin', 'Users', user.is_admin)
     ] %}
       {% for (endpoint, display_name, show) in buttons %}
         {% if show %}

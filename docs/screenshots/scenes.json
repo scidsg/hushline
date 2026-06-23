@@ -226,15 +226,22 @@
       "waitForSelector": ".settings-tabs"
     },
     {
-      "slug": "auth-admin-settings-admin",
-      "title": "Settings - Admin (admin)",
+      "slug": "auth-admin-settings-metrics",
+      "title": "Settings - Metrics (admin)",
+      "path": "/settings/metrics",
+      "session": "admin",
+      "waitForSelector": ".settings-tabs"
+    },
+    {
+      "slug": "auth-admin-settings-users",
+      "title": "Settings - Users (admin)",
       "path": "/settings/admin",
       "session": "admin",
       "waitForSelector": ".settings-tabs"
     },
     {
-      "slug": "auth-admin-settings-admin-search-buster",
-      "title": "Settings - Admin Search 'buster' (admin)",
+      "slug": "auth-admin-settings-users-search-buster",
+      "title": "Settings - Users Search 'buster' (admin)",
       "path": "/settings/admin",
       "session": "admin",
       "waitForSelector": "#searchInput",

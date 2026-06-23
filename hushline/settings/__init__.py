@@ -43,6 +43,7 @@ from hushline.settings.forms import (
     UserGuidancePromptContentForm,
 )
 from hushline.settings.guidance import register_guidance_routes
+from hushline.settings.metrics import register_metrics_routes
 from hushline.settings.notifications import register_notifications_routes
 from hushline.settings.profile import register_profile_routes
 from hushline.settings.proton import register_proton_routes
@@ -65,6 +66,7 @@ def create_blueprint() -> Blueprint:
     register_developer_routes(bp)
     register_encryption_routes(bp)
     register_guidance_routes(bp)
+    register_metrics_routes(bp)
     register_notifications_routes(bp)
     register_profile_routes(bp)
     register_proton_routes(bp)

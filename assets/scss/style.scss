@@ -3353,7 +3353,8 @@ img.alert {
 }
 
 .admin-highlights {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.125rem;
   margin-bottom: 1.5rem;
   margin-top: 1rem;
@@ -3362,7 +3363,6 @@ img.alert {
 .admin-highlights .metric {
   display: flex;
   flex-direction: column;
-  flex: 1 1 0px;
   align-items: center;
   justify-content: center;
   padding: 1rem;
