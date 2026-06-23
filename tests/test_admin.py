@@ -8,6 +8,7 @@ from wtforms.validators import ValidationError
 from hushline.db import db
 from hushline.model import (
     AccountCategory,
+    ChatKey,
     Tier,
     User,
     Username,
@@ -50,6 +51,57 @@ def test_admin_settings_includes_user_search(app: Flask, client: FlaskClient) ->
     assert account_category_form.select_one('select[name="account_category"]') is not None
     assert account_category_form.find_parent(class_="tableActions") is None
     assert "Update Category" not in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_admin_settings_renamed_users_and_moves_highlights(client: FlaskClient) -> None:
+    response = client.get(url_for("settings.admin"), follow_redirects=True)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    current_tab = soup.select_one('nav.settings-tabs a[aria-current="page"]')
+    assert current_tab is not None
+    assert current_tab.get_text(strip=True) == "Users"
+    assert soup.select_one("nav.settings-tabs a[href='/settings/metrics']") is not None
+    assert soup.find("h3", string="Users") is not None
+    assert soup.select_one(".admin-highlights") is None
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_metrics_settings_shows_admin_highlights(
+    client: FlaskClient, admin_user: User, user: User
+) -> None:
+    admin_user.totp_secret = "123456"
+    user.pgp_key = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nkey\n-----END PGP PUBLIC KEY BLOCK-----"
+    db.session.add(
+        ChatKey(
+            user_id=user.id,
+            key_version=1,
+            public_key="public-chat-key",
+            public_signing_key="public-signing-key",
+            encrypted_private_key="wrapped-private-chat-key",
+            kdf_algorithm="PBKDF2-SHA-256",
+            kdf_params={"iterations": 310000, "hash": "SHA-256"},
+            kdf_salt="salt",
+            wrapping_algorithm="AES-GCM",
+        )
+    )
+    db.session.commit()
+
+    response = client.get(url_for("settings.metrics"), follow_redirects=True)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    current_tab = soup.select_one('nav.settings-tabs a[aria-current="page"]')
+    assert current_tab is not None
+    assert current_tab.get_text(strip=True) == "Metrics"
+    highlights = soup.select_one(".admin-highlights")
+    assert highlights is not None
+    metrics_text = " ".join(highlights.get_text(" ", strip=True).split())
+    assert "Users 2" in metrics_text
+    assert "2FA Enabled 1 50.0%" in metrics_text
+    assert "PGP Enabled 1 50.0%" in metrics_text
+    assert "Chat Keys Created 1 50.0%" in metrics_text
 
 
 def _create_admin_list_user(username: str, display_name: str | None = None) -> User:

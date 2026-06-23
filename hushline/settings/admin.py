@@ -63,14 +63,6 @@ def register_admin_routes(bp: Blueprint) -> None:
             ).all()
         )
 
-        user_count = db.session.scalar(db.select(func.count(User.id))) or 0
-        two_fa_count = (
-            db.session.scalar(db.select(func.count(User.id)).where(User._totp_secret.is_not(None)))
-            or 0
-        )
-        pgp_key_count = (
-            db.session.scalar(db.select(func.count(User.id)).where(User._pgp_key.is_not(None))) or 0
-        )
         page_start = page_offset + 1 if username_count else 0
         page_end = min(page_offset + len(all_usernames), username_count)
 
@@ -78,11 +70,6 @@ def register_admin_routes(bp: Blueprint) -> None:
             "settings/admin.html",
             user=user,
             all_usernames=all_usernames,
-            user_count=user_count,
-            two_fa_count=two_fa_count,
-            pgp_key_count=pgp_key_count,
-            two_fa_percentage=(two_fa_count / user_count * 100) if user_count else 0,
-            pgp_key_percentage=(pgp_key_count / user_count * 100) if user_count else 0,
             user_verification_enabled=current_app.config.get("USER_VERIFICATION_ENABLED"),
             account_category_choices=AccountCategory.choices(),
             admin_search_query=search_query,

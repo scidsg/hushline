@@ -1,23 +1,7 @@
 {% extends "settings/base.html" %}
 
 {% block settings_content %}
-  <h3>Admin</h3>
-  <div class="admin-highlights">
-    <div class="metric">
-      <p>Users</p>
-      <p>{{ user_count }}</p>
-    </div>
-    <div class="metric">
-      <p>2FA Enabled</p>
-      <p>{{ two_fa_count }}</p>
-      <p>{{ two_fa_percentage | round(2) }}%</p>
-    </div>
-    <div class="metric">
-      <p>PGP Enabled</p>
-      <p>{{ pgp_key_count }}</p>
-      <p>{{ pgp_key_percentage | round(2) }}%</p>
-    </div>
-  </div>
+  <h3>Users</h3>
 
   <h4>All Usernames</h4>
   <form
