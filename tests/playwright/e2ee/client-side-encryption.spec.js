@@ -223,7 +223,7 @@ test("admin broadcasts encrypt usable recipients and report malformed keys befor
 }) => {
   const broadcastPlaintext =
     "P0 frontend e2ee admin broadcast sentinel for chat launch";
-  let capturedPostBody = null;
+  const capturedPostBodies = [];
   const dialogs = [];
 
   page.on("dialog", async (dialog) => {
@@ -235,7 +235,7 @@ test("admin broadcasts encrypt usable recipients and report malformed keys befor
       request.method() === "POST" &&
       request.url().endsWith("/settings/broadcasts")
     ) {
-      capturedPostBody = request.postData() || "";
+      capturedPostBodies.push(request.postData() || "");
     }
   });
 
@@ -286,7 +286,22 @@ test("admin broadcasts encrypt usable recipients and report malformed keys befor
     page.locator("[name='send_broadcast']").click(),
   ]);
 
+  await expect(page.locator("#broadcast_status")).toContainText(
+    "Broadcast sent to",
+  );
   expect(dialogs).toEqual([]);
+  const capturedPostBody = capturedPostBodies.find((postBody) => {
+    const encryptedPayloads = JSON.parse(
+      formValueFromPostBody(postBody, "encrypted_payloads") || "{}",
+    );
+    const encryptionFailures = JSON.parse(
+      formValueFromPostBody(postBody, "encryption_failures") || "[]",
+    );
+    return (
+      Object.keys(encryptedPayloads).includes(String(mixedRecipientId)) ||
+      encryptionFailures.includes(failedRecipientId)
+    );
+  });
   expect(capturedPostBody).toBeTruthy();
   expect(capturedPostBody).not.toContain(broadcastPlaintext);
 

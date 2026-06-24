@@ -5,6 +5,7 @@ from typing import cast
 from flask import (
     Blueprint,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -31,6 +32,10 @@ from hushline.model import (
 from hushline.routes.common import do_send_email
 
 BROADCAST_SEND_SUBMIT = "send_broadcast"
+BROADCAST_CHUNK_FIELD = "broadcast_chunk"
+BROADCAST_COMPLETED_IDS_FIELD = "broadcast_completed_user_ids"
+BROADCAST_EXPECTED_IDS_FIELD = "broadcast_expected_user_ids"
+BROADCAST_FINAL_CHUNK_FIELD = "broadcast_final_chunk"
 
 
 class AdminBroadcastForm(FlaskForm):
@@ -152,20 +157,24 @@ def _encrypted_payloads_by_user(raw_payloads: str) -> dict[int, str]:
 
 
 def _encryption_failure_user_ids(raw_failures: str) -> set[int]:
+    return _user_ids_from_json(raw_failures)
+
+
+def _user_ids_from_json(raw_user_ids: str) -> set[int]:
     try:
-        failures = json.loads(raw_failures)
+        user_ids = json.loads(raw_user_ids)
     except json.JSONDecodeError:
         return set()
-    if not isinstance(failures, list):
+    if not isinstance(user_ids, list):
         return set()
 
-    failed_user_ids: set[int] = set()
-    for user_id in failures:
+    parsed_user_ids: set[int] = set()
+    for user_id in user_ids:
         try:
-            failed_user_ids.add(int(user_id))
+            parsed_user_ids.add(int(user_id))
         except (TypeError, ValueError):
             continue
-    return failed_user_ids
+    return parsed_user_ids
 
 
 def _message_field_for(user: User) -> FieldDefinition | None:
@@ -219,24 +228,37 @@ def _send_broadcast_notification_emails(user_ids: tuple[int, ...]) -> None:
         do_send_email(user, notification_body)
 
 
+def _json_broadcast_error(message: str) -> tuple[Response, int]:
+    return jsonify({"error": message}), 400
+
+
 def register_broadcast_routes(bp: Blueprint) -> None:
     @bp.route("/broadcasts", methods=["GET", "POST"])
     @admin_authentication_required
-    def broadcasts() -> tuple[str, int] | Response:
+    def broadcasts() -> tuple[str, int] | tuple[Response, int] | Response:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
         form = AdminBroadcastForm()
         status_code = 200
         audience = _load_audience()
 
         if request.method == "POST":
+            chunked_broadcast = request.form.get(BROADCAST_CHUNK_FIELD) == "1"
             if form.validate():
                 if BROADCAST_SEND_SUBMIT in request.form:
                     if not form.confirm_send.data:
+                        if chunked_broadcast:
+                            return _json_broadcast_error(
+                                "Confirm before submitting these encrypted messages."
+                            )
                         form.confirm_send.errors.append(
                             "Confirm before submitting these encrypted messages."
                         )
                         status_code = 400
                     elif not audience.encrypted_submission_users:
+                        if chunked_broadcast:
+                            return _json_broadcast_error(
+                                "No eligible encrypted message recipients match this audience."
+                            )
                         flash(
                             "No eligible encrypted message recipients match this audience.",
                             "error",
@@ -253,17 +275,68 @@ def register_broadcast_routes(bp: Blueprint) -> None:
                             user.id for user in audience.encrypted_submission_users
                         }
                         submitted_user_ids = set(encrypted_payloads)
-                        if not submitted_user_ids:
+                        expected_chunk_user_ids = _user_ids_from_json(
+                            request.form.get(BROADCAST_EXPECTED_IDS_FIELD, "")
+                        )
+                        completed_chunk_user_ids = _user_ids_from_json(
+                            request.form.get(BROADCAST_COMPLETED_IDS_FIELD, "")
+                        )
+                        final_chunk = request.form.get(BROADCAST_FINAL_CHUNK_FIELD) == "1"
+                        if not submitted_user_ids and not (chunked_broadcast and failed_user_ids):
+                            if chunked_broadcast:
+                                return _json_broadcast_error(
+                                    "No recipient messages could be encrypted."
+                                )
                             form.encrypted_payloads.errors.append(
                                 "No recipient messages could be encrypted."
                             )
                             status_code = 400
                         elif submitted_user_ids & failed_user_ids:
+                            if chunked_broadcast:
+                                return _json_broadcast_error(
+                                    "Encrypted payloads conflict with reported encryption failures."
+                                )
                             form.encrypted_payloads.errors.append(
                                 "Encrypted payloads conflict with reported encryption failures."
                             )
                             status_code = 400
-                        elif submitted_user_ids | failed_user_ids != expected_user_ids:
+                        elif chunked_broadcast and expected_chunk_user_ids != expected_user_ids:
+                            return _json_broadcast_error(
+                                "Broadcast audience changed. Refresh and try again."
+                            )
+                        elif not (submitted_user_ids | failed_user_ids).issubset(expected_user_ids):
+                            if chunked_broadcast:
+                                return _json_broadcast_error(
+                                    "Encrypted payloads include unknown recipients."
+                                )
+                            form.encrypted_payloads.errors.append(
+                                "Encrypted payloads include unknown recipients."
+                            )
+                            status_code = 400
+                        elif chunked_broadcast and not completed_chunk_user_ids.issubset(
+                            expected_user_ids
+                        ):
+                            return _json_broadcast_error(
+                                "Broadcast completion includes unknown recipients."
+                            )
+                        elif chunked_broadcast and not (
+                            submitted_user_ids | failed_user_ids
+                        ).issubset(completed_chunk_user_ids):
+                            return _json_broadcast_error(
+                                "Broadcast completion is missing submitted recipients."
+                            )
+                        elif (
+                            chunked_broadcast
+                            and final_chunk
+                            and completed_chunk_user_ids != expected_user_ids
+                        ):
+                            return _json_broadcast_error(
+                                "Broadcast batches are incomplete. Refresh and try again."
+                            )
+                        elif (
+                            not chunked_broadcast
+                            and submitted_user_ids | failed_user_ids != expected_user_ids
+                        ):
                             form.encrypted_payloads.errors.append(
                                 "Encrypted payloads are missing or incomplete."
                             )
@@ -285,6 +358,11 @@ def register_broadcast_routes(bp: Blueprint) -> None:
                                     "One or more recipients became ineligible before submission."
                                 )
                                 status_code = 400
+                                if chunked_broadcast:
+                                    return _json_broadcast_error(
+                                        "One or more recipients became ineligible "
+                                        "before submission."
+                                    )
                                 return render_template(
                                     "settings/broadcasts.html",
                                     user=user,
@@ -293,6 +371,13 @@ def register_broadcast_routes(bp: Blueprint) -> None:
                                     encryption_recipients=audience.encryption_recipients,
                                 ), status_code
                             skipped_count = len(failed_user_ids)
+                            if chunked_broadcast:
+                                return jsonify(
+                                    {
+                                        "submitted_count": submitted_count,
+                                        "skipped_count": skipped_count,
+                                    }
+                                )
                             if skipped_count:
                                 flash(
                                     (
@@ -309,6 +394,8 @@ def register_broadcast_routes(bp: Blueprint) -> None:
                                 )
                             return redirect(url_for(".broadcasts"))
             else:
+                if chunked_broadcast:
+                    return _json_broadcast_error("Invalid broadcast submission.")
                 status_code = 400
 
         return render_template(
