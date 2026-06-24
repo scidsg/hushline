@@ -108,6 +108,17 @@ def test_profile_page_keeps_csp_enforced(client: FlaskClient, user: User) -> Non
     directives = _csp_directives(response.headers)
     assert directives["script-src"] == "'self' 'wasm-unsafe-eval'"
     assert directives["script-src-elem"] == "'self'"
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_admin_broadcast_page_keeps_csp_enforced(client: FlaskClient) -> None:
+    response = client.get(url_for("settings.broadcasts"))
+    assert response.status_code == 200
+
+    directives = _csp_directives(response.headers)
+    assert directives["script-src"] == "'self' 'wasm-unsafe-eval'"
+    assert directives["script-src-elem"] == "'self'"
+    assert "form-action 'self'" in response.headers["Content-Security-Policy"]
     assert "https://js.stripe.com" not in response.headers["Content-Security-Policy"]
     assert "https://cdn.jsdelivr.net" not in response.headers["Content-Security-Policy"]
     assert "'unsafe-eval'" not in response.headers["Content-Security-Policy"]

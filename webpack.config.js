@@ -6,6 +6,7 @@ const MiniCssExtractPlugin = require(path.join(nodeModulesPath, 'mini-css-extrac
 const entries = new Object();
 modules = [
   // ours
+  "admin-broadcasts",
   "client-side-encryption",
   "chat-key-lifecycle",
   "diceware-words",
