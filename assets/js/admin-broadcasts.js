@@ -51,11 +51,22 @@ function recipients() {
 
 async function encryptMessage(publicKeys, message) {
   const keys = Array.isArray(publicKeys) ? publicKeys : [publicKeys];
-  const encryptionKeys = await Promise.all(
+  const parsedKeys = await Promise.all(
     keys
       .filter((key) => typeof key === "string" && key.trim())
-      .map((armoredKey) => openpgp.readKey({ armoredKey })),
+      .map(async (armoredKey) => {
+        try {
+          const key = await openpgp.readKey({ armoredKey });
+          await key.verifyPrimaryKey();
+          await key.getEncryptionKey();
+          return key;
+        } catch (error) {
+          console.error("Skipping unusable recipient encryption key.", error);
+          return null;
+        }
+      }),
   );
+  const encryptionKeys = parsedKeys.filter(Boolean);
   if (encryptionKeys.length === 0) {
     throw new Error("Recipient encryption keys are missing.");
   }
@@ -101,8 +112,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const payloadTarget = payloadTargetId
       ? document.getElementById(payloadTargetId)
       : null;
+    const failureTarget = form.querySelector(
+      "input[name='encryption_failures']",
+    );
     const recipientEntries = recipients();
-    if (!payloadTarget || recipientEntries.length === 0) {
+    if (!payloadTarget || !failureTarget || recipientEntries.length === 0) {
       alert("No users with PGP message keys match this audience.");
       return;
     }
@@ -118,15 +132,28 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       const encryptedPayloads = {};
+      const encryptionFailures = [];
       await Promise.all(
         recipientEntries.map(async (recipient) => {
-          encryptedPayloads[recipient.user_id] = await encryptMessage(
-            recipient.public_keys,
-            body,
-          );
+          try {
+            encryptedPayloads[recipient.user_id] = await encryptMessage(
+              recipient.public_keys,
+              body,
+            );
+          } catch (error) {
+            encryptionFailures.push(recipient.user_id);
+            console.error(
+              `Broadcast encryption failed for user ${recipient.user_id}.`,
+              error,
+            );
+          }
         }),
       );
+      if (Object.keys(encryptedPayloads).length === 0) {
+        throw new Error("No recipient messages could be encrypted.");
+      }
       payloadTarget.value = JSON.stringify(encryptedPayloads);
+      failureTarget.value = JSON.stringify(encryptionFailures);
       plaintext.value = "";
 
       const submitIntent = document.createElement("input");
@@ -137,8 +164,11 @@ document.addEventListener("DOMContentLoaded", function () {
       form.submit();
     } catch (error) {
       console.error("Broadcast encryption failed.", error);
-      alert("Message encryption failed. No messages were submitted.");
+      alert(
+        `Message encryption failed: ${error.message} No messages were submitted.`,
+      );
       payloadTarget.value = "";
+      failureTarget.value = "";
       form.dataset.encryptionInProgress = "false";
       setButtonsDisabled(form, false);
     }
