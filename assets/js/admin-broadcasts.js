@@ -1,5 +1,7 @@
 import * as openpgp from "openpgp";
 
+const BROADCAST_BATCH_SIZE = 10;
+
 function assertClientCryptoSupport() {
   if (!window.isSecureContext) {
     throw new Error("Encryption requires a secure browser context.");
@@ -49,6 +51,19 @@ function recipients() {
   }
 }
 
+function expectedRecipientIds() {
+  const input = document.getElementById("broadcast_expected_user_ids");
+  if (!input?.value) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(input.value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 async function encryptMessage(publicKeys, message) {
   const keys = Array.isArray(publicKeys) ? publicKeys : [publicKeys];
   const parsedKeys = await Promise.all(
@@ -92,9 +107,73 @@ function setButtonsDisabled(form, disabled) {
     });
 }
 
+function updateStatus(status, message) {
+  if (!status) {
+    return;
+  }
+  status.hidden = false;
+  status.textContent = message;
+}
+
+function progressPercent(completedCount, totalCount) {
+  if (totalCount <= 0) {
+    return 100;
+  }
+  return Math.min(
+    99,
+    Math.max(1, Math.floor((completedCount / totalCount) * 100)),
+  );
+}
+
+async function submitBroadcastBatch(
+  form,
+  encryptedPayloads,
+  encryptionFailures,
+  expectedUserIds,
+  completedUserIds,
+  isFinalChunk,
+) {
+  const formData = new FormData(form);
+  formData.set("broadcast_chunk", "1");
+  formData.set("encrypted_payloads", JSON.stringify(encryptedPayloads));
+  formData.set("encryption_failures", JSON.stringify(encryptionFailures));
+  formData.set("broadcast_expected_user_ids", JSON.stringify(expectedUserIds));
+  formData.set(
+    "broadcast_completed_user_ids",
+    JSON.stringify(completedUserIds),
+  );
+  formData.set("broadcast_final_chunk", isFinalChunk ? "1" : "0");
+  formData.set("send_broadcast", "Submit Messages");
+
+  const response = await fetch(form.action || window.location.href, {
+    method: form.method || "POST",
+    credentials: "same-origin",
+    headers: {
+      Accept: "application/json",
+    },
+    body: formData,
+  });
+  const contentType = response.headers.get("content-type") || "";
+  if (response.redirected || !contentType.includes("application/json")) {
+    throw new Error(
+      "Broadcast session changed. Sign in again before continuing.",
+    );
+  }
+  const payload = await response.json();
+  if (
+    !response.ok ||
+    !Number.isInteger(payload.submitted_count) ||
+    !Number.isInteger(payload.skipped_count)
+  ) {
+    throw new Error(payload.error || "Broadcast batch submission failed.");
+  }
+  return payload;
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   const form = document.querySelector("form[data-admin-broadcast-form='true']");
   const plaintext = document.getElementById("broadcast_plaintext");
+  const status = document.getElementById("broadcast_status");
   if (!form || !plaintext) {
     return;
   }
@@ -116,6 +195,7 @@ document.addEventListener("DOMContentLoaded", function () {
       "input[name='encryption_failures']",
     );
     const recipientEntries = recipients();
+    const expectedUserIds = expectedRecipientIds();
     if (!payloadTarget || !failureTarget || recipientEntries.length === 0) {
       alert("No users with PGP message keys match this audience.");
       return;
@@ -124,53 +204,118 @@ document.addEventListener("DOMContentLoaded", function () {
     form.dataset.encryptionInProgress = "true";
     setButtonsDisabled(form, true);
 
+    let submittedCount = 0;
+    let skippedCount = 0;
+    let batchRequestStarted = false;
     try {
+      if (
+        typeof window.fetch !== "function" ||
+        typeof window.FormData === "undefined"
+      ) {
+        throw new Error(
+          "Batch submission requires Fetch and FormData support.",
+        );
+      }
       assertClientCryptoSupport();
       const body = plaintext.value.trim();
       if (body.length < 10) {
         throw new Error("Message must be at least 10 characters.");
       }
 
-      const encryptedPayloads = {};
-      const encryptionFailures = [];
-      await Promise.all(
-        recipientEntries.map(async (recipient) => {
-          try {
-            encryptedPayloads[recipient.user_id] = await encryptMessage(
-              recipient.public_keys,
-              body,
-            );
-          } catch (error) {
-            encryptionFailures.push(recipient.user_id);
-            console.error(
-              `Broadcast encryption failed for user ${recipient.user_id}.`,
-              error,
-            );
-          }
-        }),
-      );
-      if (Object.keys(encryptedPayloads).length === 0) {
+      let completedCount = 0;
+      const completedUserIds = [];
+
+      updateStatus(status, "Sending broadcast: 1% complete...");
+      for (
+        let index = 0;
+        index < recipientEntries.length;
+        index += BROADCAST_BATCH_SIZE
+      ) {
+        const batch = recipientEntries.slice(
+          index,
+          index + BROADCAST_BATCH_SIZE,
+        );
+        const encryptedPayloads = {};
+        const encryptionFailures = [];
+
+        await Promise.all(
+          batch.map(async (recipient) => {
+            try {
+              encryptedPayloads[recipient.user_id] = await encryptMessage(
+                recipient.public_keys,
+                body,
+              );
+            } catch (error) {
+              encryptionFailures.push(recipient.user_id);
+              console.error(
+                `Broadcast encryption failed for user ${recipient.user_id}.`,
+                error,
+              );
+            }
+          }),
+        );
+
+        if (
+          Object.keys(encryptedPayloads).length === 0 &&
+          encryptionFailures.length === 0
+        ) {
+          throw new Error("No recipient messages could be encrypted.");
+        }
+
+        completedUserIds.push(...batch.map((recipient) => recipient.user_id));
+        const isFinalChunk =
+          index + BROADCAST_BATCH_SIZE >= recipientEntries.length;
+        batchRequestStarted = true;
+        const result = await submitBroadcastBatch(
+          form,
+          encryptedPayloads,
+          encryptionFailures,
+          expectedUserIds,
+          completedUserIds,
+          isFinalChunk,
+        );
+        submittedCount += Number(result.submitted_count || 0);
+        skippedCount += Number(result.skipped_count || 0);
+        completedCount += batch.length;
+        updateStatus(
+          status,
+          `Sending broadcast: ${progressPercent(
+            completedCount,
+            recipientEntries.length,
+          )}% complete...`,
+        );
+      }
+
+      if (submittedCount === 0) {
         throw new Error("No recipient messages could be encrypted.");
       }
-      payloadTarget.value = JSON.stringify(encryptedPayloads);
-      failureTarget.value = JSON.stringify(encryptionFailures);
-      plaintext.value = "";
 
-      const submitIntent = document.createElement("input");
-      submitIntent.type = "hidden";
-      submitIntent.name = "send_broadcast";
-      submitIntent.value = "Submit Messages";
-      form.appendChild(submitIntent);
-      form.submit();
+      plaintext.value = "";
+      payloadTarget.value = "";
+      failureTarget.value = "";
+      updateStatus(
+        status,
+        skippedCount
+          ? `Broadcast sent to ${submittedCount} users. Skipped ${skippedCount} users whose keys could not be used.`
+          : `Broadcast sent to ${submittedCount} users.`,
+      );
     } catch (error) {
       console.error("Broadcast encryption failed.", error);
       alert(
-        `Message encryption failed: ${error.message} No messages were submitted.`,
+        `Message encryption failed: ${error.message} No more messages were submitted.`,
       );
       payloadTarget.value = "";
       failureTarget.value = "";
-      form.dataset.encryptionInProgress = "false";
-      setButtonsDisabled(form, false);
+      if (batchRequestStarted) {
+        plaintext.value = "";
+        updateStatus(
+          status,
+          `Broadcast stopped after ${submittedCount} submitted and ${skippedCount} skipped. Do not retry from this page; refresh to review the current audience.`,
+        );
+      } else {
+        form.dataset.encryptionInProgress = "false";
+        setButtonsDisabled(form, false);
+      }
     }
   });
 });

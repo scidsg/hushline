@@ -11,6 +11,7 @@
 {% endmacro %}
 
 {% block settings_content %}
+  {% set expected_recipient_ids = audience.encrypted_submission_users | map(attribute='id') | list %}
   <h3>Broadcasts</h3>
   <p>
     Submit an encrypted administrative update to every eligible message-key recipient.
@@ -43,6 +44,12 @@
     ></textarea>
     {{ form.encrypted_payloads }}
     {{ form.encryption_failures }}
+    <input
+      type="hidden"
+      id="broadcast_expected_user_ids"
+      name="broadcast_expected_user_ids"
+      value='{{ expected_recipient_ids | tojson }}'
+    >
     {{ field_errors(form.encrypted_payloads) }}
 
     <div class="checkbox-group">
@@ -50,6 +57,15 @@
       {{ form.confirm_send.label }}
     </div>
     {{ field_errors(form.confirm_send) }}
+
+    <div
+      id="broadcast_status"
+      class="flash-messages"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      hidden
+    ></div>
 
     <div class="tableActions">
       {{ form.send(class="btn-danger") }}
