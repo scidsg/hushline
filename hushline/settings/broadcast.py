@@ -1,8 +1,18 @@
 import json
+import threading
 from dataclasses import dataclass
 from typing import cast
 
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from flask import (
+    Blueprint,
+    current_app,
+    flash,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from flask_wtf import FlaskForm
 from sqlalchemy import and_, exists, or_
 from sqlalchemy.orm import selectinload
@@ -14,7 +24,6 @@ from hushline.auth import admin_authentication_required
 from hushline.db import db
 from hushline.forms import Button
 from hushline.model import (
-    ChatKey,
     FieldDefinition,
     FieldValue,
     Message,
@@ -28,6 +37,7 @@ BROADCAST_SEND_SUBMIT = "send_broadcast"
 
 class AdminBroadcastForm(FlaskForm):
     encrypted_payloads = HiddenField("Encrypted payloads")
+    encryption_failures = HiddenField("Encryption failures")
     confirm_send = BooleanField(
         "I understand this will create encrypted inbox submissions for all eligible users above."
     )
@@ -46,14 +56,6 @@ class BroadcastAudience:
             if user.primary_username is not None
             and user.message_encryption_target
             and _message_field_for(user) is not None
-        ]
-
-    @property
-    def chat_only_users(self) -> list[User]:
-        return [
-            user
-            for user in self.target_users
-            if user.active_chat_key is not None and not user.message_encryption_target
         ]
 
     @property
@@ -81,13 +83,6 @@ class BroadcastAudience:
         return recipients
 
 
-def _active_chat_key_exists() -> ColumnElement[bool]:
-    return cast(
-        ColumnElement[bool],
-        exists().where(and_(ChatKey.user_id == User.id, ChatKey.disabled_at.is_(None))),
-    )
-
-
 def _recipient_pgp_key_exists() -> ColumnElement[bool]:
     return cast(
         ColumnElement[bool],
@@ -104,8 +99,7 @@ def _recipient_pgp_key_exists() -> ColumnElement[bool]:
 def _audience_predicate() -> ColumnElement[bool]:
     has_pgp_key = User._pgp_key.is_not(None)
     has_recipient_pgp_key = _recipient_pgp_key_exists()
-    has_chat_key = _active_chat_key_exists()
-    return and_(User.is_suspended.is_(False), or_(has_pgp_key, has_recipient_pgp_key, has_chat_key))
+    return and_(User.is_suspended.is_(False), or_(has_pgp_key, has_recipient_pgp_key))
 
 
 def _load_audience() -> BroadcastAudience:
@@ -115,7 +109,6 @@ def _load_audience() -> BroadcastAudience:
             .where(_audience_predicate())
             .options(
                 selectinload(User.notification_recipients),
-                selectinload(User.chat_keys),
                 selectinload(User.primary_username),
             )
             .order_by(User.id)
@@ -160,6 +153,23 @@ def _encrypted_payloads_by_user(raw_payloads: str) -> dict[int, str]:
     return encrypted_payloads
 
 
+def _encryption_failure_user_ids(raw_failures: str) -> set[int]:
+    try:
+        failures = json.loads(raw_failures)
+    except json.JSONDecodeError:
+        return set()
+    if not isinstance(failures, list):
+        return set()
+
+    failed_user_ids: set[int] = set()
+    for user_id in failures:
+        try:
+            failed_user_ids.add(int(user_id))
+        except (TypeError, ValueError):
+            continue
+    return failed_user_ids
+
+
 def _message_field_for(user: User) -> FieldDefinition | None:
     username = user.primary_username
     if username is None:
@@ -174,7 +184,7 @@ def _submit_encrypted_broadcast_messages(
     users: list[User], encrypted_payloads: dict[int, str]
 ) -> int:
     submitted_count = 0
-    submitted_user_ids: set[int] = set()
+    submitted_notification_user_ids: list[int] = []
     for user in users:
         encrypted_payload = encrypted_payloads.get(user.id)
         field_definition = _message_field_for(user)
@@ -188,17 +198,45 @@ def _submit_encrypted_broadcast_messages(
         db.session.flush()
         db.session.add(FieldValue(field_definition, message, encrypted_payload, True))
         submitted_count += 1
-        submitted_user_ids.add(user.id)
+        submitted_notification_user_ids.append(user.id)
 
     if submitted_count:
         db.session.commit()
-
-    notification_body = "You have a new Hush Line message! Please log in to read it."
-    for user in users:
-        if user.id in submitted_user_ids:
-            do_send_email(user, notification_body)
+        _queue_broadcast_notification_emails(tuple(submitted_notification_user_ids))
 
     return submitted_count
+
+
+def _send_broadcast_notification_emails(user_ids: tuple[int, ...]) -> None:
+    notification_body = "You have a new Hush Line message! Please log in to read it."
+    users = list(
+        db.session.scalars(
+            db.select(User)
+            .where(User.id.in_(user_ids))
+            .options(selectinload(User.notification_recipients))
+            .order_by(User.id)
+        ).all()
+    )
+    for user in users:
+        do_send_email(user, notification_body)
+
+
+def _queue_broadcast_notification_emails(user_ids: tuple[int, ...]) -> None:
+    app = current_app._get_current_object()
+
+    def send_notifications() -> None:
+        with app.app_context():
+            try:
+                _send_broadcast_notification_emails(user_ids)
+            finally:
+                db.session.remove()
+
+    thread = threading.Thread(
+        target=send_notifications,
+        name="hushline-admin-broadcast-notifications",
+        daemon=True,
+    )
+    thread.start()
 
 
 def register_broadcast_routes(bp: Blueprint) -> None:
@@ -228,18 +266,37 @@ def register_broadcast_routes(bp: Blueprint) -> None:
                         encrypted_payloads = _encrypted_payloads_by_user(
                             form.encrypted_payloads.data or ""
                         )
+                        failed_user_ids = _encryption_failure_user_ids(
+                            form.encryption_failures.data or ""
+                        )
                         expected_user_ids = {
                             user.id for user in audience.encrypted_submission_users
                         }
-                        if set(encrypted_payloads) != expected_user_ids:
+                        submitted_user_ids = set(encrypted_payloads)
+                        if not submitted_user_ids:
+                            form.encrypted_payloads.errors.append(
+                                "No recipient messages could be encrypted."
+                            )
+                            status_code = 400
+                        elif submitted_user_ids & failed_user_ids:
+                            form.encrypted_payloads.errors.append(
+                                "Encrypted payloads conflict with reported encryption failures."
+                            )
+                            status_code = 400
+                        elif submitted_user_ids | failed_user_ids != expected_user_ids:
                             form.encrypted_payloads.errors.append(
                                 "Encrypted payloads are missing or incomplete."
                             )
                             status_code = 400
                         else:
+                            submitted_users = [
+                                user
+                                for user in audience.encrypted_submission_users
+                                if user.id in submitted_user_ids
+                            ]
                             try:
                                 submitted_count = _submit_encrypted_broadcast_messages(
-                                    audience.encrypted_submission_users,
+                                    submitted_users,
                                     encrypted_payloads,
                                 )
                             except ValueError:
@@ -255,10 +312,21 @@ def register_broadcast_routes(bp: Blueprint) -> None:
                                     audience=audience,
                                     encryption_recipients=audience.encryption_recipients,
                                 ), status_code
-                            flash(
-                                f"Encrypted messages submitted to {submitted_count} users.",
-                                "success",
-                            )
+                            skipped_count = len(failed_user_ids)
+                            if skipped_count:
+                                flash(
+                                    (
+                                        "Encrypted messages submitted to "
+                                        f"{submitted_count} users. Skipped {skipped_count} "
+                                        "users whose keys could not be used in this browser."
+                                    ),
+                                    "warning",
+                                )
+                            else:
+                                flash(
+                                    f"Encrypted messages submitted to {submitted_count} users.",
+                                    "success",
+                                )
                             return redirect(url_for(".broadcasts"))
             else:
                 status_code = 400

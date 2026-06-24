@@ -218,6 +218,98 @@ test("JS-enabled profile submissions encrypt fields before the POST leaves the b
   expect(encryptedEmailBody).not.toContain(messagePlaintext);
 });
 
+test("admin broadcasts encrypt usable recipients and report malformed keys before POST", async ({
+  page,
+}) => {
+  const broadcastPlaintext =
+    "P0 frontend e2ee admin broadcast sentinel for chat launch";
+  let capturedPostBody = null;
+  const dialogs = [];
+
+  page.on("dialog", async (dialog) => {
+    dialogs.push(dialog.message());
+    await dialog.dismiss();
+  });
+  page.on("request", (request) => {
+    if (
+      request.method() === "POST" &&
+      request.url().endsWith("/settings/broadcasts")
+    ) {
+      capturedPostBody = request.postData() || "";
+    }
+  });
+
+  await login(page, "admin");
+  await page.goto("/settings/broadcasts", { waitUntil: "networkidle" });
+  await expect(
+    page.locator("form[data-admin-broadcast-form='true']"),
+  ).toBeVisible();
+  await expect(
+    page.locator('script[src$="/static/js/admin-broadcasts.js"]'),
+  ).toHaveCount(1);
+  await expect
+    .poll(() => page.evaluate(() => window.isSecureContext))
+    .toBe(true);
+
+  const { failedRecipientId, mixedRecipientId } = await page.evaluate(() => {
+    const script = document.getElementById("broadcastEncryptionRecipients");
+    const recipients = JSON.parse(script.textContent || "[]");
+    if (recipients.length < 2) {
+      throw new Error(
+        "Admin broadcast E2EE test requires at least two recipients.",
+      );
+    }
+    const fallbackKey = recipients[1].public_keys.find(
+      (key) => typeof key === "string" && key.trim(),
+    );
+    if (!fallbackKey) {
+      throw new Error("Admin broadcast E2EE test requires a fallback key.");
+    }
+    recipients[0].public_keys = ["not armored pgp", fallbackKey];
+    recipients[1].public_keys = ["not armored pgp"];
+    script.textContent = JSON.stringify(recipients);
+    return {
+      failedRecipientId: recipients[1].user_id,
+      mixedRecipientId: recipients[0].user_id,
+    };
+  });
+
+  await page.fill("#broadcast_plaintext", broadcastPlaintext);
+  await page.check("input[name='confirm_send']");
+
+  await Promise.all([
+    page.waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        request.url().endsWith("/settings/broadcasts"),
+    ),
+    page.locator("[name='send_broadcast']").click(),
+  ]);
+
+  expect(dialogs).toEqual([]);
+  expect(capturedPostBody).toBeTruthy();
+  expect(capturedPostBody).not.toContain(broadcastPlaintext);
+
+  const encryptedPayloads = JSON.parse(
+    formValueFromPostBody(capturedPostBody, "encrypted_payloads"),
+  );
+  const encryptionFailures = JSON.parse(
+    formValueFromPostBody(capturedPostBody, "encryption_failures"),
+  );
+
+  expect(encryptionFailures).toContain(failedRecipientId);
+  expect(encryptionFailures).not.toContain(mixedRecipientId);
+  expect(Object.keys(encryptedPayloads)).toContain(String(mixedRecipientId));
+  expect(Object.keys(encryptedPayloads)).not.toContain(
+    String(failedRecipientId),
+  );
+  expect(Object.values(encryptedPayloads).length).toBeGreaterThan(0);
+  for (const encryptedPayload of Object.values(encryptedPayloads)) {
+    expect(encryptedPayload).toContain(PGP_ARMOR_HEADER);
+    expectNoPlaintext(encryptedPayload, [broadcastPlaintext]);
+  }
+});
+
 test("logged-in account conversation stays encrypted through browser lifecycle", async ({
   browser,
 }) => {

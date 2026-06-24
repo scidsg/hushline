@@ -13,7 +13,7 @@
 {% block settings_content %}
   <h3>Broadcasts</h3>
   <p>
-    Submit an encrypted administrative update to every eligible recipient.
+    Submit an encrypted administrative update to every eligible message-key recipient.
   </p>
 
   <div class="admin-highlights broadcast-summary">
@@ -24,10 +24,6 @@
     <div class="metric">
       <p>Encrypted Submissions</p>
       <p>{{ audience.encrypted_submission_users|length }}</p>
-    </div>
-    <div class="metric">
-      <p>Chat Key Only</p>
-      <p>{{ audience.chat_only_users|length }}</p>
     </div>
     <div class="metric">
       <p>Notification Emails</p>
@@ -46,6 +42,7 @@
       data-encrypted-payload-target="{{ form.encrypted_payloads.id }}"
     ></textarea>
     {{ form.encrypted_payloads }}
+    {{ form.encryption_failures }}
     {{ field_errors(form.encrypted_payloads) }}
 
     <div class="checkbox-group">
