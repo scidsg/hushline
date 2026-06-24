@@ -40,7 +40,9 @@ PERMISSIONS_POLICY = ", ".join(
     )
 )
 
-OPENPGP_WASM_SCRIPT_ENDPOINTS = frozenset(("embed_profile", "embed_profile_legacy", "profile"))
+OPENPGP_WASM_SCRIPT_ENDPOINTS = frozenset(
+    ("embed_profile", "embed_profile_legacy", "profile", "settings.broadcasts")
+)
 JSDELIVR_SCRIPT_ENDPOINTS = frozenset(("vision",))
 STRIPE_SCRIPT_ENDPOINTS = frozenset(("premium.waiting",))
 

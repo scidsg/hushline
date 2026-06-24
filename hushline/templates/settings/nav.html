@@ -3,18 +3,19 @@
 <nav class="settings-tabs" aria-label="Settings navigation">
   <ul class="tab-list">
     {% with buttons = [
-      ('settings.profile', 'Profile', True),
+      ('settings.advanced', 'Advanced', True),
       ('settings.aliases', 'Aliases', aliases_enabled),
       ('settings.auth', 'Authentication', True),
       ('settings.branding', 'Branding', user.is_admin),
+      ('settings.broadcasts', 'Broadcasts', user.is_admin),
       ('settings.developer', 'Developer', user.is_admin or user.is_current_paid_super_user),
       ('settings.encryption', 'Encryption', True),
       ('settings.replies', 'Message Statuses', user.pgp_key is not none),
-      ('settings.notifications', 'Notifications', True),
-      ('settings.guidance', 'User Guidance', user.is_admin),
-      ('settings.registration', 'Registration', user.is_admin and registration_settings_enabled),
-      ('settings.advanced', 'Advanced', True),
       ('settings.metrics', 'Metrics', user.is_admin),
+      ('settings.notifications', 'Notifications', True),
+      ('settings.profile', 'Profile', True),
+      ('settings.registration', 'Registration', user.is_admin and registration_settings_enabled),
+      ('settings.guidance', 'User Guidance', user.is_admin),
       ('settings.admin', 'Users', user.is_admin)
     ] %}
       {% for (endpoint, display_name, show) in buttons %}
