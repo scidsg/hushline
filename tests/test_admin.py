@@ -424,11 +424,20 @@ def test_delete_user_scrubs_processed_stripe_invoice_events(
     client: FlaskClient, user: User
 ) -> None:
     invoice = _add_stripe_invoice(user, "inv_processed_event_delete_user")
-    event = _add_stripe_invoice_event(
+    created_event = _add_stripe_invoice_event(
         invoice.invoice_id,
+        event_type="invoice.created",
         status=StripeEventStatusEnum.FINISHED,
     )
-    event.event_data = json.dumps(
+    updated_event = StripeEvent(
+        MagicMock(
+            id="evt_inv_processed_event_delete_user_updated",
+            created=2,
+            type="invoice.updated",
+        )
+    )
+    updated_event.status = StripeEventStatusEnum.FINISHED
+    event_data = json.dumps(
         {
             "data": {
                 "object": {
@@ -438,14 +447,20 @@ def test_delete_user_scrubs_processed_stripe_invoice_events(
             }
         }
     )
+    created_event.event_data = event_data
+    updated_event.event_data = event_data
+    db.session.add(updated_event)
     db.session.commit()
 
     response = client.post(url_for("admin.delete_user", user_id=user.id))
     assert response.status_code == 302
 
-    refreshed_event = db.session.get(StripeEvent, event.id)
-    assert refreshed_event is not None
-    assert refreshed_event.event_data == "{}"
+    refreshed_created_event = db.session.get(StripeEvent, created_event.id)
+    refreshed_updated_event = db.session.get(StripeEvent, updated_event.id)
+    assert refreshed_created_event is not None
+    assert refreshed_created_event.event_data == "{}"
+    assert refreshed_updated_event is not None
+    assert refreshed_updated_event.event_data == "{}"
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")

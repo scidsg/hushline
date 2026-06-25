@@ -730,6 +730,9 @@ def test_handle_invoice_updated_raises_for_missing_invoice(app: Flask) -> None:
 
 def test_handle_invoice_updated_ignores_deleted_customer_and_scrubs_event(app: Flask) -> None:
     event = StripeEvent(MagicMock(id="evt_deleted_invoice", created=1, type="invoice.updated"))
+    pending_event = StripeEvent(
+        MagicMock(id="evt_deleted_invoice_pending", created=2, type="invoice.updated")
+    )
     event.event_data = json.dumps(
         {
             "data": {
@@ -740,8 +743,10 @@ def test_handle_invoice_updated_ignores_deleted_customer_and_scrubs_event(app: F
             }
         }
     )
+    pending_event.event_data = event.event_data
     event.status = StripeEventStatusEnum.IN_PROGRESS
-    db.session.add(event)
+    pending_event.status = StripeEventStatusEnum.PENDING
+    db.session.add_all([event, pending_event])
     db.session.commit()
 
     handle_invoice_updated(
@@ -750,12 +755,16 @@ def test_handle_invoice_updated_ignores_deleted_customer_and_scrubs_event(app: F
             customer="cus_deleted",
             status=StripeInvoiceStatusEnum.PAID.value,
             total=1,
-        )
+        ),
+        event,
     )
 
     refreshed_event = db.session.get(StripeEvent, event.id)
+    refreshed_pending_event = db.session.get(StripeEvent, pending_event.id)
     assert refreshed_event is not None
     assert refreshed_event.event_data == "{}"
+    assert refreshed_pending_event is not None
+    assert "https://stripe.com/receipt" in refreshed_pending_event.event_data
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -1643,4 +1652,6 @@ async def test_worker_processes_invoice_payment_succeeded_event(
 
     db.session.refresh(pending)
     assert pending.status == StripeEventStatusEnum.FINISHED
-    handle_invoice_updated_mock.assert_called_once_with(invoice_obj)
+    handle_invoice_updated_mock.assert_called_once()
+    assert handle_invoice_updated_mock.call_args.args[0] is invoice_obj
+    assert isinstance(handle_invoice_updated_mock.call_args.args[1], StripeEvent)

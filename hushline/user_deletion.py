@@ -30,6 +30,10 @@ DELETION_BLOCKING_STRIPE_INVOICE_EVENT_TYPES = {
     "invoice.updated",
     "invoice.payment_succeeded",
 }
+STRIPE_INVOICE_EVENT_SCRUB_TYPES = {
+    "invoice.created",
+    *DELETION_BLOCKING_STRIPE_INVOICE_EVENT_TYPES,
+}
 REDACTED_STRIPE_EVENT_DATA = "{}"
 
 
@@ -140,7 +144,7 @@ def _redact_processed_stripe_invoice_events(invoice_ids: set[str]) -> None:
 
     events = db.session.scalars(
         db.select(StripeEvent)
-        .where(StripeEvent.event_type.in_(DELETION_BLOCKING_STRIPE_INVOICE_EVENT_TYPES))
+        .where(StripeEvent.event_type.in_(STRIPE_INVOICE_EVENT_SCRUB_TYPES))
         .where(~StripeEvent.status.in_(DELETION_BLOCKING_STRIPE_INVOICE_EVENT_STATUSES))
     )
     for event in events:

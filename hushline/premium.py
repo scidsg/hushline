@@ -389,16 +389,14 @@ def _invoice_id_from_stripe_event_data(event_data: str) -> str | None:
     return None
 
 
-def _redact_stripe_invoice_event_payloads(invoice_id: str) -> None:
-    events = db.session.scalars(
-        db.select(StripeEvent).where(StripeEvent.event_type.in_(STRIPE_INVOICE_UPDATE_EVENT_TYPES))
-    )
-    for event in events:
-        if _invoice_id_from_stripe_event_data(event.event_data) == invoice_id:
-            event.event_data = REDACTED_STRIPE_EVENT_DATA
+def _redact_stripe_event_payload(stripe_event: StripeEvent | None) -> None:
+    if stripe_event is not None:
+        stripe_event.event_data = REDACTED_STRIPE_EVENT_DATA
 
 
-def handle_invoice_updated(invoice: stripe.Invoice) -> None:
+def handle_invoice_updated(
+    invoice: stripe.Invoice, stripe_event: StripeEvent | None = None
+) -> None:
     # invoice.updated
 
     invoice_id = getattr(invoice, "id", None)
@@ -418,8 +416,7 @@ def handle_invoice_updated(invoice: stripe.Invoice) -> None:
                 current_app.logger.info(
                     f"Ignoring invoice update for deleted customer {customer_id}"
                 )
-                if isinstance(invoice_id, str):
-                    _redact_stripe_invoice_event_payloads(invoice_id)
+                _redact_stripe_event_payload(stripe_event)
                 return
 
         raise ValueError(f"Could not find invoice with ID {invoice_id}")
@@ -496,7 +493,7 @@ async def worker(app: Flask) -> None:
                     if event.type == "invoice.created":
                         handle_invoice_created(invoice)
                     elif event.type in ["invoice.updated", "invoice.payment_succeeded"]:
-                        handle_invoice_updated(invoice)
+                        handle_invoice_updated(invoice, stripe_event)
 
             except (
                 json.JSONDecodeError,
