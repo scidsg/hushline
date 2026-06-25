@@ -12,6 +12,12 @@ from sqlalchemy.orm import joinedload
 from hushline.auth import admin_authentication_required
 from hushline.db import db
 from hushline.model import AccountCategory, User, Username
+from hushline.user_deletion import (
+    deletion_blocking_stripe_invoice_counts_by_user_ids,
+    deletion_blocking_stripe_invoice_event_counts_by_user_ids,
+    deletion_blocking_stripe_subscription_event_counts_by_user_ids,
+    stripe_invoice_counts_by_user_ids,
+)
 
 ADMIN_USERNAMES_PER_PAGE = 20
 
@@ -62,6 +68,17 @@ def register_admin_routes(bp: Blueprint) -> None:
                 username_query.limit(ADMIN_USERNAMES_PER_PAGE).offset(page_offset)
             ).all()
         )
+        user_ids = {username.user_id for username in all_usernames}
+        stripe_invoice_counts_by_user_id = stripe_invoice_counts_by_user_ids(user_ids)
+        deletion_blocking_stripe_invoice_counts_by_user_id = (
+            deletion_blocking_stripe_invoice_counts_by_user_ids(user_ids)
+        )
+        deletion_blocking_stripe_invoice_event_counts_by_user_id = (
+            deletion_blocking_stripe_invoice_event_counts_by_user_ids(user_ids)
+        )
+        deletion_blocking_stripe_subscription_event_counts_by_user_id = (
+            deletion_blocking_stripe_subscription_event_counts_by_user_ids(user_ids)
+        )
 
         page_start = page_offset + 1 if username_count else 0
         page_end = min(page_offset + len(all_usernames), username_count)
@@ -79,5 +96,15 @@ def register_admin_routes(bp: Blueprint) -> None:
             admin_total_pages=total_pages,
             admin_page_start=page_start,
             admin_page_end=page_end,
+            stripe_invoice_counts_by_user_id=stripe_invoice_counts_by_user_id,
+            deletion_blocking_stripe_invoice_counts_by_user_id=(
+                deletion_blocking_stripe_invoice_counts_by_user_id
+            ),
+            deletion_blocking_stripe_invoice_event_counts_by_user_id=(
+                deletion_blocking_stripe_invoice_event_counts_by_user_id
+            ),
+            deletion_blocking_stripe_subscription_event_counts_by_user_id=(
+                deletion_blocking_stripe_subscription_event_counts_by_user_id
+            ),
             csrf_token=generate_csrf(),
         )

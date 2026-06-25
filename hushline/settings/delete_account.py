@@ -11,7 +11,12 @@ from werkzeug.wrappers.response import Response
 from hushline.auth import authentication_required
 from hushline.db import db
 from hushline.model import User
-from hushline.user_deletion import delete_user_and_related
+from hushline.user_deletion import (
+    delete_user_and_related,
+    has_deletion_blocking_stripe_invoice,
+    has_deletion_blocking_stripe_invoice_event,
+    has_deletion_blocking_stripe_subscription_event,
+)
 
 
 def register_delete_account_routes(bp: Blueprint) -> None:
@@ -26,6 +31,35 @@ def register_delete_account_routes(bp: Blueprint) -> None:
                     if admin_count == 1:
                         flash("⛔️ You cannot delete the only admin account.")
                         return abort(400)
+
+                if user.has_deletion_blocking_stripe_subscription:
+                    flash(
+                        "⛔️ Your account has an active or unresolved Stripe subscription. "
+                        "Cancel the subscription and wait for Stripe to confirm cancellation "
+                        "before deleting your account."
+                    )
+                    return abort(400)
+
+                if has_deletion_blocking_stripe_invoice(user):
+                    flash(
+                        "⛔️ Your account has draft, open, or unknown Stripe invoices. "
+                        "Resolve those invoices before deleting your account."
+                    )
+                    return abort(400)
+
+                if has_deletion_blocking_stripe_invoice_event(user):
+                    flash(
+                        "⛔️ Your account has queued Stripe invoice webhooks. "
+                        "Wait for those events to finish before deleting your account."
+                    )
+                    return abort(400)
+
+                if has_deletion_blocking_stripe_subscription_event(user):
+                    flash(
+                        "⛔️ Your account has queued Stripe subscription webhooks. "
+                        "Wait for those events to finish before deleting your account."
+                    )
+                    return abort(400)
 
                 delete_user_and_related(user)
             else:

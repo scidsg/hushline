@@ -33,6 +33,15 @@ from hushline.model import (
     User,
 )
 
+TERMINAL_NON_BILLING_SUBSCRIPTION_STATUSES = {
+    StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED,
+}
+REDACTED_STRIPE_EVENT_DATA = "{}"
+STRIPE_INVOICE_UPDATE_EVENT_TYPES = {
+    "invoice.updated",
+    "invoice.payment_succeeded",
+}
+
 
 def init_stripe() -> None:
     stripe.api_key = current_app.config["STRIPE_SECRET_KEY"]
@@ -184,6 +193,9 @@ def get_subscription(user: User) -> stripe.Subscription | None:
     if user.stripe_subscription_id is None:
         return None
 
+    if user.stripe_subscription_status in TERMINAL_NON_BILLING_SUBSCRIPTION_STATUSES:
+        return None
+
     return stripe.Subscription.retrieve(user.stripe_subscription_id)
 
 
@@ -202,13 +214,21 @@ def get_business_price_string() -> str:
     return business_price
 
 
-def handle_subscription_created(subscription: stripe.Subscription) -> None:
+def handle_subscription_created(
+    subscription: stripe.Subscription, stripe_event: StripeEvent | None = None
+) -> None:
     # customer.subscription.created
 
     user = db.session.scalars(
         db.select(User).filter_by(stripe_customer_id=subscription.customer)
     ).one_or_none()
     if user:
+        if user.stripe_subscription_status in TERMINAL_NON_BILLING_SUBSCRIPTION_STATUSES:
+            current_app.logger.info(
+                f"Ignoring stale created event for terminal subscription {subscription.id}"
+            )
+            return
+
         user.stripe_subscription_id = subscription.id
         user.stripe_subscription_status = StripeSubscriptionStatusEnum(subscription.status)
         user.stripe_subscription_cancel_at_period_end = subscription.cancel_at_period_end
@@ -220,18 +240,47 @@ def handle_subscription_created(subscription: stripe.Subscription) -> None:
         )
         db.session.commit()
     else:
+        customer_id = getattr(subscription, "customer", None)
+        if stripe_event is not None and isinstance(customer_id, str):
+            current_app.logger.info(
+                f"Ignoring subscription create for deleted customer {customer_id}"
+            )
+            _redact_stripe_event_payload(stripe_event)
+            return
+
         raise ValueError(f"Could not find user with customer ID {subscription.customer}")
 
 
-def handle_subscription_updated(subscription: stripe.Subscription) -> None:
+def handle_subscription_updated(
+    subscription: stripe.Subscription, stripe_event: StripeEvent | None = None
+) -> None:
     # customer.subscription.updated
 
     # If subscription changes to cancel or unpaid, downgrade user
+    subscription_status = StripeSubscriptionStatusEnum(subscription.status)
     user = db.session.scalars(
         db.select(User).filter_by(stripe_subscription_id=subscription.id)
     ).one_or_none()
     if user:
-        user.stripe_subscription_status = StripeSubscriptionStatusEnum(subscription.status)
+        if (
+            user.stripe_subscription_status in TERMINAL_NON_BILLING_SUBSCRIPTION_STATUSES
+            and subscription_status not in TERMINAL_NON_BILLING_SUBSCRIPTION_STATUSES
+        ):
+            current_app.logger.info(
+                f"Ignoring stale update for terminal subscription {subscription.id}"
+            )
+            return
+
+        user.stripe_subscription_status = subscription_status
+
+        if subscription_status in TERMINAL_NON_BILLING_SUBSCRIPTION_STATUSES:
+            user.set_free_tier()
+            user.stripe_subscription_cancel_at_period_end = None
+            user.stripe_subscription_current_period_end = None
+            user.stripe_subscription_current_period_start = None
+            db.session.commit()
+            return
+
         user.stripe_subscription_cancel_at_period_end = subscription.cancel_at_period_end
         user.stripe_subscription_current_period_end = datetime.fromtimestamp(
             subscription.current_period_end
@@ -247,11 +296,35 @@ def handle_subscription_updated(subscription: stripe.Subscription) -> None:
             user.set_free_tier()
 
         db.session.commit()
-    else:
-        raise ValueError(f"Could not find user with subscription ID {subscription.id}")
+        return
+
+    customer_id = getattr(subscription, "customer", None)
+    if isinstance(customer_id, str):
+        customer_user = db.session.scalars(
+            db.select(User).filter_by(stripe_customer_id=customer_id)
+        ).one_or_none()
+        if customer_user is None:
+            current_app.logger.info(
+                f"Ignoring subscription update for deleted customer {customer_id}"
+            )
+            _redact_stripe_event_payload(stripe_event)
+            return
+        if (
+            customer_user.stripe_subscription_id is None
+            and customer_user.stripe_subscription_status
+            in TERMINAL_NON_BILLING_SUBSCRIPTION_STATUSES
+        ):
+            current_app.logger.info(
+                f"Ignoring stale update for terminal subscription {subscription.id}"
+            )
+            return
+
+    raise ValueError(f"Could not find user with subscription ID {subscription.id}")
 
 
-def handle_subscription_deleted(subscription: stripe.Subscription) -> None:
+def handle_subscription_deleted(
+    subscription: stripe.Subscription, stripe_event: StripeEvent | None = None
+) -> None:
     # customer.subscription.deleted
 
     user = db.session.scalars(
@@ -259,22 +332,58 @@ def handle_subscription_deleted(subscription: stripe.Subscription) -> None:
     ).one_or_none()
     if user:
         user.set_free_tier()
+        if user.stripe_subscription_status in TERMINAL_NON_BILLING_SUBSCRIPTION_STATUSES:
+            db.session.commit()
+            return
+
         user.stripe_subscription_id = None
         user.stripe_subscription_status = None
         user.stripe_subscription_cancel_at_period_end = None
         user.stripe_subscription_current_period_end = None
         user.stripe_subscription_current_period_start = None
         db.session.commit()
-    else:
-        raise ValueError(f"Could not find user with subscription ID {subscription.id}")
+        return
+
+    customer_id = getattr(subscription, "customer", None)
+    if isinstance(customer_id, str):
+        customer_user = db.session.scalars(
+            db.select(User).filter_by(stripe_customer_id=customer_id)
+        ).one_or_none()
+        if customer_user is None:
+            current_app.logger.info(
+                f"Ignoring subscription delete for deleted customer {customer_id}"
+            )
+            _redact_stripe_event_payload(stripe_event)
+            return
+        if customer_user.stripe_subscription_status in TERMINAL_NON_BILLING_SUBSCRIPTION_STATUSES:
+            current_app.logger.info(
+                f"Ignoring stale delete for terminal subscription {subscription.id}"
+            )
+            return
+
+    raise ValueError(f"Could not find user with subscription ID {subscription.id}")
 
 
-def handle_invoice_created(invoice: stripe.Invoice) -> None:
+def handle_invoice_created(
+    invoice: stripe.Invoice, stripe_event: StripeEvent | None = None
+) -> None:
     # invoice.created
 
     try:
         new_invoice = StripeInvoice(invoice)
     except ValueError as e:
+        customer_id = getattr(invoice, "customer", None)
+        if stripe_event is not None and isinstance(customer_id, str):
+            user = db.session.scalars(
+                db.select(User).filter_by(stripe_customer_id=customer_id)
+            ).one_or_none()
+            if user is None:
+                current_app.logger.info(
+                    f"Ignoring invoice create for deleted customer {customer_id}"
+                )
+                _redact_stripe_event_payload(stripe_event)
+                return
+
         current_app.logger.error(f"Error creating invoice: {e}")
         return
 
@@ -303,17 +412,50 @@ def _sync_invoice(stripe_invoice: StripeInvoice, invoice: stripe.Invoice) -> Non
         stripe_invoice.hosted_invoice_url = receipt_url
 
 
-def handle_invoice_updated(invoice: stripe.Invoice) -> None:
+def _invoice_id_from_stripe_event_data(event_data: str) -> str | None:
+    try:
+        event = json.loads(event_data)
+    except json.JSONDecodeError:
+        return None
+
+    invoice_id = event.get("data", {}).get("object", {}).get("id")
+    if isinstance(invoice_id, str):
+        return invoice_id
+
+    return None
+
+
+def _redact_stripe_event_payload(stripe_event: StripeEvent | None) -> None:
+    if stripe_event is not None:
+        stripe_event.event_data = REDACTED_STRIPE_EVENT_DATA
+
+
+def handle_invoice_updated(
+    invoice: stripe.Invoice, stripe_event: StripeEvent | None = None
+) -> None:
     # invoice.updated
 
+    invoice_id = getattr(invoice, "id", None)
     stripe_invoice = db.session.scalars(
-        db.select(StripeInvoice).filter_by(invoice_id=invoice.id)
+        db.select(StripeInvoice).filter_by(invoice_id=invoice_id)
     ).one_or_none()
     if stripe_invoice:
         _sync_invoice(stripe_invoice, invoice)
         db.session.commit()
     else:
-        raise ValueError(f"Could not find invoice with ID {invoice.id}")
+        customer_id = getattr(invoice, "customer", None)
+        if isinstance(customer_id, str):
+            user = db.session.scalars(
+                db.select(User).filter_by(stripe_customer_id=customer_id)
+            ).one_or_none()
+            if user is None:
+                current_app.logger.info(
+                    f"Ignoring invoice update for deleted customer {customer_id}"
+                )
+                _redact_stripe_event_payload(stripe_event)
+                return
+
+        raise ValueError(f"Could not find invoice with ID {invoice_id}")
 
 
 async def worker(app: Flask) -> None:
@@ -374,20 +516,20 @@ async def worker(app: Flask) -> None:
                         event.data.object, current_app.config["STRIPE_SECRET_KEY"]
                     )
                     if event.type == "customer.subscription.created":
-                        handle_subscription_created(subscription)
+                        handle_subscription_created(subscription, stripe_event)
                     elif event.type == "customer.subscription.updated":
-                        handle_subscription_updated(subscription)
+                        handle_subscription_updated(subscription, stripe_event)
                     elif event.type == "customer.subscription.deleted":
-                        handle_subscription_deleted(subscription)
+                        handle_subscription_deleted(subscription, stripe_event)
                 # invoice events
                 elif event.type.startswith("invoice."):
                     invoice: stripe.Invoice = stripe.Invoice.construct_from(
                         event.data.object, current_app.config["STRIPE_SECRET_KEY"]
                     )
                     if event.type == "invoice.created":
-                        handle_invoice_created(invoice)
+                        handle_invoice_created(invoice, stripe_event)
                     elif event.type in ["invoice.updated", "invoice.payment_succeeded"]:
-                        handle_invoice_updated(invoice)
+                        handle_invoice_updated(invoice, stripe_event)
 
             except (
                 json.JSONDecodeError,

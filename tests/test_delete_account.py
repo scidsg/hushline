@@ -1,11 +1,95 @@
+import json
+from types import SimpleNamespace
+from unittest.mock import MagicMock
+
 import pytest
 from flask import url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
 from hushline.model import (
+    StripeEvent,
+    StripeEventStatusEnum,
+    StripeInvoice,
+    StripeInvoiceStatusEnum,
+    StripeSubscriptionStatusEnum,
+    Tier,
     User,
 )
+
+
+def _add_stripe_invoice(
+    user: User,
+    invoice_id: str = "inv_delete_account",
+    status: StripeInvoiceStatusEnum = StripeInvoiceStatusEnum.PAID,
+) -> StripeInvoice:
+    user.stripe_customer_id = f"cus_{invoice_id}"
+    business_tier = Tier.business_tier()
+    assert business_tier is not None
+    db.session.commit()
+
+    invoice = StripeInvoice(
+        SimpleNamespace(
+            id=invoice_id,
+            customer=user.stripe_customer_id,
+            hosted_invoice_url="https://example.com/invoice",
+            total=2000,
+            status=status.value,
+            created=None,
+            lines=SimpleNamespace(
+                data=[
+                    SimpleNamespace(plan=SimpleNamespace(product=business_tier.stripe_product_id))
+                ]
+            ),
+        )
+    )
+    db.session.add(invoice)
+    db.session.commit()
+    return invoice
+
+
+def _add_stripe_invoice_event(
+    invoice_id: str,
+    event_type: str = "invoice.updated",
+    status: StripeEventStatusEnum = StripeEventStatusEnum.PENDING,
+) -> StripeEvent:
+    event = StripeEvent(
+        MagicMock(
+            id=f"evt_{invoice_id}",
+            created=1,
+            type=event_type,
+        )
+    )
+    event.event_data = json.dumps({"data": {"object": {"id": invoice_id}}})
+    event.status = status
+    db.session.add(event)
+    db.session.commit()
+    return event
+
+
+def _add_stripe_subscription_event(user: User) -> StripeEvent:
+    user.stripe_customer_id = "cus_pending_subscription_event_delete_account"
+    event = StripeEvent(
+        MagicMock(
+            id="evt_pending_subscription_event_delete_account",
+            created=1,
+            type="customer.subscription.created",
+        )
+    )
+    event.event_data = json.dumps(
+        {
+            "data": {
+                "object": {
+                    "id": "sub_pending_subscription_event_delete_account",
+                    "customer": user.stripe_customer_id,
+                }
+            }
+        }
+    )
+    event.status = StripeEventStatusEnum.PENDING
+    db.session.add(event)
+    db.session.commit()
+    return event
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -24,6 +108,71 @@ def test_delete_account(client: FlaskClient, user: User) -> None:
     # Make sure the user is deleted
     user_count = db.session.query(User).filter_by(id=user.id).count()
     assert user_count == 0
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_delete_account_with_stripe_subscription_blocked(client: FlaskClient, user: User) -> None:
+    user.stripe_subscription_id = "sub_delete_account"
+    user.stripe_subscription_status = StripeSubscriptionStatusEnum.CANCELED
+    db.session.commit()
+
+    response = client.post(url_for("settings.delete_account"))
+    assert response.status_code == 400
+
+    assert db.session.get(User, user.id) is not None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_delete_account_with_incomplete_expired_subscription_id_allowed(
+    client: FlaskClient, user: User
+) -> None:
+    user.stripe_subscription_id = "sub_expired_checkout_delete_account"
+    user.stripe_subscription_status = StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED
+    db.session.commit()
+
+    response = client.post(url_for("settings.delete_account"))
+    assert response.status_code == 302
+
+    assert db.session.get(User, user.id) is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_delete_account_with_open_stripe_invoice_blocked(client: FlaskClient, user: User) -> None:
+    invoice = _add_stripe_invoice(user, "inv_open_delete_account", StripeInvoiceStatusEnum.OPEN)
+
+    response = client.post(url_for("settings.delete_account"))
+    assert response.status_code == 400
+
+    assert db.session.get(User, user.id) is not None
+    assert db.session.get(StripeInvoice, invoice.id) is not None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_delete_account_with_queued_stripe_invoice_event_blocked(
+    client: FlaskClient, user: User
+) -> None:
+    invoice = _add_stripe_invoice(user, "inv_pending_event_delete_account")
+    event = _add_stripe_invoice_event(invoice.invoice_id)
+
+    response = client.post(url_for("settings.delete_account"))
+    assert response.status_code == 400
+
+    assert db.session.get(User, user.id) is not None
+    assert db.session.get(StripeInvoice, invoice.id) is not None
+    assert db.session.get(StripeEvent, event.id) is not None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_delete_account_with_queued_stripe_subscription_event_blocked(
+    client: FlaskClient, user: User
+) -> None:
+    event = _add_stripe_subscription_event(user)
+
+    response = client.post(url_for("settings.delete_account"))
+    assert response.status_code == 400
+
+    assert db.session.get(User, user.id) is not None
+    assert db.session.get(StripeEvent, event.id) is not None
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
