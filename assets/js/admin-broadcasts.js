@@ -1,6 +1,8 @@
 import * as openpgp from "openpgp";
 
 const BROADCAST_BATCH_SIZE = 10;
+const BROADCAST_BATCH_RETRY_LIMIT = 4;
+const BROADCAST_BATCH_RETRY_BASE_MS = 750;
 
 function assertClientCryptoSupport() {
   if (!window.isSecureContext) {
@@ -140,6 +142,32 @@ function progressPercent(completedCount, totalCount) {
   );
 }
 
+function wait(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function retryDelay(attempt) {
+  return Math.min(
+    6000,
+    BROADCAST_BATCH_RETRY_BASE_MS * 2 ** Math.max(0, attempt - 1),
+  );
+}
+
+function broadcastSubmitError(message, retryable = false) {
+  const error = new Error(message);
+  error.retryable = retryable;
+  return error;
+}
+
+function isRetryableBroadcastError(error) {
+  if (error?.retryable === true) {
+    return true;
+  }
+  return error instanceof TypeError;
+}
+
 async function submitBroadcastBatch(
   form,
   encryptedPayloads,
@@ -170,11 +198,21 @@ async function submitBroadcastBatch(
   });
   const contentType = response.headers.get("content-type") || "";
   if (response.redirected || !contentType.includes("application/json")) {
-    throw new Error(
+    throw broadcastSubmitError(
       "Broadcast session changed. Sign in again before continuing.",
     );
   }
-  const payload = await response.json();
+  let payload;
+  try {
+    payload = await response.json();
+  } catch {
+    throw broadcastSubmitError(
+      "Broadcast batch submission failed.",
+      response.status >= 500 ||
+        response.status === 408 ||
+        response.status === 429,
+    );
+  }
   if (
     !response.ok ||
     !Number.isInteger(payload.submitted_count) ||
@@ -183,9 +221,52 @@ async function submitBroadcastBatch(
     typeof payload.broadcast_id !== "string" ||
     typeof payload.broadcast_complete !== "boolean"
   ) {
-    throw new Error(payload.error || "Broadcast batch submission failed.");
+    throw broadcastSubmitError(
+      payload.error || "Broadcast batch submission failed.",
+      response.status >= 500 ||
+        response.status === 408 ||
+        response.status === 429,
+    );
   }
   return payload;
+}
+
+async function submitBroadcastBatchWithRetry(
+  form,
+  encryptedPayloads,
+  encryptionFailures,
+  expectedUserIds,
+  completedUserIds,
+  isFinalChunk,
+  status,
+  batchNumber,
+  totalBatches,
+) {
+  for (let attempt = 1; attempt <= BROADCAST_BATCH_RETRY_LIMIT; attempt += 1) {
+    try {
+      return await submitBroadcastBatch(
+        form,
+        encryptedPayloads,
+        encryptionFailures,
+        expectedUserIds,
+        completedUserIds,
+        isFinalChunk,
+      );
+    } catch (error) {
+      if (
+        attempt >= BROADCAST_BATCH_RETRY_LIMIT ||
+        !isRetryableBroadcastError(error)
+      ) {
+        throw error;
+      }
+      updateStatus(
+        status,
+        `Still sending broadcast: retrying batch ${batchNumber} of ${totalBatches}...`,
+      );
+      await wait(retryDelay(attempt));
+    }
+  }
+  throw broadcastSubmitError("Broadcast batch submission failed.");
 }
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -242,6 +323,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
       let completedCount = 0;
       const completedUserIds = [];
+      const totalBatches = Math.ceil(
+        recipientEntries.length / BROADCAST_BATCH_SIZE,
+      );
 
       updateStatus(status, "Sending broadcast: 1% complete...");
       for (
@@ -283,14 +367,18 @@ document.addEventListener("DOMContentLoaded", function () {
         completedUserIds.push(...batch.map((recipient) => recipient.user_id));
         const isFinalChunk =
           index + BROADCAST_BATCH_SIZE >= recipientEntries.length;
+        const batchNumber = Math.floor(index / BROADCAST_BATCH_SIZE) + 1;
         batchRequestStarted = true;
-        const result = await submitBroadcastBatch(
+        const result = await submitBroadcastBatchWithRetry(
           form,
           encryptedPayloads,
           encryptionFailures,
           expectedUserIds,
           completedUserIds,
           isFinalChunk,
+          status,
+          batchNumber,
+          totalBatches,
         );
         ensureBroadcastIdInput(form, result.broadcast_id);
         submittedCount += Number(result.submitted_count || 0);

@@ -193,10 +193,12 @@ PR descriptions for conversation workflow changes should include a threat or ris
 
 Administrative broadcasts create encrypted inbox messages in browser-side batches. Hush Line stores
 a broadcast ledger with recipient status for each eligible recipient, but it does not store the
-plaintext broadcast body. If a browser stops after some batches are submitted, the next visit to
-Settings -> Broadcasts shows the interrupted broadcast counts and limits the encryption audience to
-pending recipients only. The admin must re-enter the same message, confirm the send, and continue
-only the pending recipients.
+plaintext broadcast body. While the broadcast page remains open, transient batch submission failures
+are retried automatically and committed batches can be replayed without duplicating delivered inbox
+messages. If the browser or page stops after some batches are submitted, the next visit to Settings
+-> Broadcasts shows the interrupted broadcast counts and limits the encryption audience to pending
+recipients only. The admin must re-enter the same message, confirm the send, and continue only the
+pending recipients because the server cannot recover unstored plaintext.
 
 Resume validation must preserve two safety constraints:
 
@@ -204,9 +206,10 @@ Resume validation must preserve two safety constraints:
   server ledger has already moved earlier recipients out of pending status.
 - Refresh-based continuation may post only the pending audience rendered by the resume page.
 
-In both cases the server must reject payloads for recipients that are no longer pending or no longer
-eligible before creating additional messages. Pending recipients whose browser encryption fails are
-recorded as skipped so the ledger can complete without duplicating successful deliveries.
+In both cases the server must reject new payloads for recipients that are no longer pending or no
+longer eligible before creating additional messages, while acknowledging idempotent replays for
+recipients already recorded as submitted or skipped. Pending recipients whose browser encryption
+fails are recorded as skipped so the ledger can complete without duplicating successful deliveries.
 
 ## Manual Review Steps
 

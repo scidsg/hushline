@@ -159,15 +159,12 @@ def _load_active_broadcast() -> AdminBroadcast | None:
     ).one_or_none()
 
 
-def _load_active_broadcast_by_public_id(public_id: str) -> AdminBroadcast | None:
+def _load_broadcast_by_public_id(public_id: str) -> AdminBroadcast | None:
     if not public_id:
         return None
     return db.session.scalars(
         db.select(AdminBroadcast)
-        .where(
-            AdminBroadcast.public_id == public_id,
-            AdminBroadcast.status == AdminBroadcast.STATUS_IN_PROGRESS,
-        )
+        .where(AdminBroadcast.public_id == public_id)
         .options(selectinload(AdminBroadcast.recipients))
         .limit(1)
     ).one_or_none()
@@ -199,6 +196,10 @@ def _pending_user_ids(broadcast: AdminBroadcast) -> set[int]:
 
 def _broadcast_user_ids(broadcast: AdminBroadcast) -> set[int]:
     return {recipient.user_id for recipient in broadcast.recipients}
+
+
+def _broadcast_status_user_ids(broadcast: AdminBroadcast, status: str) -> set[int]:
+    return {recipient.user_id for recipient in broadcast.recipients if recipient.status == status}
 
 
 def _broadcast_state(broadcast: AdminBroadcast | None) -> BroadcastDisplayState | None:
@@ -386,7 +387,9 @@ def register_broadcast_routes(bp: Blueprint) -> None:
                             "Confirm before submitting these encrypted messages."
                         )
                         status_code = 400
-                    elif not audience.encrypted_submission_users:
+                    elif not audience.encrypted_submission_users and not (
+                        chunked_broadcast and request.form.get(BROADCAST_ID_FIELD, "")
+                    ):
                         if chunked_broadcast:
                             return _json_broadcast_error(
                                 "No eligible encrypted message recipients match this audience."
@@ -416,14 +419,49 @@ def register_broadcast_routes(bp: Blueprint) -> None:
                         )
                         final_chunk = request.form.get(BROADCAST_FINAL_CHUNK_FIELD) == "1"
                         broadcast_public_id = request.form.get(BROADCAST_ID_FIELD, "")
-                        active_broadcast = _load_active_broadcast_by_public_id(broadcast_public_id)
-                        if chunked_broadcast and active_broadcast is not None:
-                            pending_user_ids = _pending_user_ids(active_broadcast)
-                            broadcast_user_ids = _broadcast_user_ids(active_broadcast)
-                            if expected_chunk_user_ids == broadcast_user_ids:
-                                expected_user_ids = broadcast_user_ids
-                            elif expected_chunk_user_ids == pending_user_ids:
-                                expected_user_ids = pending_user_ids
+                        broadcast = _load_broadcast_by_public_id(broadcast_public_id)
+                        active_broadcast = (
+                            broadcast
+                            if broadcast is not None
+                            and broadcast.status == AdminBroadcast.STATUS_IN_PROGRESS
+                            else None
+                        )
+                        completed_broadcast = (
+                            broadcast
+                            if broadcast is not None
+                            and broadcast.status == AdminBroadcast.STATUS_COMPLETED
+                            else None
+                        )
+                        submitted_broadcast_user_ids: set[int] = set()
+                        skipped_broadcast_user_ids: set[int] = set()
+                        submitted_user_ids_to_create = submitted_user_ids
+                        failed_user_ids_to_record = failed_user_ids
+                        if chunked_broadcast and broadcast is not None:
+                            pending_user_ids = _pending_user_ids(broadcast)
+                            broadcast_user_ids = _broadcast_user_ids(broadcast)
+                            submitted_broadcast_user_ids = _broadcast_status_user_ids(
+                                broadcast,
+                                AdminBroadcastRecipient.STATUS_SUBMITTED,
+                            )
+                            skipped_broadcast_user_ids = _broadcast_status_user_ids(
+                                broadcast,
+                                AdminBroadcastRecipient.STATUS_SKIPPED,
+                            )
+                            if active_broadcast is not None:
+                                submitted_user_ids_to_create = submitted_user_ids & pending_user_ids
+                                failed_user_ids_to_record = failed_user_ids & pending_user_ids
+                                if expected_chunk_user_ids == broadcast_user_ids:
+                                    expected_user_ids = broadcast_user_ids
+                                elif expected_chunk_user_ids == pending_user_ids:
+                                    expected_user_ids = pending_user_ids
+                                else:
+                                    expected_user_ids = set()
+                            elif (
+                                completed_broadcast is not None
+                                and final_chunk
+                                and expected_chunk_user_ids.issubset(broadcast_user_ids)
+                            ):
+                                expected_user_ids = expected_chunk_user_ids
                             else:
                                 expected_user_ids = set()
                         else:
@@ -446,7 +484,7 @@ def register_broadcast_routes(bp: Blueprint) -> None:
                                 "Encrypted payloads conflict with reported encryption failures."
                             )
                             status_code = 400
-                        elif chunked_broadcast and broadcast_public_id and active_broadcast is None:
+                        elif chunked_broadcast and broadcast_public_id and broadcast is None:
                             return _json_broadcast_error(
                                 "Broadcast run is no longer active. Refresh and try again."
                             )
@@ -483,13 +521,29 @@ def register_broadcast_routes(bp: Blueprint) -> None:
                             return _json_broadcast_error(
                                 "Broadcast completion is missing submitted recipients."
                             )
-                        elif chunked_broadcast and not submitted_user_ids.issubset(
-                            pending_user_ids
+                        elif (
+                            chunked_broadcast
+                            and active_broadcast is not None
+                            and (
+                                submitted_user_ids - pending_user_ids - submitted_broadcast_user_ids
+                                or failed_user_ids - pending_user_ids - skipped_broadcast_user_ids
+                            )
                         ):
                             return _json_broadcast_error(
                                 "Broadcast recipients are no longer pending. Refresh and try again."
                             )
-                        elif chunked_broadcast and not submitted_user_ids.issubset(
+                        elif (
+                            chunked_broadcast
+                            and completed_broadcast is not None
+                            and (
+                                submitted_user_ids - submitted_broadcast_user_ids
+                                or failed_user_ids - skipped_broadcast_user_ids
+                            )
+                        ):
+                            return _json_broadcast_error(
+                                "Broadcast run is complete. Refresh and try again."
+                            )
+                        elif chunked_broadcast and not submitted_user_ids_to_create.issubset(
                             eligible_user_ids
                         ):
                             return _json_broadcast_error(
@@ -512,12 +566,26 @@ def register_broadcast_routes(bp: Blueprint) -> None:
                             )
                             status_code = 400
                         else:
+                            if chunked_broadcast and completed_broadcast is not None:
+                                return jsonify(
+                                    {
+                                        "broadcast_id": completed_broadcast.public_id,
+                                        "broadcast_complete": True,
+                                        "pending_count": 0,
+                                        "submitted_count": len(
+                                            submitted_user_ids & submitted_broadcast_user_ids
+                                        ),
+                                        "skipped_count": len(
+                                            failed_user_ids & skipped_broadcast_user_ids
+                                        ),
+                                    }
+                                )
                             if chunked_broadcast and active_broadcast is None:
                                 active_broadcast = _create_broadcast(user.id, expected_user_ids)
                             submitted_users = [
                                 user
                                 for user in audience.encrypted_submission_users
-                                if user.id in submitted_user_ids
+                                if user.id in submitted_user_ids_to_create
                             ]
                             try:
                                 submitted_count = _submit_encrypted_broadcast_messages(
@@ -528,7 +596,7 @@ def register_broadcast_routes(bp: Blueprint) -> None:
                                 if chunked_broadcast and active_broadcast is not None:
                                     _record_broadcast_failures(
                                         active_broadcast,
-                                        failed_user_ids,
+                                        failed_user_ids_to_record,
                                     )
                                     db.session.commit()
                             except ValueError:
@@ -556,13 +624,25 @@ def register_broadcast_routes(bp: Blueprint) -> None:
                                     return _json_broadcast_error(
                                         "Broadcast run could not be recorded."
                                     )
+                                submitted_broadcast_user_ids = _broadcast_status_user_ids(
+                                    active_broadcast,
+                                    AdminBroadcastRecipient.STATUS_SUBMITTED,
+                                )
+                                skipped_broadcast_user_ids = _broadcast_status_user_ids(
+                                    active_broadcast,
+                                    AdminBroadcastRecipient.STATUS_SKIPPED,
+                                )
                                 return jsonify(
                                     {
                                         "broadcast_id": active_broadcast.public_id,
                                         "broadcast_complete": active_broadcast.pending_count == 0,
                                         "pending_count": active_broadcast.pending_count,
-                                        "submitted_count": submitted_count,
-                                        "skipped_count": skipped_count,
+                                        "submitted_count": len(
+                                            submitted_user_ids & submitted_broadcast_user_ids
+                                        ),
+                                        "skipped_count": len(
+                                            failed_user_ids & skipped_broadcast_user_ids
+                                        ),
                                     }
                                 )
                             if skipped_count:
