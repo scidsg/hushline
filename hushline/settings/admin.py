@@ -15,6 +15,7 @@ from hushline.model import AccountCategory, User, Username
 from hushline.user_deletion import (
     deletion_blocking_stripe_invoice_counts_by_user_ids,
     deletion_blocking_stripe_invoice_event_counts_by_user_ids,
+    deletion_blocking_stripe_subscription_event_counts_by_user_ids,
     stripe_invoice_counts_by_user_ids,
 )
 
@@ -75,6 +76,9 @@ def register_admin_routes(bp: Blueprint) -> None:
         deletion_blocking_stripe_invoice_event_counts_by_user_id = (
             deletion_blocking_stripe_invoice_event_counts_by_user_ids(user_ids)
         )
+        deletion_blocking_stripe_subscription_event_counts_by_user_id = (
+            deletion_blocking_stripe_subscription_event_counts_by_user_ids(user_ids)
+        )
 
         page_start = page_offset + 1 if username_count else 0
         page_end = min(page_offset + len(all_usernames), username_count)
@@ -98,6 +102,9 @@ def register_admin_routes(bp: Blueprint) -> None:
             ),
             deletion_blocking_stripe_invoice_event_counts_by_user_id=(
                 deletion_blocking_stripe_invoice_event_counts_by_user_id
+            ),
+            deletion_blocking_stripe_subscription_event_counts_by_user_id=(
+                deletion_blocking_stripe_subscription_event_counts_by_user_id
             ),
             csrf_token=generate_csrf(),
         )

@@ -15,6 +15,7 @@ from hushline.user_deletion import (
     delete_user_and_related,
     has_deletion_blocking_stripe_invoice,
     has_deletion_blocking_stripe_invoice_event,
+    has_deletion_blocking_stripe_subscription_event,
 )
 
 
@@ -49,6 +50,13 @@ def register_delete_account_routes(bp: Blueprint) -> None:
                 if has_deletion_blocking_stripe_invoice_event(user):
                     flash(
                         "⛔️ Your account has queued Stripe invoice webhooks. "
+                        "Wait for those events to finish before deleting your account."
+                    )
+                    return abort(400)
+
+                if has_deletion_blocking_stripe_subscription_event(user):
+                    flash(
+                        "⛔️ Your account has queued Stripe subscription webhooks. "
                         "Wait for those events to finish before deleting your account."
                     )
                     return abort(400)

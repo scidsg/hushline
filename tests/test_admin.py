@@ -213,6 +213,36 @@ def _add_stripe_invoice_event(
     return event
 
 
+def _add_stripe_subscription_event(
+    user: User,
+    event_type: str = "customer.subscription.created",
+    status: StripeEventStatusEnum = StripeEventStatusEnum.PENDING,
+) -> StripeEvent:
+    user.stripe_customer_id = user.stripe_customer_id or "cus_subscription_event"
+    user.stripe_subscription_id = user.stripe_subscription_id or "sub_subscription_event"
+    event = StripeEvent(
+        MagicMock(
+            id=f"evt_{event_type.replace('.', '_')}_{user.id}",
+            created=1,
+            type=event_type,
+        )
+    )
+    event.event_data = json.dumps(
+        {
+            "data": {
+                "object": {
+                    "id": user.stripe_subscription_id,
+                    "customer": user.stripe_customer_id,
+                }
+            }
+        }
+    )
+    event.status = status
+    db.session.add(event)
+    db.session.commit()
+    return event
+
+
 @pytest.mark.usefixtures("_authenticated_admin_user")
 def test_admin_settings_paginates_usernames(client: FlaskClient) -> None:
     for index in range(25):
@@ -437,6 +467,14 @@ def test_delete_user_scrubs_processed_stripe_invoice_events(
         )
     )
     updated_event.status = StripeEventStatusEnum.FINISHED
+    finalized_event = StripeEvent(
+        MagicMock(
+            id="evt_inv_processed_event_delete_user_finalized",
+            created=3,
+            type="invoice.finalized",
+        )
+    )
+    finalized_event.status = StripeEventStatusEnum.FINISHED
     event_data = json.dumps(
         {
             "data": {
@@ -449,7 +487,8 @@ def test_delete_user_scrubs_processed_stripe_invoice_events(
     )
     created_event.event_data = event_data
     updated_event.event_data = event_data
-    db.session.add(updated_event)
+    finalized_event.event_data = event_data
+    db.session.add_all([updated_event, finalized_event])
     db.session.commit()
 
     response = client.post(url_for("admin.delete_user", user_id=user.id))
@@ -457,10 +496,35 @@ def test_delete_user_scrubs_processed_stripe_invoice_events(
 
     refreshed_created_event = db.session.get(StripeEvent, created_event.id)
     refreshed_updated_event = db.session.get(StripeEvent, updated_event.id)
+    refreshed_finalized_event = db.session.get(StripeEvent, finalized_event.id)
     assert refreshed_created_event is not None
     assert refreshed_created_event.event_data == "{}"
     assert refreshed_updated_event is not None
     assert refreshed_updated_event.event_data == "{}"
+    assert refreshed_finalized_event is not None
+    assert refreshed_finalized_event.event_data == "{}"
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_delete_user_scrubs_processed_stripe_subscription_events(
+    client: FlaskClient, user: User
+) -> None:
+    user.stripe_customer_id = "cus_processed_subscription_event"
+    user.stripe_subscription_id = "sub_processed_subscription_event"
+    user.stripe_subscription_status = StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED
+    db.session.commit()
+    event = _add_stripe_subscription_event(
+        user,
+        event_type="customer.subscription.updated",
+        status=StripeEventStatusEnum.FINISHED,
+    )
+
+    response = client.post(url_for("admin.delete_user", user_id=user.id))
+    assert response.status_code == 302
+
+    refreshed_event = db.session.get(StripeEvent, event.id)
+    assert refreshed_event is not None
+    assert refreshed_event.event_data == "{}"
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
@@ -534,6 +598,23 @@ def test_delete_user_with_queued_stripe_invoice_event_blocked(
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
+def test_delete_user_with_queued_stripe_subscription_event_blocked(
+    client: FlaskClient, user: User
+) -> None:
+    invoice = _add_stripe_invoice(user, "inv_pending_subscription_event_delete_user")
+    event = _add_stripe_subscription_event(user)
+    user.stripe_subscription_id = None
+    db.session.commit()
+
+    response = client.post(url_for("admin.delete_user", user_id=user.id))
+    assert response.status_code == 400
+
+    assert db.session.get(User, user.id) is not None
+    assert db.session.get(StripeInvoice, invoice.id) is not None
+    assert db.session.get(StripeEvent, event.id) is not None
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
 def test_admin_settings_discloses_queued_stripe_invoice_event(
     client: FlaskClient, user: User
 ) -> None:
@@ -555,6 +636,32 @@ def test_admin_settings_discloses_queued_stripe_invoice_event(
     user_text = " ".join(user_card.get_text(" ", strip=True).split())
 
     assert "1 queued invoice webhook; deletion disabled." in user_text
+    delete_button = user_card.select_one("button.delete-user-button")
+    assert delete_button is not None
+    assert delete_button.has_attr("disabled")
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_admin_settings_discloses_queued_stripe_subscription_event(
+    client: FlaskClient, user: User
+) -> None:
+    _add_stripe_subscription_event(user)
+
+    response = client.get(url_for("settings.admin"), follow_redirects=True)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    user_card = next(
+        (
+            card
+            for card in soup.select("#admin-users-list .user")
+            if card.find("h5", string=user.primary_username.username)
+        ),
+        None,
+    )
+    assert user_card is not None
+    user_text = " ".join(user_card.get_text(" ", strip=True).split())
+
+    assert "1 queued subscription webhook; deletion disabled." in user_text
     delete_button = user_card.select_one("button.delete-user-button")
     assert delete_button is not None
     assert delete_button.has_attr("disabled")

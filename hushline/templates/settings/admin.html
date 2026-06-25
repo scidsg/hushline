@@ -84,7 +84,8 @@
         {% set stripe_invoice_count = stripe_invoice_counts_by_user_id.get(username.user.id, 0) %}
         {% set deletion_blocking_stripe_invoice_count = deletion_blocking_stripe_invoice_counts_by_user_id.get(username.user.id, 0) %}
         {% set deletion_blocking_stripe_invoice_event_count = deletion_blocking_stripe_invoice_event_counts_by_user_id.get(username.user.id, 0) %}
-        {% set has_deletion_blocking_stripe_billing = username.user.has_deletion_blocking_stripe_subscription or deletion_blocking_stripe_invoice_count or deletion_blocking_stripe_invoice_event_count %}
+        {% set deletion_blocking_stripe_subscription_event_count = deletion_blocking_stripe_subscription_event_counts_by_user_id.get(username.user.id, 0) %}
+        {% set has_deletion_blocking_stripe_billing = username.user.has_deletion_blocking_stripe_subscription or deletion_blocking_stripe_invoice_count or deletion_blocking_stripe_invoice_event_count or deletion_blocking_stripe_subscription_event_count %}
         {% if username.is_primary and (stripe_invoice_count or has_deletion_blocking_stripe_billing) %}
           <p class="meta">
             Stripe Billing:
@@ -99,6 +100,11 @@
             {% if deletion_blocking_stripe_invoice_event_count %}
               {{ deletion_blocking_stripe_invoice_event_count }} queued invoice
               webhook{{ "" if deletion_blocking_stripe_invoice_event_count == 1 else "s" }};
+              deletion disabled.
+            {% endif %}
+            {% if deletion_blocking_stripe_subscription_event_count %}
+              {{ deletion_blocking_stripe_subscription_event_count }} queued subscription
+              webhook{{ "" if deletion_blocking_stripe_subscription_event_count == 1 else "s" }};
               deletion disabled.
             {% endif %}
             {% if stripe_invoice_count %}

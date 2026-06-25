@@ -12,6 +12,7 @@ from hushline.user_deletion import (
     delete_username_and_related,
     has_deletion_blocking_stripe_invoice,
     has_deletion_blocking_stripe_invoice_event,
+    has_deletion_blocking_stripe_subscription_event,
 )
 from hushline.utils import parse_bool
 
@@ -257,6 +258,14 @@ def create_blueprint() -> Blueprint:
             if has_deletion_blocking_stripe_invoice_event(user):
                 flash(
                     "⛔️ This account has queued Stripe invoice webhooks. "
+                    "Wait for those events to finish before deleting the account.",
+                    "danger",
+                )
+                return abort(400)
+
+            if has_deletion_blocking_stripe_subscription_event(user):
+                flash(
+                    "⛔️ This account has queued Stripe subscription webhooks. "
                     "Wait for those events to finish before deleting the account.",
                     "danger",
                 )
