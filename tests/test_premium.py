@@ -310,6 +310,29 @@ def test_handle_subscription_updated_downgrade(app: Flask, user: User) -> None:
     assert user.is_free_tier
 
 
+def test_handle_subscription_updated_incomplete_expired_clears_subscription_id(
+    app: Flask, user: User
+) -> None:
+    user.stripe_subscription_id = "sub_123"
+    user.stripe_subscription_cancel_at_period_end = True
+    user.stripe_subscription_current_period_end = datetime.now() + timedelta(days=30)
+    user.stripe_subscription_current_period_start = datetime.now()
+    db.session.commit()
+
+    subscription = MagicMock()
+    subscription.id = "sub_123"
+    subscription.status = StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED.value
+
+    handle_subscription_updated(subscription)
+
+    assert user.is_free_tier
+    assert user.stripe_subscription_id is None
+    assert user.stripe_subscription_status == StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED
+    assert user.stripe_subscription_cancel_at_period_end is None
+    assert user.stripe_subscription_current_period_end is None
+    assert user.stripe_subscription_current_period_start is None
+
+
 def test_handle_subscription_updated_raises_for_missing_subscription(app: Flask) -> None:
     subscription = MagicMock()
     subscription.id = "sub_missing"

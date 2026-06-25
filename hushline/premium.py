@@ -33,6 +33,10 @@ from hushline.model import (
     User,
 )
 
+TERMINAL_NON_BILLING_SUBSCRIPTION_STATUSES = {
+    StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED,
+}
+
 
 def init_stripe() -> None:
     stripe.api_key = current_app.config["STRIPE_SECRET_KEY"]
@@ -231,7 +235,18 @@ def handle_subscription_updated(subscription: stripe.Subscription) -> None:
         db.select(User).filter_by(stripe_subscription_id=subscription.id)
     ).one_or_none()
     if user:
-        user.stripe_subscription_status = StripeSubscriptionStatusEnum(subscription.status)
+        subscription_status = StripeSubscriptionStatusEnum(subscription.status)
+        user.stripe_subscription_status = subscription_status
+
+        if subscription_status in TERMINAL_NON_BILLING_SUBSCRIPTION_STATUSES:
+            user.set_free_tier()
+            user.stripe_subscription_id = None
+            user.stripe_subscription_cancel_at_period_end = None
+            user.stripe_subscription_current_period_end = None
+            user.stripe_subscription_current_period_start = None
+            db.session.commit()
+            return
+
         user.stripe_subscription_cancel_at_period_end = subscription.cancel_at_period_end
         user.stripe_subscription_current_period_end = datetime.fromtimestamp(
             subscription.current_period_end

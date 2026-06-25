@@ -1,3 +1,7 @@
+import json
+
+from sqlalchemy import or_
+
 from hushline.db import db
 from hushline.model import (
     AuthenticationLog,
@@ -6,9 +10,127 @@ from hushline.model import (
     Message,
     MessageStatusText,
     NotificationRecipient,
+    StripeEvent,
+    StripeEventStatusEnum,
+    StripeInvoice,
+    StripeInvoiceStatusEnum,
     User,
     Username,
 )
+
+DELETION_BLOCKING_STRIPE_INVOICE_STATUSES = {
+    StripeInvoiceStatusEnum.DRAFT,
+    StripeInvoiceStatusEnum.OPEN,
+}
+DELETION_BLOCKING_STRIPE_INVOICE_EVENT_STATUSES = {
+    StripeEventStatusEnum.PENDING,
+    StripeEventStatusEnum.IN_PROGRESS,
+}
+DELETION_BLOCKING_STRIPE_INVOICE_EVENT_TYPES = {
+    "invoice.updated",
+    "invoice.payment_succeeded",
+}
+
+
+def stripe_invoice_counts_by_user_ids(user_ids: set[int]) -> dict[int, int]:
+    if not user_ids:
+        return {}
+
+    return {
+        user_id: invoice_count
+        for user_id, invoice_count in db.session.execute(
+            db.select(StripeInvoice.user_id, db.func.count(StripeInvoice.id))
+            .where(StripeInvoice.user_id.in_(user_ids))
+            .group_by(StripeInvoice.user_id)
+        )
+    }
+
+
+def deletion_blocking_stripe_invoice_counts_by_user_ids(user_ids: set[int]) -> dict[int, int]:
+    if not user_ids:
+        return {}
+
+    return {
+        user_id: invoice_count
+        for user_id, invoice_count in db.session.execute(
+            db.select(StripeInvoice.user_id, db.func.count(StripeInvoice.id))
+            .where(StripeInvoice.user_id.in_(user_ids))
+            .where(
+                or_(
+                    StripeInvoice.status.is_(None),
+                    StripeInvoice.status.in_(DELETION_BLOCKING_STRIPE_INVOICE_STATUSES),
+                )
+            )
+            .group_by(StripeInvoice.user_id)
+        )
+    }
+
+
+def _invoice_id_from_stripe_event_data(event_data: str) -> str | None:
+    try:
+        event = json.loads(event_data)
+    except json.JSONDecodeError:
+        return None
+
+    event_object = event.get("data", {}).get("object", {})
+    invoice_id = event_object.get("id")
+    if isinstance(invoice_id, str):
+        return invoice_id
+
+    return None
+
+
+def deletion_blocking_stripe_invoice_event_counts_by_user_ids(
+    user_ids: set[int],
+) -> dict[int, int]:
+    if not user_ids:
+        return {}
+
+    invoice_users_by_invoice_id = {
+        invoice_id: user_id
+        for user_id, invoice_id in db.session.execute(
+            db.select(StripeInvoice.user_id, StripeInvoice.invoice_id).where(
+                StripeInvoice.user_id.in_(user_ids)
+            )
+        )
+    }
+    if not invoice_users_by_invoice_id:
+        return {}
+
+    counts_by_user_id: dict[int, int] = {}
+    event_data_rows = db.session.scalars(
+        db.select(StripeEvent.event_data)
+        .where(StripeEvent.event_type.in_(DELETION_BLOCKING_STRIPE_INVOICE_EVENT_TYPES))
+        .where(StripeEvent.status.in_(DELETION_BLOCKING_STRIPE_INVOICE_EVENT_STATUSES))
+    )
+    for event_data in event_data_rows:
+        invoice_id = _invoice_id_from_stripe_event_data(event_data)
+        if invoice_id is None:
+            continue
+
+        user_id = invoice_users_by_invoice_id.get(invoice_id)
+        if user_id is None:
+            continue
+
+        counts_by_user_id[user_id] = counts_by_user_id.get(user_id, 0) + 1
+
+    return counts_by_user_id
+
+
+def has_deletion_blocking_stripe_invoice(user: User) -> bool:
+    if user.id is None:
+        return False
+
+    return bool(deletion_blocking_stripe_invoice_counts_by_user_ids({user.id}).get(user.id, 0))
+
+
+def has_deletion_blocking_stripe_invoice_event(user: User) -> bool:
+    if user.id is None:
+        return False
+
+    return bool(
+        deletion_blocking_stripe_invoice_event_counts_by_user_ids({user.id}).get(user.id, 0)
+    )
 
 
 def delete_user_and_related(user: User) -> None:
@@ -39,6 +161,7 @@ def delete_user_and_related(user: User) -> None:
     db.session.execute(db.delete(MessageStatusText).filter_by(user_id=user.id))
     db.session.execute(db.delete(AuthenticationLog).filter_by(user_id=user.id))
     db.session.execute(db.delete(NotificationRecipient).filter_by(user_id=user.id))
+    db.session.execute(db.delete(StripeInvoice).filter_by(user_id=user.id))
 
     # Delete username and finally the user
     db.session.execute(db.delete(Username).filter_by(user_id=user.id))

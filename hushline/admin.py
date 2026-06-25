@@ -7,7 +7,12 @@ from hushline.auth import admin_authentication_required
 from hushline.db import db
 from hushline.model import AccountCategory, OrganizationSetting, Tier, User, Username
 from hushline.premium import update_price
-from hushline.user_deletion import delete_user_and_related, delete_username_and_related
+from hushline.user_deletion import (
+    delete_user_and_related,
+    delete_username_and_related,
+    has_deletion_blocking_stripe_invoice,
+    has_deletion_blocking_stripe_invoice_event,
+)
 from hushline.utils import parse_bool
 
 
@@ -231,6 +236,31 @@ def create_blueprint() -> Blueprint:
             user = db.session.get(User, user_id)
             if user is None:
                 abort(404)
+
+            if user.has_deletion_blocking_stripe_subscription:
+                flash(
+                    "⛔️ This account has an active or unresolved Stripe subscription. "
+                    "Cancel the subscription and wait for Stripe to confirm cancellation "
+                    "before deleting the account.",
+                    "danger",
+                )
+                return abort(400)
+
+            if has_deletion_blocking_stripe_invoice(user):
+                flash(
+                    "⛔️ This account has draft, open, or unknown Stripe invoices. "
+                    "Resolve those invoices before deleting the account.",
+                    "danger",
+                )
+                return abort(400)
+
+            if has_deletion_blocking_stripe_invoice_event(user):
+                flash(
+                    "⛔️ This account has queued Stripe invoice webhooks. "
+                    "Wait for those events to finish before deleting the account.",
+                    "danger",
+                )
+                return abort(400)
 
             delete_user_and_related(user)
 

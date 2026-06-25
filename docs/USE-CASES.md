@@ -166,7 +166,7 @@ The app and public directory support more than individual profiles. Current disc
 | Admin | Mark an account as cautious                                                                       | Visitors can receive a visible warning before trusting a listing                                  | Settings -> Users           |
 | Admin | Suspend an account                                                                                | The platform can stop new message intake for unsafe or abusive accounts                           | Settings -> Users           |
 | Admin | Grant or remove admin privileges                                                                  | Governance tasks can be shared deliberately                                                       | Settings -> Users           |
-| Admin | Delete a primary user account                                                                     | I can remove an account and its related data when required                                        | Settings -> Users           |
+| Admin | Delete a primary user account                                                                     | I can remove an account and its related data after active Stripe subscriptions are resolved       | Settings -> Users           |
 | Admin | Delete an alias without deleting the whole user                                                   | I can remove an outdated intake endpoint while preserving the owner account                       | Settings -> Users           |
 | Admin | Preserve participant-only access to account conversations                                         | Administrators can govern accounts without becoming hidden readers of conversation ciphertext     | Admin moderation boundaries |
 
