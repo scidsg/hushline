@@ -81,6 +81,38 @@
         <p class="meta">
           Account Category: {{ username.user.account_category_label or "None" }}
         </p>
+        {% set stripe_invoice_count = stripe_invoice_counts_by_user_id.get(username.user.id, 0) %}
+        {% set deletion_blocking_stripe_invoice_count = deletion_blocking_stripe_invoice_counts_by_user_id.get(username.user.id, 0) %}
+        {% set deletion_blocking_stripe_invoice_event_count = deletion_blocking_stripe_invoice_event_counts_by_user_id.get(username.user.id, 0) %}
+        {% set deletion_blocking_stripe_subscription_event_count = deletion_blocking_stripe_subscription_event_counts_by_user_id.get(username.user.id, 0) %}
+        {% set has_deletion_blocking_stripe_billing = username.user.has_deletion_blocking_stripe_subscription or deletion_blocking_stripe_invoice_count or deletion_blocking_stripe_invoice_event_count or deletion_blocking_stripe_subscription_event_count %}
+        {% if username.is_primary and (stripe_invoice_count or has_deletion_blocking_stripe_billing) %}
+          <p class="meta">
+            Stripe Billing:
+            {% if username.user.has_deletion_blocking_stripe_subscription %}
+              Active or unresolved subscription; deletion disabled.
+            {% endif %}
+            {% if deletion_blocking_stripe_invoice_count %}
+              {{ deletion_blocking_stripe_invoice_count }} draft, open, or unknown
+              invoice{{ "" if deletion_blocking_stripe_invoice_count == 1 else "s" }};
+              deletion disabled.
+            {% endif %}
+            {% if deletion_blocking_stripe_invoice_event_count %}
+              {{ deletion_blocking_stripe_invoice_event_count }} queued invoice
+              webhook{{ "" if deletion_blocking_stripe_invoice_event_count == 1 else "s" }};
+              deletion disabled.
+            {% endif %}
+            {% if deletion_blocking_stripe_subscription_event_count %}
+              {{ deletion_blocking_stripe_subscription_event_count }} queued subscription
+              webhook{{ "" if deletion_blocking_stripe_subscription_event_count == 1 else "s" }};
+              deletion disabled.
+            {% endif %}
+            {% if stripe_invoice_count %}
+              {{ stripe_invoice_count }} invoice{{ "" if stripe_invoice_count == 1 else "s" }}
+              associated; deleting this user also deletes stored invoice receipt records.
+            {% endif %}
+          </p>
+        {% endif %}
         <div class="tableActions">
             {% if user_verification_enabled %}
             <form
@@ -164,12 +196,13 @@
             method="POST"
             class="formBody"
           >
+            {% set delete_disabled = session.get('user_id') == username.user.id or (username.is_primary and has_deletion_blocking_stripe_billing) %}
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
             <button
               type="submit"
               class="btn-danger {% if username.is_primary %}delete-user-button{% else %}delete-username-button{% endif %}"
               data-username="{{ username.username }}"
-              {% if session.get('user_id') == username.user.id %}disabled{% endif %}
+              {% if delete_disabled %}disabled{% endif %}
             >
               {{ "Delete User" if username.is_primary else "Delete Alias" }}
             </button>
