@@ -420,6 +420,35 @@ def test_delete_user_removes_stripe_invoices(client: FlaskClient, user: User) ->
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
+def test_delete_user_scrubs_processed_stripe_invoice_events(
+    client: FlaskClient, user: User
+) -> None:
+    invoice = _add_stripe_invoice(user, "inv_processed_event_delete_user")
+    event = _add_stripe_invoice_event(
+        invoice.invoice_id,
+        status=StripeEventStatusEnum.FINISHED,
+    )
+    event.event_data = json.dumps(
+        {
+            "data": {
+                "object": {
+                    "id": invoice.invoice_id,
+                    "hosted_invoice_url": "https://stripe.com/receipt",
+                }
+            }
+        }
+    )
+    db.session.commit()
+
+    response = client.post(url_for("admin.delete_user", user_id=user.id))
+    assert response.status_code == 302
+
+    refreshed_event = db.session.get(StripeEvent, event.id)
+    assert refreshed_event is not None
+    assert refreshed_event.event_data == "{}"
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
 def test_delete_user_with_active_stripe_subscription_blocked(
     client: FlaskClient, user: User
 ) -> None:
@@ -433,6 +462,20 @@ def test_delete_user_with_active_stripe_subscription_blocked(
 
     assert db.session.get(User, user.id) is not None
     assert db.session.get(StripeInvoice, invoice.id) is not None
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_delete_user_with_incomplete_expired_subscription_id_allowed(
+    client: FlaskClient, user: User
+) -> None:
+    user.stripe_subscription_id = "sub_expired_checkout_delete_user"
+    user.stripe_subscription_status = StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED
+    db.session.commit()
+
+    response = client.post(url_for("admin.delete_user", user_id=user.id))
+    assert response.status_code == 302
+
+    assert db.session.get(User, user.id) is None
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")

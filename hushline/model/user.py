@@ -312,6 +312,9 @@ class User(Model):
 
     @property
     def has_deletion_blocking_stripe_subscription(self) -> bool:
+        if self.stripe_subscription_status == StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED:
+            return False
+
         return bool(self.stripe_subscription_id)
 
     def set_free_tier(self) -> None:

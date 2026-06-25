@@ -98,6 +98,20 @@ def test_delete_account_with_stripe_subscription_blocked(client: FlaskClient, us
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_delete_account_with_incomplete_expired_subscription_id_allowed(
+    client: FlaskClient, user: User
+) -> None:
+    user.stripe_subscription_id = "sub_expired_checkout_delete_account"
+    user.stripe_subscription_status = StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED
+    db.session.commit()
+
+    response = client.post(url_for("settings.delete_account"))
+    assert response.status_code == 302
+
+    assert db.session.get(User, user.id) is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_delete_account_with_open_stripe_invoice_blocked(client: FlaskClient, user: User) -> None:
     invoice = _add_stripe_invoice(user, "inv_open_delete_account", StripeInvoiceStatusEnum.OPEN)
 

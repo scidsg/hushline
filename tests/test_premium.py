@@ -310,7 +310,7 @@ def test_handle_subscription_updated_downgrade(app: Flask, user: User) -> None:
     assert user.is_free_tier
 
 
-def test_handle_subscription_updated_incomplete_expired_clears_subscription_id(
+def test_handle_subscription_updated_incomplete_expired_retains_subscription_tombstone(
     app: Flask, user: User
 ) -> None:
     user.stripe_subscription_id = "sub_123"
@@ -326,11 +326,44 @@ def test_handle_subscription_updated_incomplete_expired_clears_subscription_id(
     handle_subscription_updated(subscription)
 
     assert user.is_free_tier
-    assert user.stripe_subscription_id is None
+    assert user.stripe_subscription_id == "sub_123"
     assert user.stripe_subscription_status == StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED
     assert user.stripe_subscription_cancel_at_period_end is None
     assert user.stripe_subscription_current_period_end is None
     assert user.stripe_subscription_current_period_start is None
+
+
+def test_handle_subscription_updated_ignores_stale_update_after_incomplete_expired(
+    app: Flask, user: User
+) -> None:
+    user.stripe_subscription_id = "sub_123"
+    user.stripe_subscription_status = StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED
+    db.session.commit()
+
+    subscription = MagicMock()
+    subscription.id = "sub_123"
+    subscription.status = StripeSubscriptionStatusEnum.INCOMPLETE.value
+    subscription.cancel_at_period_end = False
+    subscription.current_period_end = int((datetime.now() + timedelta(days=30)).timestamp())
+    subscription.current_period_start = int(datetime.now().timestamp())
+
+    handle_subscription_updated(subscription)
+
+    assert user.is_free_tier
+    assert user.stripe_subscription_id == "sub_123"
+    assert user.stripe_subscription_status == StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED
+
+
+def test_handle_subscription_updated_ignores_deleted_customer(app: Flask) -> None:
+    subscription = MagicMock()
+    subscription.id = "sub_deleted"
+    subscription.customer = "cus_deleted"
+    subscription.status = StripeSubscriptionStatusEnum.INCOMPLETE.value
+    subscription.cancel_at_period_end = False
+    subscription.current_period_end = int((datetime.now() + timedelta(days=30)).timestamp())
+    subscription.current_period_start = int(datetime.now().timestamp())
+
+    handle_subscription_updated(subscription)
 
 
 def test_handle_subscription_updated_raises_for_missing_subscription(app: Flask) -> None:
@@ -356,6 +389,29 @@ def test_handle_subscription_deleted(app: Flask, user: User) -> None:
 
     assert user.is_free_tier
     assert user.stripe_subscription_id is None
+
+
+def test_handle_subscription_deleted_keeps_terminal_tombstone(app: Flask, user: User) -> None:
+    user.stripe_subscription_id = "sub_123"
+    user.stripe_subscription_status = StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED
+    db.session.commit()
+
+    subscription = MagicMock()
+    subscription.id = "sub_123"
+
+    handle_subscription_deleted(subscription)
+
+    assert user.is_free_tier
+    assert user.stripe_subscription_id == "sub_123"
+    assert user.stripe_subscription_status == StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED
+
+
+def test_handle_subscription_deleted_ignores_deleted_customer(app: Flask) -> None:
+    subscription = MagicMock()
+    subscription.id = "sub_deleted"
+    subscription.customer = "cus_deleted"
+
+    handle_subscription_deleted(subscription)
 
 
 def test_handle_subscription_deleted_raises_for_missing_subscription(app: Flask) -> None:
@@ -670,6 +726,36 @@ def test_handle_invoice_updated_raises_for_missing_invoice(app: Flask) -> None:
         handle_invoice_updated(
             MagicMock(id="inv_missing", status=StripeInvoiceStatusEnum.PAID.value, total=1)
         )
+
+
+def test_handle_invoice_updated_ignores_deleted_customer_and_scrubs_event(app: Flask) -> None:
+    event = StripeEvent(MagicMock(id="evt_deleted_invoice", created=1, type="invoice.updated"))
+    event.event_data = json.dumps(
+        {
+            "data": {
+                "object": {
+                    "id": "inv_deleted",
+                    "hosted_invoice_url": "https://stripe.com/receipt",
+                }
+            }
+        }
+    )
+    event.status = StripeEventStatusEnum.IN_PROGRESS
+    db.session.add(event)
+    db.session.commit()
+
+    handle_invoice_updated(
+        MagicMock(
+            id="inv_deleted",
+            customer="cus_deleted",
+            status=StripeInvoiceStatusEnum.PAID.value,
+            total=1,
+        )
+    )
+
+    refreshed_event = db.session.get(StripeEvent, event.id)
+    assert refreshed_event is not None
+    assert refreshed_event.event_data == "{}"
 
 
 @pytest.mark.usefixtures("_authenticated_user")

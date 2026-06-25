@@ -30,6 +30,7 @@ DELETION_BLOCKING_STRIPE_INVOICE_EVENT_TYPES = {
     "invoice.updated",
     "invoice.payment_succeeded",
 }
+REDACTED_STRIPE_EVENT_DATA = "{}"
 
 
 def stripe_invoice_counts_by_user_ids(user_ids: set[int]) -> dict[int, int]:
@@ -133,10 +134,28 @@ def has_deletion_blocking_stripe_invoice_event(user: User) -> bool:
     )
 
 
+def _redact_processed_stripe_invoice_events(invoice_ids: set[str]) -> None:
+    if not invoice_ids:
+        return
+
+    events = db.session.scalars(
+        db.select(StripeEvent)
+        .where(StripeEvent.event_type.in_(DELETION_BLOCKING_STRIPE_INVOICE_EVENT_TYPES))
+        .where(~StripeEvent.status.in_(DELETION_BLOCKING_STRIPE_INVOICE_EVENT_STATUSES))
+    )
+    for event in events:
+        invoice_id = _invoice_id_from_stripe_event_data(event.event_data)
+        if invoice_id in invoice_ids:
+            event.event_data = REDACTED_STRIPE_EVENT_DATA
+
+
 def delete_user_and_related(user: User) -> None:
     # Delete field values and definitions
     usernames = db.session.scalars(db.select(Username).filter_by(user_id=user.id)).all()
     username_ids = [username.id for username in usernames]
+    stripe_invoice_ids = set(
+        db.session.scalars(db.select(StripeInvoice.invoice_id).filter_by(user_id=user.id)).all()
+    )
 
     # Delete all FieldValue entries related to the user's usernames
     db.session.execute(
@@ -161,6 +180,7 @@ def delete_user_and_related(user: User) -> None:
     db.session.execute(db.delete(MessageStatusText).filter_by(user_id=user.id))
     db.session.execute(db.delete(AuthenticationLog).filter_by(user_id=user.id))
     db.session.execute(db.delete(NotificationRecipient).filter_by(user_id=user.id))
+    _redact_processed_stripe_invoice_events(stripe_invoice_ids)
     db.session.execute(db.delete(StripeInvoice).filter_by(user_id=user.id))
 
     # Delete username and finally the user
