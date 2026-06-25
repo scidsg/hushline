@@ -4563,6 +4563,10 @@ h2.submit#embed-recipient-heading {
   width: 200px;
 }
 
+.banner+header+main .inbox-tabs-nav {
+  top: var(--inbox-tabs-top, calc(1rem + 105px + env(safe-area-inset-top)));
+}
+
 .inbox-tabs {
   max-width: none;
   width: 100%;
@@ -4959,6 +4963,10 @@ h2.submit#embed-recipient-heading {
     padding-left: var(--container-padding, 1.25rem);
     padding-right: var(--container-padding, 1.25rem);
     box-sizing: border-box;
+  }
+
+  .banner+header+main.inbox-main .inbox-content .inbox-tabs-nav {
+    top: var(--inbox-tabs-top, calc(105px + env(safe-area-inset-top)));
   }
 
   .settings-main .tab-list li,
