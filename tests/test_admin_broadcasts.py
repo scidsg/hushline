@@ -1,5 +1,6 @@
 import json
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
 from bs4 import BeautifulSoup
@@ -7,7 +8,7 @@ from flask import url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import ChatKey, Message, User
+from hushline.model import AdminBroadcast, AdminBroadcastRecipient, ChatKey, Message, User, Username
 from hushline.settings.broadcast import _send_broadcast_notification_emails
 
 ARMORED_BROADCAST = (
@@ -36,6 +37,19 @@ def _add_chat_key(user: User) -> None:
             wrapping_algorithm="AES-GCM",
         )
     )
+
+
+def _make_broadcast_user(password: str) -> User:
+    user = User(password=password)
+    user.onboarding_complete = True
+    user.tier_id = 1
+    db.session.add(user)
+    db.session.flush()
+    username = Username(user_id=user.id, _username=f"broadcast-{user.id}", is_primary=True)
+    db.session.add(username)
+    db.session.commit()
+    username.create_default_field_defs()
+    return user
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -300,12 +314,90 @@ def test_broadcasts_submit_encrypted_chunk(
     )
 
     assert response.status_code == 200
-    assert response.get_json() == {"submitted_count": 1, "skipped_count": 0}
+    payload = response.get_json()
+    assert payload["submitted_count"] == 1
+    assert payload["skipped_count"] == 0
+    assert payload["pending_count"] == 0
+    assert payload["broadcast_complete"] is True
+    assert payload["broadcast_id"]
     messages = db.session.scalars(db.select(Message).order_by(Message.id)).all()
     assert len(messages) == 1
     assert messages[0].username_id == user.primary_username.id
     assert messages[0].field_values[0].encrypted is True
     assert messages[0].field_values[0].value == ARMORED_BROADCAST
+    broadcast = db.session.scalars(db.select(AdminBroadcast)).one()
+    assert broadcast.public_id == payload["broadcast_id"]
+    assert broadcast.status == AdminBroadcast.STATUS_COMPLETED
+    assert broadcast.submitted_count == 1
+    assert broadcast.skipped_count == 0
+    assert broadcast.pending_count == 0
+    assert broadcast.recipients[0].message_id == messages[0].id
+    send_notifications.assert_called_once_with((user.id,))
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_broadcasts_uses_client_broadcast_id_for_first_chunk(
+    client: FlaskClient,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user.pgp_key = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nkey\n-----END PGP PUBLIC KEY BLOCK-----"
+    _enable_notification_email(user, "primary@example.com")
+    db.session.commit()
+    send_notifications = MagicMock()
+    monkeypatch.setattr(
+        "hushline.settings.broadcast._send_broadcast_notification_emails",
+        send_notifications,
+    )
+    broadcast_id = str(uuid4())
+
+    response = client.post(
+        url_for("settings.broadcasts"),
+        data={
+            "broadcast_chunk": "1",
+            "broadcast_completed_user_ids": json.dumps([user.id]),
+            "broadcast_expected_user_ids": json.dumps([user.id]),
+            "broadcast_final_chunk": "1",
+            "broadcast_id": broadcast_id,
+            "encrypted_payloads": json.dumps({str(user.id): ARMORED_BROADCAST}),
+            "confirm_send": "y",
+            "send_broadcast": "Send Broadcast",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["broadcast_id"] == broadcast_id
+    assert payload["submitted_count"] == 1
+    assert payload["pending_count"] == 0
+    assert payload["broadcast_complete"] is True
+    broadcast = db.session.scalars(db.select(AdminBroadcast)).one()
+    assert broadcast.public_id == broadcast_id
+    assert broadcast.status == AdminBroadcast.STATUS_COMPLETED
+    assert db.session.scalar(db.select(db.func.count(Message.id))) == 1
+    send_notifications.assert_called_once_with((user.id,))
+
+    replay = client.post(
+        url_for("settings.broadcasts"),
+        data={
+            "broadcast_chunk": "1",
+            "broadcast_completed_user_ids": json.dumps([user.id]),
+            "broadcast_expected_user_ids": json.dumps([user.id]),
+            "broadcast_final_chunk": "1",
+            "broadcast_id": broadcast_id,
+            "encrypted_payloads": json.dumps({str(user.id): ARMORED_BROADCAST}),
+            "confirm_send": "y",
+            "send_broadcast": "Send Broadcast",
+        },
+    )
+
+    assert replay.status_code == 200
+    replay_payload = replay.get_json()
+    assert replay_payload["broadcast_id"] == broadcast_id
+    assert replay_payload["submitted_count"] == 1
+    assert replay_payload["pending_count"] == 0
+    assert replay_payload["broadcast_complete"] is True
+    assert db.session.scalar(db.select(db.func.count(Message.id))) == 1
     send_notifications.assert_called_once_with((user.id,))
 
 
@@ -339,9 +431,370 @@ def test_broadcasts_chunk_accepts_failure_only_batch(
     )
 
     assert response.status_code == 200
-    assert response.get_json() == {"submitted_count": 0, "skipped_count": 1}
+    payload = response.get_json()
+    assert payload["submitted_count"] == 0
+    assert payload["skipped_count"] == 1
+    assert payload["pending_count"] == 0
+    assert payload["broadcast_complete"] is True
     assert db.session.scalar(db.select(db.func.count(Message.id))) == 0
+    broadcast = db.session.scalars(db.select(AdminBroadcast)).one()
+    assert broadcast.status == AdminBroadcast.STATUS_COMPLETED
+    assert broadcast.submitted_count == 0
+    assert broadcast.skipped_count == 1
+    assert broadcast.recipients[0].status == AdminBroadcastRecipient.STATUS_SKIPPED
     send_notifications.assert_not_called()
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_broadcasts_refresh_resumes_interrupted_chunk_for_pending_recipients(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user.pgp_key = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nkey\n-----END PGP PUBLIC KEY BLOCK-----"
+    user2.pgp_key = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nkey\n-----END PGP PUBLIC KEY BLOCK-----"
+    db.session.commit()
+    send_notifications = MagicMock()
+    monkeypatch.setattr(
+        "hushline.settings.broadcast._send_broadcast_notification_emails",
+        send_notifications,
+    )
+
+    response = client.post(
+        url_for("settings.broadcasts"),
+        data={
+            "broadcast_chunk": "1",
+            "broadcast_completed_user_ids": json.dumps([user.id]),
+            "broadcast_expected_user_ids": json.dumps([user.id, user2.id]),
+            "broadcast_final_chunk": "0",
+            "encrypted_payloads": json.dumps({str(user.id): ARMORED_BROADCAST}),
+            "confirm_send": "y",
+            "send_broadcast": "Send Broadcast",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["submitted_count"] == 1
+    assert payload["skipped_count"] == 0
+    assert payload["pending_count"] == 1
+    assert payload["broadcast_complete"] is False
+    broadcast = db.session.scalars(db.select(AdminBroadcast)).one()
+    assert broadcast.public_id == payload["broadcast_id"]
+    assert broadcast.status == AdminBroadcast.STATUS_IN_PROGRESS
+
+    refresh = client.get(url_for("settings.broadcasts"))
+
+    assert refresh.status_code == 200
+    soup = BeautifulSoup(refresh.text, "html.parser")
+    refresh_text = soup.get_text(" ", strip=True)
+    assert "Interrupted broadcast:" in refresh_text
+    assert "1 submitted" in refresh_text
+    assert "0 skipped" in refresh_text
+    assert "1 pending" in refresh_text
+    assert soup.select_one("#broadcast_id")["value"] == broadcast.public_id
+    assert json.loads(soup.select_one("#broadcast_expected_user_ids")["value"]) == [user2.id]
+    recipients = json.loads(soup.select_one("#broadcastEncryptionRecipients").text)
+    assert [recipient["user_id"] for recipient in recipients] == [user2.id]
+    send_notifications.assert_called_once_with((user.id,))
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_broadcasts_resume_submits_pending_only_without_duplicate_messages(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user.pgp_key = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nkey\n-----END PGP PUBLIC KEY BLOCK-----"
+    user2.pgp_key = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nkey\n-----END PGP PUBLIC KEY BLOCK-----"
+    db.session.commit()
+    send_notifications = MagicMock()
+    monkeypatch.setattr(
+        "hushline.settings.broadcast._send_broadcast_notification_emails",
+        send_notifications,
+    )
+    first = client.post(
+        url_for("settings.broadcasts"),
+        data={
+            "broadcast_chunk": "1",
+            "broadcast_completed_user_ids": json.dumps([user.id]),
+            "broadcast_expected_user_ids": json.dumps([user.id, user2.id]),
+            "broadcast_final_chunk": "0",
+            "encrypted_payloads": json.dumps({str(user.id): ARMORED_BROADCAST}),
+            "confirm_send": "y",
+            "send_broadcast": "Send Broadcast",
+        },
+    )
+    broadcast_id = first.get_json()["broadcast_id"]
+
+    response = client.post(
+        url_for("settings.broadcasts"),
+        data={
+            "broadcast_chunk": "1",
+            "broadcast_completed_user_ids": json.dumps([user2.id]),
+            "broadcast_expected_user_ids": json.dumps([user2.id]),
+            "broadcast_final_chunk": "1",
+            "broadcast_id": broadcast_id,
+            "encrypted_payloads": json.dumps({str(user2.id): ARMORED_BROADCAST}),
+            "confirm_send": "y",
+            "send_broadcast": "Send Broadcast",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["submitted_count"] == 1
+    assert payload["pending_count"] == 0
+    assert payload["broadcast_complete"] is True
+    assert db.session.scalar(db.select(db.func.count(Message.id))) == 2
+    broadcast = db.session.scalars(db.select(AdminBroadcast)).one()
+    assert broadcast.status == AdminBroadcast.STATUS_COMPLETED
+    assert broadcast.submitted_count == 2
+    send_notifications.assert_any_call((user.id,))
+    send_notifications.assert_any_call((user2.id,))
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_broadcasts_continues_same_page_chunk_with_original_audience(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user.pgp_key = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nkey\n-----END PGP PUBLIC KEY BLOCK-----"
+    user2.pgp_key = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nkey\n-----END PGP PUBLIC KEY BLOCK-----"
+    db.session.commit()
+    send_notifications = MagicMock()
+    monkeypatch.setattr(
+        "hushline.settings.broadcast._send_broadcast_notification_emails",
+        send_notifications,
+    )
+    expected_user_ids = [user.id, user2.id]
+
+    first = client.post(
+        url_for("settings.broadcasts"),
+        data={
+            "broadcast_chunk": "1",
+            "broadcast_completed_user_ids": json.dumps([user.id]),
+            "broadcast_expected_user_ids": json.dumps(expected_user_ids),
+            "broadcast_final_chunk": "0",
+            "encrypted_payloads": json.dumps({str(user.id): ARMORED_BROADCAST}),
+            "confirm_send": "y",
+            "send_broadcast": "Send Broadcast",
+        },
+    )
+    broadcast_id = first.get_json()["broadcast_id"]
+
+    response = client.post(
+        url_for("settings.broadcasts"),
+        data={
+            "broadcast_chunk": "1",
+            "broadcast_completed_user_ids": json.dumps(expected_user_ids),
+            "broadcast_expected_user_ids": json.dumps(expected_user_ids),
+            "broadcast_final_chunk": "1",
+            "broadcast_id": broadcast_id,
+            "encrypted_payloads": json.dumps({str(user2.id): ARMORED_BROADCAST}),
+            "confirm_send": "y",
+            "send_broadcast": "Send Broadcast",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["submitted_count"] == 1
+    assert payload["pending_count"] == 0
+    assert payload["broadcast_complete"] is True
+    assert db.session.scalar(db.select(db.func.count(Message.id))) == 2
+    broadcast = db.session.scalars(db.select(AdminBroadcast)).one()
+    assert broadcast.status == AdminBroadcast.STATUS_COMPLETED
+    assert broadcast.submitted_count == 2
+    send_notifications.assert_any_call((user.id,))
+    send_notifications.assert_any_call((user2.id,))
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_broadcasts_replays_committed_chunk_without_duplicate_messages(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user.pgp_key = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nkey\n-----END PGP PUBLIC KEY BLOCK-----"
+    user2.pgp_key = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nkey\n-----END PGP PUBLIC KEY BLOCK-----"
+    db.session.commit()
+    send_notifications = MagicMock()
+    monkeypatch.setattr(
+        "hushline.settings.broadcast._send_broadcast_notification_emails",
+        send_notifications,
+    )
+    expected_user_ids = [user.id, user2.id]
+
+    first = client.post(
+        url_for("settings.broadcasts"),
+        data={
+            "broadcast_chunk": "1",
+            "broadcast_completed_user_ids": json.dumps([user.id]),
+            "broadcast_expected_user_ids": json.dumps(expected_user_ids),
+            "broadcast_final_chunk": "0",
+            "encrypted_payloads": json.dumps({str(user.id): ARMORED_BROADCAST}),
+            "confirm_send": "y",
+            "send_broadcast": "Send Broadcast",
+        },
+    )
+    broadcast_id = first.get_json()["broadcast_id"]
+
+    replay = client.post(
+        url_for("settings.broadcasts"),
+        data={
+            "broadcast_chunk": "1",
+            "broadcast_completed_user_ids": json.dumps([user.id]),
+            "broadcast_expected_user_ids": json.dumps(expected_user_ids),
+            "broadcast_final_chunk": "0",
+            "broadcast_id": broadcast_id,
+            "encrypted_payloads": json.dumps({str(user.id): ARMORED_BROADCAST}),
+            "confirm_send": "y",
+            "send_broadcast": "Send Broadcast",
+        },
+    )
+
+    assert replay.status_code == 200
+    payload = replay.get_json()
+    assert payload["submitted_count"] == 1
+    assert payload["skipped_count"] == 0
+    assert payload["pending_count"] == 1
+    assert payload["broadcast_complete"] is False
+    assert db.session.scalar(db.select(db.func.count(Message.id))) == 1
+    broadcast = db.session.scalars(db.select(AdminBroadcast)).one()
+    assert broadcast.status == AdminBroadcast.STATUS_IN_PROGRESS
+    assert broadcast.submitted_count == 1
+    assert broadcast.pending_count == 1
+    send_notifications.assert_called_once_with((user.id,))
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_broadcasts_replays_completed_final_chunk_without_duplicate_messages(
+    client: FlaskClient,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user.pgp_key = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nkey\n-----END PGP PUBLIC KEY BLOCK-----"
+    db.session.commit()
+    send_notifications = MagicMock()
+    monkeypatch.setattr(
+        "hushline.settings.broadcast._send_broadcast_notification_emails",
+        send_notifications,
+    )
+
+    first = client.post(
+        url_for("settings.broadcasts"),
+        data={
+            "broadcast_chunk": "1",
+            "broadcast_completed_user_ids": json.dumps([user.id]),
+            "broadcast_expected_user_ids": json.dumps([user.id]),
+            "broadcast_final_chunk": "1",
+            "encrypted_payloads": json.dumps({str(user.id): ARMORED_BROADCAST}),
+            "confirm_send": "y",
+            "send_broadcast": "Send Broadcast",
+        },
+    )
+    broadcast_id = first.get_json()["broadcast_id"]
+
+    replay = client.post(
+        url_for("settings.broadcasts"),
+        data={
+            "broadcast_chunk": "1",
+            "broadcast_completed_user_ids": json.dumps([user.id]),
+            "broadcast_expected_user_ids": json.dumps([user.id]),
+            "broadcast_final_chunk": "1",
+            "broadcast_id": broadcast_id,
+            "encrypted_payloads": json.dumps({str(user.id): ARMORED_BROADCAST}),
+            "confirm_send": "y",
+            "send_broadcast": "Send Broadcast",
+        },
+    )
+
+    assert replay.status_code == 200
+    payload = replay.get_json()
+    assert payload["submitted_count"] == 1
+    assert payload["skipped_count"] == 0
+    assert payload["pending_count"] == 0
+    assert payload["broadcast_complete"] is True
+    assert db.session.scalar(db.select(db.func.count(Message.id))) == 1
+    broadcast = db.session.scalars(db.select(AdminBroadcast)).one()
+    assert broadcast.status == AdminBroadcast.STATUS_COMPLETED
+    assert broadcast.submitted_count == 1
+    send_notifications.assert_called_once_with((user.id,))
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_broadcasts_resume_rejects_payload_for_ineligible_pending_recipient(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+    user_password: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user3 = _make_broadcast_user(user_password)
+    user.pgp_key = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nkey\n-----END PGP PUBLIC KEY BLOCK-----"
+    user2.pgp_key = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nkey\n-----END PGP PUBLIC KEY BLOCK-----"
+    user3.pgp_key = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nkey\n-----END PGP PUBLIC KEY BLOCK-----"
+    db.session.commit()
+    send_notifications = MagicMock()
+    monkeypatch.setattr(
+        "hushline.settings.broadcast._send_broadcast_notification_emails",
+        send_notifications,
+    )
+    expected_user_ids = [user.id, user2.id, user3.id]
+
+    first = client.post(
+        url_for("settings.broadcasts"),
+        data={
+            "broadcast_chunk": "1",
+            "broadcast_completed_user_ids": json.dumps([user.id]),
+            "broadcast_expected_user_ids": json.dumps(expected_user_ids),
+            "broadcast_final_chunk": "0",
+            "encrypted_payloads": json.dumps({str(user.id): ARMORED_BROADCAST}),
+            "confirm_send": "y",
+            "send_broadcast": "Send Broadcast",
+        },
+    )
+    assert first.status_code == 200
+    broadcast_id = first.get_json()["broadcast_id"]
+
+    user2.is_suspended = True
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.broadcasts"),
+        data={
+            "broadcast_chunk": "1",
+            "broadcast_completed_user_ids": json.dumps(expected_user_ids),
+            "broadcast_expected_user_ids": json.dumps(expected_user_ids),
+            "broadcast_final_chunk": "1",
+            "broadcast_id": broadcast_id,
+            "encrypted_payloads": json.dumps(
+                {
+                    str(user2.id): ARMORED_BROADCAST,
+                    str(user3.id): ARMORED_BROADCAST,
+                }
+            ),
+            "confirm_send": "y",
+            "send_broadcast": "Send Broadcast",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.get_json() == {
+        "error": "One or more recipients became ineligible before submission."
+    }
+    assert db.session.scalar(db.select(db.func.count(Message.id))) == 1
+    broadcast = db.session.scalars(db.select(AdminBroadcast)).one()
+    assert broadcast.status == AdminBroadcast.STATUS_IN_PROGRESS
+    assert broadcast.submitted_count == 1
+    assert broadcast.pending_count == 2
+    send_notifications.assert_called_once_with((user.id,))
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")

@@ -1,6 +1,8 @@
 import * as openpgp from "openpgp";
 
 const BROADCAST_BATCH_SIZE = 10;
+const BROADCAST_BATCH_RETRY_LIMIT = 4;
+const BROADCAST_BATCH_RETRY_BASE_MS = 750;
 
 function assertClientCryptoSupport() {
   if (!window.isSecureContext) {
@@ -64,6 +66,43 @@ function expectedRecipientIds() {
   }
 }
 
+function broadcastIdInput() {
+  return document.getElementById("broadcast_id");
+}
+
+function ensureBroadcastIdInput(form, broadcastId) {
+  if (!broadcastId) {
+    return;
+  }
+  let input = broadcastIdInput();
+  if (!input) {
+    input = document.createElement("input");
+    input.type = "hidden";
+    input.id = "broadcast_id";
+    input.name = "broadcast_id";
+    form.appendChild(input);
+  }
+  input.value = broadcastId;
+}
+
+function createBroadcastId() {
+  if (typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+  const bytes = new Uint8Array(16);
+  window.crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, "0"));
+  return [
+    hex.slice(0, 4).join(""),
+    hex.slice(4, 6).join(""),
+    hex.slice(6, 8).join(""),
+    hex.slice(8, 10).join(""),
+    hex.slice(10, 16).join(""),
+  ].join("-");
+}
+
 async function encryptMessage(publicKeys, message) {
   const keys = Array.isArray(publicKeys) ? publicKeys : [publicKeys];
   const parsedKeys = await Promise.all(
@@ -125,6 +164,36 @@ function progressPercent(completedCount, totalCount) {
   );
 }
 
+function wait(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function retryDelay(attempt) {
+  return Math.min(
+    6000,
+    BROADCAST_BATCH_RETRY_BASE_MS * 2 ** Math.max(0, attempt - 1),
+  );
+}
+
+function broadcastSubmitError(message, retryable = false) {
+  const error = new Error(message);
+  error.retryable = retryable;
+  return error;
+}
+
+function isRetryableStatus(status) {
+  return status >= 500 || status === 408 || status === 429;
+}
+
+function isRetryableBroadcastError(error) {
+  if (error?.retryable === true) {
+    return true;
+  }
+  return error instanceof TypeError;
+}
+
 async function submitBroadcastBatch(
   form,
   encryptedPayloads,
@@ -154,20 +223,80 @@ async function submitBroadcastBatch(
     body: formData,
   });
   const contentType = response.headers.get("content-type") || "";
-  if (response.redirected || !contentType.includes("application/json")) {
-    throw new Error(
+  if (response.redirected) {
+    throw broadcastSubmitError(
       "Broadcast session changed. Sign in again before continuing.",
     );
   }
-  const payload = await response.json();
+  if (!contentType.includes("application/json")) {
+    throw broadcastSubmitError(
+      isRetryableStatus(response.status)
+        ? "Broadcast batch submission failed."
+        : "Broadcast session changed. Sign in again before continuing.",
+      isRetryableStatus(response.status),
+    );
+  }
+  let payload;
+  try {
+    payload = await response.json();
+  } catch {
+    throw broadcastSubmitError(
+      "Broadcast batch submission failed.",
+      isRetryableStatus(response.status),
+    );
+  }
   if (
     !response.ok ||
     !Number.isInteger(payload.submitted_count) ||
-    !Number.isInteger(payload.skipped_count)
+    !Number.isInteger(payload.skipped_count) ||
+    !Number.isInteger(payload.pending_count) ||
+    typeof payload.broadcast_id !== "string" ||
+    typeof payload.broadcast_complete !== "boolean"
   ) {
-    throw new Error(payload.error || "Broadcast batch submission failed.");
+    throw broadcastSubmitError(
+      payload.error || "Broadcast batch submission failed.",
+      isRetryableStatus(response.status),
+    );
   }
   return payload;
+}
+
+async function submitBroadcastBatchWithRetry(
+  form,
+  encryptedPayloads,
+  encryptionFailures,
+  expectedUserIds,
+  completedUserIds,
+  isFinalChunk,
+  status,
+  batchNumber,
+  totalBatches,
+) {
+  for (let attempt = 1; attempt <= BROADCAST_BATCH_RETRY_LIMIT; attempt += 1) {
+    try {
+      return await submitBroadcastBatch(
+        form,
+        encryptedPayloads,
+        encryptionFailures,
+        expectedUserIds,
+        completedUserIds,
+        isFinalChunk,
+      );
+    } catch (error) {
+      if (
+        attempt >= BROADCAST_BATCH_RETRY_LIMIT ||
+        !isRetryableBroadcastError(error)
+      ) {
+        throw error;
+      }
+      updateStatus(
+        status,
+        `Still sending broadcast: retrying batch ${batchNumber} of ${totalBatches}...`,
+      );
+      await wait(retryDelay(attempt));
+    }
+  }
+  throw broadcastSubmitError("Broadcast batch submission failed.");
 }
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -217,6 +346,10 @@ document.addEventListener("DOMContentLoaded", function () {
         );
       }
       assertClientCryptoSupport();
+      ensureBroadcastIdInput(
+        form,
+        broadcastIdInput()?.value || createBroadcastId(),
+      );
       const body = plaintext.value.trim();
       if (body.length < 10) {
         throw new Error("Message must be at least 10 characters.");
@@ -224,6 +357,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
       let completedCount = 0;
       const completedUserIds = [];
+      const totalBatches = Math.ceil(
+        recipientEntries.length / BROADCAST_BATCH_SIZE,
+      );
 
       updateStatus(status, "Sending broadcast: 1% complete...");
       for (
@@ -265,15 +401,20 @@ document.addEventListener("DOMContentLoaded", function () {
         completedUserIds.push(...batch.map((recipient) => recipient.user_id));
         const isFinalChunk =
           index + BROADCAST_BATCH_SIZE >= recipientEntries.length;
+        const batchNumber = Math.floor(index / BROADCAST_BATCH_SIZE) + 1;
         batchRequestStarted = true;
-        const result = await submitBroadcastBatch(
+        const result = await submitBroadcastBatchWithRetry(
           form,
           encryptedPayloads,
           encryptionFailures,
           expectedUserIds,
           completedUserIds,
           isFinalChunk,
+          status,
+          batchNumber,
+          totalBatches,
         );
+        ensureBroadcastIdInput(form, result.broadcast_id);
         submittedCount += Number(result.submitted_count || 0);
         skippedCount += Number(result.skipped_count || 0);
         completedCount += batch.length;
@@ -310,7 +451,7 @@ document.addEventListener("DOMContentLoaded", function () {
         plaintext.value = "";
         updateStatus(
           status,
-          `Broadcast stopped after ${submittedCount} submitted and ${skippedCount} skipped. Do not retry from this page; refresh to review the current audience.`,
+          `Broadcast stopped after ${submittedCount} submitted and ${skippedCount} skipped. Refresh to resume pending recipients only.`,
         );
       } else {
         form.dataset.encryptionInProgress = "false";
