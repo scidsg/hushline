@@ -64,6 +64,21 @@ function expectedRecipientIds() {
   }
 }
 
+function ensureBroadcastIdInput(form, broadcastId) {
+  if (!broadcastId) {
+    return;
+  }
+  let input = document.getElementById("broadcast_id");
+  if (!input) {
+    input = document.createElement("input");
+    input.type = "hidden";
+    input.id = "broadcast_id";
+    input.name = "broadcast_id";
+    form.appendChild(input);
+  }
+  input.value = broadcastId;
+}
+
 async function encryptMessage(publicKeys, message) {
   const keys = Array.isArray(publicKeys) ? publicKeys : [publicKeys];
   const parsedKeys = await Promise.all(
@@ -163,7 +178,10 @@ async function submitBroadcastBatch(
   if (
     !response.ok ||
     !Number.isInteger(payload.submitted_count) ||
-    !Number.isInteger(payload.skipped_count)
+    !Number.isInteger(payload.skipped_count) ||
+    !Number.isInteger(payload.pending_count) ||
+    typeof payload.broadcast_id !== "string" ||
+    typeof payload.broadcast_complete !== "boolean"
   ) {
     throw new Error(payload.error || "Broadcast batch submission failed.");
   }
@@ -274,6 +292,7 @@ document.addEventListener("DOMContentLoaded", function () {
           completedUserIds,
           isFinalChunk,
         );
+        ensureBroadcastIdInput(form, result.broadcast_id);
         submittedCount += Number(result.submitted_count || 0);
         skippedCount += Number(result.skipped_count || 0);
         completedCount += batch.length;
@@ -310,7 +329,7 @@ document.addEventListener("DOMContentLoaded", function () {
         plaintext.value = "";
         updateStatus(
           status,
-          `Broadcast stopped after ${submittedCount} submitted and ${skippedCount} skipped. Do not retry from this page; refresh to review the current audience.`,
+          `Broadcast stopped after ${submittedCount} submitted and ${skippedCount} skipped. Refresh to resume pending recipients only.`,
         );
       } else {
         form.dataset.encryptionInProgress = "false";
