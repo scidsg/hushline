@@ -161,6 +161,7 @@ The app and public directory support more than individual profiles. Current disc
 | Admin | Search all usernames                                                                              | I can find accounts and aliases quickly in a larger deployment                                    | Settings -> Users           |
 | Admin | See aggregate usage metrics such as user count, 2FA adoption, PGP adoption, and chat-key creation | I can evaluate account-hardening posture and platform uptake                                      | Settings -> Metrics         |
 | Admin | Submit encrypted administrative updates to eligible E2EE recipients                               | I can announce security workflow changes or new account-hardening features without weakening E2EE | Settings -> Broadcasts      |
+| Admin | Resume an interrupted encrypted broadcast for pending recipients only                             | I can continue a large or interrupted announcement without duplicating delivered inbox messages   | Settings -> Broadcasts      |
 | Admin | Mark a primary account or alias as verified                                                       | Visitors can see that a staff member verified the identity behind a tip line                      | Settings -> Users           |
 | Admin | Mark one or more verified accounts as featured                                                    | Visitors see priority verified recipients at the top of the Verified directory tab                | Settings -> Users           |
 | Admin | Mark an account as cautious                                                                       | Visitors can receive a visible warning before trusting a listing                                  | Settings -> Users           |
@@ -187,6 +188,25 @@ Password changes require the active Hush Line chat key to be rewrapped in the br
 Conversation notifications are generic activity alerts. They do not include conversation plaintext or conversation ciphertext, even when the recipient has enabled message-content notifications for one-way tip intake.
 
 PR descriptions for conversation workflow changes should include a threat or risk summary, affected data paths, mitigations, validation commands, manual test steps, known risks, and follow-ups.
+
+## Administrative Broadcast Resume Workflow
+
+Administrative broadcasts create encrypted inbox messages in browser-side batches. Hush Line stores
+a broadcast ledger with recipient status for each eligible recipient, but it does not store the
+plaintext broadcast body. If a browser stops after some batches are submitted, the next visit to
+Settings -> Broadcasts shows the interrupted broadcast counts and limits the encryption audience to
+pending recipients only. The admin must re-enter the same message, confirm the send, and continue
+only the pending recipients.
+
+Resume validation must preserve two safety constraints:
+
+- Same-page continuation may post the original audience and cumulative completed IDs while the
+  server ledger has already moved earlier recipients out of pending status.
+- Refresh-based continuation may post only the pending audience rendered by the resume page.
+
+In both cases the server must reject payloads for recipients that are no longer pending or no longer
+eligible before creating additional messages. Pending recipients whose browser encryption fails are
+recorded as skipped so the ledger can complete without duplicating successful deliveries.
 
 ## Manual Review Steps
 

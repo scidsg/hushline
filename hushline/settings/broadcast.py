@@ -197,6 +197,10 @@ def _pending_user_ids(broadcast: AdminBroadcast) -> set[int]:
     }
 
 
+def _broadcast_user_ids(broadcast: AdminBroadcast) -> set[int]:
+    return {recipient.user_id for recipient in broadcast.recipients}
+
+
 def _broadcast_state(broadcast: AdminBroadcast | None) -> BroadcastDisplayState | None:
     if broadcast is None:
         return None
@@ -399,9 +403,10 @@ def register_broadcast_routes(bp: Blueprint) -> None:
                         failed_user_ids = _encryption_failure_user_ids(
                             form.encryption_failures.data or ""
                         )
-                        expected_user_ids = {
+                        eligible_user_ids = {
                             user.id for user in audience.encrypted_submission_users
                         }
+                        expected_user_ids = eligible_user_ids
                         submitted_user_ids = set(encrypted_payloads)
                         expected_chunk_user_ids = _user_ids_from_json(
                             request.form.get(BROADCAST_EXPECTED_IDS_FIELD, "")
@@ -413,7 +418,16 @@ def register_broadcast_routes(bp: Blueprint) -> None:
                         broadcast_public_id = request.form.get(BROADCAST_ID_FIELD, "")
                         active_broadcast = _load_active_broadcast_by_public_id(broadcast_public_id)
                         if chunked_broadcast and active_broadcast is not None:
-                            expected_user_ids = _pending_user_ids(active_broadcast)
+                            pending_user_ids = _pending_user_ids(active_broadcast)
+                            broadcast_user_ids = _broadcast_user_ids(active_broadcast)
+                            if expected_chunk_user_ids == broadcast_user_ids:
+                                expected_user_ids = broadcast_user_ids
+                            elif expected_chunk_user_ids == pending_user_ids:
+                                expected_user_ids = pending_user_ids
+                            else:
+                                expected_user_ids = set()
+                        else:
+                            pending_user_ids = expected_user_ids
                         if not submitted_user_ids and not (chunked_broadcast and failed_user_ids):
                             if chunked_broadcast:
                                 return _json_broadcast_error(
@@ -468,6 +482,18 @@ def register_broadcast_routes(bp: Blueprint) -> None:
                         ).issubset(completed_chunk_user_ids):
                             return _json_broadcast_error(
                                 "Broadcast completion is missing submitted recipients."
+                            )
+                        elif chunked_broadcast and not submitted_user_ids.issubset(
+                            pending_user_ids
+                        ):
+                            return _json_broadcast_error(
+                                "Broadcast recipients are no longer pending. Refresh and try again."
+                            )
+                        elif chunked_broadcast and not submitted_user_ids.issubset(
+                            eligible_user_ids
+                        ):
+                            return _json_broadcast_error(
+                                "One or more recipients became ineligible before submission."
                             )
                         elif (
                             chunked_broadcast
