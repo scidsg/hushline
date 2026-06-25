@@ -9,6 +9,7 @@ from flask.testing import FlaskClient
 
 from hushline.db import db
 from hushline.model import AdminBroadcast, AdminBroadcastRecipient, ChatKey, Message, User, Username
+from hushline.settings import broadcast as broadcast_settings
 from hushline.settings.broadcast import _send_broadcast_notification_emails
 
 ARMORED_BROADCAST = (
@@ -399,6 +400,84 @@ def test_broadcasts_uses_client_broadcast_id_for_first_chunk(
     assert replay_payload["broadcast_complete"] is True
     assert db.session.scalar(db.select(db.func.count(Message.id))) == 1
     send_notifications.assert_called_once_with((user.id,))
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_broadcasts_reloads_client_broadcast_id_after_start_lock(
+    client: FlaskClient,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user.pgp_key = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nkey\n-----END PGP PUBLIC KEY BLOCK-----"
+    _enable_notification_email(user, "primary@example.com")
+    db.session.commit()
+    send_notifications = MagicMock()
+    monkeypatch.setattr(
+        "hushline.settings.broadcast._send_broadcast_notification_emails",
+        send_notifications,
+    )
+    broadcast_id = str(uuid4())
+    original_load_broadcast = broadcast_settings._load_broadcast_by_public_id
+    load_calls = 0
+
+    def load_broadcast_after_wait(public_id: str) -> AdminBroadcast | None:
+        nonlocal load_calls
+        load_calls += 1
+        if load_calls == 1:
+            return None
+        return original_load_broadcast(public_id)
+
+    def commit_completed_broadcast() -> None:
+        broadcast = AdminBroadcast(public_id=broadcast_id)
+        db.session.add(broadcast)
+        db.session.flush()
+        message = Message(user.primary_username.id)
+        db.session.add(message)
+        db.session.flush()
+        recipient = AdminBroadcastRecipient(
+            broadcast_id=broadcast.id,
+            user_id=user.id,
+        )
+        recipient.mark_submitted(message)
+        db.session.add(recipient)
+        db.session.flush()
+        db.session.refresh(broadcast, ["recipients"])
+        broadcast.mark_completed_if_done()
+        db.session.commit()
+
+    monkeypatch.setattr(
+        "hushline.settings.broadcast._load_broadcast_by_public_id",
+        load_broadcast_after_wait,
+    )
+    monkeypatch.setattr(
+        "hushline.settings.broadcast._lock_admin_broadcast_start",
+        commit_completed_broadcast,
+    )
+
+    response = client.post(
+        url_for("settings.broadcasts"),
+        data={
+            "broadcast_chunk": "1",
+            "broadcast_completed_user_ids": json.dumps([user.id]),
+            "broadcast_expected_user_ids": json.dumps([user.id]),
+            "broadcast_final_chunk": "1",
+            "broadcast_id": broadcast_id,
+            "encrypted_payloads": json.dumps({str(user.id): ARMORED_BROADCAST}),
+            "confirm_send": "y",
+            "send_broadcast": "Send Broadcast",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["broadcast_id"] == broadcast_id
+    assert payload["submitted_count"] == 1
+    assert payload["pending_count"] == 0
+    assert payload["broadcast_complete"] is True
+    assert db.session.scalar(db.select(db.func.count(Message.id))) == 1
+    assert db.session.scalar(db.select(db.func.count(AdminBroadcast.id))) == 1
+    assert load_calls == 2
+    send_notifications.assert_not_called()
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")

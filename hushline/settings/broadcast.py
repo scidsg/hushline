@@ -101,6 +101,30 @@ class BroadcastDisplayState:
     pending_count: int
 
 
+@dataclass(frozen=True)
+class BroadcastSubmissionState:
+    broadcast: AdminBroadcast | None
+    active_broadcast: AdminBroadcast | None
+    completed_broadcast: AdminBroadcast | None
+    pending_user_ids: set[int]
+    expected_user_ids: set[int]
+    submitted_broadcast_user_ids: set[int]
+    skipped_broadcast_user_ids: set[int]
+    submitted_user_ids_to_create: set[int]
+    failed_user_ids_to_record: set[int]
+
+
+@dataclass(frozen=True)
+class BroadcastSubmissionRequest:
+    broadcast_public_id: str
+    chunked_broadcast: bool
+    final_chunk: bool
+    eligible_user_ids: set[int]
+    expected_chunk_user_ids: set[int]
+    submitted_user_ids: set[int]
+    failed_user_ids: set[int]
+
+
 def _recipient_pgp_key_exists() -> ColumnElement[bool]:
     return cast(
         ColumnElement[bool],
@@ -209,6 +233,69 @@ def _broadcast_user_ids(broadcast: AdminBroadcast) -> set[int]:
 
 def _broadcast_status_user_ids(broadcast: AdminBroadcast, status: str) -> set[int]:
     return {recipient.user_id for recipient in broadcast.recipients if recipient.status == status}
+
+
+def _load_broadcast_submission_state(
+    submission_request: BroadcastSubmissionRequest,
+) -> BroadcastSubmissionState:
+    broadcast = _load_broadcast_by_public_id(submission_request.broadcast_public_id)
+    active_broadcast = (
+        broadcast
+        if broadcast is not None and broadcast.status == AdminBroadcast.STATUS_IN_PROGRESS
+        else None
+    )
+    completed_broadcast = (
+        broadcast
+        if broadcast is not None and broadcast.status == AdminBroadcast.STATUS_COMPLETED
+        else None
+    )
+    pending_user_ids = submission_request.eligible_user_ids
+    expected_user_ids = submission_request.eligible_user_ids
+    submitted_broadcast_user_ids: set[int] = set()
+    skipped_broadcast_user_ids: set[int] = set()
+    submitted_user_ids_to_create = submission_request.submitted_user_ids
+    failed_user_ids_to_record = submission_request.failed_user_ids
+
+    if submission_request.chunked_broadcast and broadcast is not None:
+        pending_user_ids = _pending_user_ids(broadcast)
+        broadcast_user_ids = _broadcast_user_ids(broadcast)
+        submitted_broadcast_user_ids = _broadcast_status_user_ids(
+            broadcast,
+            AdminBroadcastRecipient.STATUS_SUBMITTED,
+        )
+        skipped_broadcast_user_ids = _broadcast_status_user_ids(
+            broadcast,
+            AdminBroadcastRecipient.STATUS_SKIPPED,
+        )
+        if active_broadcast is not None:
+            submitted_user_ids_to_create = submission_request.submitted_user_ids & pending_user_ids
+            failed_user_ids_to_record = submission_request.failed_user_ids & pending_user_ids
+            if submission_request.expected_chunk_user_ids == broadcast_user_ids:
+                expected_user_ids = broadcast_user_ids
+            elif submission_request.expected_chunk_user_ids == pending_user_ids:
+                expected_user_ids = pending_user_ids
+            else:
+                expected_user_ids = set()
+        elif (
+            completed_broadcast is not None
+            and submission_request.final_chunk
+            and submission_request.expected_chunk_user_ids.issubset(broadcast_user_ids)
+        ):
+            expected_user_ids = submission_request.expected_chunk_user_ids
+        else:
+            expected_user_ids = set()
+
+    return BroadcastSubmissionState(
+        broadcast=broadcast,
+        active_broadcast=active_broadcast,
+        completed_broadcast=completed_broadcast,
+        pending_user_ids=pending_user_ids,
+        expected_user_ids=expected_user_ids,
+        submitted_broadcast_user_ids=submitted_broadcast_user_ids,
+        skipped_broadcast_user_ids=skipped_broadcast_user_ids,
+        submitted_user_ids_to_create=submitted_user_ids_to_create,
+        failed_user_ids_to_record=failed_user_ids_to_record,
+    )
 
 
 def _normalized_broadcast_public_id(public_id: str) -> str:
@@ -473,55 +560,32 @@ def register_broadcast_routes(bp: Blueprint) -> None:
                         invalid_broadcast_public_id = bool(
                             raw_broadcast_public_id and not broadcast_public_id
                         )
-                        broadcast = _load_broadcast_by_public_id(broadcast_public_id)
-                        active_broadcast = (
-                            broadcast
-                            if broadcast is not None
-                            and broadcast.status == AdminBroadcast.STATUS_IN_PROGRESS
-                            else None
+                        submission_request = BroadcastSubmissionRequest(
+                            broadcast_public_id=broadcast_public_id,
+                            chunked_broadcast=chunked_broadcast,
+                            final_chunk=final_chunk,
+                            eligible_user_ids=eligible_user_ids,
+                            expected_chunk_user_ids=expected_chunk_user_ids,
+                            submitted_user_ids=submitted_user_ids,
+                            failed_user_ids=failed_user_ids,
                         )
-                        completed_broadcast = (
-                            broadcast
-                            if broadcast is not None
-                            and broadcast.status == AdminBroadcast.STATUS_COMPLETED
-                            else None
-                        )
-                        submitted_broadcast_user_ids: set[int] = set()
-                        skipped_broadcast_user_ids: set[int] = set()
-                        submitted_user_ids_to_create = submitted_user_ids
-                        failed_user_ids_to_record = failed_user_ids
-                        if chunked_broadcast and broadcast is not None:
-                            pending_user_ids = _pending_user_ids(broadcast)
-                            broadcast_user_ids = _broadcast_user_ids(broadcast)
-                            submitted_broadcast_user_ids = _broadcast_status_user_ids(
-                                broadcast,
-                                AdminBroadcastRecipient.STATUS_SUBMITTED,
-                            )
-                            skipped_broadcast_user_ids = _broadcast_status_user_ids(
-                                broadcast,
-                                AdminBroadcastRecipient.STATUS_SKIPPED,
-                            )
-                            if active_broadcast is not None:
-                                submitted_user_ids_to_create = submitted_user_ids & pending_user_ids
-                                failed_user_ids_to_record = failed_user_ids & pending_user_ids
-                                if expected_chunk_user_ids == broadcast_user_ids:
-                                    expected_user_ids = broadcast_user_ids
-                                elif expected_chunk_user_ids == pending_user_ids:
-                                    expected_user_ids = pending_user_ids
-                                else:
-                                    expected_user_ids = set()
-                            elif (
-                                completed_broadcast is not None
-                                and final_chunk
-                                and expected_chunk_user_ids.issubset(broadcast_user_ids)
-                            ):
-                                expected_user_ids = expected_chunk_user_ids
-                            else:
-                                expected_user_ids = set()
-                        else:
-                            pending_user_ids = expected_user_ids
-                        if chunked_broadcast and broadcast is None:
+                        submission_state = _load_broadcast_submission_state(submission_request)
+                        if (
+                            chunked_broadcast
+                            and submission_state.broadcast is None
+                            and not invalid_broadcast_public_id
+                        ):
                             _lock_admin_broadcast_start()
+                            submission_state = _load_broadcast_submission_state(submission_request)
+                        broadcast = submission_state.broadcast
+                        active_broadcast = submission_state.active_broadcast
+                        completed_broadcast = submission_state.completed_broadcast
+                        pending_user_ids = submission_state.pending_user_ids
+                        expected_user_ids = submission_state.expected_user_ids
+                        submitted_broadcast_user_ids = submission_state.submitted_broadcast_user_ids
+                        skipped_broadcast_user_ids = submission_state.skipped_broadcast_user_ids
+                        submitted_user_ids_to_create = submission_state.submitted_user_ids_to_create
+                        failed_user_ids_to_record = submission_state.failed_user_ids_to_record
                         if not submitted_user_ids and not (chunked_broadcast and failed_user_ids):
                             if chunked_broadcast:
                                 return _json_broadcast_error(
