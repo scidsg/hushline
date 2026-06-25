@@ -942,6 +942,41 @@ def test_broadcasts_final_chunk_rejects_incomplete_completion(
 
 
 @pytest.mark.usefixtures("_authenticated_admin_user")
+def test_broadcasts_final_chunk_rejects_client_claimed_completion_without_payloads(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user.pgp_key = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nkey\n-----END PGP PUBLIC KEY BLOCK-----"
+    user2.pgp_key = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nkey\n-----END PGP PUBLIC KEY BLOCK-----"
+    db.session.commit()
+    send_email = MagicMock()
+    monkeypatch.setattr("hushline.settings.broadcast.do_send_email", send_email)
+
+    response = client.post(
+        url_for("settings.broadcasts"),
+        data={
+            "broadcast_chunk": "1",
+            "broadcast_completed_user_ids": json.dumps([user.id, user2.id]),
+            "broadcast_expected_user_ids": json.dumps([user.id, user2.id]),
+            "broadcast_final_chunk": "1",
+            "encrypted_payloads": json.dumps({str(user.id): ARMORED_BROADCAST}),
+            "confirm_send": "y",
+            "send_broadcast": "Send Broadcast",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.get_json() == {
+        "error": "Final broadcast batch must include every pending recipient."
+    }
+    assert db.session.scalar(db.select(db.func.count(Message.id))) == 0
+    assert db.session.scalar(db.select(db.func.count(AdminBroadcast.id))) == 0
+    send_email.assert_not_called()
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
 def test_broadcasts_chunk_rejects_stale_expected_audience(
     client: FlaskClient,
     user: User,

@@ -676,6 +676,16 @@ def register_broadcast_routes(bp: Blueprint) -> None:
                                 "Broadcast batches are incomplete. Refresh and try again."
                             )
                         elif (
+                            chunked_broadcast
+                            and final_chunk
+                            and completed_broadcast is None
+                            and (submitted_user_ids_to_create | failed_user_ids_to_record)
+                            != pending_user_ids
+                        ):
+                            return _json_broadcast_error(
+                                "Final broadcast batch must include every pending recipient."
+                            )
+                        elif (
                             not chunked_broadcast
                             and submitted_user_ids | failed_user_ids != expected_user_ids
                         ):
