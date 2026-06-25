@@ -13,9 +13,25 @@
 {% block settings_content %}
   {% set expected_recipient_ids = audience.encrypted_submission_users | map(attribute='id') | list %}
   <h3>Broadcasts</h3>
-  <p>
-    Submit an encrypted administrative update to every eligible message-key recipient.
-  </p>
+  {% if active_broadcast_state %}
+    <p>
+      Resume the interrupted broadcast for pending recipients only. Hush Line does not store
+      broadcast plaintext, so enter the same message before continuing.
+    </p>
+  {% else %}
+    <p>
+      Submit an encrypted administrative update to every eligible message-key recipient.
+    </p>
+  {% endif %}
+
+  {% if active_broadcast_state %}
+    <div class="flash-messages warning">
+      Interrupted broadcast:
+      {{ active_broadcast_state.submitted_count }} submitted,
+      {{ active_broadcast_state.skipped_count }} skipped,
+      {{ active_broadcast_state.pending_count }} pending.
+    </div>
+  {% endif %}
 
   <div class="admin-highlights broadcast-summary">
     <div class="metric">
@@ -50,6 +66,14 @@
       name="broadcast_expected_user_ids"
       value='{{ expected_recipient_ids | tojson }}'
     >
+    {% if active_broadcast_state %}
+      <input
+        type="hidden"
+        id="broadcast_id"
+        name="broadcast_id"
+        value="{{ active_broadcast_state.broadcast.public_id }}"
+      >
+    {% endif %}
     {{ field_errors(form.encrypted_payloads) }}
 
     <div class="checkbox-group">
