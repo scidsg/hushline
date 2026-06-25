@@ -66,11 +66,15 @@ function expectedRecipientIds() {
   }
 }
 
+function broadcastIdInput() {
+  return document.getElementById("broadcast_id");
+}
+
 function ensureBroadcastIdInput(form, broadcastId) {
   if (!broadcastId) {
     return;
   }
-  let input = document.getElementById("broadcast_id");
+  let input = broadcastIdInput();
   if (!input) {
     input = document.createElement("input");
     input.type = "hidden";
@@ -79,6 +83,24 @@ function ensureBroadcastIdInput(form, broadcastId) {
     form.appendChild(input);
   }
   input.value = broadcastId;
+}
+
+function createBroadcastId() {
+  if (typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+  const bytes = new Uint8Array(16);
+  window.crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, "0"));
+  return [
+    hex.slice(0, 4).join(""),
+    hex.slice(4, 6).join(""),
+    hex.slice(6, 8).join(""),
+    hex.slice(8, 10).join(""),
+    hex.slice(10, 16).join(""),
+  ].join("-");
 }
 
 async function encryptMessage(publicKeys, message) {
@@ -161,6 +183,10 @@ function broadcastSubmitError(message, retryable = false) {
   return error;
 }
 
+function isRetryableStatus(status) {
+  return status >= 500 || status === 408 || status === 429;
+}
+
 function isRetryableBroadcastError(error) {
   if (error?.retryable === true) {
     return true;
@@ -197,9 +223,17 @@ async function submitBroadcastBatch(
     body: formData,
   });
   const contentType = response.headers.get("content-type") || "";
-  if (response.redirected || !contentType.includes("application/json")) {
+  if (response.redirected) {
     throw broadcastSubmitError(
       "Broadcast session changed. Sign in again before continuing.",
+    );
+  }
+  if (!contentType.includes("application/json")) {
+    throw broadcastSubmitError(
+      isRetryableStatus(response.status)
+        ? "Broadcast batch submission failed."
+        : "Broadcast session changed. Sign in again before continuing.",
+      isRetryableStatus(response.status),
     );
   }
   let payload;
@@ -208,9 +242,7 @@ async function submitBroadcastBatch(
   } catch {
     throw broadcastSubmitError(
       "Broadcast batch submission failed.",
-      response.status >= 500 ||
-        response.status === 408 ||
-        response.status === 429,
+      isRetryableStatus(response.status),
     );
   }
   if (
@@ -223,9 +255,7 @@ async function submitBroadcastBatch(
   ) {
     throw broadcastSubmitError(
       payload.error || "Broadcast batch submission failed.",
-      response.status >= 500 ||
-        response.status === 408 ||
-        response.status === 429,
+      isRetryableStatus(response.status),
     );
   }
   return payload;
@@ -316,6 +346,10 @@ document.addEventListener("DOMContentLoaded", function () {
         );
       }
       assertClientCryptoSupport();
+      ensureBroadcastIdInput(
+        form,
+        broadcastIdInput()?.value || createBroadcastId(),
+      );
       const body = plaintext.value.trim();
       if (body.length < 10) {
         throw new Error("Message must be at least 10 characters.");

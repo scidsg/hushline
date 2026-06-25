@@ -1,6 +1,7 @@
 import json
 from dataclasses import dataclass
 from typing import cast
+from uuid import UUID
 
 from flask import (
     Blueprint,
@@ -170,8 +171,14 @@ def _load_broadcast_by_public_id(public_id: str) -> AdminBroadcast | None:
     ).one_or_none()
 
 
-def _create_broadcast(admin_user_id: int, expected_user_ids: set[int]) -> AdminBroadcast:
+def _create_broadcast(
+    admin_user_id: int,
+    expected_user_ids: set[int],
+    public_id: str = "",
+) -> AdminBroadcast:
     broadcast = AdminBroadcast(admin_user_id=admin_user_id)
+    if public_id:
+        broadcast.public_id = public_id
     db.session.add(broadcast)
     db.session.flush()
     for user_id in sorted(expected_user_ids):
@@ -200,6 +207,16 @@ def _broadcast_user_ids(broadcast: AdminBroadcast) -> set[int]:
 
 def _broadcast_status_user_ids(broadcast: AdminBroadcast, status: str) -> set[int]:
     return {recipient.user_id for recipient in broadcast.recipients if recipient.status == status}
+
+
+def _normalized_broadcast_public_id(public_id: str) -> str:
+    value = public_id.strip()
+    if not value:
+        return ""
+    try:
+        return str(UUID(value))
+    except ValueError:
+        return ""
 
 
 def _broadcast_state(broadcast: AdminBroadcast | None) -> BroadcastDisplayState | None:
@@ -418,7 +435,13 @@ def register_broadcast_routes(bp: Blueprint) -> None:
                             request.form.get(BROADCAST_COMPLETED_IDS_FIELD, "")
                         )
                         final_chunk = request.form.get(BROADCAST_FINAL_CHUNK_FIELD) == "1"
-                        broadcast_public_id = request.form.get(BROADCAST_ID_FIELD, "")
+                        raw_broadcast_public_id = request.form.get(BROADCAST_ID_FIELD, "")
+                        broadcast_public_id = _normalized_broadcast_public_id(
+                            raw_broadcast_public_id
+                        )
+                        invalid_broadcast_public_id = bool(
+                            raw_broadcast_public_id and not broadcast_public_id
+                        )
                         broadcast = _load_broadcast_by_public_id(broadcast_public_id)
                         active_broadcast = (
                             broadcast
@@ -484,13 +507,11 @@ def register_broadcast_routes(bp: Blueprint) -> None:
                                 "Encrypted payloads conflict with reported encryption failures."
                             )
                             status_code = 400
-                        elif chunked_broadcast and broadcast_public_id and broadcast is None:
-                            return _json_broadcast_error(
-                                "Broadcast run is no longer active. Refresh and try again."
-                            )
+                        elif chunked_broadcast and invalid_broadcast_public_id:
+                            return _json_broadcast_error("Broadcast run id is invalid.")
                         elif (
                             chunked_broadcast
-                            and not broadcast_public_id
+                            and broadcast is None
                             and _load_active_broadcast() is not None
                         ):
                             return _json_broadcast_error(
@@ -581,7 +602,11 @@ def register_broadcast_routes(bp: Blueprint) -> None:
                                     }
                                 )
                             if chunked_broadcast and active_broadcast is None:
-                                active_broadcast = _create_broadcast(user.id, expected_user_ids)
+                                active_broadcast = _create_broadcast(
+                                    user.id,
+                                    expected_user_ids,
+                                    broadcast_public_id,
+                                )
                             submitted_users = [
                                 user
                                 for user in audience.encrypted_submission_users

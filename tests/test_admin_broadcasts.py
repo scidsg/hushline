@@ -1,5 +1,6 @@
 import json
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
 from bs4 import BeautifulSoup
@@ -331,6 +332,72 @@ def test_broadcasts_submit_encrypted_chunk(
     assert broadcast.skipped_count == 0
     assert broadcast.pending_count == 0
     assert broadcast.recipients[0].message_id == messages[0].id
+    send_notifications.assert_called_once_with((user.id,))
+
+
+@pytest.mark.usefixtures("_authenticated_admin_user")
+def test_broadcasts_uses_client_broadcast_id_for_first_chunk(
+    client: FlaskClient,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user.pgp_key = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nkey\n-----END PGP PUBLIC KEY BLOCK-----"
+    _enable_notification_email(user, "primary@example.com")
+    db.session.commit()
+    send_notifications = MagicMock()
+    monkeypatch.setattr(
+        "hushline.settings.broadcast._send_broadcast_notification_emails",
+        send_notifications,
+    )
+    broadcast_id = str(uuid4())
+
+    response = client.post(
+        url_for("settings.broadcasts"),
+        data={
+            "broadcast_chunk": "1",
+            "broadcast_completed_user_ids": json.dumps([user.id]),
+            "broadcast_expected_user_ids": json.dumps([user.id]),
+            "broadcast_final_chunk": "1",
+            "broadcast_id": broadcast_id,
+            "encrypted_payloads": json.dumps({str(user.id): ARMORED_BROADCAST}),
+            "confirm_send": "y",
+            "send_broadcast": "Send Broadcast",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["broadcast_id"] == broadcast_id
+    assert payload["submitted_count"] == 1
+    assert payload["pending_count"] == 0
+    assert payload["broadcast_complete"] is True
+    broadcast = db.session.scalars(db.select(AdminBroadcast)).one()
+    assert broadcast.public_id == broadcast_id
+    assert broadcast.status == AdminBroadcast.STATUS_COMPLETED
+    assert db.session.scalar(db.select(db.func.count(Message.id))) == 1
+    send_notifications.assert_called_once_with((user.id,))
+
+    replay = client.post(
+        url_for("settings.broadcasts"),
+        data={
+            "broadcast_chunk": "1",
+            "broadcast_completed_user_ids": json.dumps([user.id]),
+            "broadcast_expected_user_ids": json.dumps([user.id]),
+            "broadcast_final_chunk": "1",
+            "broadcast_id": broadcast_id,
+            "encrypted_payloads": json.dumps({str(user.id): ARMORED_BROADCAST}),
+            "confirm_send": "y",
+            "send_broadcast": "Send Broadcast",
+        },
+    )
+
+    assert replay.status_code == 200
+    replay_payload = replay.get_json()
+    assert replay_payload["broadcast_id"] == broadcast_id
+    assert replay_payload["submitted_count"] == 1
+    assert replay_payload["pending_count"] == 0
+    assert replay_payload["broadcast_complete"] is True
+    assert db.session.scalar(db.select(db.func.count(Message.id))) == 1
     send_notifications.assert_called_once_with((user.id,))
 
 
