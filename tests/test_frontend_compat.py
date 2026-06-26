@@ -934,8 +934,14 @@ def test_inbox_sticky_nav_hooks_exist() -> None:
     assert 'class="inbox-tabs-nav"' in inbox_template
     assert 'const inboxTabsNav = document.querySelector(".inbox-tabs-nav");' in inbox_js
     assert "--inbox-tabs-top" in inbox_js
+    assert "const desktopNavMargin = window.matchMedia" in inbox_js
+    assert "const stickyTop = headerHeight + bannerHeight + desktopNavMargin;" in inbox_js
+    assert "desktopOffset" not in inbox_js
     assert ".inbox-tabs-nav {" in scss
     assert "position: sticky;" in scss
+    assert "top: var(--inbox-tabs-top, calc(1rem + 65px + env(safe-area-inset-top)));" in (scss)
+    assert "top: var(--inbox-tabs-top, calc(1rem + 105px + env(safe-area-inset-top)));" in scss
+    assert "top: var(--inbox-tabs-top, calc(105px + env(safe-area-inset-top)));" in scss
     assert "flex-wrap: nowrap;" in scss
     assert "overflow-x: auto;" in scss
     assert "flex: 0 0 auto;" in scss
