@@ -21,6 +21,8 @@ jobs:
       REFRESH_REPORT_DIR: .github/tmp/public-record-refresh
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
 
       - name: Refresh public-record listings
         run: |
@@ -65,7 +67,7 @@ jobs:
       - name: Create or update refresh PR
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676
         with:
-          token: ${{ github.token }}
+          token: ${{ secrets.ADMIN_PAT }}
           branch: bot/public-record-quarterly-refresh
           delete-branch: true
           commit-message: "Refresh public-record law firm listings"
