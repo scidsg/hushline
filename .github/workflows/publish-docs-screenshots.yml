@@ -224,17 +224,18 @@ jobs:
           chmod 700 "$GIT_ASKPASS"
           export GIT_ASKPASS GIT_TERMINAL_PROMPT=0
 
-          git clone \
-            --depth 1 \
-            --filter=blob:none \
-            --single-branch \
-            --branch "${SCREENSHOTS_DEFAULT_BRANCH}" \
-            "https://github.com/${SCREENSHOTS_REPOSITORY}.git" \
-            /tmp/hushline-screenshots
+          mkdir -p /tmp/hushline-screenshots
           cd /tmp/hushline-screenshots
+          git init
+          git remote add origin "https://github.com/${SCREENSHOTS_REPOSITORY}.git"
           git sparse-checkout init --no-cone
           git sparse-checkout set README.md badge-docs-screenshots.json releases/latest "releases/${RELEASE_KEY}"
-          git checkout -B "${SCREENSHOTS_DEFAULT_BRANCH}" "origin/${SCREENSHOTS_DEFAULT_BRANCH}"
+          git fetch \
+            --depth 1 \
+            --filter=blob:none \
+            origin \
+            "${SCREENSHOTS_DEFAULT_BRANCH}"
+          git checkout -B "${SCREENSHOTS_DEFAULT_BRANCH}" FETCH_HEAD
 
           mkdir -p "releases/${RELEASE_KEY}" "releases/latest"
           rsync -a --delete "${SCREENSHOT_ROOT}/" "releases/${RELEASE_KEY}/"
@@ -245,7 +246,7 @@ jobs:
           {"schemaVersion":1,"label":"docs screenshots","message":"${RELEASE_KEY}","color":"blue"}
           EOF
 
-          git add README.md badge-docs-screenshots.json releases
+          git add -A -- README.md badge-docs-screenshots.json "releases/${RELEASE_KEY}" releases/latest
           if git diff --cached --quiet; then
             echo "No screenshot archive changes to publish."
             exit 0
