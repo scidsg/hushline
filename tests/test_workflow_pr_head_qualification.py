@@ -145,16 +145,25 @@ def test_screenshots_archive_workflow_publishes_directly_without_pr_flow() -> No
     )
     assert "--depth 1" in archive_section
     assert "--filter=blob:none" in archive_section
-    assert "--single-branch" in archive_section
+    assert "--single-branch" not in archive_section
+    assert "git init" in archive_section
+    assert (
+        'git remote add origin "https://github.com/${SCREENSHOTS_REPOSITORY}.git"'
+        in archive_section
+    )
     assert "git sparse-checkout init --no-cone" in archive_section
     assert (
         "git sparse-checkout set README.md badge-docs-screenshots.json releases/latest "
         '"releases/${RELEASE_KEY}"' in archive_section
     )
     assert (
-        'git checkout -B "${SCREENSHOTS_DEFAULT_BRANCH}" "origin/${SCREENSHOTS_DEFAULT_BRANCH}"'
-        in archive_section
+        "git fetch \\\n"
+        "            --depth 1 \\\n"
+        "            --filter=blob:none \\\n"
+        "            origin \\\n"
+        '            "${SCREENSHOTS_DEFAULT_BRANCH}"' in archive_section
     )
+    assert 'git checkout -B "${SCREENSHOTS_DEFAULT_BRANCH}" FETCH_HEAD' in archive_section
     assert 'GIT_ASKPASS="${RUNNER_TEMP}/hushline-screenshots-git-askpass.sh"' in archive_section
     assert '"https://github.com/${SCREENSHOTS_REPOSITORY}.git"' in archive_section
     assert "x-access-token:${SCREENSHOTS_PUSH_TOKEN}@github.com" not in archive_section
