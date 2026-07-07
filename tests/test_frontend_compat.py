@@ -181,6 +181,23 @@ def test_chat_key_lifecycle_imports_private_key_for_message_decryption() -> None
     assert "decryptChatCiphertext" in js
 
 
+def test_chat_key_lifecycle_upgrades_legacy_keys_with_signing_material() -> None:
+    js = (ROOT / "assets/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
+    static_js = (ROOT / "hushline/static/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
+
+    for lifecycle_js in (js, static_js):
+        assert "async function createSigningKeyMaterial()" in lifecycle_js
+        assert "async function upgradeChatKeySigningCapability(" in lifecycle_js
+        assert (
+            "privateKeyBundle = await decryptPrivateKeyBundle(chatKey, password);" in lifecycle_js
+        )
+        assert "public_key: chatKey.public_key" in lifecycle_js
+        assert "signing_private_jwk: signingKeyMaterial.signingPrivateJwk" in lifecycle_js
+        assert "if (unlocked && !chatKey.public_signing_key)" in lifecycle_js
+        assert "await upgradeChatKeySigningCapability(" in lifecycle_js
+        assert "if (!publicSigningKey || !privateKeyBundle.signing_private_jwk)" in lifecycle_js
+
+
 def test_settings_chat_key_provisioning_generates_decryptable_ecdh_key() -> None:
     js = (ROOT / "assets/js/settings.js").read_text(encoding="utf-8")
 

@@ -580,6 +580,31 @@
       true,
       ["deriveKey"],
     );
+    const signingKeyMaterial = await createSigningKeyMaterial();
+    const publicJwk = await window.crypto.subtle.exportKey(
+      "jwk",
+      keyPair.publicKey,
+    );
+    const privateKeyBundle = {
+      ecdh_private_jwk: await window.crypto.subtle.exportKey(
+        "jwk",
+        keyPair.privateKey,
+      ),
+      signing_private_jwk: signingKeyMaterial.signingPrivateJwk,
+    };
+    const wrapped = await encryptPrivateKeyBundle(privateKeyBundle, password);
+
+    return {
+      privateKeyBundle,
+      payload: {
+        public_key: JSON.stringify(publicJwk),
+        public_signing_key: JSON.stringify(signingKeyMaterial.publicSigningJwk),
+        ...wrapped,
+      },
+    };
+  }
+
+  async function createSigningKeyMaterial() {
     const signingKeyPair = await window.crypto.subtle.generateKey(
       {
         name: "ECDSA",
@@ -588,33 +613,15 @@
       true,
       ["sign", "verify"],
     );
-    const publicJwk = await window.crypto.subtle.exportKey(
-      "jwk",
-      keyPair.publicKey,
-    );
-    const publicSigningJwk = await window.crypto.subtle.exportKey(
-      "jwk",
-      signingKeyPair.publicKey,
-    );
-    const privateKeyBundle = {
-      ecdh_private_jwk: await window.crypto.subtle.exportKey(
+    return {
+      publicSigningJwk: await window.crypto.subtle.exportKey(
         "jwk",
-        keyPair.privateKey,
+        signingKeyPair.publicKey,
       ),
-      signing_private_jwk: await window.crypto.subtle.exportKey(
+      signingPrivateJwk: await window.crypto.subtle.exportKey(
         "jwk",
         signingKeyPair.privateKey,
       ),
-    };
-    const wrapped = await encryptPrivateKeyBundle(privateKeyBundle, password);
-
-    return {
-      privateKeyBundle,
-      payload: {
-        public_key: JSON.stringify(publicJwk),
-        public_signing_key: JSON.stringify(publicSigningJwk),
-        ...wrapped,
-      },
     };
   }
 
@@ -623,13 +630,22 @@
     let privateKeyBundle = null;
     try {
       privateKeyBundle = await decryptPrivateKeyBundle(chatKey, oldPassword);
+      let publicSigningKey = chatKey.public_signing_key || null;
+      if (!publicSigningKey || !privateKeyBundle.signing_private_jwk) {
+        const signingKeyMaterial = await createSigningKeyMaterial();
+        privateKeyBundle = {
+          ...privateKeyBundle,
+          signing_private_jwk: signingKeyMaterial.signingPrivateJwk,
+        };
+        publicSigningKey = JSON.stringify(signingKeyMaterial.publicSigningJwk);
+      }
       const wrapped = await encryptPrivateKeyBundle(
         privateKeyBundle,
         newPassword,
       );
       return {
         public_key: chatKey.public_key,
-        public_signing_key: chatKey.public_signing_key || null,
+        public_signing_key: publicSigningKey,
         recovery_state: "available",
         ...wrapped,
       };
@@ -928,6 +944,69 @@
     return chatKey;
   }
 
+  async function upgradeChatKeySigningCapability(
+    chatKey,
+    password,
+    sourceDocument = document,
+  ) {
+    if (!chatKey || chatKey.public_signing_key) {
+      return chatKey;
+    }
+
+    let privateKeyBundle = null;
+    try {
+      privateKeyBundle = await decryptPrivateKeyBundle(chatKey, password);
+      const signingKeyMaterial = await createSigningKeyMaterial();
+      const upgradedPrivateKeyBundle = {
+        ...privateKeyBundle,
+        signing_private_jwk: signingKeyMaterial.signingPrivateJwk,
+      };
+      const wrapped = await encryptPrivateKeyBundle(
+        upgradedPrivateKeyBundle,
+        password,
+      );
+      const headers = {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      };
+      const csrfToken = csrfTokenFromDocument(sourceDocument);
+      if (csrfToken) {
+        headers["X-CSRFToken"] = csrfToken;
+      }
+
+      const response = await fetch(chatKeyUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers,
+        body: JSON.stringify({
+          public_key: chatKey.public_key,
+          public_signing_key: JSON.stringify(
+            signingKeyMaterial.publicSigningJwk,
+          ),
+          recovery_state: "available",
+          ...wrapped,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error("Chat key signing upgrade failed.");
+      }
+
+      const responsePayload = await response.json();
+      const upgradedChatKey = responsePayload.chat_key;
+      if (!upgradedChatKey) {
+        throw new Error("Upgraded chat key was unavailable.");
+      }
+      await restoreUnlockedChatKeyFromBundle(
+        upgradedChatKey,
+        upgradedPrivateKeyBundle,
+        sourceDocument,
+      );
+      return upgradedChatKey;
+    } finally {
+      privateKeyBundle = null;
+    }
+  }
+
   async function ensureChatKeyUnlockedAfterAuth(
     password,
     sourceDocument = document,
@@ -935,7 +1014,23 @@
     const chatKeyUrl = chatKeyUrlFromCurrentOrigin();
     const chatKey = await fetchChatKey(chatKeyUrl);
     if (chatKey) {
-      return unlockFromPassword(chatKey, password, sourceDocument);
+      const unlocked = await unlockFromPassword(
+        chatKey,
+        password,
+        sourceDocument,
+      );
+      if (unlocked && !chatKey.public_signing_key) {
+        try {
+          await upgradeChatKeySigningCapability(
+            chatKey,
+            password,
+            sourceDocument,
+          );
+        } catch (error) {
+          return unlocked;
+        }
+      }
+      return unlocked;
     }
     await provisionChatKey(chatKeyUrl, password, sourceDocument);
     return true;
