@@ -487,6 +487,43 @@ def test_chat_key_rotation_versions_new_key_and_disables_old_key(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_chat_key_signing_upgrade_preserves_chat_public_key(
+    client: FlaskClient, user: User
+) -> None:
+    public_key = '{"kty":"EC","crv":"P-256","x":"legacy","y":"key"}'
+    legacy_key = ChatKey(
+        user=user,
+        key_version=1,
+        public_key=public_key,
+        encrypted_private_key="legacy-wrapped-private-chat-key",
+        kdf_algorithm="PBKDF2-SHA-256",
+        kdf_params={"iterations": 310000},
+        kdf_salt="salt",
+        wrapping_algorithm="AES-GCM",
+    )
+    db.session.add(legacy_key)
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.chat_key"),
+        json=_chat_key_payload(public_key=public_key),
+    )
+
+    assert response.status_code == 201
+    keys = db.session.scalars(
+        db.select(ChatKey).filter_by(user_id=user.id).order_by(ChatKey.key_version.asc())
+    ).all()
+    assert [key.key_version for key in keys] == [1, 2]
+    assert keys[0].disabled_at is not None
+    assert keys[0].recovery_state == "rotated"
+    assert keys[1].disabled_at is None
+    assert keys[1].public_key == public_key
+    assert keys[1].public_signing_key == _chat_key_payload()["public_signing_key"]
+    assert user.chat_public_key == public_key
+    assert user.chat_public_signing_key == _chat_key_payload()["public_signing_key"]
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_chat_key_get_returns_only_authenticated_users_key(
     client: FlaskClient, user: User, user2: User
 ) -> None:
