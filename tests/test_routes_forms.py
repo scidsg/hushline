@@ -121,6 +121,48 @@ def test_dynamic_message_form_choice_fields_select_and_multicheckbox(app: Flask)
     assert form.field_0.errors == ["another"]
 
 
+def test_dynamic_message_form_accepts_encrypted_choice_payloads(app: Flask) -> None:
+    encrypted_payload = (
+        "-----BEGIN PGP MESSAGE-----\n\n"
+        "wV4DySYCvmcevcgSAQdAexampleencryptedpayload\n"
+        "-----END PGP MESSAGE-----"
+    )
+    fields = [
+        SimpleNamespace(
+            enabled=True,
+            required=False,
+            field_type=FieldType.CHOICE_SINGLE,
+            encrypted=True,
+            label="Reason for reaching out",
+            choices=[
+                "Whistleblower Requests",
+                "Founder Request",
+                "Investor or Funder Inquiry",
+            ],
+        ),
+        SimpleNamespace(
+            enabled=True,
+            required=False,
+            field_type=FieldType.CHOICE_MULTIPLE,
+            encrypted=True,
+            label="Topics",
+            choices=["Research", "Media"],
+        ),
+    ]
+    dynamic = DynamicMessageForm(fields)  # type: ignore[arg-type]
+
+    with app.test_request_context(
+        method="POST",
+        data={
+            "field_0": encrypted_payload,
+            "field_1": encrypted_payload,
+        },
+    ):
+        form = dynamic.form(csrf_enabled=False)
+
+        assert form.validate(), form.errors
+
+
 def test_onboarding_profile_form_rejects_disallowed_language(app: Flask) -> None:
     def _mock_contains_disallowed_text(text: str | None) -> bool:
         return bool(text and "blocked-token" in text)
