@@ -693,10 +693,7 @@ def test_conversation_view_shows_locked_chat_key_state(
     assert "JavaScript is required for end-to-end encrypted chat." in response.text
     assert "server-side chat fallback for conversations" in response.text
     assert "Encrypted message. Waiting for browser chat key." in response.text
-    assert (
-        "Replies are unavailable until every participant has an active signing-capable"
-        in response.text
-    )
+    assert "Replies are unavailable until you have an active signing-capable" in response.text
     assert "conversation-chat-password" not in response.text
     assert "Unlock Chat" not in response.text
     assert "Proton" not in response.text
@@ -755,8 +752,44 @@ def test_conversation_view_disables_composer_when_participant_key_cannot_sign(
     assert participant_keys_match is not None
     participant_keys = json.loads(participant_keys_match.group(1))
     assert [participant_key["participant_id"] for participant_key in participant_keys] == [
-        _participant_for(conversation, user2).id
+        _participant_for(conversation, user).id,
+        _participant_for(conversation, user2).id,
     ]
+
+
+def test_conversation_view_allows_signing_sender_to_reply_to_legacy_recipient(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_chat_key(
+        user,
+        '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}',
+        public_signing_key=_SENDER_PUBLIC_SIGNING_KEY,
+    )
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+
+    response = client.get(url_for("conversation", public_id=conversation.public_id))
+
+    assert response.status_code == 200
+    assert 'data-can-compose="true"' in response.text
+    assert "conversation-compose-unavailable" not in response.text
+    participant_keys_match = re.search(
+        r'<script id="conversationParticipantPublicKeys" type="application/json">\s*'
+        r"([\s\S]*?)</script>",
+        response.text,
+    )
+    assert participant_keys_match is not None
+    participant_keys = json.loads(participant_keys_match.group(1))
+    recipient_key = next(
+        participant_key
+        for participant_key in participant_keys
+        if participant_key["participant_id"] == _participant_for(conversation, user2).id
+    )
+    assert recipient_key["public_key"] == '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}'
+    assert recipient_key["public_signing_key"] is None
 
 
 def test_conversation_view_exposes_historical_signing_keys_for_initial_message_verification(
@@ -1309,6 +1342,36 @@ def test_participant_can_append_encrypted_conversation_message(
     for encrypted_copy in messages[-1].encrypted_copies:
         assert "ECDH-P256-AES-GCM" in encrypted_copy.encrypted_payload
         assert plaintext not in encrypted_copy.encrypted_payload
+
+
+def test_signing_participant_can_append_reply_to_legacy_recipient(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_chat_key(
+        user,
+        '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}',
+        public_signing_key=_SENDER_PUBLIC_SIGNING_KEY,
+    )
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+
+    response = client.post(
+        url_for("append_conversation_message", public_id=conversation.public_id),
+        json={"encrypted_copies": _reply_copies_for(conversation, user, "legacy-recipient")},
+    )
+
+    assert response.status_code == 201
+    message = db.session.scalars(
+        db.select(ConversationMessage)
+        .where(ConversationMessage.conversation_id == conversation.id)
+        .order_by(ConversationMessage.id.desc())
+    ).first()
+    assert message is not None
+    assert message.sender_participant.user_id == user.id
+    assert len(message.encrypted_copies) == 2
 
 
 @patch("hushline.routes.message.send_email_to_user_recipients")
