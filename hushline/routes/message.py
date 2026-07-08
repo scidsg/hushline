@@ -108,6 +108,28 @@ def _conversation_active_participants(thread: Conversation) -> list[Conversation
     ]
 
 
+def _conversation_encryption_capable_participant_ids(thread: Conversation) -> set[str]:
+    return {
+        str(thread_participant.id)
+        for thread_participant in thread.participants
+        if (
+            thread_participant.deleted_at is None
+            and thread_participant.user
+            and thread_participant.user.active_chat_key
+            and thread_participant.user.chat_public_key
+        )
+    }
+
+
+def _participant_can_sign_replies(participant: ConversationParticipant) -> bool:
+    return bool(
+        participant.user
+        and participant.user.active_chat_key
+        and participant.user.chat_public_key
+        and participant.user.chat_public_signing_key
+    )
+
+
 def _locked_conversation_participants(thread: Conversation) -> list[ConversationParticipant]:
     return list(
         db.session.scalars(
@@ -670,7 +692,6 @@ def register_message_routes(app: Flask) -> None:
                 and thread_participant.user
                 and thread_participant.user.active_chat_key
                 and thread_participant.user.chat_public_key
-                and thread_participant.user.chat_public_signing_key
             )
         ]
         participant_signing_public_keys = [
@@ -696,9 +717,11 @@ def register_message_routes(app: Flask) -> None:
             )
         ]
         active_participants = _conversation_active_participants(thread)
-        can_compose = len(active_participants) == len(thread.participants) and len(
-            participant_public_keys
-        ) == len(thread.participants)
+        can_compose = (
+            len(active_participants) == len(thread.participants)
+            and len(participant_public_keys) == len(thread.participants)
+            and _participant_can_sign_replies(participant)
+        )
         conversation_message_form = ConversationMessageForm()
         delete_conversation_form = DeleteConversationForm()
 
@@ -774,24 +797,18 @@ def register_message_routes(app: Flask) -> None:
         if not isinstance(encrypted_copies, dict):
             return jsonify({"error": "Invalid encrypted message payload."}), 400
 
-        reply_capable_participant_ids = {
-            str(thread_participant.id)
-            for thread_participant in thread.participants
-            if (
-                thread_participant.deleted_at is None
-                and thread_participant.user
-                and thread_participant.user.active_chat_key
-                and thread_participant.user.chat_public_key
-                and thread_participant.user.chat_public_signing_key
-            )
-        }
+        encryption_capable_participant_ids = _conversation_encryption_capable_participant_ids(
+            thread
+        )
         active_participants = _conversation_active_participants(thread)
-        if len(active_participants) != len(thread.participants) or len(
-            reply_capable_participant_ids
-        ) != len(thread.participants):
+        if (
+            len(active_participants) != len(thread.participants)
+            or len(encryption_capable_participant_ids) != len(thread.participants)
+            or not _participant_can_sign_replies(participant)
+        ):
             return jsonify({"error": "Conversation replies are unavailable."}), 400
 
-        if set(encrypted_copies.keys()) != reply_capable_participant_ids:
+        if set(encrypted_copies.keys()) != encryption_capable_participant_ids:
             return jsonify({"error": "Invalid encrypted message payload."}), 400
 
         if not all(_is_chat_ciphertext_envelope(value) for value in encrypted_copies.values()):
