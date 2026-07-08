@@ -198,7 +198,9 @@ class DynamicMessageForm:
         def skip_invalid_choice(
             form: FlaskForm, field: RadioField | SelectField | MultiCheckboxField
         ) -> None:
-            field.errors = [error for error in field.errors if error != "Not a valid choice."]
+            field.errors = [
+                error for error in field.errors if "not a valid choice" not in error.lower()
+            ]
 
         # Add the fields to the form
         for i, field in enumerate(fields):
