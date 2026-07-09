@@ -133,23 +133,6 @@
       {% endfor %}
     </section>
 
-    {% if rotated_participant_keys %}
-      <div class="conversation-key-warning" role="status">
-        <p>
-          One or more participants are using rotated chat keys. Verify
-          fingerprints before sharing sensitive follow-up details.
-        </p>
-        <ul>
-          {% for rotated_chat_key in rotated_participant_keys %}
-            <li>
-              Key version {{ rotated_chat_key.key_version }}:
-              <code>{{ chat_key_fingerprint(rotated_chat_key.public_key) }}</code>
-            </li>
-          {% endfor %}
-        </ul>
-      </div>
-    {% endif %}
-
     <span
       class="conversation-secure-badge badge"
       role="img"

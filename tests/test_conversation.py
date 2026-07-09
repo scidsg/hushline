@@ -119,11 +119,12 @@ def _add_chat_key(
     public_key: str,
     *,
     public_signing_key: str | None = None,
+    key_version: int = 1,
 ) -> None:
     db.session.add(
         ChatKey(
             user=user,
-            key_version=1,
+            key_version=key_version,
             public_key=public_key,
             public_signing_key=public_signing_key,
             encrypted_private_key="wrapped-private-chat-key",
@@ -790,6 +791,37 @@ def test_conversation_view_allows_signing_sender_to_reply_to_legacy_recipient(
     )
     assert recipient_key["public_key"] == '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}'
     assert recipient_key["public_signing_key"] is None
+
+
+def test_conversation_view_flashes_rotated_key_warning_without_inline_key_list(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    _add_chat_key(
+        user,
+        '{"kty":"EC","crv":"P-256","x":"sender-rotated","y":"key"}',
+        public_signing_key=_SENDER_PUBLIC_SIGNING_KEY,
+        key_version=3,
+    )
+    _add_chat_key(
+        user2,
+        '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}',
+        public_signing_key=_RECIPIENT_PUBLIC_SIGNING_KEY,
+    )
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user2)
+
+    response = client.get(url_for("conversation", public_id=conversation.public_id))
+
+    assert response.status_code == 200
+    assert 'class="flash-messages"' in response.text
+    assert (
+        "One or more participants are using rotated chat keys. Verify "
+        "fingerprints before sharing sensitive follow-up details."
+    ) in response.text
+    assert "conversation-key-warning" not in response.text
+    assert "Key version 3:" not in response.text
 
 
 def test_conversation_view_exposes_historical_signing_keys_for_initial_message_verification(

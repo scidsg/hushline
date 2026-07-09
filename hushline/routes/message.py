@@ -706,16 +706,18 @@ def register_message_routes(app: Flask) -> None:
             for chat_key in thread_participant.user.chat_keys
             if chat_key.public_signing_key
         ]
-        rotated_participant_keys = [
-            thread_participant.user.active_chat_key
+        has_rotated_participant_keys = any(
+            thread_participant.deleted_at is None
+            and thread_participant.user
+            and thread_participant.user.active_chat_key
+            and thread_participant.user.active_chat_key.key_version > 1
             for thread_participant in thread.participants
-            if (
-                thread_participant.deleted_at is None
-                and thread_participant.user
-                and thread_participant.user.active_chat_key
-                and thread_participant.user.active_chat_key.key_version > 1
+        )
+        if has_rotated_participant_keys:
+            flash(
+                "One or more participants are using rotated chat keys. Verify "
+                "fingerprints before sharing sensitive follow-up details."
             )
-        ]
         active_participants = _conversation_active_participants(thread)
         can_compose = (
             len(active_participants) == len(thread.participants)
@@ -733,8 +735,6 @@ def register_message_routes(app: Flask) -> None:
             message_copy_payloads=message_copy_payloads,
             participant_public_keys=participant_public_keys,
             participant_signing_public_keys=participant_signing_public_keys,
-            rotated_participant_keys=rotated_participant_keys,
-            chat_key_fingerprint=chat_key_fingerprint,
             can_compose=can_compose,
             conversation_name=conversation_name or "Conversation",
             conversation_username=conversation_username,
