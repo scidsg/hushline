@@ -169,7 +169,9 @@ def validate_chat_key_payload(payload: Any, *, current_user_id: int) -> tuple[di
         return {}, "public_key is required."
     if not _valid_public_jwk(public_key, expected_use="agreement"):
         return {}, "public_key must be a P-256 ECDH public JWK."
-    if public_signing_key and not _valid_public_jwk(public_signing_key, expected_use="signing"):
+    if not public_signing_key:
+        return {}, "public_signing_key is required."
+    if not _valid_public_jwk(public_signing_key, expected_use="signing"):
         return {}, "public_signing_key must be a P-256 ECDSA public JWK."
     if not encrypted_private_key:
         return {}, "encrypted_private_key is required."

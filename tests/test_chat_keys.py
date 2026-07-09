@@ -90,6 +90,7 @@ def test_forbidden_secret_field_detection_recurses_through_nested_lists() -> Non
             "public_signing_key must be a P-256 ECDSA public JWK.",
         ),
         ({"public_key": ""}, "public_key is required."),
+        ({"public_signing_key": ""}, "public_signing_key is required."),
         ({"encrypted_private_key": ""}, "encrypted_private_key is required."),
         ({"kdf_algorithm": ""}, "kdf_algorithm is required."),
         ({"kdf_salt": ""}, "kdf_salt is required."),
@@ -315,6 +316,18 @@ def test_chat_key_payload_rejects_plaintext_private_key_material(
 
     assert response.status_code == 400
     assert "Plaintext chat key material is not accepted." in response.text
+    assert db.session.scalars(db.select(ChatKey)).all() == []
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_chat_key_post_requires_signing_public_key(client: FlaskClient) -> None:
+    payload = _chat_key_payload()
+    payload.pop("public_signing_key")
+
+    response = client.post(url_for("settings.chat_key"), json=payload)
+
+    assert response.status_code == 400
+    assert "public_signing_key is required." in response.text
     assert db.session.scalars(db.select(ChatKey)).all() == []
 
 
@@ -598,6 +611,15 @@ def test_chat_key_lifecycle_js_exposes_unlock_rewrap_and_cleanup() -> None:
     assert 'document.visibilityState === "visible"' in lifecycle_source
     assert "document.body?.dataset.authenticated" in lifecycle_source
     assert "Log out and log back in to unlock chat" not in lifecycle_js
+
+
+def test_settings_chat_key_rotation_uses_signing_capable_provisioner() -> None:
+    settings_js = (ROOT / "assets/js/settings.js").read_text(encoding="utf-8")
+
+    assert "HushLineChatKeys?.provisionChatKey" in settings_js
+    assert "HushLineChatKeys.provisionChatKey" in settings_js
+    assert "This browser cannot create a chat key." not in settings_js
+    assert "bytesToBase64" not in settings_js
 
 
 @pytest.mark.usefixtures("_pgp_user")

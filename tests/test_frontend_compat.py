@@ -198,12 +198,13 @@ def test_chat_key_lifecycle_upgrades_legacy_keys_with_signing_material() -> None
         assert "if (!publicSigningKey || !privateKeyBundle.signing_private_jwk)" in lifecycle_js
 
 
-def test_settings_chat_key_provisioning_generates_decryptable_ecdh_key() -> None:
+def test_settings_chat_key_provisioning_uses_shared_lifecycle_provisioner() -> None:
     js = (ROOT / "assets/js/settings.js").read_text(encoding="utf-8")
 
-    assert 'name: "ECDH"' in js
-    assert '["deriveKey"]' in js
-    assert '["deriveBits"]' not in js
+    assert "HushLineChatKeys?.provisionChatKey" in js
+    assert "HushLineChatKeys.provisionChatKey" in js
+    assert 'name: "ECDH"' not in js
+    assert "bytesToBase64" not in js
     assert 'form.dataset.chatKeyAction === "rotate"' in js
     assert "confirm(form.dataset.confirmMessage)" in js
     assert "Rotating chat key..." in js
