@@ -538,6 +538,9 @@ def test_change_password_rewraps_active_chat_key(
     data["rewrapped_chat_key"] = json.dumps(
         {
             "public_key": '{"kty":"EC","crv":"P-256","x":"public-chat","y":"key"}',
+            "public_signing_key": (
+                '{"kty":"EC","crv":"P-256","x":"signing-public-chat","y":"signing-key"}'
+            ),
             "encrypted_private_key": (
                 '{"algorithm":"AES-GCM","iv":"bmV3LWl2LTEyMzQ1","ciphertext":"cmV3cmFwcGVk"}'
             ),
@@ -567,6 +570,9 @@ def test_change_password_rewraps_active_chat_key(
     assert keys[0].recovery_state == "rewrapped"
     assert keys[1].disabled_at is None
     assert keys[1].public_key == '{"kty":"EC","crv":"P-256","x":"public-chat","y":"key"}'
+    assert keys[1].public_signing_key == (
+        '{"kty":"EC","crv":"P-256","x":"signing-public-chat","y":"signing-key"}'
+    )
     assert keys[1].encrypted_private_key == (
         '{"algorithm":"AES-GCM","iv":"bmV3LWl2LTEyMzQ1","ciphertext":"cmV3cmFwcGVk"}'
     )
