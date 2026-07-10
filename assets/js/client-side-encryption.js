@@ -332,9 +332,7 @@ function rememberedPrivateKeyBundleForChatKey(chatKey) {
       stored.public_key !== chatKey.public_key ||
       (stored.public_signing_key || null) !==
         (chatKey.public_signing_key || null) ||
-      !(stored.private_key_bundle || stored.private_jwk) ||
-      !stored.expires_at ||
-      Date.now() > Number(stored.expires_at)
+      !(stored.private_key_bundle || stored.private_jwk)
     ) {
       return null;
     }

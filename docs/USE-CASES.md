@@ -177,6 +177,8 @@ Two-way conversations are for logged-in Hush Line account holders who submit to 
 
 Hush Line chat keys are browser-generated in-app conversation keys. They are separate from PGP keys used for message intake, exports, and notification email compatibility. Proton Key Lookup imports public PGP keys only; Hush Line must not ask users to export, paste, or upload Proton Mail private keys or any other external private key for account conversations.
 
+An unlocked Hush Line chat key remains available only in the authenticated browser tab's session storage so active conversations and page refreshes continue to work without another unlock. Hush Line clears that browser key material on logout, password reset, account deletion, or another explicit authentication cleanup; a changed server chat-key session identifier also prevents a stored key from being restored.
+
 New account conversation replies require all participants to have active chat keys with public encryption keys and public signing keys. If any participant only has legacy chat-key material, the conversation remains readable where possible, but composing new replies is unavailable until all participants have signing-capable chat keys.
 
 Conversation plaintext is not stored by the server. Conversation messages are stored as per-participant encrypted payloads, and only conversation participants can open the route or append replies. Administrators may manage accounts and trust states, but admin status alone does not grant conversation access.
