@@ -9,9 +9,6 @@
   const legacyBrowserStorageKey = "hushline:chat-private-jwk:browser-session";
   const crossTabChannelName = "hushline:chat-key-session";
   const crossTabRequestTimeoutMs = 750;
-  const unlockedKeyActiveRenewalMs = 15 * 60 * 1000;
-  const unlockedKeyMaxAgeMs = 2 * 60 * 60 * 1000;
-  const unlockedKeyIdleTimeoutMs = 5 * 60 * 1000;
   const conversationPollMinIntervalMs = 3000;
   const tabId = window.crypto?.randomUUID
     ? window.crypto.randomUUID()
@@ -20,10 +17,6 @@
   let crossTabSharingBound = false;
   let unlockedChatPrivateKey = null;
   let unlockedChatSigningPrivateKey = null;
-  let unlockedChatKeyExpiryTimer = null;
-  let unlockedChatKeyCreatedAt = null;
-  let unlockedChatKeyExpiresAt = null;
-  let unlockedChatKeyLastUsedAt = null;
   let pendingLoginPassword = null;
   const state = {
     status: "empty",
@@ -81,51 +74,6 @@
 
   function chatKeySessionId(sourceDocument = document) {
     return sourceDocument.body?.dataset.chatKeySessionId || "";
-  }
-
-  function clearUnlockedKeyExpiryTimer() {
-    if (unlockedChatKeyExpiryTimer) {
-      window.clearTimeout(unlockedChatKeyExpiryTimer);
-      unlockedChatKeyExpiryTimer = null;
-    }
-  }
-
-  function unlockedKeyAbsoluteExpiresAt(createdAt) {
-    return createdAt + unlockedKeyMaxAgeMs;
-  }
-
-  function refreshedUnlockedKeyExpiresAt(createdAt, now = Date.now()) {
-    return Math.min(
-      now + unlockedKeyActiveRenewalMs,
-      unlockedKeyAbsoluteExpiresAt(createdAt),
-    );
-  }
-
-  function storedUnlockedKeyCreatedAt(stored) {
-    const createdAt = Number(stored?.created_at);
-    if (Number.isFinite(createdAt)) {
-      return createdAt;
-    }
-    return Number(stored?.expires_at) - unlockedKeyActiveRenewalMs;
-  }
-
-  function scheduleUnlockedKeyExpiry(expiresAt, lastUsedAt) {
-    clearUnlockedKeyExpiryTimer();
-    const now = Date.now();
-    const normalizedExpiresAt = Number(expiresAt);
-    const normalizedLastUsedAt = Number(lastUsedAt);
-    unlockedChatKeyExpiresAt = normalizedExpiresAt;
-    unlockedChatKeyLastUsedAt = normalizedLastUsedAt;
-    const idleExpiresAt = normalizedLastUsedAt + unlockedKeyIdleTimeoutMs;
-    const nextExpiry = Math.min(normalizedExpiresAt, idleExpiresAt);
-    if (!Number.isFinite(nextExpiry) || nextExpiry <= now) {
-      clearChatKeyMaterial();
-      return;
-    }
-    unlockedChatKeyExpiryTimer = window.setTimeout(
-      clearChatKeyMaterial,
-      nextExpiry - now,
-    );
   }
 
   async function deriveWrappingKey(password, salt, kdfParams, usages) {
@@ -216,22 +164,15 @@
     chatKey,
     sourceDocument = document,
   ) {
-    const now = Date.now();
-    const expiresAt = refreshedUnlockedKeyExpiresAt(now, now);
     const sessionId = chatKeySessionId(sourceDocument);
-    unlockedChatKeyCreatedAt = now;
     const storedValue = JSON.stringify({
       key_version: chatKey.key_version,
       public_key: chatKey.public_key,
       public_signing_key: chatKey.public_signing_key || null,
       private_key_bundle: privateKeyBundle,
-      created_at: now,
-      expires_at: expiresAt,
-      last_used_at: now,
       session_id: sessionId,
     });
 
-    scheduleUnlockedKeyExpiry(expiresAt, now);
     try {
       sessionStorage.setItem(sessionStorageKey, storedValue);
     } catch (error) {
@@ -259,38 +200,16 @@
 
     try {
       const stored = JSON.parse(storedValue);
-      const now = Date.now();
-      const createdAt = storedUnlockedKeyCreatedAt(stored);
-      const expiresAt = Number(stored.expires_at);
-      const lastUsedAt = Number(stored.last_used_at);
-      const absoluteExpiresAt = unlockedKeyAbsoluteExpiresAt(createdAt);
       if (
         stored?.key_version !== chatKey.key_version ||
         stored.public_key !== chatKey.public_key ||
         (stored.public_signing_key || null) !==
           (chatKey.public_signing_key || null) ||
         !(stored.private_key_bundle || stored.private_jwk) ||
-        !Number.isFinite(createdAt) ||
-        createdAt > now ||
-        !Number.isFinite(expiresAt) ||
-        expiresAt > absoluteExpiresAt ||
-        expiresAt > now + unlockedKeyActiveRenewalMs ||
-        !Number.isFinite(lastUsedAt) ||
         stored.session_id !== chatKeySessionId()
       ) {
         return null;
       }
-      if (now > expiresAt || now - lastUsedAt > unlockedKeyIdleTimeoutMs) {
-        forgetUnlockedPrivateJwk();
-        return null;
-      }
-      const refreshedExpiresAt = refreshedUnlockedKeyExpiresAt(createdAt, now);
-      unlockedChatKeyCreatedAt = createdAt;
-      stored.created_at = createdAt;
-      stored.expires_at = refreshedExpiresAt;
-      stored.last_used_at = now;
-      sessionStorage.setItem(sessionStorageKey, JSON.stringify(stored));
-      scheduleUnlockedKeyExpiry(refreshedExpiresAt, now);
       return normalizePrivateKeyBundle(
         stored.private_key_bundle || stored.private_jwk,
       );
@@ -315,62 +234,7 @@
   }
 
   function touchUnlockedChatKeyUse() {
-    if (!unlockedChatPrivateKey && !unlockedChatSigningPrivateKey) {
-      return false;
-    }
-
-    const now = Date.now();
-    let createdAt = unlockedChatKeyCreatedAt;
-    if (
-      !Number.isFinite(unlockedChatKeyExpiresAt) ||
-      !Number.isFinite(unlockedChatKeyLastUsedAt) ||
-      now > unlockedChatKeyExpiresAt ||
-      now - unlockedChatKeyLastUsedAt > unlockedKeyIdleTimeoutMs
-    ) {
-      clearChatKeyMaterial();
-      return false;
-    }
-
-    try {
-      const stored = JSON.parse(
-        sessionStorage.getItem(sessionStorageKey) || "null",
-      );
-      if (stored) {
-        createdAt = storedUnlockedKeyCreatedAt(stored);
-        if (
-          !Number.isFinite(createdAt) ||
-          createdAt > now ||
-          unlockedKeyAbsoluteExpiresAt(createdAt) < now ||
-          Number(stored.expires_at) !== unlockedChatKeyExpiresAt ||
-          stored.session_id !== chatKeySessionId()
-        ) {
-          clearChatKeyMaterial();
-          return false;
-        }
-        const refreshedExpiresAt = refreshedUnlockedKeyExpiresAt(
-          createdAt,
-          now,
-        );
-        unlockedChatKeyCreatedAt = createdAt;
-        stored.created_at = createdAt;
-        stored.expires_at = refreshedExpiresAt;
-        stored.last_used_at = now;
-        sessionStorage.setItem(sessionStorageKey, JSON.stringify(stored));
-        scheduleUnlockedKeyExpiry(refreshedExpiresAt, now);
-        return true;
-      }
-    } catch (error) {
-      // The in-memory key remains bounded by the active tab expiry timer.
-    }
-
-    if (!Number.isFinite(createdAt)) {
-      clearChatKeyMaterial();
-      return false;
-    }
-    const refreshedExpiresAt = refreshedUnlockedKeyExpiresAt(createdAt, now);
-    unlockedChatKeyCreatedAt = createdAt;
-    scheduleUnlockedKeyExpiry(refreshedExpiresAt, now);
-    return true;
+    return Boolean(unlockedChatPrivateKey || unlockedChatSigningPrivateKey);
   }
 
   async function restoreUnlockedChatKeyFromBundle(
@@ -1111,12 +975,8 @@
         state.status === "unlocked",
     );
     forgetUnlockedPrivateJwk();
-    clearUnlockedKeyExpiryTimer();
     unlockedChatPrivateKey = null;
     unlockedChatSigningPrivateKey = null;
-    unlockedChatKeyCreatedAt = null;
-    unlockedChatKeyExpiresAt = null;
-    unlockedChatKeyLastUsedAt = null;
     state.status = "empty";
     state.keyVersion = null;
     state.lastError = null;

@@ -140,6 +140,8 @@ def test_client_side_encryption_prepares_chat_conversation_copies() -> None:
     assert "await signChatEnvelope(envelope, signingKey)" in js
     assert "signingPrivateKeyForChatKey" in js
     assert 'const sessionStorageKey = "hushline:chat-private-jwk";' in js
+    assert "stored.expires_at" not in js
+    assert "Date.now() > Number(stored.expires_at)" not in js
     assert 'getChatPublicKey("recipientChatPublicKey")' in js
     assert 'getChatKeyDescriptor("recipientChatKey")' in js
     assert "!recipientChatKey?.public_signing_key" in js
@@ -239,27 +241,15 @@ def test_chat_key_lifecycle_restores_unlocked_key_for_authenticated_tab_session(
     assert 'const sessionStorageKey = "hushline:chat-private-jwk";' in js
     assert 'const legacyBrowserStorageKey = "hushline:chat-private-jwk:browser-session";' in js
     assert "browserStorageMaxAgeMs" not in js
-    assert "const unlockedKeyActiveRenewalMs = 15 * 60 * 1000;" in js
-    assert "const unlockedKeyMaxAgeMs = 2 * 60 * 60 * 1000;" in js
-    assert "const unlockedKeyIdleTimeoutMs = 5 * 60 * 1000;" in js
-    assert "function unlockedKeyAbsoluteExpiresAt(createdAt)" in js
-    assert "function refreshedUnlockedKeyExpiresAt(createdAt, now = Date.now())" in js
-    assert "function storedUnlockedKeyCreatedAt(stored)" in js
-    assert "unlockedKeyAbsoluteExpiresAt(createdAt)" in js
-    assert "return Number(stored?.expires_at) - unlockedKeyActiveRenewalMs;" in js
-    assert "now + unlockedKeyActiveRenewalMs" in js
-    assert "let unlockedChatKeyCreatedAt = null;" in js
-    assert "created_at: now" in js
-    assert "expires_at: expiresAt" in js
-    assert "stored.created_at = createdAt;" in js
-    assert "unlockedChatKeyCreatedAt = createdAt;" in js
-    assert "unlockedChatKeyCreatedAt = null;" in js
-    assert "stored.expires_at = refreshedExpiresAt;" in js
-    assert "last_used_at: now" in js
-    assert "scheduleUnlockedKeyExpiry(refreshedExpiresAt, now);" in js
-    assert "now - lastUsedAt > unlockedKeyIdleTimeoutMs" in js
-    assert "expiresAt > absoluteExpiresAt" in js
-    assert "expiresAt > now + unlockedKeyActiveRenewalMs" in js
+    assert "unlockedKeyActiveRenewalMs" not in js
+    assert "unlockedKeyMaxAgeMs" not in js
+    assert "unlockedKeyIdleTimeoutMs" not in js
+    assert "scheduleUnlockedKeyExpiry" not in js
+    assert "expires_at" not in js
+    assert "last_used_at" not in js
+    assert "unlockedKeyIdleTimeoutMs" not in static_js
+    assert "scheduleUnlockedKeyExpiry" not in static_js
+    assert "expires_at" not in static_js
     assert 'const crossTabChannelName = "hushline:chat-key-session";' in js
     assert "new BroadcastChannel(crossTabChannelName)" in js
     assert "function chatKeySessionId(sourceDocument = document)" in js
@@ -277,6 +267,7 @@ def test_chat_key_lifecycle_restores_unlocked_key_for_authenticated_tab_session(
     assert "restoreUnlockedChatKeyFromOtherTab" in js
     assert "async function signingPrivateKeyForChatKey(chatKey)" in js
     assert "function touchUnlockedChatKeyUse()" in js
+    assert "return Boolean(unlockedChatPrivateKey || unlockedChatSigningPrivateKey);" in js
     assert "if (!touchUnlockedChatKeyUse())" in js
     assert "function updateConversationLockedAfterKeyClear()" in js
     assert "setConversationComposeEnabled(false);" in js
