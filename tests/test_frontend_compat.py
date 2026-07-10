@@ -235,9 +235,11 @@ def test_chat_key_lifecycle_restores_unlocked_key_for_authenticated_tab_session(
     assert "browserStorageMaxAgeMs" not in js
     assert "const unlockedKeyMaxAgeMs = 15 * 60 * 1000;" in js
     assert "const unlockedKeyIdleTimeoutMs = 5 * 60 * 1000;" in js
+    assert "function refreshedUnlockedKeyExpiresAt(now = Date.now())" in js
     assert "expires_at: expiresAt" in js
+    assert "stored.expires_at = refreshedExpiresAt;" in js
     assert "last_used_at: now" in js
-    assert "scheduleUnlockedKeyExpiry(expiresAt, now);" in js
+    assert "scheduleUnlockedKeyExpiry(refreshedExpiresAt, now);" in js
     assert "now - lastUsedAt > unlockedKeyIdleTimeoutMs" in js
     assert "expiresAt > now + unlockedKeyMaxAgeMs" in js
     assert 'const crossTabChannelName = "hushline:chat-key-session";' in js
