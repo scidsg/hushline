@@ -84,6 +84,10 @@
     }
   }
 
+  function refreshedUnlockedKeyExpiresAt(now = Date.now()) {
+    return now + unlockedKeyMaxAgeMs;
+  }
+
   function scheduleUnlockedKeyExpiry(expiresAt, lastUsedAt) {
     clearUnlockedKeyExpiryTimer();
     const now = Date.now();
@@ -192,7 +196,7 @@
     sourceDocument = document,
   ) {
     const now = Date.now();
-    const expiresAt = now + unlockedKeyMaxAgeMs;
+    const expiresAt = refreshedUnlockedKeyExpiresAt(now);
     const sessionId = chatKeySessionId(sourceDocument);
     const storedValue = JSON.stringify({
       key_version: chatKey.key_version,
@@ -252,9 +256,11 @@
         forgetUnlockedPrivateJwk();
         return null;
       }
+      const refreshedExpiresAt = refreshedUnlockedKeyExpiresAt(now);
+      stored.expires_at = refreshedExpiresAt;
       stored.last_used_at = now;
       sessionStorage.setItem(sessionStorageKey, JSON.stringify(stored));
-      scheduleUnlockedKeyExpiry(expiresAt, now);
+      scheduleUnlockedKeyExpiry(refreshedExpiresAt, now);
       return normalizePrivateKeyBundle(
         stored.private_key_bundle || stored.private_jwk,
       );
@@ -294,6 +300,7 @@
       return false;
     }
 
+    const refreshedExpiresAt = refreshedUnlockedKeyExpiresAt(now);
     try {
       const stored = JSON.parse(
         sessionStorage.getItem(sessionStorageKey) || "null",
@@ -306,14 +313,15 @@
           clearChatKeyMaterial();
           return false;
         }
+        stored.expires_at = refreshedExpiresAt;
         stored.last_used_at = now;
         sessionStorage.setItem(sessionStorageKey, JSON.stringify(stored));
       }
     } catch (error) {
-      // The in-memory key remains bounded by its absolute expiry.
+      // The in-memory key remains bounded by the active tab expiry timer.
     }
 
-    scheduleUnlockedKeyExpiry(unlockedChatKeyExpiresAt, now);
+    scheduleUnlockedKeyExpiry(refreshedExpiresAt, now);
     return true;
   }
 
@@ -943,6 +951,7 @@
   async function upgradeChatKeySigningCapability(
     chatKey,
     password,
+    chatKeyUrl,
     sourceDocument = document,
   ) {
     if (!chatKey || chatKey.public_signing_key) {
@@ -1016,7 +1025,12 @@
         sourceDocument,
       );
       if (unlocked && !chatKey.public_signing_key) {
-        await upgradeChatKeySigningCapability(chatKey, password, sourceDocument);
+        await upgradeChatKeySigningCapability(
+          chatKey,
+          password,
+          chatKeyUrl,
+          sourceDocument,
+        );
       }
       return unlocked;
     }

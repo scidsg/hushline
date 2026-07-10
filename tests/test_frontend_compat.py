@@ -196,6 +196,7 @@ def test_chat_key_lifecycle_upgrades_legacy_keys_with_signing_material() -> None
         assert "signing_private_jwk: signingKeyMaterial.signingPrivateJwk" in lifecycle_js
         assert "if (unlocked && !chatKey.public_signing_key)" in lifecycle_js
         assert "await upgradeChatKeySigningCapability(" in lifecycle_js
+        assert "chatKeyUrl,\n          sourceDocument," in lifecycle_js
         assert "return unlocked;" in lifecycle_js
         assert "catch (error) {\n          return unlocked;" not in lifecycle_js
         assert "if (!publicSigningKey || !privateKeyBundle.signing_private_jwk)" in lifecycle_js
@@ -234,9 +235,11 @@ def test_chat_key_lifecycle_restores_unlocked_key_for_authenticated_tab_session(
     assert "browserStorageMaxAgeMs" not in js
     assert "const unlockedKeyMaxAgeMs = 15 * 60 * 1000;" in js
     assert "const unlockedKeyIdleTimeoutMs = 5 * 60 * 1000;" in js
+    assert "function refreshedUnlockedKeyExpiresAt(now = Date.now())" in js
     assert "expires_at: expiresAt" in js
+    assert "stored.expires_at = refreshedExpiresAt;" in js
     assert "last_used_at: now" in js
-    assert "scheduleUnlockedKeyExpiry(expiresAt, now);" in js
+    assert "scheduleUnlockedKeyExpiry(refreshedExpiresAt, now);" in js
     assert "now - lastUsedAt > unlockedKeyIdleTimeoutMs" in js
     assert "expiresAt > now + unlockedKeyMaxAgeMs" in js
     assert 'const crossTabChannelName = "hushline:chat-key-session";' in js
