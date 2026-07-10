@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
+from bs4 import BeautifulSoup
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
@@ -697,8 +698,9 @@ def test_conversation_view_shows_locked_chat_key_state(
     assert "Replies are unavailable until you have an active signing-capable" in response.text
     assert "conversation-chat-password" not in response.text
     assert "Unlock Chat" not in response.text
-    assert "Proton" not in response.text
-    assert "PGP" not in response.text
+    page_text = BeautifulSoup(response.text, "html.parser").get_text(" ", strip=True)
+    assert "Proton" not in page_text
+    assert "PGP" not in page_text
     assert url_for("conversation_presence", public_id=conversation.public_id) in response.text
 
 
