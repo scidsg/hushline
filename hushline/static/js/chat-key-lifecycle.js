@@ -1020,15 +1020,7 @@
         sourceDocument,
       );
       if (unlocked && !chatKey.public_signing_key) {
-        try {
-          await upgradeChatKeySigningCapability(
-            chatKey,
-            password,
-            sourceDocument,
-          );
-        } catch (error) {
-          return unlocked;
-        }
+        await upgradeChatKeySigningCapability(chatKey, password, sourceDocument);
       }
       return unlocked;
     }

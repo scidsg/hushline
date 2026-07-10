@@ -452,6 +452,54 @@ def test_logged_in_profile_submit_message_creates_conversation_for_distinct_reci
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_logged_in_profile_submit_to_legacy_chat_recipient_uses_pgp_tip(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    _set_pgp_key(user2)
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(
+        user2,
+        '{"kty":"EC","crv":"P-256","x":"legacy-recipient","y":"key"}',
+        public_signing_key=None,
+    )
+    assert user2.active_chat_key is not None
+    user2.active_chat_key.public_signing_key = None
+    db.session.commit()
+    submission_data = get_profile_submission_data(client, user2.primary_username.username)
+
+    response = client.post(
+        url_for("profile", username=user2.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            "encrypted_conversation_copies": json.dumps(
+                _initial_conversation_copies_for(
+                    sender=user,
+                    recipient=user2,
+                    nonce=submission_data["owner_guard_nonce"],
+                )
+            ),
+            **submission_data,
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "Message submitted successfully." in response.text
+    assert "/conversation/" not in response.text
+    message = db.session.scalars(
+        db.select(Message).filter_by(username_id=user2.primary_username.id)
+    ).one()
+    assert message.conversation is None
+    assert db.session.scalars(db.select(Conversation)).all() == []
+    assert db.session.scalars(db.select(ConversationMessageCopy)).all() == []
+    assert all(
+        field_value.value != "Stored in encrypted conversation."
+        for field_value in message.field_values
+    )
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_logged_in_profile_submit_without_recipient_pgp_uses_chat_only_conversation(
     client: FlaskClient, user: User, user2: User
 ) -> None:
@@ -624,7 +672,9 @@ def test_authenticated_legacy_chat_only_profile_omits_pending_activation_tip_cla
     assert banner.get_text(" ", strip=True) == "⏳ Two-way conversations pending activation."
     assert "Submit a tip below" not in banner.get_text(" ", strip=True)
     assert 'id="messageForm"' in response.text
-    assert "pgp-disabled-overlay" not in response.text
+    assert 'disabled="disabled"' in response.text
+    assert "pgp-disabled-overlay" in response.text
+    assert "Sending messages is disabled" in response.text
 
 
 def test_anonymous_profile_without_chat_key_hides_login_conversation_prompt(

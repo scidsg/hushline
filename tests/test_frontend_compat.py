@@ -142,6 +142,7 @@ def test_client_side_encryption_prepares_chat_conversation_copies() -> None:
     assert 'const sessionStorageKey = "hushline:chat-private-jwk";' in js
     assert 'getChatPublicKey("recipientChatPublicKey")' in js
     assert 'getChatKeyDescriptor("recipientChatKey")' in js
+    assert "!recipientChatKey?.public_signing_key" in js
     assert 'getChatKeyDescriptor("senderChatKey")' in js
     assert "recipient: await encryptForChatPublicKey(" in js
     assert "encryptedCopies.sender = await encryptForChatPublicKey(" in js
@@ -195,6 +196,8 @@ def test_chat_key_lifecycle_upgrades_legacy_keys_with_signing_material() -> None
         assert "signing_private_jwk: signingKeyMaterial.signingPrivateJwk" in lifecycle_js
         assert "if (unlocked && !chatKey.public_signing_key)" in lifecycle_js
         assert "await upgradeChatKeySigningCapability(" in lifecycle_js
+        assert "return unlocked;" in lifecycle_js
+        assert "catch (error) {\n          return unlocked;" not in lifecycle_js
         assert "if (!publicSigningKey || !privateKeyBundle.signing_private_jwk)" in lifecycle_js
 
 
