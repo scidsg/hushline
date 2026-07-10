@@ -25,6 +25,9 @@ from hushline.model import (
 from hushline.routes.common import valid_username
 
 PASSWORD_MAX_LENGTH = 128
+ENCRYPTED_CHOICE_MAX_LENGTH = 10240
+PGP_MESSAGE_BEGIN = "-----BEGIN PGP MESSAGE-----"
+PGP_MESSAGE_END = "-----END PGP MESSAGE-----"
 
 
 # https://wtforms.readthedocs.io/en/3.2.x/specific_problems/#specialty-field-tricks
@@ -194,13 +197,42 @@ class DynamicMessageForm:
 
         self.F = F
 
-        # Custom validator to skip choice validation while keeping other validations
+        def is_pgp_message(value: str) -> bool:
+            stripped_value = value.strip()
+            return (
+                len(value) <= ENCRYPTED_CHOICE_MAX_LENGTH
+                and stripped_value.startswith(PGP_MESSAGE_BEGIN)
+                and stripped_value.endswith(PGP_MESSAGE_END)
+            )
+
+        def submitted_values_are_valid_encrypted_choices(
+            field: RadioField | SelectField | MultiCheckboxField,
+        ) -> bool:
+            if field.data in (None, ""):
+                return True
+
+            submitted_values = field.data if isinstance(field.data, list) else [field.data]
+            choice_values = {
+                str(choice[0] if isinstance(choice, (list, tuple)) else choice)
+                for choice in field.choices
+            }
+
+            return all(
+                value in choice_values or (isinstance(value, str) and is_pgp_message(value))
+                for value in submitted_values
+            )
+
+        # Custom validator to skip choice validation for client-side encrypted PGP
+        # payloads while keeping other validations. Do not suppress invalid choice
+        # errors for arbitrary invalid values, because MultiCheckboxField length
+        # validation applies to list cardinality rather than each submitted value.
         def skip_invalid_choice(
             form: FlaskForm, field: RadioField | SelectField | MultiCheckboxField
         ) -> None:
-            field.errors = [
-                error for error in field.errors if "not a valid choice" not in error.lower()
-            ]
+            if submitted_values_are_valid_encrypted_choices(field):
+                field.errors = [
+                    error for error in field.errors if "not a valid choice" not in error.lower()
+                ]
 
         # Add the fields to the form
         for i, field in enumerate(fields):
