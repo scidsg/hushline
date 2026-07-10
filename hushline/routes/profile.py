@@ -276,8 +276,7 @@ def register_profile_routes(app: Flask) -> None:
             sender
             and sender.id != uname.user_id
             and _chat_key_can_sign(sender)
-            and uname.user.active_chat_key
-            and uname.user.chat_public_key
+            and _chat_key_can_sign(uname.user)
         )
 
     def _initial_conversation_nonce_hash(nonce: str) -> str:
@@ -389,7 +388,7 @@ def register_profile_routes(app: Flask) -> None:
             return False
         if not _chat_key_can_sign(sender):
             return False
-        if not recipient.active_chat_key or not recipient.chat_public_key:
+        if not _chat_key_can_sign(recipient):
             return False
 
         if set(encrypted_conversation_copies.keys()) != {"recipient", "sender"}:
@@ -416,7 +415,7 @@ def register_profile_routes(app: Flask) -> None:
         initial_conversation_nonce: str,
         require_known_nonce: bool = True,
     ) -> bool:
-        if sender is None or sender.id == recipient.id or not recipient.chat_public_key:
+        if sender is None or sender.id == recipient.id or not _chat_key_can_sign(recipient):
             return False
         return _initial_conversation_copies_are_bound(
             sender=sender,
@@ -446,7 +445,7 @@ def register_profile_routes(app: Flask) -> None:
         if sender.id == recipient.id:
             return None
 
-        if not recipient.chat_public_key:
+        if not _chat_key_can_sign(recipient):
             return None
         if not _initial_conversation_copies_are_bound(
             sender=sender,

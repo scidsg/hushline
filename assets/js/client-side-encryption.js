@@ -456,6 +456,7 @@ async function buildEncryptedConversationCopies(messageFields) {
   )?.value;
   if (
     !recipientChatKey?.public_key ||
+    !recipientChatKey?.public_signing_key ||
     !senderChatKey?.public_key ||
     !senderChatKey?.public_signing_key ||
     !signingKey ||

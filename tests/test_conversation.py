@@ -758,7 +758,7 @@ def test_conversation_view_disables_composer_when_participant_key_cannot_sign(
     ]
 
 
-def test_conversation_view_allows_signing_sender_to_reply_to_legacy_recipient(
+def test_conversation_view_exposes_legacy_recipient_key_without_enabling_replies(
     client: FlaskClient,
     user: User,
     user2: User,
@@ -775,8 +775,8 @@ def test_conversation_view_allows_signing_sender_to_reply_to_legacy_recipient(
     response = client.get(url_for("conversation", public_id=conversation.public_id))
 
     assert response.status_code == 200
-    assert 'data-can-compose="true"' in response.text
-    assert "conversation-compose-unavailable" not in response.text
+    assert 'data-can-compose="false"' in response.text
+    assert "active signing-capable" in response.text
     participant_keys_match = re.search(
         r'<script id="conversationParticipantPublicKeys" type="application/json">\s*'
         r"([\s\S]*?)</script>",
@@ -1376,7 +1376,7 @@ def test_participant_can_append_encrypted_conversation_message(
         assert plaintext not in encrypted_copy.encrypted_payload
 
 
-def test_signing_participant_can_append_reply_to_legacy_recipient(
+def test_signing_participant_cannot_append_reply_to_legacy_recipient(
     client: FlaskClient,
     user: User,
     user2: User,
@@ -1389,21 +1389,27 @@ def test_signing_participant_can_append_reply_to_legacy_recipient(
     _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
     conversation = _make_conversation(user, user2)
     _authenticate_as(client, user)
+    message_count_before = db.session.scalar(
+        db.select(db.func.count())
+        .select_from(ConversationMessage)
+        .where(ConversationMessage.conversation_id == conversation.id)
+    )
 
     response = client.post(
         url_for("append_conversation_message", public_id=conversation.public_id),
         json={"encrypted_copies": _reply_copies_for(conversation, user, "legacy-recipient")},
     )
 
-    assert response.status_code == 201
-    message = db.session.scalars(
-        db.select(ConversationMessage)
-        .where(ConversationMessage.conversation_id == conversation.id)
-        .order_by(ConversationMessage.id.desc())
-    ).first()
-    assert message is not None
-    assert message.sender_participant.user_id == user.id
-    assert len(message.encrypted_copies) == 2
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Conversation replies are unavailable."}
+    assert (
+        db.session.scalar(
+            db.select(db.func.count())
+            .select_from(ConversationMessage)
+            .where(ConversationMessage.conversation_id == conversation.id)
+        )
+        == message_count_before
+    )
 
 
 @patch("hushline.routes.message.send_email_to_user_recipients")

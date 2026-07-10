@@ -108,7 +108,7 @@ def _conversation_active_participants(thread: Conversation) -> list[Conversation
     ]
 
 
-def _conversation_encryption_capable_participant_ids(thread: Conversation) -> set[str]:
+def _conversation_reply_capable_participant_ids(thread: Conversation) -> set[str]:
     return {
         str(thread_participant.id)
         for thread_participant in thread.participants
@@ -117,6 +117,7 @@ def _conversation_encryption_capable_participant_ids(thread: Conversation) -> se
             and thread_participant.user
             and thread_participant.user.active_chat_key
             and thread_participant.user.chat_public_key
+            and thread_participant.user.chat_public_signing_key
         )
     }
 
@@ -719,9 +720,11 @@ def register_message_routes(app: Flask) -> None:
                 "fingerprints before sharing sensitive follow-up details."
             )
         active_participants = _conversation_active_participants(thread)
+        reply_capable_participant_ids = _conversation_reply_capable_participant_ids(thread)
         can_compose = (
             len(active_participants) == len(thread.participants)
             and len(participant_public_keys) == len(thread.participants)
+            and len(reply_capable_participant_ids) == len(thread.participants)
             and _participant_can_sign_replies(participant)
         )
         conversation_message_form = ConversationMessageForm()
@@ -797,18 +800,16 @@ def register_message_routes(app: Flask) -> None:
         if not isinstance(encrypted_copies, dict):
             return jsonify({"error": "Invalid encrypted message payload."}), 400
 
-        encryption_capable_participant_ids = _conversation_encryption_capable_participant_ids(
-            thread
-        )
+        reply_capable_participant_ids = _conversation_reply_capable_participant_ids(thread)
         active_participants = _conversation_active_participants(thread)
         if (
             len(active_participants) != len(thread.participants)
-            or len(encryption_capable_participant_ids) != len(thread.participants)
+            or len(reply_capable_participant_ids) != len(thread.participants)
             or not _participant_can_sign_replies(participant)
         ):
             return jsonify({"error": "Conversation replies are unavailable."}), 400
 
-        if set(encrypted_copies.keys()) != encryption_capable_participant_ids:
+        if set(encrypted_copies.keys()) != reply_capable_participant_ids:
             return jsonify({"error": "Invalid encrypted message payload."}), 400
 
         if not all(_is_chat_ciphertext_envelope(value) for value in encrypted_copies.values()):
