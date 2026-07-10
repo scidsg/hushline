@@ -955,6 +955,7 @@
   async function upgradeChatKeySigningCapability(
     chatKey,
     password,
+    chatKeyUrl,
     sourceDocument = document,
   ) {
     if (!chatKey || chatKey.public_signing_key) {
@@ -1028,7 +1029,12 @@
         sourceDocument,
       );
       if (unlocked && !chatKey.public_signing_key) {
-        await upgradeChatKeySigningCapability(chatKey, password, sourceDocument);
+        await upgradeChatKeySigningCapability(
+          chatKey,
+          password,
+          chatKeyUrl,
+          sourceDocument,
+        );
       }
       return unlocked;
     }
