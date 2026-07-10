@@ -7,6 +7,7 @@ from wtforms.validators import Length
 
 from hushline.model import FieldType
 from hushline.routes.forms import (
+    ENCRYPTED_CHOICE_MAX_LENGTH,
     DynamicMessageForm,
     LoginForm,
     OnboardingProfileForm,
@@ -161,6 +162,43 @@ def test_dynamic_message_form_accepts_encrypted_choice_payloads(app: Flask) -> N
         form = dynamic.form(csrf_enabled=False)
 
         assert form.validate(), form.errors
+
+
+def test_dynamic_message_form_rejects_invalid_encrypted_choice_values(app: Flask) -> None:
+    oversized_pgp_payload = (
+        "-----BEGIN PGP MESSAGE-----\n"
+        + "a" * ENCRYPTED_CHOICE_MAX_LENGTH
+        + "\n-----END PGP MESSAGE-----"
+    )
+    fields = [
+        SimpleNamespace(
+            enabled=True,
+            required=False,
+            field_type=FieldType.CHOICE_MULTIPLE,
+            encrypted=True,
+            label="Topics",
+            choices=["Research", "Media"],
+        ),
+    ]
+    dynamic = DynamicMessageForm(fields)  # type: ignore[arg-type]
+
+    with app.test_request_context(
+        method="POST",
+        data={"field_0": "not-a-choice-or-pgp"},
+    ):
+        form = dynamic.form(csrf_enabled=False)
+
+        assert not form.validate()
+        assert "not a valid choice" in form.field_0.errors[0].lower()
+
+    with app.test_request_context(
+        method="POST",
+        data={"field_0": oversized_pgp_payload},
+    ):
+        form = dynamic.form(csrf_enabled=False)
+
+        assert not form.validate()
+        assert "not a valid choice" in form.field_0.errors[0].lower()
 
 
 def test_onboarding_profile_form_rejects_disallowed_language(app: Flask) -> None:
