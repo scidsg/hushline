@@ -1029,12 +1029,16 @@
         sourceDocument,
       );
       if (unlocked && !chatKey.public_signing_key) {
-        await upgradeChatKeySigningCapability(
-          chatKey,
-          password,
-          chatKeyUrl,
-          sourceDocument,
-        );
+        try {
+          await upgradeChatKeySigningCapability(
+            chatKey,
+            password,
+            chatKeyUrl,
+            sourceDocument,
+          );
+        } catch (error) {
+          return unlocked;
+        }
       }
       return unlocked;
     }

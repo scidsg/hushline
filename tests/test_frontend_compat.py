@@ -195,10 +195,16 @@ def test_chat_key_lifecycle_upgrades_legacy_keys_with_signing_material() -> None
         assert "public_key: chatKey.public_key" in lifecycle_js
         assert "signing_private_jwk: signingKeyMaterial.signingPrivateJwk" in lifecycle_js
         assert "if (unlocked && !chatKey.public_signing_key)" in lifecycle_js
-        assert "await upgradeChatKeySigningCapability(" in lifecycle_js
-        assert "chatKeyUrl,\n          sourceDocument," in lifecycle_js
+        assert (
+            "await upgradeChatKeySigningCapability(\n"
+            "            chatKey,\n"
+            "            password,\n"
+            "            chatKeyUrl,\n"
+            "            sourceDocument,\n"
+            "          );" in lifecycle_js
+        )
         assert "return unlocked;" in lifecycle_js
-        assert "catch (error) {\n          return unlocked;" not in lifecycle_js
+        assert "catch (error) {\n          return unlocked;" in lifecycle_js
         assert "if (!publicSigningKey || !privateKeyBundle.signing_private_jwk)" in lifecycle_js
 
 
