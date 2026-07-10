@@ -195,10 +195,16 @@ def test_chat_key_lifecycle_upgrades_legacy_keys_with_signing_material() -> None
         assert "public_key: chatKey.public_key" in lifecycle_js
         assert "signing_private_jwk: signingKeyMaterial.signingPrivateJwk" in lifecycle_js
         assert "if (unlocked && !chatKey.public_signing_key)" in lifecycle_js
-        assert "await upgradeChatKeySigningCapability(" in lifecycle_js
-        assert "chatKeyUrl,\n          sourceDocument," in lifecycle_js
+        assert (
+            "await upgradeChatKeySigningCapability(\n"
+            "            chatKey,\n"
+            "            password,\n"
+            "            chatKeyUrl,\n"
+            "            sourceDocument,\n"
+            "          );" in lifecycle_js
+        )
         assert "return unlocked;" in lifecycle_js
-        assert "catch (error) {\n          return unlocked;" not in lifecycle_js
+        assert "catch (error) {\n          return unlocked;" in lifecycle_js
         assert "if (!publicSigningKey || !privateKeyBundle.signing_private_jwk)" in lifecycle_js
 
 
@@ -233,15 +239,27 @@ def test_chat_key_lifecycle_restores_unlocked_key_for_authenticated_tab_session(
     assert 'const sessionStorageKey = "hushline:chat-private-jwk";' in js
     assert 'const legacyBrowserStorageKey = "hushline:chat-private-jwk:browser-session";' in js
     assert "browserStorageMaxAgeMs" not in js
-    assert "const unlockedKeyMaxAgeMs = 15 * 60 * 1000;" in js
+    assert "const unlockedKeyActiveRenewalMs = 15 * 60 * 1000;" in js
+    assert "const unlockedKeyMaxAgeMs = 2 * 60 * 60 * 1000;" in js
     assert "const unlockedKeyIdleTimeoutMs = 5 * 60 * 1000;" in js
-    assert "function refreshedUnlockedKeyExpiresAt(now = Date.now())" in js
+    assert "function unlockedKeyAbsoluteExpiresAt(createdAt)" in js
+    assert "function refreshedUnlockedKeyExpiresAt(createdAt, now = Date.now())" in js
+    assert "function storedUnlockedKeyCreatedAt(stored)" in js
+    assert "unlockedKeyAbsoluteExpiresAt(createdAt)" in js
+    assert "return Number(stored?.expires_at) - unlockedKeyActiveRenewalMs;" in js
+    assert "now + unlockedKeyActiveRenewalMs" in js
+    assert "let unlockedChatKeyCreatedAt = null;" in js
+    assert "created_at: now" in js
     assert "expires_at: expiresAt" in js
+    assert "stored.created_at = createdAt;" in js
+    assert "unlockedChatKeyCreatedAt = createdAt;" in js
+    assert "unlockedChatKeyCreatedAt = null;" in js
     assert "stored.expires_at = refreshedExpiresAt;" in js
     assert "last_used_at: now" in js
     assert "scheduleUnlockedKeyExpiry(refreshedExpiresAt, now);" in js
     assert "now - lastUsedAt > unlockedKeyIdleTimeoutMs" in js
-    assert "expiresAt > now + unlockedKeyMaxAgeMs" in js
+    assert "expiresAt > absoluteExpiresAt" in js
+    assert "expiresAt > now + unlockedKeyActiveRenewalMs" in js
     assert 'const crossTabChannelName = "hushline:chat-key-session";' in js
     assert "new BroadcastChannel(crossTabChannelName)" in js
     assert "function chatKeySessionId(sourceDocument = document)" in js
