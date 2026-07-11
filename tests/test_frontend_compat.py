@@ -514,6 +514,13 @@ def test_conversation_replies_and_polling_update_thread_in_place() -> None:
     assert "bindConversationPolling(root);" in js
     assert "window.setInterval(refreshIfVisible, intervalMs);" in js
     assert "thread.replaceChildren(" in js
+    assert "await decryptConversationMessages(nextDocument);" in js
+    assert "const previousScrollTop = thread.scrollTop;" in js
+    assert "thread.scrollTop = shouldScroll ? thread.scrollHeight : previousScrollTop;" in js
+    assert js.index("await decryptConversationMessages(nextDocument);") < js.index(
+        "thread.replaceChildren("
+    )
+    assert 'scrollConversationThreadToLatest("smooth")' not in js
     assert "currentCopies.textContent = nextCopies.textContent;" in js
     assert "conversationMessagesSignature(nextDocument)" in js
     assert 'getElementById("conversationMessageCopies")?.textContent' in js
@@ -527,6 +534,9 @@ def test_conversation_replies_and_polling_update_thread_in_place() -> None:
     assert "bindConversationPolling(root);" in static_js
     assert "window.setInterval(refreshIfVisible, intervalMs);" in static_js
     assert "thread.replaceChildren(" in static_js
+    assert "await decryptConversationMessages(nextDocument);" in static_js
+    assert "previousScrollTop" in static_js
+    assert 'scrollConversationThreadToLatest("smooth")' not in static_js
     assert 'getElementById("conversationMessageCopies")?.textContent' in static_js
     assert "window.location.reload()" not in static_js
     assert "thread.scrollTo({" in static_js

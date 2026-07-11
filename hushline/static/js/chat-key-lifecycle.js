@@ -1005,8 +1005,8 @@
     ).toString();
   }
 
-  function jsonFromScript(id, fallback) {
-    const script = document.getElementById(id);
+  function jsonFromScript(id, fallback, sourceDocument = document) {
+    const script = sourceDocument.getElementById(id);
     if (!script?.textContent) {
       return fallback;
     }
@@ -1202,7 +1202,6 @@
       return false;
     }
 
-    const shouldScroll = scroll || conversationThreadIsNearBottom();
     const response = await fetch(window.location.href, {
       cache: "no-store",
       credentials: "same-origin",
@@ -1233,30 +1232,34 @@
       return false;
     }
 
+    await decryptConversationMessages(nextDocument);
+    const shouldScroll = scroll || conversationThreadIsNearBottom();
+    const previousScrollTop = thread.scrollTop;
     currentCopies.textContent = nextCopies.textContent;
     thread.replaceChildren(
       ...Array.from(nextThread.children).map((child) => {
         return document.importNode(child, true);
       }),
     );
-    await decryptConversationMessages();
-    if (shouldScroll) {
-      scrollConversationThreadToLatest("smooth");
-    }
+    thread.scrollTop = shouldScroll ? thread.scrollHeight : previousScrollTop;
     return true;
   }
 
-  async function decryptConversationMessages() {
-    const copies = jsonFromScript("conversationMessageCopies", []);
+  async function decryptConversationMessages(sourceDocument = document) {
+    const copies = jsonFromScript(
+      "conversationMessageCopies",
+      [],
+      sourceDocument,
+    );
     for (const copy of copies) {
       if (!copy.encrypted_payload) {
         continue;
       }
 
-      const messageElement = document.querySelector(
+      const messageElement = sourceDocument.querySelector(
         `[data-conversation-message-id="${copy.message_id}"] .conversation-message-body`,
       );
-      const messageContainer = document.querySelector(
+      const messageContainer = sourceDocument.querySelector(
         `[data-conversation-message-id="${copy.message_id}"]`,
       );
       const messageTimeElement = messageContainer?.querySelector(
