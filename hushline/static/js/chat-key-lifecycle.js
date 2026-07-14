@@ -18,6 +18,7 @@
   let unlockedChatPrivateKey = null;
   let unlockedChatSigningPrivateKey = null;
   let pendingLoginPassword = null;
+  let conversationSubmitInFlight = false;
   const state = {
     status: "empty",
     keyVersion: null,
@@ -1347,7 +1348,12 @@
       );
       return;
     }
+    if (conversationSubmitInFlight) {
+      return;
+    }
 
+    conversationSubmitInFlight = true;
+    setConversationComposeEnabled(false);
     setConversationStatus("Encrypting reply...");
     try {
       const encryptedCopies = {};
@@ -1388,6 +1394,9 @@
       setConversationStatus("Reply sent.");
     } catch (error) {
       setConversationStatus("Reply could not be encrypted.");
+    } finally {
+      conversationSubmitInFlight = false;
+      setConversationComposeEnabled(root.dataset.canCompose === "true");
     }
   }
 
