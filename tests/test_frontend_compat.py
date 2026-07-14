@@ -490,6 +490,19 @@ def test_conversation_reply_submits_only_encrypted_copies() -> None:
     assert expected_payload in static_js
 
 
+def test_conversation_reply_prevents_overlapping_submissions() -> None:
+    js = (ROOT / "assets/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
+    static_js = (ROOT / "hushline/static/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
+
+    for bundle in (js, static_js):
+        assert "let conversationSubmitInFlight = false;" in bundle
+        assert "if (conversationSubmitInFlight)" in bundle
+        assert "conversationSubmitInFlight = true;" in bundle
+        assert "setConversationComposeEnabled(false);" in bundle
+        assert "finally" in bundle
+        assert bundle.count("conversationSubmitInFlight = false;") == 2
+
+
 def test_conversation_polling_does_not_mark_messages_read() -> None:
     js = (ROOT / "assets/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
     static_js = (ROOT / "hushline/static/js/chat-key-lifecycle.js").read_text(encoding="utf-8")

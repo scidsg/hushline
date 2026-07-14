@@ -455,15 +455,27 @@ test("logged-in account conversation stays encrypted through browser lifecycle",
       renderedPresenceCsrfToken,
     );
 
-    const replyRequestPromise = recipientPage.waitForRequest(
-      (request) =>
-        request.method() === "POST" &&
-        request
-          .url()
-          .endsWith(`/conversation/${conversationPublicId}/messages`),
-    );
+    let replyRequestCount = 0;
+    const isReplyRequest = (request) =>
+      request.method() === "POST" &&
+      request.url().endsWith(`/conversation/${conversationPublicId}/messages`);
+    recipientPage.on("request", (request) => {
+      if (isReplyRequest(request)) {
+        replyRequestCount += 1;
+      }
+    });
+    const replyRequestPromise = recipientPage.waitForRequest(isReplyRequest);
     await recipientPage.fill("#conversation-compose-body", replyPlaintext);
-    await recipientPage.locator("#conversation-compose-submit").click();
+    await recipientPage
+      .locator("#conversation-compose-form")
+      .evaluate((form) => {
+        form.dispatchEvent(
+          new Event("submit", { cancelable: true, bubbles: true }),
+        );
+        form.dispatchEvent(
+          new Event("submit", { cancelable: true, bubbles: true }),
+        );
+      });
     const replyRequest = await replyRequestPromise;
     const replyPostBody = replyRequest.postData() || "";
     expectNoPlaintext(replyPostBody, sensitiveValues);
@@ -508,6 +520,7 @@ test("logged-in account conversation stays encrypted through browser lifecycle",
     }
 
     await expectConversationMessage(recipientPage, replyPlaintext);
+    expect(replyRequestCount).toBe(1);
 
     const senderRefresh = senderPage.waitForResponse(
       (response) =>
