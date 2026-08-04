@@ -7,13 +7,13 @@ license = "AGPL 3.0"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-aiohttp = "^3.14.1"
+aiohttp = "^3.14.3"
 beautifulsoup4 = "^4.12.3"
 better-profanity = "^0.7.0"
 bleach = "^6.4.0"
 boto3 = "^1.35.33"
 click = "^8.3.3"
-cryptography = "^48.0.1"
+cryptography = "^50.0.0"
 dnspython = "^2.8.0"
 email-validator = "^2.2.0"
 flask = { extras = ["async"], version = "^3.1.3" }
