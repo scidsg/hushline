@@ -23,12 +23,6 @@ def test_cross_repo_auto_merge_workflows_use_owner_qualified_pr_heads() -> None:
             2,
         ),
         (
-            ".github/workflows/bump-staging-after-release.yml",
-            'infra_owner="${INFRA_REPOSITORY%%/*}"',
-            '--head "${infra_owner}:${INFRA_BRANCH}"',
-            2,
-        ),
-        (
             ".github/workflows/bump-personal-server-after-release.yml",
             'personal_server_owner="${PERSONAL_SERVER_REPOSITORY%%/*}"',
             '--head "${personal_server_owner}:${PERSONAL_SERVER_BRANCH}"',
@@ -283,18 +277,34 @@ def test_docs_screenshot_capture_manifest_does_not_persist_read_tokens() -> None
     assert "DOCS_CLONE_URL=" not in manifest_section
 
 
-def test_dev_deploy_workflow_generates_session_fernet_key_for_terraform_runs() -> None:
-    workflow_text = _workflow_text(".github/workflows/dev_deploy.yml")
+def test_staging_workflow_is_isolated_on_demand_and_bounded() -> None:
+    workflow_text = _workflow_text(".github/workflows/staging_deploy.yml")
 
-    assert workflow_text.count("- name: Generate session fernet key") == 2
-    assert workflow_text.count("python3 - <<'PY' >> \"$GITHUB_OUTPUT\"") == 2
-    assert "base64.urlsafe_b64encode(os.urandom(32)).decode()" in workflow_text
-    assert (
-        workflow_text.count(
-            'SESSION_FERNET_KEY = "${{ steps.session-fernet-key.outputs.session_fernet_key }}"'
-        )
-        == 4
-    )
+    assert "github.event.pull_request.head.repo.full_name == github.repository" in workflow_text
+    assert "github.event.label.name == 'staging'" in workflow_text
+    assert '"auto-destroy-activity-duration":"24h"' in workflow_text
+    assert "hushline-ephemeral-staging" in workflow_text
+    assert "HUSHLINE_STAGING_DO_TOKEN" in workflow_text
+    assert "HUSHLINE_STAGING_TF_TOKEN" in workflow_text
+    assert "DIGITALOCEAN_TOKEN" not in workflow_text
+    assert "HUSHLINE_DEV_TF_TOKEN" not in workflow_text
+    assert "hushline-env" not in workflow_text
+    assert "staging.hushline.app" not in workflow_text
+
+
+def test_staging_workflow_uses_trusted_code_and_destroys_on_all_exit_paths() -> None:
+    workflow_text = _workflow_text(".github/workflows/staging_deploy.yml")
+
+    assert "STAGING_BRANCH: ephemeral-staging/pr-${{ github.event.number }}" in workflow_text
+    assert "sha: process.env.PR_HEAD_SHA" in workflow_text
+    assert "ref: ${{ github.event.pull_request.base.sha }}" in workflow_text
+    assert "npm ci --ignore-scripts" in workflow_text
+    assert "Run trusted browser smoke tests" in workflow_text
+    assert "Verify disposable onion endpoint" in workflow_text
+    assert "Destroy deployment that failed post-apply validation" in workflow_text
+    assert "github.event.action == 'unlabeled'" in workflow_text
+    assert "github.event.action == 'closed'" in workflow_text
+    assert "Remove staging labels older than 24 hours" in workflow_text
 
 
 def test_tests_workflow_lint_job_uses_host_python_313() -> None:
@@ -393,52 +403,5 @@ def test_workflow_pr_head_guard_rejects_missing_head_value_with_repo() -> None:
     assert workflow_guard.is_unqualified_head(command) is True
 
 
-def test_staging_release_branch_resets_to_trusted_base_before_auto_merge() -> None:
-    workflow_text = _workflow_text(".github/workflows/bump-staging-after-release.yml")
-    reset_section = workflow_text.split(
-        "      - name: Reset release branch to trusted infra base",
-        1,
-    )[1].split("      - name: Update staging version branch reference", 1)[0]
-    commit_section = workflow_text.split("      - name: Commit infra branch", 1)[1].split(
-        "      - name: Verify only the staging tag changed",
-        1,
-    )[0]
-    verify_section = workflow_text.split(
-        "      - name: Verify only the staging tag changed",
-        1,
-    )[1].split("      - name: Push infra branch", 1)[0]
-    push_section = workflow_text.split("      - name: Push infra branch", 1)[1].split(
-        "      - name: Create or update staging PR",
-        1,
-    )[0]
-    pr_section = workflow_text.split("      - name: Create or update staging PR", 1)[1].split(
-        "      - name: Merge staging PR if immediately allowed",
-        1,
-    )[0]
-    merge_section = workflow_text.split(
-        "      - name: Merge staging PR if immediately allowed",
-        1,
-    )[1]
-
-    assert "HUSHLINE_INFRA_STAGING_PAT || HUSHLINE_INFRA_TOKEN" not in workflow_text
-    assert "HUSHLINE_INFRA_TOKEN" not in workflow_text
-    assert "token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}" in workflow_text
-    assert 'git fetch origin "$INFRA_BRANCH":"refs/remotes/origin/$INFRA_BRANCH"' in reset_section
-    assert 'git checkout -B "$INFRA_BRANCH" "origin/$INFRA_BASE_REF"' in reset_section
-    assert 'git checkout -B "$INFRA_BRANCH" "origin/$INFRA_BRANCH"' not in reset_section
-    assert 'echo "head_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"' in commit_section
-    assert (
-        'git push --force-with-lease=refs/heads/"$INFRA_BRANCH" origin "$INFRA_BRANCH"'
-        not in commit_section
-    )
-    assert "changed_lines != tag_changes" in verify_section
-    assert "len(tag_changes) != 2" in verify_section
-    assert "expected_added_tag.match(tag_changes[1])" in verify_section
-    assert (
-        'git push --force-with-lease=refs/heads/"$INFRA_BRANCH" origin "$INFRA_BRANCH"'
-        in push_section
-    )
-    assert "Missing infra push token" not in push_section
-    assert "GH_TOKEN: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}" in pr_section
-    assert "GH_TOKEN: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}" in merge_section
-    assert '--match-head-commit "${{ steps.commit_infra.outputs.head_sha }}"' in merge_section
+def test_persistent_staging_release_bump_workflow_is_removed() -> None:
+    assert not (REPO_ROOT / ".github/workflows/bump-staging-after-release.yml").exists()
