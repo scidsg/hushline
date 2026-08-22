@@ -338,7 +338,6 @@ jobs:
       (github.event.action == 'closed' && contains(github.event.pull_request.labels.*.name, 'staging')))
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    environment: ephemeral-staging
     permissions:
       contents: write
       pull-requests: write

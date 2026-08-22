@@ -294,8 +294,12 @@ def test_staging_workflow_is_isolated_on_demand_and_bounded() -> None:
 
 def test_staging_workflow_uses_trusted_code_and_destroys_on_all_exit_paths() -> None:
     workflow_text = _workflow_text(".github/workflows/staging_deploy.yml")
+    deploy_section = workflow_text.split("  deploy:\n", 1)[1].split("  destroy:\n", 1)[0]
+    destroy_section = workflow_text.split("  destroy:\n", 1)[1].split("  expire-labels:\n", 1)[0]
 
     assert "STAGING_BRANCH: ephemeral-staging/pr-${{ github.event.number }}" in workflow_text
+    assert "environment: ephemeral-staging" in deploy_section
+    assert "environment: ephemeral-staging" not in destroy_section
     assert "sha: process.env.PR_HEAD_SHA" in workflow_text
     assert "ref: ${{ github.event.pull_request.base.sha }}" in workflow_text
     assert "npm ci --ignore-scripts" in workflow_text
