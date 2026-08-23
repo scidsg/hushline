@@ -18,10 +18,10 @@ def test_release_governance_workflow_covers_release_control_files() -> None:
         r"\.github/workflows/",
         "build-release",
         "bump-personal-server-after-release",
-        "bump-staging-after-release",
         "docs-screenshots",
         "publish-docs-screenshots",
         "release-governance",
+        "staging_deploy",
         "Makefile",
         r"hushline/version\.py",
         r"scripts/release\.py",
@@ -29,6 +29,8 @@ def test_release_governance_workflow_covers_release_control_files() -> None:
 
     for path_fragment in expected_path_fragments:
         assert path_fragment in workflow_text
+
+    assert "bump-staging-after-release" not in workflow_text
 
 
 def test_release_governance_workflow_requires_admin_permission() -> None:

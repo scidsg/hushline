@@ -6,7 +6,7 @@ else
 CMD :=
 endif
 PRETTIER_STATIC_JS_TARGETS := ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js
-PRETTIER_TARGETS := ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./package.json ./playwright.e2ee.config.js ./tests/playwright $(PRETTIER_STATIC_JS_TARGETS)
+PRETTIER_TARGETS := ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./package.json ./playwright.e2ee.config.js ./playwright.staging.config.js ./tests/playwright $(PRETTIER_STATIC_JS_TARGETS)
 PRETTIER_FLAGS := --ignore-path /dev/null
 RUNNER_APP_URL ?= http://localhost:8080
 RUNNER_APP_WAIT_ATTEMPTS ?= 30

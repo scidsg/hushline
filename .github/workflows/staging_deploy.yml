@@ -1,0 +1,427 @@
+---
+name: Ephemeral PR staging
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+on:
+  pull_request:
+    types: [labeled, unlabeled, synchronize, closed]
+  schedule:
+    - cron: "17 * * * *"
+
+concurrency:
+  group: ephemeral-staging-control-plane
+  cancel-in-progress: false
+
+env:
+  INFRA_REPOSITORY: scidsg/hushline-infra
+  INFRA_REF: a41e6decaf9c421f0b743f604b1f4bd42600103e
+  STAGING_TF_PATH: hushline-ephemeral-staging
+  TF_PROJECT_HUSH_LINE_DEV: prj-iEruEQFmaNTCRAtA
+
+jobs:
+  deploy:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      ((github.event.action == 'labeled' && github.event.label.name == 'staging') ||
+      (github.event.action == 'synchronize' && contains(github.event.pull_request.labels.*.name, 'staging')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: ephemeral-staging
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    env:
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      STAGING_BRANCH: ephemeral-staging/pr-${{ github.event.number }}
+      STAGING_NAME: hushline-staging-pr-${{ github.event.number }}
+      WORKSPACE_NAME: hushline-staging-pr-${{ github.event.number }}
+    steps:
+      - name: Verify staging-only credentials are configured
+        env:
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          INFRA_READ_TOKEN: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
+        run: |
+          set -euo pipefail
+          for required_name in STAGING_DO_TOKEN STAGING_TF_TOKEN INFRA_READ_TOKEN; do
+            if [ -z "${!required_name:-}" ]; then
+              echo "Missing required staging-only secret: $required_name" >&2
+              exit 1
+            fi
+          done
+
+      - name: Enforce one active staging environment
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            const pulls = await github.paginate(github.rest.pulls.list, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              per_page: 100,
+            });
+            const current = context.payload.pull_request.number;
+            const conflicts = pulls.filter(
+              (pull) => pull.number !== current &&
+                pull.labels.some((label) => label.name === "staging"),
+            );
+            if (conflicts.length) {
+              core.setFailed(`Staging is already reserved by ${conflicts.map((pull) => `#${pull.number}`).join(", ")}.`);
+            }
+
+      - name: Create trusted staging branch
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        env:
+          STAGING_BRANCH: ${{ env.STAGING_BRANCH }}
+          PR_HEAD_SHA: ${{ env.PR_HEAD_SHA }}
+        with:
+          script: |
+            const ref = `heads/${process.env.STAGING_BRANCH}`;
+            try {
+              await github.rest.git.getRef({owner: context.repo.owner, repo: context.repo.repo, ref});
+              await github.rest.git.updateRef({owner: context.repo.owner, repo: context.repo.repo, ref, sha: process.env.PR_HEAD_SHA, force: true});
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              await github.rest.git.createRef({owner: context.repo.owner, repo: context.repo.repo, ref: `refs/${ref}`, sha: process.env.PR_HEAD_SHA});
+            }
+
+      - name: Check out immutable staging infrastructure
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: ${{ env.INFRA_REPOSITORY }}
+          ref: ${{ env.INFRA_REF }}
+          token: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
+          persist-credentials: false
+          path: infra
+
+      - name: Create or refresh isolated Terraform workspace
+        env:
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        run: |
+          set -euo pipefail
+          workspace_url="https://app.terraform.io/api/v2/organizations/science-and-design/workspaces/${WORKSPACE_NAME}"
+          status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            --header 'Content-Type: application/vnd.api+json' \
+            --header "Authorization: Bearer ${STAGING_TF_TOKEN}" "$workspace_url")"
+          if [ "$status" = "200" ]; then exit 0; fi
+          if [ "$status" != "404" ]; then
+            echo "Terraform workspace lookup failed with HTTP $status" >&2
+            exit 1
+          fi
+
+          payload="$(jq -n --arg name "$WORKSPACE_NAME" \
+            --arg directory "$STAGING_TF_PATH" --arg project "$TF_PROJECT_HUSH_LINE_DEV" \
+            '{data:{type:"workspaces",attributes:{name:$name,"working-directory":$directory,"auto-destroy-activity-duration":"24h","allow-destroy-plan":true,"auto-apply":false,"auto-apply-run-trigger":false,"global-remote-state":false,"queue-all-runs":false,"execution-mode":"remote","source-name":"scidsg/hushline ephemeral PR staging"},relationships:{project:{data:{id:$project,type:"projects"}}}}}')"
+          response="$(curl --silent --show-error --fail-with-body --request POST \
+            --header 'Content-Type: application/vnd.api+json' \
+            --header "Authorization: Bearer ${STAGING_TF_TOKEN}" --data "$payload" \
+            'https://app.terraform.io/api/v2/organizations/science-and-design/workspaces')"
+          workspace_id="$(jq -er '.data.id' <<< "$response")"
+          curl --silent --show-error --fail-with-body --request POST \
+            --header 'Content-Type: application/vnd.api+json' \
+            --header "Authorization: Bearer ${STAGING_TF_TOKEN}" \
+            --data '{"data":[{"type":"tags","attributes":{"name":"ephemeral-staging"}}]}' \
+            "https://app.terraform.io/api/v2/workspaces/${workspace_id}/relationships/tags" >/dev/null
+
+      - name: Generate disposable application secrets
+        id: app-secrets
+        run: |
+          python3 - <<'PY'
+          import base64
+          import os
+          import secrets
+          values = {
+              "secret_key": secrets.token_hex(32),
+              "encryption_key": base64.urlsafe_b64encode(os.urandom(32)).decode(),
+              "session_fernet_key": base64.urlsafe_b64encode(os.urandom(32)).decode(),
+          }
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              for key, value in values.items():
+                  print(f"::add-mask::{value}")
+                  print(f"{key}={value}", file=output)
+          PY
+
+      - name: Install Tor
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends tor
+
+      - name: Generate disposable onion identity
+        id: onion
+        run: |
+          set -euo pipefail
+          runtime_dir="$(mktemp -d)"
+          data_dir="${runtime_dir}/data"
+          service_dir="${runtime_dir}/hidden-service"
+          mkdir -p "$data_dir" "$service_dir"
+          chmod 700 "$runtime_dir" "$data_dir" "$service_dir"
+          cleanup() {
+            if [ -f "${runtime_dir}/tor.pid" ]; then kill "$(cat "${runtime_dir}/tor.pid")" 2>/dev/null || true; fi
+            rm -rf "$runtime_dir"
+          }
+          trap cleanup EXIT
+          tor --RunAsDaemon 1 --DataDirectory "$data_dir" --PidFile "${runtime_dir}/tor.pid" \
+            --SocksPort 0 --HiddenServiceDir "$service_dir" \
+            --HiddenServicePort '80 127.0.0.1:9' --Log "notice file ${runtime_dir}/tor.log"
+          for _ in $(seq 1 60); do
+            if [ -s "${service_dir}/hostname" ] && [ -s "${service_dir}/hs_ed25519_public_key" ] && [ -s "${service_dir}/hs_ed25519_secret_key" ]; then break; fi
+            sleep 1
+          done
+          hostname="$(tr -d '\r\n' < "${service_dir}/hostname")"
+          public_key="$(base64 < "${service_dir}/hs_ed25519_public_key" | tr -d '\r\n')"
+          secret_key="$(base64 < "${service_dir}/hs_ed25519_secret_key" | tr -d '\r\n')"
+          if [ -z "$hostname" ] || [ -z "$public_key" ] || [ -z "$secret_key" ]; then exit 1; fi
+          echo "::add-mask::$public_key"
+          echo "::add-mask::$secret_key"
+          printf 'hostname=%s\npublic_key=%s\nsecret_key=%s\n' "$hostname" "$public_key" "$secret_key" >> "$GITHUB_OUTPUT"
+
+      - name: Plan isolated staging infrastructure
+        uses: dflook/terraform-plan@d9df4f6c2484e709ba7ffaa16c98a6906f4760cd
+        env:
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        with:
+          path: infra/${{ env.STAGING_TF_PATH }}
+          workspace: ${{ env.WORKSPACE_NAME }}
+          add_github_comment: true
+          variables: |
+            DO_TOKEN = "${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}"
+            name = "${{ env.STAGING_NAME }}"
+            branch = "${{ env.STAGING_BRANCH }}"
+            SECRET_KEY = "${{ steps.app-secrets.outputs.secret_key }}"
+            ENCRYPTION_KEY = "${{ steps.app-secrets.outputs.encryption_key }}"
+            SESSION_FERNET_KEY = "${{ steps.app-secrets.outputs.session_fernet_key }}"
+            ONION_HOSTNAME = "${{ steps.onion.outputs.hostname }}"
+            ONION_PUBLIC_KEY_B64 = "${{ steps.onion.outputs.public_key }}"
+            ONION_SECRET_KEY_B64 = "${{ steps.onion.outputs.secret_key }}"
+
+      - name: Apply isolated staging infrastructure
+        id: apply
+        uses: dflook/terraform-apply@dcda97d729f1843ede471d2fac989cb946f5622a
+        env:
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        with:
+          path: infra/${{ env.STAGING_TF_PATH }}
+          workspace: ${{ env.WORKSPACE_NAME }}
+          variables: |
+            DO_TOKEN = "${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}"
+            name = "${{ env.STAGING_NAME }}"
+            branch = "${{ env.STAGING_BRANCH }}"
+            SECRET_KEY = "${{ steps.app-secrets.outputs.secret_key }}"
+            ENCRYPTION_KEY = "${{ steps.app-secrets.outputs.encryption_key }}"
+            SESSION_FERNET_KEY = "${{ steps.app-secrets.outputs.session_fernet_key }}"
+            ONION_HOSTNAME = "${{ steps.onion.outputs.hostname }}"
+            ONION_PUBLIC_KEY_B64 = "${{ steps.onion.outputs.public_key }}"
+            ONION_SECRET_KEY_B64 = "${{ steps.onion.outputs.secret_key }}"
+
+      - name: Read staging outputs
+        id: tf-outputs
+        uses: dflook/terraform-output@115959bea4cc9e0ccc7a7fa0a85528cef1ec4350
+        env:
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        with:
+          path: infra/${{ env.STAGING_TF_PATH }}
+          workspace: ${{ env.WORKSPACE_NAME }}
+
+      - name: Wait for HTTPS health check
+        env:
+          APP_URL: ${{ steps.tf-outputs.outputs.app_live_url }}
+        run: |
+          set -euo pipefail
+          health_url="${APP_URL%/}/health.json"
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error --max-time 15 "$health_url" >/dev/null; then exit 0; fi
+            echo "Waiting for staging health check (${attempt}/60)"
+            sleep 10
+          done
+          exit 1
+
+      - name: Check out trusted smoke tests
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          path: trusted-tests
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: trusted-tests/package-lock.json
+
+      - name: Install trusted browser smoke-test dependencies
+        working-directory: trusted-tests
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+
+      - name: Run trusted browser smoke tests
+        working-directory: trusted-tests
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ steps.tf-outputs.outputs.app_live_url }}
+        run: npx playwright test --config=playwright.staging.config.js
+
+      - name: Verify disposable onion endpoint
+        env:
+          ONION_HOSTNAME: ${{ steps.tf-outputs.outputs.onion_hostname }}
+        run: |
+          set -euo pipefail
+          tor_runtime="$(mktemp -d)"
+          chmod 700 "$tor_runtime"
+          tor --RunAsDaemon 1 --DataDirectory "$tor_runtime" --PidFile "${tor_runtime}/tor.pid" \
+            --SocksPort 9050 --Log "notice file ${tor_runtime}/tor.log"
+          ready=false
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error --max-time 30 --socks5-hostname 127.0.0.1:9050 \
+              "http://${ONION_HOSTNAME}/health.json" >/dev/null; then ready=true; break; fi
+            echo "Waiting for disposable onion endpoint (${attempt}/60)"
+            sleep 10
+          done
+          kill "$(cat "${tor_runtime}/tor.pid")" 2>/dev/null || true
+          rm -rf "$tor_runtime"
+          if [ "$ready" != "true" ]; then exit 1; fi
+
+      - name: Comment staging access details
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        env:
+          APP_URL: ${{ steps.tf-outputs.outputs.app_live_url }}
+          ONION_HOSTNAME: ${{ steps.tf-outputs.outputs.onion_hostname }}
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number,
+              body: ["Ephemeral staging is ready and passed HTTPS, browser, and onion smoke checks.", "", `HTTPS: ${process.env.APP_URL}`, `Onion: http://${process.env.ONION_HOSTNAME}`, "", "Remove the `staging` label to destroy it. It also expires after 24 hours."].join("\n"),
+            });
+
+      - name: Destroy deployment that failed post-apply validation
+        if: ${{ failure() && steps.apply.outcome == 'success' }}
+        uses: dflook/terraform-destroy-workspace@371a74d6159f2dd763b43e9c421707d3d6d5d151
+        continue-on-error: true
+        env:
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        with:
+          path: infra/${{ env.STAGING_TF_PATH }}
+          workspace: ${{ env.WORKSPACE_NAME }}
+          variables: |
+            DO_TOKEN = "${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}"
+            name = "${{ env.STAGING_NAME }}"
+            branch = "${{ env.STAGING_BRANCH }}"
+            SECRET_KEY = "${{ steps.app-secrets.outputs.secret_key }}"
+            ENCRYPTION_KEY = "${{ steps.app-secrets.outputs.encryption_key }}"
+            SESSION_FERNET_KEY = "${{ steps.app-secrets.outputs.session_fernet_key }}"
+            ONION_HOSTNAME = "${{ steps.onion.outputs.hostname }}"
+            ONION_PUBLIC_KEY_B64 = "${{ steps.onion.outputs.public_key }}"
+            ONION_SECRET_KEY_B64 = "${{ steps.onion.outputs.secret_key }}"
+
+      - name: Delete failed staging branch
+        if: ${{ failure() }}
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        env:
+          STAGING_BRANCH: ${{ env.STAGING_BRANCH }}
+        with:
+          script: |
+            try {
+              await github.rest.git.deleteRef({owner: context.repo.owner, repo: context.repo.repo, ref: `heads/${process.env.STAGING_BRANCH}`});
+            } catch (error) { if (error.status !== 404) throw error; }
+
+  destroy:
+    if: >-
+      github.event_name == 'pull_request' &&
+      ((github.event.action == 'unlabeled' && github.event.label.name == 'staging') ||
+      (github.event.action == 'closed' && contains(github.event.pull_request.labels.*.name, 'staging')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    env:
+      STAGING_BRANCH: ephemeral-staging/pr-${{ github.event.number }}
+      STAGING_NAME: hushline-staging-pr-${{ github.event.number }}
+      WORKSPACE_NAME: hushline-staging-pr-${{ github.event.number }}
+    steps:
+      - name: Check whether staging workspace exists
+        id: workspace
+        env:
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        run: |
+          set -euo pipefail
+          status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            --header 'Content-Type: application/vnd.api+json' \
+            --header "Authorization: Bearer ${STAGING_TF_TOKEN}" \
+            "https://app.terraform.io/api/v2/organizations/science-and-design/workspaces/${WORKSPACE_NAME}")"
+          if [ "$status" = "200" ]; then echo "exists=true" >> "$GITHUB_OUTPUT"
+          elif [ "$status" = "404" ]; then echo "exists=false" >> "$GITHUB_OUTPUT"
+          else exit 1; fi
+
+      - name: Check out immutable staging infrastructure
+        if: steps.workspace.outputs.exists == 'true'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: ${{ env.INFRA_REPOSITORY }}
+          ref: ${{ env.INFRA_REF }}
+          token: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
+          persist-credentials: false
+          path: infra
+
+      - name: Destroy staging workspace
+        if: steps.workspace.outputs.exists == 'true'
+        uses: dflook/terraform-destroy-workspace@371a74d6159f2dd763b43e9c421707d3d6d5d151
+        env:
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        with:
+          path: infra/${{ env.STAGING_TF_PATH }}
+          workspace: ${{ env.WORKSPACE_NAME }}
+          variables: |
+            DO_TOKEN = "${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}"
+            name = "${{ env.STAGING_NAME }}"
+            branch = "${{ env.STAGING_BRANCH }}"
+            SECRET_KEY = "unused-during-destroy"
+            ENCRYPTION_KEY = "unused-during-destroy"
+            SESSION_FERNET_KEY = "unused-during-destroy"
+            ONION_HOSTNAME = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.onion"
+            ONION_PUBLIC_KEY_B64 = "unused-during-destroy"
+            ONION_SECRET_KEY_B64 = "unused-during-destroy"
+
+      - name: Delete trusted staging branch
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        env:
+          STAGING_BRANCH: ${{ env.STAGING_BRANCH }}
+        with:
+          script: |
+            try {
+              await github.rest.git.deleteRef({owner: context.repo.owner, repo: context.repo.repo, ref: `heads/${process.env.STAGING_BRANCH}`});
+            } catch (error) { if (error.status !== 404) throw error; }
+
+      - name: Confirm staging destruction
+        if: steps.workspace.outputs.exists == 'true'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            await github.rest.issues.createComment({owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body: "Ephemeral staging and its Terraform workspace were destroyed."});
+
+  expire-labels:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove staging labels older than 24 hours
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            const pulls = await github.paginate(github.rest.pulls.list, {owner: context.repo.owner, repo: context.repo.repo, state: "open", per_page: 100});
+            const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+            for (const pull of pulls) {
+              if (!pull.labels.some((label) => label.name === "staging")) continue;
+              const events = await github.paginate(github.rest.issues.listEventsForTimeline, {owner: context.repo.owner, repo: context.repo.repo, issue_number: pull.number, per_page: 100});
+              const labeledAt = events.filter((event) => event.event === "labeled" && event.label?.name === "staging").map((event) => Date.parse(event.created_at)).sort((left, right) => right - left)[0];
+              if (!labeledAt || labeledAt > cutoff) continue;
+              await github.rest.issues.removeLabel({owner: context.repo.owner, repo: context.repo.repo, issue_number: pull.number, name: "staging"});
+              await github.rest.issues.createComment({owner: context.repo.owner, repo: context.repo.repo, issue_number: pull.number, body: "Removed the `staging` label after its 24-hour maximum lifetime. Destruction has been requested."});
+            }
