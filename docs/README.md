@@ -35,4 +35,5 @@ This directory now includes a GitHub-first mirror of the public Hush Line Librar
 - [Password hash modernization evaluation](./PASSWORD-HASH-MODERNIZATION-EVALUATION.md)
 - [Embeddable E2EE profile forms feasibility study](./EMBEDDABLE-E2EE-PROFILE-FORMS-FEASIBILITY.md)
 - [Whistleblower-protection accountability wall feasibility memo](./WHISTLEBLOWER-PROTECTION-ACCOUNTABILITY-WALL-FEASIBILITY.md)
+- [Secure Case Builder source workflow research memo](./SECURE-CASE-BUILDER-SOURCE-WORKFLOW.md)
 - [Screenshots](./screenshots/README.md)
