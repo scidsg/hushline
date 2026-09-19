@@ -36,4 +36,5 @@ This directory now includes a GitHub-first mirror of the public Hush Line Librar
 - [Embeddable E2EE profile forms feasibility study](./EMBEDDABLE-E2EE-PROFILE-FORMS-FEASIBILITY.md)
 - [Whistleblower-protection accountability wall feasibility memo](./WHISTLEBLOWER-PROTECTION-ACCOUNTABILITY-WALL-FEASIBILITY.md)
 - [Secure Case Builder source workflow research memo](./SECURE-CASE-BUILDER-SOURCE-WORKFLOW.md)
+- [Secure Case Builder pre-build threat model](./SECURE-CASE-BUILDER-THREAT-MODEL.md)
 - [Screenshots](./screenshots/README.md)
