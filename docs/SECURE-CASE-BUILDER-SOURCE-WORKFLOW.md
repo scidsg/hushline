@@ -18,6 +18,10 @@ must not be treated as a validated source-workflow specification. Wireframes and
 stories that depend on the source workflow are blocked until the evidence and validation gates
 below are complete.
 
+The [pre-build threat model](./SECURE-CASE-BUILDER-THREAT-MODEL.md) defines a memory-only MVP with
+no export and an explicit selected-content chat handoff. Those security constraints do not supply
+the missing user evidence or validate a workflow.
+
 | Evidence needed                          | Available | Consequence                                                         |
 | ---------------------------------------- | --------- | ------------------------------------------------------------------- |
 | First-hand walkthrough of the exercise   | No        | The workflow cannot be reconstructed                                |
@@ -196,20 +200,20 @@ The following are existing safety boundaries, not claimed stakeholder findings:
 
 ## Open Product Questions
 
-| ID     | Question                                                                      | Evidence or decision owner needed                          | Status  |
-| ------ | ----------------------------------------------------------------------------- | ---------------------------------------------------------- | ------- |
-| SCB-01 | What were the stakeholder's exact categories and definitions?                 | Source-stakeholder demonstration and playback              | Blocked |
-| SCB-02 | Were categories predefined, emergent, overlapping, or optional?               | Source-stakeholder demonstration                           | Blocked |
-| SCB-03 | What was the actual order, including loops, skips, and stopping points?       | Source-stakeholder demonstration and playback              | Blocked |
-| SCB-04 | Which breakdowns were observed versus inferred by a facilitator?              | Source stakeholder; sanitized observational evidence       | Blocked |
-| SCB-05 | Which interventions restored agency, clarity, or confidence?                  | Source stakeholder; sanitized examples                     | Blocked |
-| SCB-06 | What decision or artifact counted as a usable game plan, and for whom?        | Source stakeholder                                         | Blocked |
-| SCB-07 | What must the product never ask, promise, judge, or imply?                    | Source stakeholder, followed by content/security review    | Blocked |
-| SCB-08 | Should drafts persist, and on which device or trust boundary?                 | User evidence, threat modeling, and security decision      | Blocked |
-| SCB-09 | How can users recognize and remove identifying or excessive detail safely?    | User evidence, content design, and E2EE architecture       | Blocked |
-| SCB-10 | What outputs and handoffs are useful without expanding collection or risk?    | Source stakeholder, product, security, and recipient users | Blocked |
-| SCB-11 | What accessibility needs change sorting, spatial layout, or interaction mode? | User research and accessibility review                     | Blocked |
-| SCB-12 | What crisis, retaliation, or imminent-harm boundaries require safe exits?     | Security, content, and qualified human review              | Blocked |
+| ID     | Question                                                                      | Evidence or decision owner needed                           | Status  |
+| ------ | ----------------------------------------------------------------------------- | ----------------------------------------------------------- | ------- |
+| SCB-01 | What were the stakeholder's exact categories and definitions?                 | Source-stakeholder demonstration and playback               | Blocked |
+| SCB-02 | Were categories predefined, emergent, overlapping, or optional?               | Source-stakeholder demonstration                            | Blocked |
+| SCB-03 | What was the actual order, including loops, skips, and stopping points?       | Source-stakeholder demonstration and playback               | Blocked |
+| SCB-04 | Which breakdowns were observed versus inferred by a facilitator?              | Source stakeholder; sanitized observational evidence        | Blocked |
+| SCB-05 | Which interventions restored agency, clarity, or confidence?                  | Source stakeholder; sanitized examples                      | Blocked |
+| SCB-06 | What decision or artifact counted as a usable game plan, and for whom?        | Source stakeholder                                          | Blocked |
+| SCB-07 | What must the product never ask, promise, judge, or imply?                    | Source stakeholder, followed by content/security review     | Blocked |
+| SCB-08 | Does the validated workflow require persistence beyond the memory-only MVP?   | User evidence; any persistence requires new security review | Blocked |
+| SCB-09 | How can users recognize and remove identifying or excessive detail safely?    | User evidence, content design, and E2EE architecture        | Blocked |
+| SCB-10 | Which useful outputs fit the no-export and selected-chat-share boundary?      | Source stakeholder, product, security, and recipient users  | Blocked |
+| SCB-11 | What accessibility needs change sorting, spatial layout, or interaction mode? | User research and accessibility review                      | Blocked |
+| SCB-12 | What crisis, retaliation, or imminent-harm boundaries require safe exits?     | Security, content, and qualified human review               | Blocked |
 
 ## Completion Gate
 
