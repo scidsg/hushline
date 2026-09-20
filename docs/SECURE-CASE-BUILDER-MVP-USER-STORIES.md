@@ -27,6 +27,11 @@ is a whistleblower, whether information is true, whether a case is strong, or wh
 person should take. It is not a legal, investigative, medical, employment, or emergency-response
 service.
 
+The [advisor and partner validation record](./SECURE-CASE-BUILDER-ADVISOR-VALIDATION.md) contains
+no advisor or partner findings. Its public-information overlap assessment produced no accepted
+scope change. The MVP remains provisional and must not be treated as validated until that record's
+human-review and completion gates are satisfied.
+
 ## Successful MVP Outcomes
 
 The MVP is successful when a user can reach any of these outcomes without being pushed toward
