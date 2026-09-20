@@ -37,4 +37,5 @@ This directory now includes a GitHub-first mirror of the public Hush Line Librar
 - [Whistleblower-protection accountability wall feasibility memo](./WHISTLEBLOWER-PROTECTION-ACCOUNTABILITY-WALL-FEASIBILITY.md)
 - [Secure Case Builder source workflow research memo](./SECURE-CASE-BUILDER-SOURCE-WORKFLOW.md)
 - [Secure Case Builder pre-build threat model](./SECURE-CASE-BUILDER-THREAT-MODEL.md)
+- [Secure Case Builder MVP user stories](./SECURE-CASE-BUILDER-MVP-USER-STORIES.md)
 - [Screenshots](./screenshots/README.md)
