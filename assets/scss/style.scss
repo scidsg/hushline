@@ -6212,3 +6212,152 @@ button .badge {
 .form-group:has(#embed_iframe_snippet) {
   margin-top: 1rem;
 }
+
+.case-builder-main {
+  max-width: 1040px;
+}
+
+.case-builder-container {
+  max-width: 1040px;
+}
+
+.case-builder-heading > .meta {
+  margin: 0 0 0.25rem;
+}
+
+.case-builder-notice h3 {
+  font-size: var(--font-size-5);
+}
+
+.case-builder-notice summary {
+  cursor: pointer;
+  font-family: var(--font-sans-bold);
+  margin-top: 0.75rem;
+}
+
+.case-builder-shell {
+  display: grid;
+  grid-template-columns: minmax(9rem, 12rem) minmax(0, 1fr);
+  gap: 2rem;
+  margin-top: 1rem;
+}
+
+.case-builder-sections {
+  border-right: var(--border);
+  padding-right: 1.5rem;
+}
+
+.case-builder-sections p {
+  margin-top: 0;
+}
+
+.case-builder-sections ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.case-builder-sections a[aria-current="page"] {
+  font-family: var(--font-sans-bold);
+  text-decoration-thickness: 0.125rem;
+}
+
+.case-builder-editor {
+  margin-top: 1.25rem;
+}
+
+.case-builder-editor textarea,
+.case-note-card textarea {
+  height: auto;
+  min-height: 10rem;
+  resize: vertical;
+}
+
+.case-builder-editor textarea {
+  margin-bottom: 0.5rem;
+}
+
+.case-builder-status {
+  min-height: 1.25rem;
+  margin: 0.75rem 0;
+}
+
+.case-builder-empty {
+  border: 1px dashed var(--color-border-dark);
+  border-radius: 0.25rem;
+  padding: 1rem;
+}
+
+.case-notes-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.case-note-card {
+  border: var(--border);
+  border-radius: 0.25rem;
+  margin-top: 1rem;
+  padding: 1rem;
+}
+
+.case-note-text {
+  margin-top: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.case-note-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.case-note-actions button {
+  margin: 0;
+}
+
+.case-note-delete-prompt {
+  flex-basis: 100%;
+  font-family: var(--font-sans-bold);
+}
+
+.case-builder-print-notice {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .case-builder-sections,
+  .case-note-card {
+    border-color: var(--color-border-dark-1);
+  }
+}
+
+@media (max-width: 700px) {
+  .case-builder-shell {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .case-builder-sections {
+    border-bottom: var(--border);
+    border-right: 0;
+    padding: 0 0 1rem;
+  }
+}
+
+@media print {
+  body.case-builder-page > :not(.case-builder-print-notice) {
+    display: none !important;
+  }
+
+  body.case-builder-page {
+    display: block;
+    padding: 1rem;
+  }
+
+  .case-builder-print-notice {
+    display: block;
+  }
+}
