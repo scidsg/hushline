@@ -41,4 +41,5 @@ This directory now includes a GitHub-first mirror of the public Hush Line Librar
 - [Secure Case Builder case-education library recommendation](./SECURE-CASE-BUILDER-CASE-EDUCATION-LIBRARY.md)
 - [Secure Case Builder information architecture prototype](./SECURE-CASE-BUILDER-INFORMATION-ARCHITECTURE.md)
 - [Secure Case Builder advisor and partner validation record](./SECURE-CASE-BUILDER-ADVISOR-VALIDATION.md)
+- [Secure Case Builder MVP data model](./SECURE-CASE-BUILDER-MVP-DATA-MODEL.md)
 - [Screenshots](./screenshots/README.md)
