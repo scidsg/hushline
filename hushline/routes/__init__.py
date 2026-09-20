@@ -7,6 +7,7 @@ from flask import (
 from werkzeug.wrappers.response import Response
 
 from hushline.routes.auth import register_auth_routes
+from hushline.routes.case_builder import register_case_builder_routes
 from hushline.routes.common import get_ip_address
 from hushline.routes.directory import register_directory_routes
 from hushline.routes.email_headers import register_email_headers_routes
@@ -31,6 +32,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(levelname)s:%(mess
 
 def init_app(app: Flask) -> None:
     register_auth_routes(app)
+    register_case_builder_routes(app)
     register_index_routes(app)
     register_inbox_routes(app)
     register_profile_routes(app)

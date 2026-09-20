@@ -7,6 +7,7 @@ const entries = new Object();
 modules = [
   // ours
   "admin-broadcasts",
+  "case-builder",
   "client-side-encryption",
   "chat-key-lifecycle",
   "diceware-words",

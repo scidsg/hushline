@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Private case workspace - {{ brand_name }}</title>
+    <link rel="stylesheet" href="{{ stylesheet_url }}" />
+    <script defer src="{{ case_builder_script_url }}"></script>
+  </head>
+  <body class="case-builder-page">
+    <a class="skip-link" href="#main-content">Skip to workspace</a>
+
+    <header class="case-builder-header">
+      <div class="brand-wrapper">
+        <h1>{{ brand_name }}</h1>
+      </div>
+      <nav aria-label="Workspace actions">
+        <a class="btn btn-danger" id="case-builder-discard" href="{{ leave_url }}">
+          Discard &amp; leave
+        </a>
+      </nav>
+    </header>
+
+    <main id="main-content" class="case-builder-main">
+      <div class="container case-builder-container">
+        <div class="case-builder-heading">
+          <p class="meta">Secure Case Builder</p>
+          <h2>Private case workspace</h2>
+          <p>Capture private preparation notes here. They are not submitted tips.</p>
+        </div>
+
+        <section class="contextBanner case-builder-notice" aria-labelledby="workspace-limits-title">
+          <h3 id="workspace-limits-title">This workspace exists only in this open page</h3>
+          <p>
+            Hush Line does not receive or save your note text while you work. Closing, reloading,
+            or leaving loses it. Anyone or any software that can see your device or screen may see
+            the content. Include only what you need.
+          </p>
+          <details>
+            <summary>What Hush Line can and cannot see</summary>
+            <p>
+              Hush Line can receive ordinary connection details when this page and its files load,
+              including that the workspace page was requested. Your notes stay in this page's
+              memory and are not sent to Hush Line while you create, edit, or delete them.
+            </p>
+            <p>
+              Notes are readable by this page and your browser while it is open. This is not
+              encrypted or saved draft storage.
+            </p>
+            <p>
+              This does not protect notes from someone or software with access to your browser,
+              device, or screen. Manually copying or capturing text creates a copy outside this
+              workspace. Discarding or deleting removes content from the open page but cannot
+              securely erase browser or device artifacts.
+            </p>
+          </details>
+        </section>
+
+        <noscript>
+          <p class="contextBanner" role="alert">
+            JavaScript is required to use this memory-only workspace. No note has been submitted.
+          </p>
+        </noscript>
+
+        <div class="case-builder-shell" data-case-builder>
+          <nav class="case-builder-sections" aria-label="Workspace sections">
+            <p class="bold">Sections</p>
+            <ul>
+              <li><a href="#case-notes" aria-current="page">Notes</a></li>
+            </ul>
+          </nav>
+
+          <section id="case-notes" class="case-builder-notes" aria-labelledby="case-notes-title">
+            <h3 id="case-notes-title">Notes</h3>
+            <p>
+              Add pieces in your own words. Notes remain private preparation and are not shared
+              from this workspace.
+            </p>
+
+            <div class="case-builder-editor">
+              <label for="case-note-draft">New note</label>
+              <textarea
+                id="case-note-draft"
+                rows="8"
+                autocomplete="off"
+                autocapitalize="off"
+                autocorrect="off"
+                spellcheck="false"
+                translate="no"
+                aria-describedby="case-note-guidance"
+              ></textarea>
+              <p id="case-note-guidance" class="meta">
+                Avoid details you do not need for your preparation.
+              </p>
+              <button type="button" id="case-note-add">Add note</button>
+            </div>
+
+            <p
+              id="case-builder-status"
+              class="case-builder-status meta"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            ></p>
+
+            <p id="case-notes-empty" class="case-builder-empty">
+              No notes yet. You can add one or leave without creating a draft.
+            </p>
+            <ul
+              id="case-notes-list"
+              class="case-notes-list"
+              aria-label="Private preparation notes"
+            ></ul>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <section class="case-builder-print-notice" aria-hidden="true">
+      <h1>Printing is unavailable</h1>
+      <p>Case workspace content is hidden from print and PDF output.</p>
+    </section>
+  </body>
+</html>
