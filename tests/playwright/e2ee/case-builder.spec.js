@@ -174,3 +174,57 @@ test("claims, timeline, evidence, and corroborators can be mapped safely", async
 
   expect(editingRequests).toEqual([]);
 });
+
+test("review markers and next-step choices remain private and user-directed", async ({
+  page,
+}) => {
+  await page.goto("/case-builder", { waitUntil: "networkidle" });
+
+  const editingRequests = [];
+  page.on("request", (request) => editingRequests.push(request.url()));
+
+  await page.locator("#case-note-draft").fill("A detail to review");
+  await page.locator("#case-note-add").click();
+  const note = page.locator(".case-note-card");
+  await note.getByRole("button", { name: "Mark uncertain" }).click();
+  await note
+    .getByRole("button", { name: "Mark sensitive or identifying" })
+    .click();
+  await note.getByRole("button", { name: "Set aside" }).click();
+  await expect(note).toContainText("Uncertain");
+  await expect(note).toContainText("Sensitive or identifying");
+  await expect(note).toContainText("Set aside");
+
+  await page.locator("#case-review-incomplete").check();
+  await page.locator("#case-review-retaliation").check();
+  await page.locator("#case-review-kind").selectOption("risk");
+  await page
+    .locator("#case-review-description")
+    .fill("Consider whether this could affect another person");
+  await page.locator("#case-review-uncertain").check();
+  await page.locator("#case-review-identifying").check();
+  await page.locator("#case-review-add").click();
+
+  const reminder = page.locator(".case-review-card");
+  await expect(reminder).toContainText("Possible consequence");
+  await expect(reminder).toContainText(
+    "Consider whether this could affect another person",
+  );
+  await expect(reminder).toContainText("Uncertain");
+  await expect(reminder).toContainText("Sensitive or identifying");
+
+  await page.locator("#case-review-stop").click();
+  await expect(page.locator("#case-review-decision")).toContainText(
+    "You chose not to proceed right now. Nothing has been shared.",
+  );
+  await expect(page.locator("#case-builder-status")).toHaveText(
+    "Do not proceed right now selected. Nothing was shared.",
+  );
+
+  await page.locator("#case-review-continue").click();
+  await expect(page.locator("#case-review-decision")).toHaveText(
+    "You chose to continue preparing. Nothing has been shared, saved, or submitted.",
+  );
+
+  expect(editingRequests).toEqual([]);
+});
