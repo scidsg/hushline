@@ -49,7 +49,10 @@ def test_case_builder_opens_without_an_account_and_does_not_create_session_state
     assert soup.find(id="case-notes-list") is not None
     stylesheet = soup.find("link", rel="stylesheet")
     assert stylesheet is not None
-    assert str(stylesheet.get("href") or "").endswith("?v=case-builder-1")
+    assert str(stylesheet.get("href") or "").endswith("?v=case-builder-2")
+    script = soup.find("script", src=True)
+    assert script is not None
+    assert str(script.get("src") or "").endswith("?v=case-builder-2")
     for asset in soup.select("script[src], link[href]"):
         asset_url = str(asset.get("src") or asset.get("href") or "")
         assert asset_url.startswith("/static/")
@@ -98,6 +101,46 @@ def test_case_builder_explains_privacy_boundary_and_has_no_share_or_export_contr
     assert not any("download" in label for label in controls)
     assert not any("print" in label for label in controls)
     assert not any("copy" in label for label in controls)
+
+
+def test_case_builder_has_structured_mapping_controls_without_file_or_network_forms(
+    client: FlaskClient,
+) -> None:
+    response = client.get(url_for("case_builder"))
+    soup = BeautifulSoup(response.text, "html.parser")
+    page_text = " ".join(soup.get_text(" ", strip=True).split())
+
+    assert soup.find("form") is None
+    assert soup.find("input", attrs={"type": "file"}) is None
+    assert soup.find("select", id="case-claim-kind") is not None
+    assert soup.find("input", id="case-claim-uncertain", attrs={"type": "checkbox"}) is not None
+    assert soup.find("input", id="case-event-date", attrs={"type": "date"}) is not None
+    assert soup.find("input", id="case-event-approximate", attrs={"type": "checkbox"}) is not None
+    assert soup.find("textarea", id="case-event-parties") is not None
+    assert soup.find("textarea", id="case-event-sources") is not None
+    assert soup.find("input", id="case-evidence-missing", attrs={"type": "checkbox"}) is not None
+    assert soup.find("input", id="case-evidence-uncertain", attrs={"type": "checkbox"}) is not None
+    assert soup.find("input", id="case-evidence-risky", attrs={"type": "checkbox"}) is not None
+    assert soup.find("input", id="case-corroborator-label") is not None
+    assert soup.find("select", id="case-connection-from") is not None
+    assert soup.find("select", id="case-connection-to") is not None
+
+    assert "Separate the central concerns" in page_text
+    assert "Events are arranged by date automatically." in page_text
+    assert "Inventory only: files cannot be attached here." in page_text
+    assert "Do not seek, copy, download, or move records" in page_text
+    assert "mark it risky and leave it alone" in page_text
+    assert "Contact or identifying details are not required." in page_text
+
+    for control in soup.select("textarea, input"):
+        assert control.get("name") is None
+
+    for control in soup.select('textarea, input[type="text"]'):
+        assert control.get("autocomplete") == "off"
+        assert control.get("autocapitalize") == "off"
+        assert control.get("autocorrect") == "off"
+        assert control.get("spellcheck") == "false"
+        assert control.get("translate") == "no"
 
 
 def test_case_builder_uses_existing_strict_csp(client: FlaskClient) -> None:
@@ -149,8 +192,17 @@ def test_case_builder_client_keeps_workspace_in_memory_only() -> None:
 
     assert "schemaVersion: 1" in source
     assert "notes: []" in source
+    assert "claims: []" in source
+    assert "timelineEvents: []" in source
+    assert "evidenceItems: []" in source
+    assert "corroborators: []" in source
+    assert "relationships: []" in source
     assert "selectedItems: []" in source
-    assert "text.textContent = note.text" in source
+    assert "paragraph.textContent = value" in source
+    assert "workspace.timelineEvents.slice().sort" in source
+    assert 'accessRisk: evidenceRisky.checked ? "risky" : "unmarked"' in source
+    assert 'availability: evidenceMissing.checked ? "missing" : "available"' in source
+    assert "removeRelationshipsFor(record.id)" in source
     assert "innerHTML" not in source
     assert 'window.addEventListener("pagehide", clearWorkspace)' in source
     assert 'window.addEventListener("pageshow"' in source

@@ -14,8 +14,10 @@ def register_case_builder_routes(app: Flask) -> None:
         response = make_response(
             template.render(
                 brand_name=brand_name,
-                case_builder_script_url=url_for("static", filename="js/case-builder.js"),
-                stylesheet_url=url_for("static", filename="css/style.css", v="case-builder-1"),
+                case_builder_script_url=url_for(
+                    "static", filename="js/case-builder.js", v="case-builder-2"
+                ),
+                stylesheet_url=url_for("static", filename="css/style.css", v="case-builder-2"),
                 leave_url=url_for("directory"),
             )
         )
