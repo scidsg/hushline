@@ -63,7 +63,13 @@
           </p>
         </noscript>
 
-        <div class="case-builder-shell" data-case-builder>
+        <div
+          class="case-builder-shell"
+          data-case-builder
+          data-counsel-url="{{ counsel_url }}"
+          data-chat-url="{{ chat_url }}"
+          data-tip-url="{{ tip_url }}"
+        >
           <nav class="case-builder-sections" aria-label="Workspace sections">
             <p class="bold">Sections</p>
             <ul>
@@ -74,6 +80,8 @@
               <li><a href="#case-corroborators">Corroborators</a></li>
               <li><a href="#case-connections">Connections</a></li>
               <li><a href="#case-review">Review</a></li>
+              <li><a href="#case-narrative">Narrative</a></li>
+              <li><a href="#case-next-action">Next action</a></li>
             </ul>
           </nav>
 
@@ -466,18 +474,166 @@
                   This check is optional. An unchecked box does not mean you should add information.
                 </p>
               </fieldset>
+            </section>
 
-              <div class="case-review-decision" aria-labelledby="case-review-decision-title">
-                <h4 id="case-review-decision-title">Choose what happens next</h4>
-                <p>Neither choice shares, saves, or submits anything.</p>
-                <div class="case-record-actions">
-                  <button type="button" id="case-review-continue">Continue preparing</button>
-                  <button type="button" id="case-review-stop" class="btn">
-                    Do not proceed right now
-                  </button>
-                </div>
-                <p id="case-review-decision" class="contextBanner" hidden></p>
+            <section
+              id="case-narrative"
+              class="case-builder-section"
+              aria-labelledby="case-narrative-title"
+            >
+              <h3 id="case-narrative-title">Narrative outline</h3>
+              <p>
+                Prepare a working copy for the audience you have in mind. Hush Line does not
+                generate, judge, send, or decide when this outline is complete.
+              </p>
+
+              <div class="case-builder-editor case-narrative-details">
+                <label for="case-narrative-audience">Intended audience (optional)</label>
+                <input
+                  id="case-narrative-audience"
+                  type="text"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  spellcheck="false"
+                  translate="no"
+                  aria-describedby="case-narrative-audience-guidance"
+                />
+                <p id="case-narrative-audience-guidance" class="meta">
+                  Describe the audience in your own words. This does not select or contact anyone.
+                </p>
+                <label for="case-narrative-heading">Outline heading (optional)</label>
+                <input
+                  id="case-narrative-heading"
+                  type="text"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  spellcheck="false"
+                  translate="no"
+                />
+                <button type="button" id="case-narrative-details-save">
+                  Save audience and heading
+                </button>
               </div>
+
+              <fieldset class="case-review-group">
+                <legend>Include, exclude, or hold</legend>
+                <p class="meta">Use these optional reminders before assembling the outline.</p>
+                <label class="case-builder-check">
+                  <input id="case-narrative-include-check" type="checkbox" />
+                  Include only details this audience needs.
+                </label>
+                <label class="case-builder-check">
+                  <input id="case-narrative-exclude-check" type="checkbox" />
+                  Exclude names, locations, dates, and source details they do not need.
+                </label>
+                <label class="case-builder-check">
+                  <input id="case-narrative-hold-check" type="checkbox" />
+                  Hold uncertain, risky, or identifying material for another review.
+                </label>
+              </fieldset>
+
+              <div class="case-narrative-columns">
+                <div>
+                  <h4>Available items</h4>
+                  <p class="meta">
+                    Nothing is added automatically. Adding an item makes an editable copy and does
+                    not change the source item.
+                  </p>
+                  <p id="case-narrative-sources-empty" class="case-builder-empty">
+                    Add a note or structured item above, or write a new outline piece.
+                  </p>
+                  <ul
+                    id="case-narrative-sources"
+                    class="case-record-list"
+                    aria-label="Items available for the narrative outline"
+                  ></ul>
+                </div>
+
+                <div>
+                  <h4>Current outline</h4>
+                  <p class="meta">
+                    Use the buttons to order each piece. Outline edits do not rewrite source items.
+                  </p>
+                  <p id="case-narrative-empty" class="case-builder-empty">
+                    No outline pieces yet. The outline is optional.
+                  </p>
+                  <ol
+                    id="case-narrative-list"
+                    class="case-record-list case-narrative-list"
+                    aria-label="Narrative outline pieces"
+                  ></ol>
+                </div>
+              </div>
+
+              <div class="case-builder-editor">
+                <label for="case-narrative-new-piece">New outline piece</label>
+                <textarea
+                  id="case-narrative-new-piece"
+                  rows="5"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  spellcheck="false"
+                  translate="no"
+                ></textarea>
+                <button type="button" id="case-narrative-add-piece">Add outline piece</button>
+              </div>
+            </section>
+
+            <section
+              id="case-next-action"
+              class="case-builder-section"
+              aria-labelledby="case-next-action-title"
+            >
+              <h3 id="case-next-action-title">Next action and share plan</h3>
+              <p>
+                Choose what, if anything, you want to review. No option sends, saves, exports, or
+                submits your outline automatically, and none is recommended.
+              </p>
+
+              <fieldset class="case-review-group" id="case-next-actions">
+                <legend>What would you like to consider?</legend>
+                <label class="case-builder-check">
+                  <input type="radio" name="case-next-action" value="continue" />
+                  Continue preparing
+                </label>
+                <label class="case-builder-check">
+                  <input type="radio" name="case-next-action" value="contact_counsel" />
+                  Contact counsel
+                </label>
+                <label class="case-builder-check">
+                  <input type="radio" name="case-next-action" value="start_chat" />
+                  Start a Hush Line chat
+                </label>
+                <label class="case-builder-check">
+                  <input type="radio" name="case-next-action" value="export_packet" />
+                  Export a packet
+                </label>
+                <label class="case-builder-check">
+                  <input type="radio" name="case-next-action" value="drop_tip" />
+                  Drop a tip
+                </label>
+                <label class="case-builder-check">
+                  <input type="radio" name="case-next-action" value="pause_in_open_page" />
+                  Pause while keeping this page open
+                </label>
+              </fieldset>
+              <button type="button" id="case-next-action-review">Review selected action</button>
+
+              <section
+                id="case-next-action-review-panel"
+                class="contextBanner case-next-action-review"
+                aria-labelledby="case-next-action-review-title"
+                tabindex="-1"
+                hidden
+              >
+                <h4 id="case-next-action-review-title"></h4>
+                <p id="case-next-action-warning"></p>
+                <div id="case-next-action-preview" class="case-narrative-preview"></div>
+                <div id="case-next-action-controls" class="case-record-actions"></div>
+              </section>
             </section>
           </div>
         </div>

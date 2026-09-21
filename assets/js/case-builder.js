@@ -38,9 +38,23 @@
   const reviewUncertain = document.getElementById("case-review-uncertain");
   const reviewIdentifying = document.getElementById("case-review-identifying");
   const addReviewButton = document.getElementById("case-review-add");
-  const continueButton = document.getElementById("case-review-continue");
-  const stopButton = document.getElementById("case-review-stop");
-  const decision = document.getElementById("case-review-decision");
+  const narrativeAudience = document.getElementById("case-narrative-audience");
+  const narrativeHeading = document.getElementById("case-narrative-heading");
+  const saveNarrativeDetailsButton = document.getElementById(
+    "case-narrative-details-save",
+  );
+  const narrativeSourcesEmpty = document.getElementById("case-narrative-sources-empty");
+  const narrativeSources = document.getElementById("case-narrative-sources");
+  const narrativeEmpty = document.getElementById("case-narrative-empty");
+  const narrativeList = document.getElementById("case-narrative-list");
+  const narrativeNewPiece = document.getElementById("case-narrative-new-piece");
+  const addNarrativePieceButton = document.getElementById("case-narrative-add-piece");
+  const reviewNextActionButton = document.getElementById("case-next-action-review");
+  const nextActionReviewPanel = document.getElementById("case-next-action-review-panel");
+  const nextActionReviewTitle = document.getElementById("case-next-action-review-title");
+  const nextActionWarning = document.getElementById("case-next-action-warning");
+  const nextActionPreview = document.getElementById("case-next-action-preview");
+  const nextActionControls = document.getElementById("case-next-action-controls");
 
   const views = {
     notes: {
@@ -83,11 +97,21 @@
   };
 
   const itemTypeLabels = {
+    note: "Note",
     claim: "Claim",
     event: "Event",
     evidence: "Evidence",
     corroborator: "Corroborator",
     review: "Review reminder",
+  };
+
+  const nextActionLabels = {
+    continue: "Continue preparing",
+    contact_counsel: "Contact counsel",
+    start_chat: "Start a Hush Line chat",
+    export_packet: "Export a packet",
+    drop_tip: "Drop a tip",
+    pause_in_open_page: "Pause while keeping this page open",
   };
 
   const relationshipLabels = {
@@ -132,6 +156,7 @@
   }
 
   let workspace = createWorkspace();
+  let narrativeChoices = new Map();
 
   function updateAudit(audit) {
     audit.updatedAt = timestamp();
@@ -299,6 +324,22 @@
     }
   }
 
+  function removeNarrativeReferencesFor(itemId) {
+    narrativeChoices.delete(itemId);
+    workspace.narrativeDrafts.forEach(function (narrative) {
+      narrative.blocks.forEach(function (block) {
+        if (block.source && block.source.id === itemId) {
+          delete block.source;
+          updateAudit(block.audit);
+          updateAudit(narrative.audit);
+        }
+      });
+    });
+    workspace.sharePlan.selectedItems = workspace.sharePlan.selectedItems.filter(function (item) {
+      return item.id !== itemId;
+    });
+  }
+
   function requestDelete(record, recordType, actions, returnControl) {
     const prompt = document.createElement("span");
     prompt.id = `case-delete-prompt-${record.id}`;
@@ -313,7 +354,10 @@
       });
       if (index === -1) return;
 
-      if (recordType !== "connection") removeRelationshipsFor(record.id);
+      if (recordType !== "connection") {
+        removeRelationshipsFor(record.id);
+        removeNarrativeReferencesFor(record.id);
+      }
       scrub(collection[index]);
       collection.splice(index, 1);
       updateAudit(workspace.audit);
@@ -399,6 +443,7 @@
       });
       if (noteIndex === -1) return;
 
+      removeNarrativeReferencesFor(note.id);
       scrub(workspace.notes[noteIndex]);
       workspace.notes.splice(noteIndex, 1);
       updateAudit(workspace.audit);
@@ -567,6 +612,239 @@
     ];
   }
 
+  function getNarrativeSourceRecords() {
+    return [
+      ...workspace.notes.map(function (record) {
+        return { record, type: "note", label: "Note", text: record.text };
+      }),
+      ...workspace.claims.map(function (record) {
+        return {
+          record,
+          type: "claim",
+          label: record.kind === "core" ? "Core claim" : "Background detail",
+          text: record.summary,
+        };
+      }),
+      ...workspace.timelineEvents.map(function (record) {
+        return {
+          record,
+          type: "event",
+          label: `${record.approximate ? "About " : ""}${record.date}`,
+          text: record.summary,
+        };
+      }),
+      ...workspace.evidenceItems.map(function (record) {
+        return {
+          record,
+          type: "evidence",
+          label: `Evidence: ${record.title}`,
+          text: record.description || record.title,
+        };
+      }),
+      ...workspace.corroborators.map(function (record) {
+        return {
+          record,
+          type: "corroborator",
+          label: `Corroborator: ${record.label}`,
+          text: record.basis,
+        };
+      }),
+    ];
+  }
+
+  function currentNarrative() {
+    return workspace.narrativeDrafts[0];
+  }
+
+  function ensureNarrative() {
+    let narrative = currentNarrative();
+    if (narrative) return narrative;
+
+    narrative = {
+      id: nextId("narrative"),
+      audit: createAudit(),
+      title: "",
+      intendedAudience: "",
+      blocks: [],
+    };
+    workspace.narrativeDrafts.push(narrative);
+    updateAudit(workspace.audit);
+    return narrative;
+  }
+
+  function invalidateNextActionReview() {
+    nextActionReviewPanel.hidden = true;
+    nextActionReviewTitle.textContent = "";
+    nextActionWarning.textContent = "";
+    nextActionPreview.replaceChildren();
+    nextActionControls.replaceChildren();
+  }
+
+  function narrativeChoiceFor(itemId) {
+    return narrativeChoices.get(itemId) || "hold";
+  }
+
+  function removeNarrativeBlocksForSource(narrative, itemId) {
+    for (let index = narrative.blocks.length - 1; index >= 0; index -= 1) {
+      const block = narrative.blocks[index];
+      if (block.source && block.source.id === itemId) {
+        scrub(block);
+        narrative.blocks.splice(index, 1);
+      }
+    }
+  }
+
+  function chooseNarrativeDisposition(item, disposition) {
+    const narrative = ensureNarrative();
+    removeNarrativeBlocksForSource(narrative, item.record.id);
+    narrativeChoices.set(item.record.id, disposition);
+
+    if (disposition === "include") {
+      narrative.blocks.push({
+        id: nextId("narrative-block"),
+        audit: createAudit(),
+        text: item.text,
+        source: { kind: item.type, id: item.record.id },
+      });
+    }
+
+    updateAudit(narrative.audit);
+    updateAudit(workspace.audit);
+    invalidateNextActionReview();
+    renderNarrative();
+    if (disposition === "include") {
+      announce("An editable copy was added to the outline.");
+    } else if (disposition === "exclude") {
+      announce("Item excluded from this outline.");
+    } else {
+      announce("Item held for later.");
+    }
+  }
+
+  function appendNarrativeChoice(controlGroup, item, disposition, labelText) {
+    const label = document.createElement("label");
+    label.className = "case-builder-check";
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = `case-narrative-choice-${item.record.id}`;
+    input.value = disposition;
+    input.checked = narrativeChoiceFor(item.record.id) === disposition;
+    input.addEventListener("change", function () {
+      if (input.checked) chooseNarrativeDisposition(item, disposition);
+    });
+    label.append(input, document.createTextNode(labelText));
+    controlGroup.appendChild(label);
+  }
+
+  function renderNarrativeSources() {
+    const sourceItems = getNarrativeSourceRecords();
+    narrativeSources.replaceChildren();
+    narrativeSourcesEmpty.hidden = sourceItems.length !== 0;
+
+    sourceItems.forEach(function (item) {
+      const listItem = document.createElement("li");
+      listItem.className = "case-record-card case-narrative-source";
+      const heading = document.createElement("h5");
+      heading.textContent = item.label;
+      listItem.appendChild(heading);
+      addText(listItem, "case-record-text", item.text);
+
+      const choices = document.createElement("fieldset");
+      choices.className = "case-narrative-source-choices";
+      const legend = document.createElement("legend");
+      legend.textContent = `Use ${item.label} in this outline`;
+      choices.appendChild(legend);
+      appendNarrativeChoice(choices, item, "include", "Include");
+      appendNarrativeChoice(choices, item, "exclude", "Exclude");
+      appendNarrativeChoice(choices, item, "hold", "Hold for later");
+      listItem.appendChild(choices);
+      narrativeSources.appendChild(listItem);
+    });
+  }
+
+  function moveNarrativeBlock(narrative, index, offset) {
+    const destination = index + offset;
+    if (destination < 0 || destination >= narrative.blocks.length) return;
+    const moved = narrative.blocks.splice(index, 1)[0];
+    narrative.blocks.splice(destination, 0, moved);
+    updateAudit(narrative.audit);
+    updateAudit(workspace.audit);
+    invalidateNextActionReview();
+    renderNarrative();
+    announce("Outline order updated.");
+  }
+
+  function removeNarrativeBlock(narrative, block) {
+    const index = narrative.blocks.findIndex(function (candidate) {
+      return candidate.id === block.id;
+    });
+    if (index === -1) return;
+    if (block.source) narrativeChoices.set(block.source.id, "hold");
+    scrub(narrative.blocks[index]);
+    narrative.blocks.splice(index, 1);
+    updateAudit(narrative.audit);
+    updateAudit(workspace.audit);
+    invalidateNextActionReview();
+    renderNarrative();
+    announce("Outline piece removed from the open page.");
+  }
+
+  function renderNarrativeOutline() {
+    const narrative = currentNarrative();
+    const blocks = narrative ? narrative.blocks : [];
+    narrativeList.replaceChildren();
+    narrativeEmpty.hidden = blocks.length !== 0;
+
+    blocks.forEach(function (block, index) {
+      const item = document.createElement("li");
+      item.className = "case-record-card case-narrative-block";
+      const label = document.createElement("label");
+      const editorId = `case-narrative-block-${block.id}`;
+      label.htmlFor = editorId;
+      label.textContent = `Outline piece ${index + 1}`;
+      const editor = document.createElement("textarea");
+      editor.id = editorId;
+      editor.rows = 5;
+      editor.value = block.text;
+      configureSensitiveTextarea(editor);
+      editor.addEventListener("input", function () {
+        block.text = editor.value;
+        updateAudit(block.audit);
+        updateAudit(narrative.audit);
+        updateAudit(workspace.audit);
+        invalidateNextActionReview();
+      });
+
+      const actions = document.createElement("div");
+      actions.className = "case-record-actions";
+      const moveUpButton = createButton("Move up", "btn", function () {
+        moveNarrativeBlock(narrative, index, -1);
+      });
+      moveUpButton.disabled = index === 0;
+      const moveDownButton = createButton("Move down", "btn", function () {
+        moveNarrativeBlock(narrative, index, 1);
+      });
+      moveDownButton.disabled = index === blocks.length - 1;
+      actions.append(
+        moveUpButton,
+        moveDownButton,
+        createButton("Remove from outline", "btn-danger", function () {
+          removeNarrativeBlock(narrative, block);
+        }),
+      );
+      item.append(label, editor, actions);
+      narrativeList.appendChild(item);
+    });
+  }
+
+  function renderNarrative() {
+    const narrative = currentNarrative();
+    narrativeAudience.value = narrative ? narrative.intendedAudience : "";
+    narrativeHeading.value = narrative ? narrative.title : "";
+    renderNarrativeSources();
+    renderNarrativeOutline();
+  }
+
   function recordName(itemId) {
     const match = getLinkableRecords().find(function (item) {
       return item.record.id === itemId;
@@ -637,22 +915,6 @@
     });
   }
 
-  function renderDecision() {
-    const nextAction = workspace.sharePlan.nextAction;
-    decision.hidden = !nextAction;
-    if (nextAction === "continue") {
-      decision.textContent =
-        "You chose to continue preparing. Nothing has been shared, saved, or submitted.";
-    } else if (nextAction === "pause_in_open_page") {
-      decision.textContent =
-        "You chose not to proceed right now. Nothing has been shared. " +
-        "This page does not save your work; close it or use Discard & leave if you do not want " +
-        "to keep it visible.";
-    } else {
-      decision.textContent = "";
-    }
-  }
-
   function renderWorkspace() {
     renderNotes();
     renderClaims();
@@ -662,7 +924,7 @@
     renderRelationships();
     renderGapsAndRisks();
     renderConnectionOptions();
-    renderDecision();
+    renderNarrative();
   }
 
   function addNote() {
@@ -884,21 +1146,150 @@
     reviewDescription.focus();
   }
 
-  function chooseNextAction(nextAction) {
+  function saveNarrativeDetails() {
+    const narrative = ensureNarrative();
+    narrative.intendedAudience = narrativeAudience.value.trim();
+    narrative.title = narrativeHeading.value.trim();
+    updateAudit(narrative.audit);
+    updateAudit(workspace.audit);
+    invalidateNextActionReview();
+    renderNarrative();
+    announce("Audience and heading saved in the open page. Nothing was shared.");
+  }
+
+  function updateNarrativeDetail(field, value) {
+    const narrative = ensureNarrative();
+    narrative[field] = value;
+    updateAudit(narrative.audit);
+    updateAudit(workspace.audit);
+    invalidateNextActionReview();
+  }
+
+  function addNarrativePiece() {
+    const text = narrativeNewPiece.value.trim();
+    if (!text) {
+      announce("Enter text before adding an outline piece.");
+      narrativeNewPiece.focus();
+      return;
+    }
+    const narrative = ensureNarrative();
+    narrative.blocks.push({
+      id: nextId("narrative-block"),
+      audit: createAudit(),
+      text,
+    });
+    updateAudit(narrative.audit);
+    updateAudit(workspace.audit);
+    narrativeNewPiece.value = "";
+    invalidateNextActionReview();
+    renderNarrative();
+    announce("Outline piece added to the open page.");
+    narrativeNewPiece.focus();
+  }
+
+  function appendReviewText(container, label, value) {
+    if (!value) return;
+    const paragraph = document.createElement("p");
+    const heading = document.createElement("strong");
+    heading.textContent = `${label}: `;
+    paragraph.append(heading, document.createTextNode(value));
+    container.appendChild(paragraph);
+  }
+
+  function renderNarrativePreview() {
+    const narrative = currentNarrative();
+    const heading = document.createElement("h5");
+    heading.textContent = "Exact outline currently in this page";
+    nextActionPreview.appendChild(heading);
+
+    if (!narrative || !narrative.blocks.length) {
+      addText(
+        nextActionPreview,
+        "case-builder-empty",
+        "No outline pieces are selected. Return to the narrative before taking an action that " +
+          "would use content.",
+      );
+      return;
+    }
+
+    appendReviewText(nextActionPreview, "Audience", narrative.intendedAudience);
+    appendReviewText(nextActionPreview, "Heading", narrative.title);
+    const list = document.createElement("ol");
+    narrative.blocks.forEach(function (block) {
+      const item = document.createElement("li");
+      item.textContent = block.text || "[Empty outline piece]";
+      list.appendChild(item);
+    });
+    nextActionPreview.appendChild(list);
+  }
+
+  function appendActionLink(label, href) {
+    const link = document.createElement("a");
+    link.className = "btn";
+    link.href = href;
+    link.textContent = label;
+    nextActionControls.appendChild(link);
+  }
+
+  function reviewNextAction() {
+    const selectedAction = root.querySelector('input[name="case-next-action"]:checked');
+    if (!selectedAction) {
+      announce("Choose an action before reviewing it.");
+      root.querySelector('input[name="case-next-action"]').focus();
+      return;
+    }
+
+    const nextAction = selectedAction.value;
     workspace.sharePlan.nextAction = nextAction;
     updateAudit(workspace.sharePlan.audit);
     updateAudit(workspace.audit);
-    renderDecision();
+    invalidateNextActionReview();
+    nextActionReviewTitle.textContent = `${nextActionLabels[nextAction]} review`;
+
     if (nextAction === "continue") {
-      announce("Continue preparing selected. Nothing was shared.");
+      nextActionWarning.textContent =
+        "Continue in any section. Nothing has been shared, saved, exported, or submitted.";
+      appendActionLink("Return to narrative", "#case-narrative");
+    } else if (nextAction === "contact_counsel") {
+      nextActionWarning.textContent =
+        "The directory opens separately and receives none of this outline. Contacting a listed " +
+        "person does not by itself create confidentiality, privilege, or legal protection. " +
+        "Leaving this page loses the workspace.";
+      appendActionLink("Open Directory to look for counsel", root.dataset.counselUrl);
+    } else if (nextAction === "start_chat") {
+      nextActionWarning.textContent =
+        "Direct sharing from the Case Builder is not available. A separate recipient and " +
+        "exact-content confirmation is required before any encrypted chat transfer. Opening " +
+        "Inbox transfers none of this outline and leaving this page loses the workspace.";
+      appendActionLink("Open Inbox without the draft", root.dataset.chatUrl);
+    } else if (nextAction === "export_packet") {
+      nextActionWarning.textContent =
+        "An exported file can reveal content and file metadata, and may remain in downloads, " +
+        "recent-file lists, previews, backups, or synchronized storage. This workspace does not " +
+        "create a download; review the exact outline below before making any copy outside it.";
+    } else if (nextAction === "drop_tip") {
+      nextActionWarning.textContent =
+        "The directory opens separately so you can choose and verify a recipient. It receives " +
+        "none of this outline. A later submission can reveal content and connection metadata. " +
+        "Leaving this page loses the workspace.";
+      appendActionLink("Open Directory without the draft", root.dataset.tipUrl);
     } else {
-      announce("Do not proceed right now selected. Nothing was shared.");
+      nextActionWarning.textContent =
+        "Keep this page open to pause. Reloading, closing, navigating away, a crash, or power " +
+        "loss loses the workspace. Nothing has been shared, saved, exported, or submitted.";
+      appendActionLink("Return to workspace", "#case-notes");
     }
+
+    renderNarrativePreview();
+    nextActionReviewPanel.hidden = false;
+    nextActionReviewPanel.focus();
+    announce(`${nextActionLabels[nextAction]} reviewed. Nothing was shared.`);
   }
 
   function clearWorkspace() {
     if (workspace) scrub(workspace);
     workspace = null;
+    narrativeChoices.clear();
     root.querySelectorAll("input, textarea").forEach(function (control) {
       if (control.type === "checkbox") {
         control.checked = false;
@@ -910,8 +1301,11 @@
       select.selectedIndex = 0;
     });
     status.textContent = "";
-    decision.textContent = "";
-    decision.hidden = true;
+    narrativeSources.replaceChildren();
+    narrativeList.replaceChildren();
+    narrativeSourcesEmpty.hidden = false;
+    narrativeEmpty.hidden = false;
+    invalidateNextActionReview();
     Object.values(views).forEach(function (view) {
       view.list.replaceChildren();
       view.empty.hidden = false;
@@ -925,17 +1319,24 @@
   addCorroboratorButton.addEventListener("click", addCorroborator);
   addConnectionButton.addEventListener("click", addConnection);
   addReviewButton.addEventListener("click", addReviewReminder);
-  continueButton.addEventListener("click", function () {
-    chooseNextAction("continue");
+  narrativeAudience.addEventListener("input", function () {
+    updateNarrativeDetail("intendedAudience", narrativeAudience.value);
   });
-  stopButton.addEventListener("click", function () {
-    chooseNextAction("pause_in_open_page");
+  narrativeHeading.addEventListener("input", function () {
+    updateNarrativeDetail("title", narrativeHeading.value);
+  });
+  saveNarrativeDetailsButton.addEventListener("click", saveNarrativeDetails);
+  addNarrativePieceButton.addEventListener("click", addNarrativePiece);
+  reviewNextActionButton.addEventListener("click", reviewNextAction);
+  root.querySelectorAll('input[name="case-next-action"]').forEach(function (control) {
+    control.addEventListener("change", invalidateNextActionReview);
   });
   discardLink.addEventListener("click", clearWorkspace);
   window.addEventListener("pagehide", clearWorkspace);
   window.addEventListener("pageshow", function () {
     if (!workspace) {
       workspace = createWorkspace();
+      narrativeChoices = new Map();
       nextLocalId = 1;
       renderWorkspace();
     }
