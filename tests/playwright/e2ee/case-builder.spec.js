@@ -79,3 +79,98 @@ test("reload and browser history do not restore private notes", async ({
   await expect(page.getByText("History sentinel note")).toHaveCount(0);
   await expect(page.locator("#case-notes-empty")).toBeVisible();
 });
+
+test("claims, timeline, evidence, and corroborators can be mapped safely", async ({
+  page,
+}) => {
+  await page.goto("/case-builder", { waitUntil: "networkidle" });
+
+  const editingRequests = [];
+  page.on("request", (request) => editingRequests.push(request.url()));
+
+  await page.locator("#case-claim-summary").fill("Payments were redirected");
+  await page.locator("#case-claim-uncertain").check();
+  await page.locator("#case-claim-add").click();
+  await expect(page.locator(".case-claim-card")).toContainText("Core claim");
+  await expect(page.locator(".case-claim-card")).toContainText(
+    "Payments were redirected",
+  );
+  await expect(page.locator(".case-claim-card")).toContainText("Uncertain");
+
+  await page.locator("#case-claim-summary").fill("The team changed offices");
+  await page.locator("#case-claim-kind").selectOption("background");
+  await page.locator("#case-claim-add").click();
+  await expect(page.locator(".case-claim-card").nth(1)).toContainText(
+    "Background detail",
+  );
+
+  await page.locator("#case-event-date").fill("2025-05-01");
+  await page.locator("#case-event-summary").fill("Later event");
+  await page.locator("#case-event-add").click();
+  await page.locator("#case-event-date").fill("2025-03-01");
+  await page.locator("#case-event-approximate").check();
+  await page.locator("#case-event-summary").fill("Earlier event");
+  await page.locator("#case-event-parties").fill("Finance team");
+  await page
+    .locator("#case-event-sources")
+    .fill("Meeting notes already known to me");
+  await page.locator("#case-event-add").click();
+  await expect(page.locator(".case-event-card h4")).toHaveText([
+    "About 2025-03-01",
+    "2025-05-01",
+  ]);
+  await expect(page.locator(".case-event-card").first()).toContainText(
+    "Meeting notes already known to me",
+  );
+
+  await page.locator("#case-evidence-title-input").fill("Meeting notes");
+  await page
+    .locator("#case-evidence-description")
+    .fill("May document the payment destination");
+  await page.locator("#case-evidence-missing").check();
+  await page.locator("#case-evidence-uncertain").check();
+  await page.locator("#case-evidence-risky").check();
+  await page.locator("#case-evidence-add").click();
+  await expect(page.locator(".case-evidence-card")).toContainText(
+    "Meeting notes",
+  );
+  await expect(page.locator(".case-evidence-card")).toContainText(
+    "Missing or unavailable",
+  );
+  await expect(page.locator(".case-evidence-card")).toContainText("Uncertain");
+  await expect(page.locator(".case-evidence-card")).toContainText(
+    "Risky to access — leave it alone",
+  );
+
+  await page.locator("#case-corroborator-label").fill("Former team member");
+  await page
+    .locator("#case-corroborator-basis")
+    .fill("May have first-hand knowledge of the destination change");
+  await page.locator("#case-corroborator-add").click();
+
+  const from = page.locator("#case-connection-from");
+  const to = page.locator("#case-connection-to");
+  await from.selectOption({ label: "Evidence: Meeting notes" });
+  await to.selectOption({ label: "Claim: Payments were redirected" });
+  await page.locator("#case-connection-add").click();
+
+  await from.selectOption({ label: "Event: 2025-03-01: Earlier event" });
+  await page.locator("#case-connection-type").selectOption("context-for");
+  await to.selectOption({ label: "Claim: Payments were redirected" });
+  await page.locator("#case-connection-add").click();
+
+  await from.selectOption({ label: "Corroborator: Former team member" });
+  await page.locator("#case-connection-type").selectOption("corroborates");
+  await to.selectOption({ label: "Claim: Payments were redirected" });
+  await page.locator("#case-connection-add").click();
+
+  await expect(page.locator(".case-connection-card")).toHaveCount(3);
+  await expect(page.locator("#case-connections-list")).toContainText(
+    "Evidence: Meeting notes supports Claim: Payments were redirected",
+  );
+  await expect(page.locator("#case-connections-list")).toContainText(
+    "Corroborator: Former team member corroborates Claim: Payments were redirected",
+  );
+
+  expect(editingRequests).toEqual([]);
+});

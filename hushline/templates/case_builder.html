@@ -67,35 +67,16 @@
           <nav class="case-builder-sections" aria-label="Workspace sections">
             <p class="bold">Sections</p>
             <ul>
-              <li><a href="#case-notes" aria-current="page">Notes</a></li>
+              <li><a href="#case-notes">Notes</a></li>
+              <li><a href="#case-claims">Claims</a></li>
+              <li><a href="#case-timeline">Timeline</a></li>
+              <li><a href="#case-evidence">Evidence</a></li>
+              <li><a href="#case-corroborators">Corroborators</a></li>
+              <li><a href="#case-connections">Connections</a></li>
             </ul>
           </nav>
 
-          <section id="case-notes" class="case-builder-notes" aria-labelledby="case-notes-title">
-            <h3 id="case-notes-title">Notes</h3>
-            <p>
-              Add pieces in your own words. Notes remain private preparation and are not shared
-              from this workspace.
-            </p>
-
-            <div class="case-builder-editor">
-              <label for="case-note-draft">New note</label>
-              <textarea
-                id="case-note-draft"
-                rows="8"
-                autocomplete="off"
-                autocapitalize="off"
-                autocorrect="off"
-                spellcheck="false"
-                translate="no"
-                aria-describedby="case-note-guidance"
-              ></textarea>
-              <p id="case-note-guidance" class="meta">
-                Avoid details you do not need for your preparation.
-              </p>
-              <button type="button" id="case-note-add">Add note</button>
-            </div>
-
+          <div class="case-builder-content">
             <p
               id="case-builder-status"
               class="case-builder-status meta"
@@ -104,15 +85,287 @@
               aria-atomic="true"
             ></p>
 
-            <p id="case-notes-empty" class="case-builder-empty">
-              No notes yet. You can add one or leave without creating a draft.
-            </p>
-            <ul
-              id="case-notes-list"
-              class="case-notes-list"
-              aria-label="Private preparation notes"
-            ></ul>
-          </section>
+            <section id="case-notes" class="case-builder-section" aria-labelledby="case-notes-title">
+              <h3 id="case-notes-title">Notes</h3>
+              <p>
+                Add pieces in your own words. Notes remain private preparation and are not shared
+                from this workspace.
+              </p>
+
+              <div class="case-builder-editor">
+                <label for="case-note-draft">New note</label>
+                <textarea
+                  id="case-note-draft"
+                  rows="8"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  spellcheck="false"
+                  translate="no"
+                  aria-describedby="case-note-guidance"
+                ></textarea>
+                <p id="case-note-guidance" class="meta">
+                  Avoid details you do not need for your preparation.
+                </p>
+                <button type="button" id="case-note-add">Add note</button>
+              </div>
+
+              <p id="case-notes-empty" class="case-builder-empty">
+                No notes yet. You can add one or leave without creating a draft.
+              </p>
+              <ul
+                id="case-notes-list"
+                class="case-record-list"
+                aria-label="Private preparation notes"
+              ></ul>
+            </section>
+
+            <section
+              id="case-claims"
+              class="case-builder-section"
+              aria-labelledby="case-claims-title"
+            >
+              <h3 id="case-claims-title">Claims</h3>
+              <p>
+                Separate the central concerns you may need to communicate from useful background.
+              </p>
+              <div class="case-builder-editor">
+                <label for="case-claim-summary">Claim or background detail</label>
+                <textarea
+                  id="case-claim-summary"
+                  rows="5"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  spellcheck="false"
+                  translate="no"
+                ></textarea>
+                <label for="case-claim-kind">Importance</label>
+                <select id="case-claim-kind">
+                  <option value="core">Core claim</option>
+                  <option value="background">Background detail</option>
+                </select>
+                <label class="case-builder-check">
+                  <input id="case-claim-uncertain" type="checkbox" />
+                  Mark as uncertain
+                </label>
+                <button type="button" id="case-claim-add">Add claim</button>
+              </div>
+              <p id="case-claims-empty" class="case-builder-empty">No claims yet.</p>
+              <ul id="case-claims-list" class="case-record-list" aria-label="Claims"></ul>
+            </section>
+
+            <section
+              id="case-timeline"
+              class="case-builder-section"
+              aria-labelledby="case-timeline-title"
+            >
+              <h3 id="case-timeline-title">Timeline</h3>
+              <p>Record relevant events. Events are arranged by date automatically.</p>
+              <div class="case-builder-editor">
+                <label for="case-event-date">Date</label>
+                <input id="case-event-date" type="date" autocomplete="off" />
+                <label class="case-builder-check">
+                  <input id="case-event-approximate" type="checkbox" />
+                  Date is approximate
+                </label>
+                <label for="case-event-summary">What happened</label>
+                <textarea
+                  id="case-event-summary"
+                  rows="5"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  spellcheck="false"
+                  translate="no"
+                ></textarea>
+                <label for="case-event-parties">Parties involved (optional)</label>
+                <textarea
+                  id="case-event-parties"
+                  rows="3"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  spellcheck="false"
+                  translate="no"
+                ></textarea>
+                <label for="case-event-sources">Source references (optional)</label>
+                <textarea
+                  id="case-event-sources"
+                  rows="3"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  spellcheck="false"
+                  translate="no"
+                  aria-describedby="case-event-sources-guidance"
+                ></textarea>
+                <p id="case-event-sources-guidance" class="meta">
+                  Describe a source already known to you; do not paste or upload a file.
+                </p>
+                <button type="button" id="case-event-add">Add event</button>
+              </div>
+              <p id="case-timeline-empty" class="case-builder-empty">No timeline events yet.</p>
+              <ol
+                id="case-timeline-list"
+                class="case-record-list"
+                aria-label="Timeline events in chronological order"
+              ></ol>
+            </section>
+
+            <section
+              id="case-evidence"
+              class="case-builder-section"
+              aria-labelledby="case-evidence-title"
+            >
+              <h3 id="case-evidence-title">Evidence inventory</h3>
+              <div
+                id="case-evidence-safety"
+                class="contextBanner case-builder-safety"
+                role="note"
+              >
+                <p>
+                  Inventory only: files cannot be attached here. Do not seek, copy, download, or
+                  move records to fill this inventory. Describe only material you already know
+                  about. If access could expose or endanger anyone, mark it risky and leave it
+                  alone.
+                </p>
+              </div>
+              <div class="case-builder-editor">
+                <label for="case-evidence-title-input">Evidence label</label>
+                <input
+                  id="case-evidence-title-input"
+                  type="text"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  spellcheck="false"
+                  translate="no"
+                />
+                <label for="case-evidence-description">What it may show (optional)</label>
+                <textarea
+                  id="case-evidence-description"
+                  rows="4"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  spellcheck="false"
+                  translate="no"
+                ></textarea>
+                <label for="case-evidence-location">Known location or custodian (optional)</label>
+                <input
+                  id="case-evidence-location"
+                  type="text"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  spellcheck="false"
+                  translate="no"
+                />
+                <div class="case-builder-checks" aria-label="Evidence markers">
+                  <label class="case-builder-check">
+                    <input id="case-evidence-missing" type="checkbox" />
+                    Missing or unavailable
+                  </label>
+                  <label class="case-builder-check">
+                    <input id="case-evidence-uncertain" type="checkbox" />
+                    Details are uncertain
+                  </label>
+                  <label class="case-builder-check">
+                    <input id="case-evidence-risky" type="checkbox" />
+                    Risky to access
+                  </label>
+                </div>
+                <button type="button" id="case-evidence-add">Add evidence record</button>
+              </div>
+              <p id="case-evidence-empty" class="case-builder-empty">No evidence records yet.</p>
+              <ul
+                id="case-evidence-list"
+                class="case-record-list"
+                aria-label="Evidence inventory"
+              ></ul>
+            </section>
+
+            <section
+              id="case-corroborators"
+              class="case-builder-section"
+              aria-labelledby="case-corroborators-title"
+            >
+              <h3 id="case-corroborators-title">Corroborators</h3>
+              <p>
+                Use a cautious label for a person or source with relevant knowledge. Contact or
+                identifying details are not required.
+              </p>
+              <div class="case-builder-editor">
+                <label for="case-corroborator-label">Person or source label</label>
+                <input
+                  id="case-corroborator-label"
+                  type="text"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  spellcheck="false"
+                  translate="no"
+                />
+                <label for="case-corroborator-basis">What they may corroborate</label>
+                <textarea
+                  id="case-corroborator-basis"
+                  rows="4"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  spellcheck="false"
+                  translate="no"
+                ></textarea>
+                <label class="case-builder-check">
+                  <input id="case-corroborator-uncertain" type="checkbox" />
+                  Details are uncertain
+                </label>
+                <button type="button" id="case-corroborator-add">Add corroborator</button>
+              </div>
+              <p id="case-corroborators-empty" class="case-builder-empty">
+                No corroborators yet.
+              </p>
+              <ul
+                id="case-corroborators-list"
+                class="case-record-list"
+                aria-label="Corroborators"
+              ></ul>
+            </section>
+
+            <section
+              id="case-connections"
+              class="case-builder-section"
+              aria-labelledby="case-connections-title"
+            >
+              <h3 id="case-connections-title">Connections</h3>
+              <p>
+                Map how claims, events, evidence, and corroborators relate. Add at least two items
+                above before making a connection.
+              </p>
+              <div class="case-builder-editor case-connection-editor">
+                <label for="case-connection-from">From</label>
+                <select id="case-connection-from"></select>
+                <label for="case-connection-type">Connection</label>
+                <select id="case-connection-type">
+                  <option value="supports">supports</option>
+                  <option value="source-for">is a source for</option>
+                  <option value="corroborates">corroborates</option>
+                  <option value="context-for">provides context for</option>
+                  <option value="contradicts">may contradict</option>
+                </select>
+                <label for="case-connection-to">To</label>
+                <select id="case-connection-to"></select>
+                <button type="button" id="case-connection-add" disabled>Add connection</button>
+              </div>
+              <p id="case-connections-empty" class="case-builder-empty">No connections yet.</p>
+              <ul
+                id="case-connections-list"
+                class="case-record-list"
+                aria-label="Connections between case items"
+              ></ul>
+            </section>
+          </div>
         </div>
       </div>
     </main>

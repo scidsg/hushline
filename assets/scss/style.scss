@@ -6257,9 +6257,27 @@ button .badge {
   padding: 0;
 }
 
-.case-builder-sections a[aria-current="page"] {
-  font-family: var(--font-sans-bold);
-  text-decoration-thickness: 0.125rem;
+.case-builder-sections li + li {
+  margin-top: 0.5rem;
+}
+
+.case-builder-content {
+  min-width: 0;
+}
+
+.case-builder-section {
+  scroll-margin-top: 1rem;
+}
+
+.case-builder-section + .case-builder-section {
+  border-top: var(--border);
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+}
+
+.case-builder-section h3,
+.case-builder-section h4 {
+  margin-top: 0;
 }
 
 .case-builder-editor {
@@ -6277,9 +6295,54 @@ button .badge {
   margin-bottom: 0.5rem;
 }
 
+.case-builder-editor > label:not(.case-builder-check) {
+  display: block;
+  font-family: var(--font-sans-bold);
+  margin-top: 1rem;
+}
+
+.case-builder-editor > label:first-child {
+  margin-top: 0;
+}
+
+.case-builder-editor input[type="date"],
+.case-builder-editor input[type="text"],
+.case-builder-editor select {
+  max-width: 100%;
+}
+
+.case-builder-checks {
+  margin: 1rem 0;
+}
+
+.case-builder-check {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.case-builder-check input {
+  flex: 0 0 auto;
+  margin-top: 0.25rem;
+}
+
+.case-builder-safety {
+  margin: 1rem 0;
+}
+
+.case-builder-safety p {
+  margin: 0;
+}
+
+.case-connection-editor button {
+  display: block;
+  margin-top: 1rem;
+}
+
 .case-builder-status {
   min-height: 1.25rem;
-  margin: 0.75rem 0;
+  margin: 0 0 0.75rem;
 }
 
 .case-builder-empty {
@@ -6288,37 +6351,55 @@ button .badge {
   padding: 1rem;
 }
 
-.case-notes-list {
+.case-record-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.case-note-card {
+.case-record-card {
   border: var(--border);
   border-radius: 0.25rem;
   margin-top: 1rem;
   padding: 1rem;
 }
 
-.case-note-text {
+.case-note-text,
+.case-record-text,
+.case-record-detail {
   margin-top: 0;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
 
-.case-note-actions {
+.case-record-markers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0.75rem 0;
+  padding: 0;
+}
+
+.case-record-markers li {
+  border: var(--border);
+  border-radius: 1rem;
+  font-size: var(--font-size-smaller);
+  padding: 0.2rem 0.65rem;
+}
+
+.case-record-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
 }
 
-.case-note-actions button {
+.case-record-actions button {
   margin: 0;
 }
 
-.case-note-delete-prompt {
+.case-record-delete-prompt {
   flex-basis: 100%;
   font-family: var(--font-sans-bold);
 }
@@ -6329,7 +6410,9 @@ button .badge {
 
 @media (prefers-color-scheme: dark) {
   .case-builder-sections,
-  .case-note-card {
+  .case-builder-section + .case-builder-section,
+  .case-record-card,
+  .case-record-markers li {
     border-color: var(--color-border-dark-1);
   }
 }
