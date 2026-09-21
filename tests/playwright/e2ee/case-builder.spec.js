@@ -175,9 +175,7 @@ test("claims, timeline, evidence, and corroborators can be mapped safely", async
   expect(editingRequests).toEqual([]);
 });
 
-test("review markers and next-step choices remain private and user-directed", async ({
-  page,
-}) => {
+test("review markers remain private and user-directed", async ({ page }) => {
   await page.goto("/case-builder", { waitUntil: "networkidle" });
 
   const editingRequests = [];
@@ -213,18 +211,81 @@ test("review markers and next-step choices remain private and user-directed", as
   await expect(reminder).toContainText("Uncertain");
   await expect(reminder).toContainText("Sensitive or identifying");
 
-  await page.locator("#case-review-stop").click();
-  await expect(page.locator("#case-review-decision")).toContainText(
-    "You chose not to proceed right now. Nothing has been shared.",
-  );
-  await expect(page.locator("#case-builder-status")).toHaveText(
-    "Do not proceed right now selected. Nothing was shared.",
-  );
+  expect(editingRequests).toEqual([]);
+});
 
-  await page.locator("#case-review-continue").click();
-  await expect(page.locator("#case-review-decision")).toHaveText(
-    "You chose to continue preparing. Nothing has been shared, saved, or submitted.",
+test("narrative outline and high-risk next actions use a review gate", async ({
+  page,
+}) => {
+  await page.goto("/case-builder", { waitUntil: "networkidle" });
+
+  const editingRequests = [];
+  page.on("request", (request) => editingRequests.push(request.url()));
+
+  await page
+    .locator("#case-note-draft")
+    .fill("A source detail for the outline");
+  await page.locator("#case-note-add").click();
+  await expect(page.locator(".case-narrative-source")).toHaveCount(1);
+  await expect(page.locator(".case-narrative-block")).toHaveCount(0);
+  await expect(
+    page
+      .locator(".case-narrative-source")
+      .getByRole("radio", { name: "Hold for later" }),
+  ).toBeChecked();
+  await page
+    .locator(".case-narrative-source")
+    .getByRole("radio", { name: "Exclude" })
+    .check();
+  await expect(page.locator(".case-narrative-block")).toHaveCount(0);
+
+  await page.locator("#case-narrative-audience").fill("A local journalist");
+  await page.locator("#case-narrative-heading").fill("Payment routing concern");
+  await page.locator("#case-narrative-details-save").click();
+  await page
+    .locator(".case-narrative-source")
+    .getByRole("radio", { name: "Include" })
+    .check();
+  await expect(page.locator(".case-narrative-block")).toHaveCount(1);
+
+  const copiedPiece = page.locator(".case-narrative-block textarea");
+  await copiedPiece.fill("Edited working copy for this audience");
+  await copiedPiece.blur();
+  await page
+    .locator("#case-narrative-new-piece")
+    .fill("A manually written second outline piece");
+  await page.locator("#case-narrative-add-piece").click();
+  await page
+    .locator(".case-narrative-block")
+    .nth(1)
+    .getByRole("button", { name: "Move up" })
+    .click();
+  await expect(
+    page.locator(".case-narrative-block textarea").first(),
+  ).toHaveValue("A manually written second outline piece");
+  await expect(
+    page.getByText("A source detail for the outline", { exact: true }),
+  ).toBeVisible();
+
+  await page.getByRole("radio", { name: "Export a packet" }).check();
+  await page.locator("#case-next-action-review").click();
+  const actionReview = page.locator("#case-next-action-review-panel");
+  await expect(actionReview).toContainText("Export a packet review");
+  await expect(actionReview).toContainText("file metadata");
+  await expect(actionReview).toContainText("A local journalist");
+  await expect(actionReview).toContainText(
+    "Edited working copy for this audience",
   );
+  await expect(actionReview.getByRole("link")).toHaveCount(0);
+
+  await page.getByRole("radio", { name: "Start a Hush Line chat" }).check();
+  await page.locator("#case-next-action-review").click();
+  await expect(actionReview).toContainText(
+    "Direct sharing from the Case Builder is not available.",
+  );
+  await expect(
+    actionReview.getByRole("link", { name: "Open Inbox without the draft" }),
+  ).toHaveAttribute("href", "/inbox");
 
   expect(editingRequests).toEqual([]);
 });

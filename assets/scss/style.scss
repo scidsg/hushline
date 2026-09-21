@@ -6285,7 +6285,8 @@ button .badge {
 }
 
 .case-builder-editor textarea,
-.case-note-card textarea {
+.case-note-card textarea,
+.case-narrative-block textarea {
   height: auto;
   min-height: 10rem;
   resize: vertical;
@@ -6350,12 +6351,44 @@ button .badge {
   margin-top: 0;
 }
 
-.case-review-decision {
-  margin-top: 2rem;
+.case-narrative-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
 }
 
-.case-review-decision > .contextBanner {
-  margin-top: 1rem;
+.case-narrative-source h5,
+.case-narrative-preview h5 {
+  margin-top: 0;
+}
+
+.case-narrative-source-choices {
+  border: 0;
+  margin: 1rem 0 0;
+  padding: 0;
+}
+
+.case-narrative-source-choices legend,
+.case-narrative-block > label {
+  font-family: var(--font-sans-bold);
+}
+
+.case-narrative-block textarea {
+  margin: 0.5rem 0;
+}
+
+.case-next-action-review {
+  margin-top: 1.5rem;
+}
+
+.case-next-action-review h4 {
+  margin-top: 0;
+}
+
+.case-narrative-preview li {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .case-connection-editor button {
@@ -6458,6 +6491,10 @@ button .badge {
     border-bottom: var(--border);
     border-right: 0;
     padding: 0 0 1rem;
+  }
+
+  .case-narrative-columns {
+    grid-template-columns: 1fr;
   }
 }
 

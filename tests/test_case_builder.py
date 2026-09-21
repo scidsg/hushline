@@ -49,10 +49,10 @@ def test_case_builder_opens_without_an_account_and_does_not_create_session_state
     assert soup.find(id="case-notes-list") is not None
     stylesheet = soup.find("link", rel="stylesheet")
     assert stylesheet is not None
-    assert str(stylesheet.get("href") or "").endswith("?v=case-builder-3")
+    assert str(stylesheet.get("href") or "").endswith("?v=case-builder-4")
     script = soup.find("script", src=True)
     assert script is not None
-    assert str(script.get("src") or "").endswith("?v=case-builder-3")
+    assert str(script.get("src") or "").endswith("?v=case-builder-4")
     for asset in soup.select("script[src], link[href]"):
         asset_url = str(asset.get("src") or asset.get("href") or "")
         assert asset_url.startswith("/static/")
@@ -80,7 +80,7 @@ def test_case_builder_does_not_render_authenticated_account_context(
     assert "data-chat-key-session-id" not in response.text
 
 
-def test_case_builder_explains_privacy_boundary_and_has_no_share_or_export_controls(
+def test_case_builder_explains_privacy_boundary_and_has_no_direct_share_or_export_controls(
     client: FlaskClient,
 ) -> None:
     response = client.get(url_for("case_builder"))
@@ -96,8 +96,8 @@ def test_case_builder_explains_privacy_boundary_and_has_no_share_or_export_contr
     assert "cannot securely erase browser or device artifacts" in page_text
 
     controls = [control.get_text(" ", strip=True).lower() for control in soup.select("a, button")]
-    assert not any("share" in label for label in controls)
-    assert not any("export" in label for label in controls)
+    assert not any("send outline" in label for label in controls)
+    assert not any("confirm share" in label for label in controls)
     assert not any("download" in label for label in controls)
     assert not any("print" in label for label in controls)
     assert not any("copy" in label for label in controls)
@@ -132,7 +132,7 @@ def test_case_builder_has_structured_mapping_controls_without_file_or_network_fo
     assert "mark it risky and leave it alone" in page_text
     assert "Contact or identifying details are not required." in page_text
 
-    for control in soup.select("textarea, input"):
+    for control in soup.select('textarea, input:not([type="radio"])'):
         assert control.get("name") is None
 
     for control in soup.select('textarea, input[type="text"]'):
@@ -167,19 +167,72 @@ def test_case_builder_has_optional_risk_gap_and_minimum_disclosure_review(
     for checklist_id in checklist_ids:
         assert soup.find("input", id=checklist_id, attrs={"type": "checkbox"}) is not None
 
-    continue_button = soup.find("button", id="case-review-continue")
-    stop_button = soup.find("button", id="case-review-stop")
-    assert continue_button is not None
-    assert continue_button.get_text(" ", strip=True) == "Continue preparing"
-    assert stop_button is not None
-    assert stop_button.get_text(" ", strip=True) == "Do not proceed right now"
-
     assert "You do not need to fill a gap or add more detail." in page_text
     assert "possible retaliation against me or someone else" in page_text
     assert "does not decide whether your account is complete" in page_text
     assert "assess risk, predict retaliation, or provide legal or safety advice" in page_text
     assert "which may be no disclosure at all" in page_text
-    assert "Neither choice shares, saves, or submits anything." in page_text
+
+
+def test_case_builder_has_manual_audience_narrative_and_minimum_disclosure_checklist(
+    client: FlaskClient,
+) -> None:
+    response = client.get(url_for("case_builder"))
+    soup = BeautifulSoup(response.text, "html.parser")
+    page_text = " ".join(soup.get_text(" ", strip=True).split())
+
+    assert soup.find("a", href="#case-narrative") is not None
+    assert soup.find("input", id="case-narrative-audience", attrs={"type": "text"}) is not None
+    assert soup.find("input", id="case-narrative-heading", attrs={"type": "text"}) is not None
+    assert soup.find("textarea", id="case-narrative-new-piece") is not None
+    assert soup.find("button", id="case-narrative-add-piece", attrs={"type": "button"})
+    assert soup.find(id="case-narrative-sources") is not None
+    assert soup.find(id="case-narrative-list") is not None
+
+    for checklist_id in (
+        "case-narrative-include-check",
+        "case-narrative-exclude-check",
+        "case-narrative-hold-check",
+    ):
+        assert soup.find("input", id=checklist_id, attrs={"type": "checkbox"}) is not None
+
+    assert "Prepare a working copy for the audience you have in mind." in page_text
+    assert "This does not select or contact anyone." in page_text
+    assert "Nothing is added automatically." in page_text
+    assert "Outline edits do not rewrite source items." in page_text
+
+
+def test_case_builder_next_actions_require_review_and_warn_about_export_and_sharing(
+    client: FlaskClient,
+) -> None:
+    response = client.get(url_for("case_builder"))
+    soup = BeautifulSoup(response.text, "html.parser")
+    page_text = " ".join(soup.get_text(" ", strip=True).split())
+
+    actions = {
+        control.get("value")
+        for control in soup.select('input[type="radio"][name="case-next-action"]')
+    }
+    assert actions == {
+        "continue",
+        "contact_counsel",
+        "start_chat",
+        "export_packet",
+        "drop_tip",
+        "pause_in_open_page",
+    }
+    assert not soup.select_one('input[name="case-next-action"]:checked')
+    assert soup.find("button", id="case-next-action-review", attrs={"type": "button"})
+    review_panel = soup.find(id="case-next-action-review-panel")
+    assert review_panel is not None
+    assert review_panel.has_attr("hidden")
+    assert soup.find("form") is None
+    workspace = soup.find(attrs={"data-case-builder": True})
+    assert workspace is not None
+    assert workspace.get("data-counsel-url") == url_for("directory")
+    assert workspace.get("data-chat-url") == url_for("inbox")
+    assert workspace.get("data-tip-url") == url_for("directory")
+    assert "No option sends, saves, exports, or submits your outline automatically" in page_text
 
 
 def test_case_builder_uses_existing_strict_csp(client: FlaskClient) -> None:
@@ -225,6 +278,8 @@ def test_case_builder_client_keeps_workspace_in_memory_only() -> None:
         "history.",
         "location.",
         "URLSearchParams",
+        "createObjectURL",
+        "new Blob",
     )
     for forbidden_api in forbidden_apis:
         assert forbidden_api not in source
@@ -242,9 +297,16 @@ def test_case_builder_client_keeps_workspace_in_memory_only() -> None:
     assert "workspace.timelineEvents.slice().sort" in source
     assert 'accessRisk: evidenceRisky.checked ? "risky" : "unmarked"' in source
     assert 'availability: evidenceMissing.checked ? "missing" : "available"' in source
-    assert 'chooseNextAction("continue")' in source
-    assert 'chooseNextAction("pause_in_open_page")' in source
+    assert "narrativeDrafts: []" in source
+    assert 'id: nextId("narrative-block")' in source
+    assert "function reviewNextAction()" in source
+    assert "Direct sharing from the Case Builder is not available." in source
+    assert "file metadata" in source
+    assert "connection metadata" in source
+    assert "create confidentiality, privilege, or legal protection" in source
+    assert "This workspace does not " in source
     assert "removeRelationshipsFor(record.id)" in source
+    assert "removeNarrativeReferencesFor(record.id)" in source
     assert "innerHTML" not in source
     assert 'window.addEventListener("pagehide", clearWorkspace)' in source
     assert 'window.addEventListener("pageshow"' in source
