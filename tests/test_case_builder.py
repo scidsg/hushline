@@ -49,10 +49,10 @@ def test_case_builder_opens_without_an_account_and_does_not_create_session_state
     assert soup.find(id="case-notes-list") is not None
     stylesheet = soup.find("link", rel="stylesheet")
     assert stylesheet is not None
-    assert str(stylesheet.get("href") or "").endswith("?v=case-builder-2")
+    assert str(stylesheet.get("href") or "").endswith("?v=case-builder-3")
     script = soup.find("script", src=True)
     assert script is not None
-    assert str(script.get("src") or "").endswith("?v=case-builder-2")
+    assert str(script.get("src") or "").endswith("?v=case-builder-3")
     for asset in soup.select("script[src], link[href]"):
         asset_url = str(asset.get("src") or asset.get("href") or "")
         assert asset_url.startswith("/static/")
@@ -143,6 +143,45 @@ def test_case_builder_has_structured_mapping_controls_without_file_or_network_fo
         assert control.get("translate") == "no"
 
 
+def test_case_builder_has_optional_risk_gap_and_minimum_disclosure_review(
+    client: FlaskClient,
+) -> None:
+    response = client.get(url_for("case_builder"))
+    soup = BeautifulSoup(response.text, "html.parser")
+    page_text = " ".join(soup.get_text(" ", strip=True).split())
+
+    assert soup.find("a", href="#case-review") is not None
+    assert soup.find("select", id="case-review-kind") is not None
+    assert soup.find("textarea", id="case-review-description") is not None
+    assert soup.find("button", id="case-review-add", attrs={"type": "button"}) is not None
+    assert soup.find(id="case-review-list") is not None
+
+    checklist_ids = (
+        "case-review-incomplete",
+        "case-review-sensitive",
+        "case-review-consequences",
+        "case-review-retaliation",
+        "case-review-necessary",
+        "case-review-set-aside",
+    )
+    for checklist_id in checklist_ids:
+        assert soup.find("input", id=checklist_id, attrs={"type": "checkbox"}) is not None
+
+    continue_button = soup.find("button", id="case-review-continue")
+    stop_button = soup.find("button", id="case-review-stop")
+    assert continue_button is not None
+    assert continue_button.get_text(" ", strip=True) == "Continue preparing"
+    assert stop_button is not None
+    assert stop_button.get_text(" ", strip=True) == "Do not proceed right now"
+
+    assert "You do not need to fill a gap or add more detail." in page_text
+    assert "possible retaliation against me or someone else" in page_text
+    assert "does not decide whether your account is complete" in page_text
+    assert "assess risk, predict retaliation, or provide legal or safety advice" in page_text
+    assert "which may be no disclosure at all" in page_text
+    assert "Neither choice shares, saves, or submits anything." in page_text
+
+
 def test_case_builder_uses_existing_strict_csp(client: FlaskClient) -> None:
     response = client.get(url_for("case_builder"))
 
@@ -196,12 +235,15 @@ def test_case_builder_client_keeps_workspace_in_memory_only() -> None:
     assert "timelineEvents: []" in source
     assert "evidenceItems: []" in source
     assert "corroborators: []" in source
+    assert "gapsAndRisks: []" in source
     assert "relationships: []" in source
     assert "selectedItems: []" in source
     assert "paragraph.textContent = value" in source
     assert "workspace.timelineEvents.slice().sort" in source
     assert 'accessRisk: evidenceRisky.checked ? "risky" : "unmarked"' in source
     assert 'availability: evidenceMissing.checked ? "missing" : "available"' in source
+    assert 'chooseNextAction("continue")' in source
+    assert 'chooseNextAction("pause_in_open_page")' in source
     assert "removeRelationshipsFor(record.id)" in source
     assert "innerHTML" not in source
     assert 'window.addEventListener("pagehide", clearWorkspace)' in source

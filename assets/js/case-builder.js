@@ -33,6 +33,14 @@
   const connectionType = document.getElementById("case-connection-type");
   const connectionTo = document.getElementById("case-connection-to");
   const addConnectionButton = document.getElementById("case-connection-add");
+  const reviewKind = document.getElementById("case-review-kind");
+  const reviewDescription = document.getElementById("case-review-description");
+  const reviewUncertain = document.getElementById("case-review-uncertain");
+  const reviewIdentifying = document.getElementById("case-review-identifying");
+  const addReviewButton = document.getElementById("case-review-add");
+  const continueButton = document.getElementById("case-review-continue");
+  const stopButton = document.getElementById("case-review-stop");
+  const decision = document.getElementById("case-review-decision");
 
   const views = {
     notes: {
@@ -59,6 +67,10 @@
       empty: document.getElementById("case-connections-empty"),
       list: document.getElementById("case-connections-list"),
     },
+    gapsAndRisks: {
+      empty: document.getElementById("case-review-empty"),
+      list: document.getElementById("case-review-list"),
+    },
   };
 
   const collectionNames = {
@@ -67,6 +79,7 @@
     evidence: "evidenceItems",
     corroborator: "corroborators",
     connection: "relationships",
+    review: "gapsAndRisks",
   };
 
   const itemTypeLabels = {
@@ -74,6 +87,7 @@
     event: "Event",
     evidence: "Evidence",
     corroborator: "Corroborator",
+    review: "Review reminder",
   };
 
   const relationshipLabels = {
@@ -185,6 +199,83 @@
       list.appendChild(item);
     });
     container.appendChild(list);
+  }
+
+  function reviewMarkers(record, additionalMarkers = []) {
+    return [
+      ...additionalMarkers,
+      record.review.uncertainty === "uncertain" ? "Uncertain" : "",
+      record.review.sensitivity === "sensitive" ? "Sensitive or identifying" : "",
+      record.disposition === "set_aside" ? "Set aside" : "",
+    ];
+  }
+
+  function focusRecordAction(recordId, label) {
+    const card = Array.from(document.querySelectorAll("[data-record-id]")).find(function (
+      candidate,
+    ) {
+      return candidate.dataset.recordId === recordId;
+    });
+    if (!card) return;
+    const button = Array.from(card.querySelectorAll("button")).find(function (candidate) {
+      return candidate.textContent === label;
+    });
+    if (button) button.focus();
+  }
+
+  function addReviewActions(card, record) {
+    const actions = document.createElement("div");
+    actions.className = "case-record-actions case-review-actions";
+    const uncertaintyLabel =
+      record.review.uncertainty === "uncertain" ? "Clear uncertainty" : "Mark uncertain";
+    const sensitivityLabel =
+      record.review.sensitivity === "sensitive"
+        ? "Clear sensitive marker"
+        : "Mark sensitive or identifying";
+    const dispositionLabel =
+      record.disposition === "set_aside" ? "Return to preparation" : "Set aside";
+
+    actions.append(
+      createButton(uncertaintyLabel, "btn", function () {
+        record.review.uncertainty =
+          record.review.uncertainty === "uncertain" ? "unmarked" : "uncertain";
+        updateAudit(record.audit);
+        updateAudit(workspace.audit);
+        renderWorkspace();
+        const nextLabel =
+          record.review.uncertainty === "uncertain" ? "Clear uncertainty" : "Mark uncertain";
+        announce("Uncertainty marker updated.");
+        focusRecordAction(record.id, nextLabel);
+      }),
+      createButton(sensitivityLabel, "btn", function () {
+        record.review.sensitivity =
+          record.review.sensitivity === "sensitive" ? "unmarked" : "sensitive";
+        updateAudit(record.audit);
+        updateAudit(workspace.audit);
+        renderWorkspace();
+        const nextLabel =
+          record.review.sensitivity === "sensitive"
+            ? "Clear sensitive marker"
+            : "Mark sensitive or identifying";
+        announce("Sensitivity marker updated.");
+        focusRecordAction(record.id, nextLabel);
+      }),
+      createButton(dispositionLabel, "btn", function () {
+        record.disposition = record.disposition === "set_aside" ? "active" : "set_aside";
+        updateAudit(record.audit);
+        updateAudit(workspace.audit);
+        renderWorkspace();
+        const nextLabel =
+          record.disposition === "set_aside" ? "Return to preparation" : "Set aside";
+        announce(
+          record.disposition === "set_aside"
+            ? "Item set aside in the open page."
+            : "Item returned to preparation.",
+        );
+        focusRecordAction(record.id, nextLabel);
+      }),
+    );
+    card.appendChild(actions);
   }
 
   function scrub(value) {
@@ -338,7 +429,10 @@
       const item = document.createElement("li");
       item.className = "case-record-card case-note-card";
       item.dataset.noteId = note.id;
+      item.dataset.recordId = note.id;
       addText(item, "case-note-text", note.text);
+      addMarkers(item, reviewMarkers(note));
+      addReviewActions(item, note);
 
       const actions = document.createElement("div");
       actions.className = "case-record-actions";
@@ -380,7 +474,8 @@
       title.textContent = claim.kind === "core" ? "Core claim" : "Background detail";
       item.appendChild(title);
       addText(item, "case-record-text", claim.summary);
-      addMarkers(item, [claim.review.uncertainty === "uncertain" ? "Uncertain" : ""]);
+      addMarkers(item, reviewMarkers(claim));
+      addReviewActions(item, claim);
       addDeleteAction(item, claim, "claim", addClaimButton);
       view.list.appendChild(item);
     });
@@ -403,7 +498,8 @@
       addText(item, "case-record-text", event.summary);
       addLabeledText(item, "Parties", event.parties);
       addLabeledText(item, "Source references", event.sourceReferences);
-      addMarkers(item, [event.approximate ? "Approximate date" : ""]);
+      addMarkers(item, reviewMarkers(event, [event.approximate ? "Approximate date" : ""]));
+      addReviewActions(item, event);
       addDeleteAction(item, event, "event", addEventButton);
       view.list.appendChild(item);
     });
@@ -422,11 +518,14 @@
       item.appendChild(title);
       addText(item, "case-record-text", evidence.description);
       addLabeledText(item, "Known location or custodian", evidence.location);
-      addMarkers(item, [
-        evidence.availability === "missing" ? "Missing or unavailable" : "Available",
-        evidence.review.uncertainty === "uncertain" ? "Uncertain" : "",
-        evidence.review.accessRisk === "risky" ? "Risky to access — leave it alone" : "",
-      ]);
+      addMarkers(
+        item,
+        reviewMarkers(evidence, [
+          evidence.availability === "missing" ? "Missing or unavailable" : "Available",
+          evidence.review.accessRisk === "risky" ? "Risky to access — leave it alone" : "",
+        ]),
+      );
+      addReviewActions(item, evidence);
       addDeleteAction(item, evidence, "evidence", addEvidenceButton);
       view.list.appendChild(item);
     });
@@ -444,9 +543,8 @@
       title.textContent = corroborator.label;
       item.appendChild(title);
       addText(item, "case-record-text", corroborator.basis);
-      addMarkers(item, [
-        corroborator.review.uncertainty === "uncertain" ? "Uncertain" : "",
-      ]);
+      addMarkers(item, reviewMarkers(corroborator));
+      addReviewActions(item, corroborator);
       addDeleteAction(item, corroborator, "corroborator", addCorroboratorButton);
       view.list.appendChild(item);
     });
@@ -520,6 +618,41 @@
     });
   }
 
+  function renderGapsAndRisks() {
+    const view = views.gapsAndRisks;
+    view.list.replaceChildren();
+    view.empty.hidden = workspace.gapsAndRisks.length !== 0;
+    workspace.gapsAndRisks.forEach(function (reviewItem) {
+      const item = document.createElement("li");
+      item.className = "case-record-card case-review-card";
+      item.dataset.recordId = reviewItem.id;
+      const title = document.createElement("h4");
+      title.textContent = reviewItem.kind === "gap" ? "Incomplete area" : "Possible consequence";
+      item.appendChild(title);
+      addText(item, "case-record-text", reviewItem.description);
+      addMarkers(item, reviewMarkers(reviewItem));
+      addReviewActions(item, reviewItem);
+      addDeleteAction(item, reviewItem, "review", addReviewButton);
+      view.list.appendChild(item);
+    });
+  }
+
+  function renderDecision() {
+    const nextAction = workspace.sharePlan.nextAction;
+    decision.hidden = !nextAction;
+    if (nextAction === "continue") {
+      decision.textContent =
+        "You chose to continue preparing. Nothing has been shared, saved, or submitted.";
+    } else if (nextAction === "pause_in_open_page") {
+      decision.textContent =
+        "You chose not to proceed right now. Nothing has been shared. " +
+        "This page does not save your work; close it or use Discard & leave if you do not want " +
+        "to keep it visible.";
+    } else {
+      decision.textContent = "";
+    }
+  }
+
   function renderWorkspace() {
     renderNotes();
     renderClaims();
@@ -527,7 +660,9 @@
     renderEvidence();
     renderCorroborators();
     renderRelationships();
+    renderGapsAndRisks();
     renderConnectionOptions();
+    renderDecision();
   }
 
   function addNote() {
@@ -561,7 +696,10 @@
     workspace.claims.push({
       id: nextId("claim"),
       audit: createAudit(),
-      review: { uncertainty: claimUncertain.checked ? "uncertain" : "unmarked" },
+      review: {
+        uncertainty: claimUncertain.checked ? "uncertain" : "unmarked",
+        sensitivity: "unmarked",
+      },
       disposition: "active",
       kind: claimKind.value,
       summary,
@@ -591,7 +729,10 @@
     workspace.timelineEvents.push({
       id: nextId("event"),
       audit: createAudit(),
-      review: { uncertainty: eventApproximate.checked ? "uncertain" : "unmarked" },
+      review: {
+        uncertainty: eventApproximate.checked ? "uncertain" : "unmarked",
+        sensitivity: "unmarked",
+      },
       disposition: "active",
       date,
       approximate: eventApproximate.checked,
@@ -622,6 +763,7 @@
       audit: createAudit(),
       review: {
         uncertainty: evidenceUncertain.checked ? "uncertain" : "unmarked",
+        sensitivity: "unmarked",
         accessRisk: evidenceRisky.checked ? "risky" : "unmarked",
       },
       disposition: "active",
@@ -658,7 +800,10 @@
     workspace.corroborators.push({
       id: nextId("corroborator"),
       audit: createAudit(),
-      review: { uncertainty: corroboratorUncertain.checked ? "uncertain" : "unmarked" },
+      review: {
+        uncertainty: corroboratorUncertain.checked ? "uncertain" : "unmarked",
+        sensitivity: "unmarked",
+      },
       disposition: "active",
       label,
       basis,
@@ -711,6 +856,46 @@
     connectionFrom.focus();
   }
 
+  function addReviewReminder() {
+    const description = reviewDescription.value.trim();
+    if (!description) {
+      announce("Enter a short reminder before adding it.");
+      reviewDescription.focus();
+      return;
+    }
+    workspace.gapsAndRisks.push({
+      id: nextId("review"),
+      audit: createAudit(),
+      review: {
+        uncertainty: reviewUncertain.checked ? "uncertain" : "unmarked",
+        sensitivity: reviewIdentifying.checked ? "sensitive" : "unmarked",
+      },
+      disposition: "active",
+      kind: reviewKind.value,
+      description,
+    });
+    updateAudit(workspace.audit);
+    reviewKind.value = "gap";
+    reviewDescription.value = "";
+    reviewUncertain.checked = false;
+    reviewIdentifying.checked = false;
+    renderWorkspace();
+    announce("Review reminder added to the open page.");
+    reviewDescription.focus();
+  }
+
+  function chooseNextAction(nextAction) {
+    workspace.sharePlan.nextAction = nextAction;
+    updateAudit(workspace.sharePlan.audit);
+    updateAudit(workspace.audit);
+    renderDecision();
+    if (nextAction === "continue") {
+      announce("Continue preparing selected. Nothing was shared.");
+    } else {
+      announce("Do not proceed right now selected. Nothing was shared.");
+    }
+  }
+
   function clearWorkspace() {
     if (workspace) scrub(workspace);
     workspace = null;
@@ -725,6 +910,8 @@
       select.selectedIndex = 0;
     });
     status.textContent = "";
+    decision.textContent = "";
+    decision.hidden = true;
     Object.values(views).forEach(function (view) {
       view.list.replaceChildren();
       view.empty.hidden = false;
@@ -737,6 +924,13 @@
   addEvidenceButton.addEventListener("click", addEvidence);
   addCorroboratorButton.addEventListener("click", addCorroborator);
   addConnectionButton.addEventListener("click", addConnection);
+  addReviewButton.addEventListener("click", addReviewReminder);
+  continueButton.addEventListener("click", function () {
+    chooseNextAction("continue");
+  });
+  stopButton.addEventListener("click", function () {
+    chooseNextAction("pause_in_open_page");
+  });
   discardLink.addEventListener("click", clearWorkspace);
   window.addEventListener("pagehide", clearWorkspace);
   window.addEventListener("pageshow", function () {

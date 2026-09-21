@@ -73,6 +73,7 @@
               <li><a href="#case-evidence">Evidence</a></li>
               <li><a href="#case-corroborators">Corroborators</a></li>
               <li><a href="#case-connections">Connections</a></li>
+              <li><a href="#case-review">Review</a></li>
             </ul>
           </nav>
 
@@ -364,6 +365,119 @@
                 class="case-record-list"
                 aria-label="Connections between case items"
               ></ul>
+            </section>
+
+            <section
+              id="case-review"
+              class="case-builder-section"
+              aria-labelledby="case-review-title"
+            >
+              <h3 id="case-review-title">Risks, gaps, and minimum-disclosure review</h3>
+              <p>
+                Take a moment before preparing further. This optional review does not decide
+                whether your account is complete, assess risk, predict retaliation, or provide
+                legal or safety advice.
+              </p>
+
+              <fieldset class="case-review-group">
+                <legend>What might need another look?</legend>
+                <p class="meta">
+                  Mark any reminders that apply. You do not need to fill a gap or add more detail.
+                </p>
+                <label class="case-builder-check">
+                  <input id="case-review-incomplete" type="checkbox" />
+                  Some information may be incomplete or uncertain.
+                </label>
+                <label class="case-builder-check">
+                  <input id="case-review-sensitive" type="checkbox" />
+                  Some information may identify or affect me or someone else.
+                </label>
+                <label class="case-builder-check">
+                  <input id="case-review-consequences" type="checkbox" />
+                  I am concerned about possible personal, work, digital, or physical consequences.
+                </label>
+                <label class="case-builder-check">
+                  <input id="case-review-retaliation" type="checkbox" />
+                  I am concerned about possible retaliation against me or someone else.
+                </label>
+                <p class="meta">
+                  These are private reminders, not predictions. You do not need to describe a
+                  concern here.
+                </p>
+              </fieldset>
+
+              <div class="case-builder-editor">
+                <h4>Add an optional review reminder</h4>
+                <p>
+                  Use a short reminder for an incomplete area or possible consequence. Avoid names
+                  or details you do not need.
+                </p>
+                <label for="case-review-kind">Reminder type</label>
+                <select id="case-review-kind">
+                  <option value="gap">Incomplete area</option>
+                  <option value="risk">Possible consequence</option>
+                </select>
+                <label for="case-review-description">Short reminder</label>
+                <textarea
+                  id="case-review-description"
+                  rows="4"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  spellcheck="false"
+                  translate="no"
+                ></textarea>
+                <div class="case-builder-checks" aria-label="Reminder markers">
+                  <label class="case-builder-check">
+                    <input id="case-review-uncertain" type="checkbox" />
+                    Mark as uncertain
+                  </label>
+                  <label class="case-builder-check">
+                    <input id="case-review-identifying" type="checkbox" />
+                    May contain sensitive or identifying detail
+                  </label>
+                </div>
+                <button type="button" id="case-review-add">Add review reminder</button>
+              </div>
+              <p id="case-review-empty" class="case-builder-empty">
+                No review reminders yet. You do not need to find or fill gaps.
+              </p>
+              <ul
+                id="case-review-list"
+                class="case-record-list"
+                aria-label="Review reminders"
+              ></ul>
+
+              <fieldset class="case-review-group">
+                <legend>Minimum-necessary check</legend>
+                <p>
+                  Consider what is needed for your next step, which may be no disclosure at all.
+                  You can use the controls on any item above to mark it or set it aside.
+                </p>
+                <label class="case-builder-check">
+                  <input id="case-review-necessary" type="checkbox" />
+                  I reviewed whether each name, role, location, date, and source detail is needed.
+                </label>
+                <label class="case-builder-check">
+                  <input id="case-review-set-aside" type="checkbox" />
+                  I reviewed whether anything can be set aside for now.
+                </label>
+                <p class="meta">
+                  This check is optional. An unchecked box does not mean you should add information.
+                </p>
+              </fieldset>
+
+              <div class="case-review-decision" aria-labelledby="case-review-decision-title">
+                <h4 id="case-review-decision-title">Choose what happens next</h4>
+                <p>Neither choice shares, saves, or submits anything.</p>
+                <div class="case-record-actions">
+                  <button type="button" id="case-review-continue">Continue preparing</button>
+                  <button type="button" id="case-review-stop" class="btn">
+                    Do not proceed right now
+                  </button>
+                </div>
+                <p id="case-review-decision" class="contextBanner" hidden></p>
+              </div>
             </section>
           </div>
         </div>

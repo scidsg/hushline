@@ -6335,6 +6335,29 @@ button .badge {
   margin: 0;
 }
 
+.case-review-group {
+  border: var(--border);
+  margin: 1.5rem 0;
+  padding: 1rem;
+}
+
+.case-review-group legend {
+  font-family: var(--font-sans-bold);
+  padding: 0 0.5rem;
+}
+
+.case-review-group > p:first-of-type {
+  margin-top: 0;
+}
+
+.case-review-decision {
+  margin-top: 2rem;
+}
+
+.case-review-decision > .contextBanner {
+  margin-top: 1rem;
+}
+
 .case-connection-editor button {
   display: block;
   margin-top: 1rem;
@@ -6399,6 +6422,12 @@ button .badge {
   margin: 0;
 }
 
+.case-review-actions {
+  border-top: var(--border);
+  margin: 1rem 0;
+  padding-top: 1rem;
+}
+
 .case-record-delete-prompt {
   flex-basis: 100%;
   font-family: var(--font-sans-bold);
@@ -6412,7 +6441,9 @@ button .badge {
   .case-builder-sections,
   .case-builder-section + .case-builder-section,
   .case-record-card,
-  .case-record-markers li {
+  .case-record-markers li,
+  .case-review-group,
+  .case-review-actions {
     border-color: var(--color-border-dark-1);
   }
 }
