@@ -52,6 +52,18 @@ The app and public directory support more than individual profiles. Current disc
 | Authenticated paid users  | Upgrade, manage plan, add aliases, customize alias profiles, customize message-field intake beyond defaults                                                                                                                              |
 | Authenticated admin users | Brand the instance, manage user guidance, control registration, verify accounts, apply caution/suspension states, grant admin, delete users or aliases                                                                                   |
 
+### Secure Case Builder
+
+The Secure Case Builder is an account-independent preparation surface for people considering a
+disclosure. Its draft state remains only in the current open page and is not submitted, saved,
+restored, exported, or shared by the builder.
+
+- Organize notes, claims, events, evidence references, corroborators, and their connections.
+- Review uncertainty, sensitivity, risks, gaps, and minimum-necessary disclosure choices.
+- Manually assemble and reorder an audience-specific narrative outline.
+- Continue preparing, pause in the open page, explore a separate recipient path, or decide not to
+  proceed without automatically transferring any draft content.
+
 ## Detailed Use Cases
 
 ### Message Senders and Unauthenticated Visitors
