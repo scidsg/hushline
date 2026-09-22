@@ -193,6 +193,36 @@ import { createCaseHandoff } from "./case-builder-handoff";
   let workspace = createWorkspace();
   let narrativeChoices = new Map();
 
+  function updateSectionCounts() {
+    const counts = {
+      "#case-notes": workspace.notes.length,
+      "#case-claims": workspace.claims.length,
+      "#case-timeline": workspace.timelineEvents.length,
+      "#case-evidence": workspace.evidenceItems.length,
+      "#case-corroborators": workspace.corroborators.length,
+      "#case-connections": workspace.relationships.length,
+      "#case-review": workspace.gapsAndRisks.length,
+      "#case-narrative": currentNarrative()?.blocks.length || 0,
+    };
+    sectionLinks.forEach((link) => {
+      const count = counts[link.getAttribute("href")];
+      let badge = link.querySelector(".badge");
+      if (!count) {
+        badge?.remove();
+        link.removeAttribute("aria-description");
+        return;
+      }
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "badge";
+        badge.setAttribute("aria-hidden", "true");
+        link.appendChild(badge);
+      }
+      badge.textContent = String(count);
+      link.setAttribute("aria-description", `${count} record${count === 1 ? "" : "s"}`);
+    });
+  }
+
   function updateAudit(audit) {
     audit.updatedAt = timestamp();
     audit.revision += 1;
@@ -931,6 +961,7 @@ import { createCaseHandoff } from "./case-builder-handoff";
     narrativeHeading.value = narrative ? narrative.title : "";
     renderNarrativeSources();
     renderNarrativeOutline();
+    updateSectionCounts();
   }
 
   function recordName(itemId) {

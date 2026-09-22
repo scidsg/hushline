@@ -5924,18 +5924,24 @@ li.tab a {
   color: inherit;
 }
 
-li.tab:not(.active) .badge {
+.tab:not(.active) .badge {
   filter: saturate(0);
   opacity: 0.5;
   font-family: var(--font-sans);
 }
 
-li.tab .badge {
+.tab .badge {
   padding: 0.25rem 0.325rem;
   min-width: 22px;
   box-sizing: border-box;
   display: flex;
   justify-content: center;
+}
+
+.settings-tabs .tab:has(.badge) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .first-user {

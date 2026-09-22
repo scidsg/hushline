@@ -35,9 +35,9 @@ def register_case_builder_routes(app: Flask) -> None:
             template.render(
                 brand_name=brand_name,
                 case_builder_script_url=url_for(
-                    "static", filename="js/case-builder.js", v="case-builder-4"
+                    "static", filename="js/case-builder.js", v="case-builder-5"
                 ),
-                stylesheet_url=url_for("static", filename="css/style.css", v="case-builder-4"),
+                stylesheet_url=url_for("static", filename="css/style.css", v="case-builder-5"),
                 leave_url=url_for("directory"),
                 counsel_url=url_for("directory"),
                 chat_url=url_for("inbox"),

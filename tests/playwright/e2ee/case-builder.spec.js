@@ -148,6 +148,46 @@ for (const width of [390, 1280]) {
   });
 }
 
+test("navigation counts saved records and removes empty badges", async ({
+  page,
+}) => {
+  await page.goto("/case-builder");
+  const notes = page.getByRole("link", { name: "Notes", exact: true });
+  await expect(page.locator(".case-builder-sections .badge")).toHaveCount(0);
+  await page.locator("#case-note-draft").fill("Unsaved example");
+  await expect(notes.locator(".badge")).toHaveCount(0);
+  await page.locator("#case-note-add").click();
+  await expect(notes.locator(".badge")).toHaveText("1");
+  await expect(notes).toHaveAccessibleDescription("1 record");
+  await page
+    .locator(".case-note-card")
+    .getByRole("button", { name: "Set aside", exact: true })
+    .click();
+  await expect(notes.locator(".badge")).toHaveText("1");
+  await page.locator("#case-note-draft").fill("Second example");
+  await page.locator("#case-note-add").click();
+  await expect(notes.locator(".badge")).toHaveText("2");
+  await page
+    .locator(".case-note-card")
+    .last()
+    .getByRole("button", { name: "Delete", exact: true })
+    .click();
+  await expect(notes.locator(".badge")).toHaveText("2");
+  await page
+    .getByRole("button", { name: "Confirm delete", exact: true })
+    .click();
+  await expect(notes.locator(".badge")).toHaveText("1");
+  await page
+    .locator(".case-note-card")
+    .getByRole("button", { name: "Delete", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Confirm delete", exact: true })
+    .click();
+  await expect(notes.locator(".badge")).toHaveCount(0);
+  await expect(notes).not.toHaveAttribute("aria-description");
+});
+
 test("private case workspace supports note CRUD without network or browser storage", async ({
   page,
 }) => {
@@ -729,4 +769,25 @@ test("left navigation matches the shared Settings sidebar", async ({
       path: testInfo.outputPath(`settings-mobile-${width}.png`),
     });
   }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await settings.setViewportSize({ width: 1440, height: 1000 });
+  await page.locator("#case-note-draft").fill("Synthetic badge comparison");
+  await page.locator("#case-note-add").click();
+  await page.locator("#case-claim-summary").fill("Synthetic claim comparison");
+  await page.locator("#case-claim-add").click();
+  await settings.goto("/inbox", { waitUntil: "networkidle" });
+  for (const selected of [true, false]) {
+    const selector = selected
+      ? ".tab.active .badge"
+      : ".tab:not(.active) .badge";
+    expect(
+      await style(page.locator(`.case-builder-sections ${selector}`).first()),
+    ).toEqual(await style(settings.locator(`.inbox-tabs ${selector}`).first()));
+  }
+  await page
+    .locator(".case-builder-sections")
+    .screenshot({ path: testInfo.outputPath("case-builder-count-badges.png") });
+  await settings
+    .locator(".inbox-tabs")
+    .screenshot({ path: testInfo.outputPath("inbox-count-badges.png") });
 });

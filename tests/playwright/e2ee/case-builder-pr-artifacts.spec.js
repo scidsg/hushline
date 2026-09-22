@@ -117,6 +117,9 @@ test("PR evidence: completed workspace, protected PDF, and prefilled tip", async
     .locator("#case-connection-from")
     .selectOption({ label: `Corroborator: ${example.corroborator}` });
   await page.locator("#case-connection-type").selectOption("context-for");
+  await page
+    .locator("#case-connection-to")
+    .selectOption({ label: `Claim: ${example.claim}` });
   await click("case-connection-add");
   for (const id of [
     "case-review-incomplete",
@@ -190,6 +193,27 @@ test("PR evidence: completed workspace, protected PDF, and prefilled tip", async
     .getByLabel("Confirm PDF password")
     .fill("Synthetic QA PDF password 2026");
   await page.evaluate(() => window.scrollTo(0, 0));
+  for (const [section, count] of Object.entries({
+    Notes: 2,
+    Claims: 1,
+    Timeline: 1,
+    Evidence: 2,
+    Corroborators: 1,
+    Connections: 2,
+    Review: 1,
+    Narrative: 6,
+  })) {
+    const link = page.getByRole("link", { name: section, exact: true });
+    await expect(link.locator(".badge")).toHaveText(String(count));
+    await expect(link).toHaveAccessibleDescription(
+      `${count} record${count === 1 ? "" : "s"}`,
+    );
+  }
+  await expect(
+    page
+      .getByRole("link", { name: "Next action", exact: true })
+      .locator(".badge"),
+  ).toHaveCount(0);
   await capture("01-completed-workspace");
   for (const [index, section] of [
     "notes",

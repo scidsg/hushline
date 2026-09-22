@@ -74,6 +74,12 @@ actual Settings page, including at 320, 390, and 640px.
 tab divider to the section heading. The desktop comparison is available for
 [Case Builder](./case-builder-navigation.png) and [Settings](./settings-navigation.png).
 
+Record counts reuse Inbox's active and inactive badge styling:
+[Case Builder badges](./case-builder-count-badges.png) and
+[Inbox badges](./inbox-count-badges.png). The browser checks compare their computed
+styles directly and verify added records, unsaved text, confirmed deletion, and zero
+counts. Review counts reflect reminders and narrative counts reflect outline pieces.
+
 ## Reproduce
 
 With the seeded local development app running on port 8080:

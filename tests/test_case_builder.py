@@ -54,10 +54,10 @@ def test_case_builder_opens_without_an_account_and_does_not_create_session_state
     assert soup.find(id="case-notes-list") is not None
     stylesheet = soup.find("link", rel="stylesheet")
     assert stylesheet is not None
-    assert str(stylesheet.get("href") or "").endswith("?v=case-builder-4")
+    assert str(stylesheet.get("href") or "").endswith("?v=case-builder-5")
     script = soup.find("script", src=True)
     assert script is not None
-    assert str(script.get("src") or "").endswith("?v=case-builder-4")
+    assert str(script.get("src") or "").endswith("?v=case-builder-5")
     for asset in soup.select("script[src], link[href]"):
         asset_url = str(asset.get("src") or asset.get("href") or "")
         assert asset_url.startswith("/static/")
