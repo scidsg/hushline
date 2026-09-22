@@ -80,14 +80,33 @@ Record counts reuse Inbox's active and inactive badge styling:
 styles directly and verify added records, unsaved text, confirmed deletion, and zero
 counts. Review counts reflect reminders and narrative counts reflect outline pieces.
 
+The active section follows the largest visible section below the sticky controls.
+Scroll checks cover moving forward/backward, adding a claim after scrolling, keeping
+the badge active, retaining focus, and revealing the active mobile tab without moving
+the document horizontally or changing its URL.
+
+### Mobile date field comparison
+
+The date field and a single-row text input are compared in Chromium and WebKit mobile
+profiles at 320, 390, and 640px. Both use a 44px height, 16px app font, matching padding
+and borders. The date retains its compact 224px width and centered calendar icon.
+Native date text padding and appearance are normalized. These captures cover the
+rendered field, not a physical phone's operating-system picker sheet.
+
+| Browser at 320px | Empty date                                   | Filled date                                    | Single-row text input                        |
+| ---------------- | -------------------------------------------- | ---------------------------------------------- | -------------------------------------------- |
+| Chromium         | ![Empty date](./chromium-320-date-empty.png) | ![Filled date](./chromium-320-date-filled.png) | ![Text input](./chromium-320-text-input.png) |
+| WebKit           | ![Empty date](./webkit-320-date-empty.png)   | ![Filled date](./webkit-320-date-filled.png)   | ![Text input](./webkit-320-text-input.png)   |
+
 ## Reproduce
 
 With the seeded local development app running on port 8080:
 
 ```sh
-npm run playwright:e2ee -- tests/playwright/e2ee/case-builder.spec.js tests/playwright/e2ee/case-builder-pr-artifacts.spec.js tests/playwright/e2ee/client-side-encryption.spec.js
+npm run playwright:e2ee -- tests/playwright/e2ee/case-builder.spec.js tests/playwright/e2ee/case-builder-pr-artifacts.spec.js tests/playwright/e2ee/case-builder-mobile-date.spec.js tests/playwright/e2ee/client-side-encryption.spec.js
 ```
 
 The screenshot scenario is `case-builder-pr-artifacts.spec.js`. Playwright places the
 fresh PNGs, PDF, and outline under `test-results/playwright-e2ee/`. Other checks cover
 new-account self-send through signed E2EE chat, decryption, and retry deduplication.
+The mobile date checks require both the Chromium and WebKit Playwright browser installs.

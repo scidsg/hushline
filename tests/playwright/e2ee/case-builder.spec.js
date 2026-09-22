@@ -69,6 +69,7 @@ for (const width of [390, 1280]) {
       .screenshot({ path: testInfo.outputPath(`date-${width}.png`) });
     const notesLink = page.getByRole("link", { name: "Notes", exact: true });
     const reviewLink = page.getByRole("link", { name: "Review", exact: true });
+    await page.evaluate(() => window.scrollTo(0, 0));
     await expect(notesLink).toHaveAttribute("aria-current", "location");
     await reviewLink.hover();
     await expect(reviewLink).toHaveCSS(
@@ -145,6 +146,56 @@ for (const width of [390, 1280]) {
       path: nextActionScreenshot,
       contentType: "image/png",
     });
+  });
+}
+
+for (const width of [390, 1280]) {
+  test(`active navigation follows scrolling and record creation at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/case-builder");
+    const notes = page.getByRole("link", { name: "Notes", exact: true });
+    const claims = page.getByRole("link", { name: "Claims", exact: true });
+    await expect(notes).toHaveAttribute("aria-current", "location");
+    await page
+      .locator("#case-claims")
+      .evaluate((element) => element.scrollIntoView({ block: "start" }));
+    await expect(claims).toHaveAttribute("aria-current", "location");
+    await expect(page).toHaveURL(/\/case-builder$/);
+    await page
+      .locator("#case-claim-summary")
+      .fill("Synthetic claim added after scrolling");
+    await page.locator("#case-claim-add").click();
+    await expect(claims).toHaveClass(/active/);
+    await expect(claims.locator(".badge")).toHaveText("1");
+    await expect(claims.locator(".badge")).toHaveCSS("opacity", "1");
+    await expect(page.locator("#case-claim-summary")).toBeFocused();
+    await page.getByRole("link", { name: "Timeline", exact: true }).click();
+    await page
+      .locator("#case-claims")
+      .evaluate((element) => element.scrollIntoView({ block: "start" }));
+    await expect(claims).toHaveAttribute("aria-current", "location");
+    await expect(page).toHaveURL(/#case-timeline$/);
+    await page.evaluate(() =>
+      window.scrollTo(0, document.documentElement.scrollHeight),
+    );
+    const last = page.getByRole("link", { name: "Next action", exact: true });
+    await expect(last).toHaveAttribute("aria-current", "location");
+    if (width <= 640) {
+      const ribbon = await page
+        .locator(".case-builder-sections .tab-list")
+        .boundingBox();
+      const tab = await last.boundingBox();
+      expect(tab.x).toBeGreaterThanOrEqual(ribbon.x - 1);
+      expect(tab.x + tab.width).toBeLessThanOrEqual(
+        ribbon.x + ribbon.width + 1,
+      );
+    }
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(notes).toHaveAttribute("aria-current", "location");
+    await expect(claims.locator(".badge")).toHaveCSS("opacity", "0.5");
+    expect(await page.evaluate(() => window.scrollX)).toBe(0);
   });
 }
 

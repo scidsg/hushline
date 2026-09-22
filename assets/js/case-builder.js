@@ -9,20 +9,78 @@ import { createCaseHandoff } from "./case-builder-handoff";
   let reviewGeneration = 0;
 
   const sectionLinks = root.querySelectorAll(".case-builder-sections a");
+  const sections = Array.from(root.querySelectorAll(".case-builder-section"));
+  const sectionNav = root.querySelector(".case-builder-sections");
+  const sectionList = sectionNav.querySelector(".tab-list");
+  let selectedLink;
+  let selectionFrame;
   function updateSelectedSection() {
-    const target = root.querySelector(".case-builder-section:target");
+    // Follow the section occupying most of the readable viewport, below sticky controls.
+    const headerBottom = document
+      .querySelector(".case-builder-header")
+      .getBoundingClientRect().bottom;
+    const viewportTop = Math.max(
+      0,
+      headerBottom,
+      window.matchMedia("(max-width: 640px)").matches
+        ? sectionNav.getBoundingClientRect().bottom
+        : 0,
+    );
+    let target = sections[0];
+    let largestVisibleArea = 0;
+    for (const section of sections) {
+      const bounds = section.getBoundingClientRect();
+      const visibleArea =
+        Math.min(bounds.bottom, window.innerHeight) -
+        Math.max(bounds.top, viewportTop);
+      if (visibleArea > largestVisibleArea) {
+        largestVisibleArea = visibleArea;
+        target = section;
+      }
+    }
+    if (
+      window.scrollY > 0 &&
+      Math.ceil(window.scrollY + window.innerHeight) >=
+        document.documentElement.scrollHeight
+    )
+      target = sections[sections.length - 1];
     const selected =
       Array.from(sectionLinks).find(
-        (link) => target && link.getAttribute("href") === `#${target.id}`,
+        (link) => link.getAttribute("href") === `#${target.id}`,
       ) || sectionLinks[0];
+    if (selected === selectedLink) return;
+    selectedLink = selected;
     sectionLinks.forEach((link) => {
       link.classList.toggle("active", link === selected);
       if (link === selected) link.setAttribute("aria-current", "location");
       else link.removeAttribute("aria-current");
     });
+    // Reveal the active tab inside its own scroller without moving the document or focus.
+    const linkBox = selected.getBoundingClientRect();
+    const listBox = sectionList.getBoundingClientRect();
+    if (linkBox.left < listBox.left)
+      sectionList.scrollLeft += linkBox.left - listBox.left;
+    else if (linkBox.right > listBox.right)
+      sectionList.scrollLeft += linkBox.right - listBox.right;
+    if (sectionNav.scrollHeight > sectionNav.clientHeight) {
+      const navBox = sectionNav.getBoundingClientRect();
+      if (linkBox.top < navBox.top)
+        sectionNav.scrollTop += linkBox.top - navBox.top;
+      else if (linkBox.bottom > navBox.bottom)
+        sectionNav.scrollTop += linkBox.bottom - navBox.bottom;
+    }
   }
-  window.addEventListener("hashchange", updateSelectedSection);
-  updateSelectedSection();
+  function scheduleSelectedSection() {
+    if (selectionFrame) return;
+    selectionFrame = window.requestAnimationFrame(() => {
+      selectionFrame = null;
+      updateSelectedSection();
+    });
+  }
+  window.addEventListener("scroll", scheduleSelectedSection, { passive: true });
+  window.addEventListener("resize", scheduleSelectedSection);
+  window.addEventListener("hashchange", scheduleSelectedSection);
+  scheduleSelectedSection();
 
   const status = document.getElementById("case-builder-status");
   const discardLink = document.getElementById("case-builder-discard");
@@ -219,7 +277,10 @@ import { createCaseHandoff } from "./case-builder-handoff";
         link.appendChild(badge);
       }
       badge.textContent = String(count);
-      link.setAttribute("aria-description", `${count} record${count === 1 ? "" : "s"}`);
+      link.setAttribute(
+        "aria-description",
+        `${count} record${count === 1 ? "" : "s"}`,
+      );
     });
   }
 
@@ -962,6 +1023,7 @@ import { createCaseHandoff } from "./case-builder-handoff";
     renderNarrativeSources();
     renderNarrativeOutline();
     updateSectionCounts();
+    scheduleSelectedSection();
   }
 
   function recordName(itemId) {

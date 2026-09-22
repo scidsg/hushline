@@ -6316,11 +6316,23 @@ button .badge {
 
 .case-builder-date input[type="date"] {
   display: block;
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
   height: 44px;
   min-height: 0;
   line-height: normal;
+  text-align: left;
   padding-right: 2.75rem;
   margin-bottom: 0;
+}
+
+.case-builder-date input::-webkit-datetime-edit {
+  padding: 0;
+}
+
+.case-builder-date input::-webkit-date-and-time-value {
+  text-align: left;
 }
 
 .case-builder-date svg {
@@ -6333,6 +6345,8 @@ button .badge {
 
 .case-builder-date input::-webkit-calendar-picker-indicator {
   position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
   right: 0.5rem;
   width: 1.75rem;
   height: 1.75rem;

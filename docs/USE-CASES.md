@@ -61,6 +61,8 @@ clears it; no draft is restored from browser storage.
 - Organize notes, claims, events, evidence references, corroborators, and their connections.
 - Section navigation uses Inbox-style count badges for added records, review reminders,
   and narrative pieces. Unsaved editor text is not counted; empty sections have no badge.
+  The active tab follows the section being viewed while scrolling, without moving focus
+  or adding browser-history entries. The mobile ribbon reveals the active tab within itself.
 - Review uncertainty, sensitivity, risks, gaps, and minimum-necessary disclosure choices.
 - Manually assemble and reorder an audience-specific narrative outline. Private source notes
   are not included automatically in exports or tips.
