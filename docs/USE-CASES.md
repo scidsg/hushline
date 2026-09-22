@@ -52,17 +52,34 @@ The app and public directory support more than individual profiles. Current disc
 | Authenticated paid users  | Upgrade, manage plan, add aliases, customize alias profiles, customize message-field intake beyond defaults                                                                                                                              |
 | Authenticated admin users | Brand the instance, manage user guidance, control registration, verify accounts, apply caution/suspension states, grant admin, delete users or aliases                                                                                   |
 
-### Secure Case Builder
+### Case Builder
 
-The Secure Case Builder is an account-independent preparation surface for people considering a
-disclosure. Its draft state remains only in the current open page and is not submitted, saved,
-restored, exported, or shared by the builder.
+Case Builder is an account-independent preparation surface for people considering a
+disclosure. Draft state remains in the current open page. Closing, reloading, or leaving
+clears it; no draft is restored from browser storage.
 
 - Organize notes, claims, events, evidence references, corroborators, and their connections.
 - Review uncertainty, sensitivity, risks, gaps, and minimum-necessary disclosure choices.
-- Manually assemble and reorder an audience-specific narrative outline.
-- Continue preparing, pause in the open page, explore a separate recipient path, or decide not to
-  proceed without automatically transferring any draft content.
+- Manually assemble and reorder an audience-specific narrative outline. Private source notes
+  are not included automatically in exports or tips.
+- Export the reviewed outline as an AES-256 password protected PDF, generated in the browser.
+  Choose and confirm a unique password of at least 12 characters; Hush Line cannot recover it.
+  The file can remain in downloads, backups, and synchronized storage. The bundled font does
+  not support every script; unsupported characters prevent export rather than being lost.
+- Send as a tip opens the directory in a new tab. Selecting a Hush Line recipient fills their
+  message field with the reviewed outline, without submitting it. Normal encryption and
+  submission controls still apply. External tip systems do not receive the outline.
+- Send to myself opens an authenticated user's own tip page. Unauthenticated users reach
+  registration. After registering and signing in, the reviewed outline is automatically saved
+  in the new account’s inbox as a chat visible only to that account. This uses the existing
+  browser-generated chat key, authenticated encryption, and signed message envelopes; no PGP
+  key is required. Retrying delivery does not duplicate the case. Profile onboarding remains
+  available separately.
+
+The new-tab handoff stays in memory, is limited to the exact opened tab on the same origin,
+expires after one hour, and is cleared when the workspace is discarded or closed. It never
+places disclosure text in a URL or browser storage. Keep Case Builder open until the message
+is filled; existing recipient message text is never overwritten.
 
 ## Detailed Use Cases
 

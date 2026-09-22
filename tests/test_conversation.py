@@ -2449,3 +2449,44 @@ def test_inbox_unread_indicator_uses_latest_message_for_each_participant(
 
     assert recipient_response.status_code == 200
     assert 'aria-label="Unread conversation"' in recipient_response.text
+
+
+def test_case_import_is_signed_self_chat_and_retry_does_not_duplicate(
+    client: FlaskClient, user: User
+) -> None:
+    _add_chat_key(user, "self-public-key", public_signing_key=_SENDER_PUBLIC_SIGNING_KEY)
+    thread = Conversation()
+    participant = ConversationParticipant()
+    participant.user = user
+    participant.has_usable_public_key = True
+    thread.participants.append(participant)
+    db.session.add(thread)
+    db.session.commit()
+    _authenticate_as(client, user)
+    with client.session_transaction() as state:
+        state["case_builder_import_id"] = thread.public_id
+    endpoint = url_for("append_conversation_message", public_id=thread.public_id)
+    assert (
+        client.post(
+            endpoint,
+            json={
+                "case_import": True,
+                "encrypted_copies": {str(participant.id): "plaintext rejected"},
+            },
+        ).status_code
+        == 400
+    )
+    copies = _bound_copies_for(thread, participant, "case-import")
+    payload = {"case_import": True, "encrypted_copies": copies}
+    response = client.post(endpoint, json=payload)
+    assert response.status_code == 201
+    again = client.post(endpoint, json=payload)
+    assert again.status_code == 200
+    assert again.json == response.json
+    db.session.expire_all()
+    assert len(thread.messages) == 1
+    assert len(thread.messages[0].encrypted_copies) == 1
+    assert thread.messages[0].encrypted_copies[0].recipient_participant_id == participant.id
+    with client.session_transaction() as state:
+        state.pop("case_builder_import_id")
+    assert client.post(endpoint, json=payload).status_code == 403

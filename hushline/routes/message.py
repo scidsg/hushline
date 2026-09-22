@@ -739,7 +739,8 @@ def register_message_routes(app: Flask) -> None:
             participant_public_keys=participant_public_keys,
             participant_signing_public_keys=participant_signing_public_keys,
             can_compose=can_compose,
-            conversation_name=conversation_name or "Conversation",
+            conversation_name=conversation_name
+            or ("Saved case" if len(thread.participants) == 1 else "Conversation"),
             conversation_username=conversation_username,
             conversation_presence_interval_ms=_conversation_presence_heartbeat_ms(),
             conversation_message_form=conversation_message_form,
@@ -795,6 +796,25 @@ def register_message_routes(app: Flask) -> None:
         payload: Any = request.get_json(silent=True)
         if not isinstance(payload, dict):
             return jsonify({"error": "Invalid encrypted message payload."}), 400
+
+        if payload.get("case_import") is True:
+            if (
+                session.get("case_builder_import_id") != thread.public_id
+                or len(thread.participants) != 1
+            ):
+                return jsonify({"error": "Invalid case import."}), 403
+            # Serialise retries so an interrupted import cannot duplicate the case.
+            db.session.execute(
+                db.select(Conversation.id).where(Conversation.id == thread.id).with_for_update()
+            )
+            existing = db.session.scalar(
+                db.select(ConversationMessage).where(
+                    ConversationMessage.conversation_id == thread.id
+                )
+            )
+            if existing is not None:
+                db.session.commit()
+                return jsonify({"message_id": existing.id}), 200
 
         encrypted_copies = payload.get("encrypted_copies")
         if not isinstance(encrypted_copies, dict):

@@ -1,3 +1,5 @@
+import { bindCaseImport } from "./case-builder-import";
+
 (function () {
   const textEncoder = new TextEncoder();
   const textDecoder = new TextDecoder();
@@ -1764,6 +1766,7 @@
       ?.addEventListener("submit", clearChatKeyMaterial);
     bindChatKeyCleanupTriggers();
     bindConversation();
+    bindCaseImport();
   }
 
   window.HushLineChatKeys = {

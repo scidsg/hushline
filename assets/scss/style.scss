@@ -6219,54 +6219,40 @@ button .badge {
 
 .case-builder-container {
   max-width: 1040px;
+  min-width: 0;
 }
 
-.case-builder-heading > .meta {
-  margin: 0 0 0.25rem;
+.case-builder-heading > p {
+  max-width: 768px;
 }
 
-.case-builder-notice h3 {
-  font-size: var(--font-size-5);
-}
-
-.case-builder-notice summary {
-  cursor: pointer;
-  font-family: var(--font-sans-bold);
-  margin-top: 0.75rem;
-}
-
-.case-builder-shell {
+.case-builder-main .case-builder-shell {
   display: grid;
-  grid-template-columns: minmax(9rem, 12rem) minmax(0, 1fr);
+  grid-template-columns: 200px minmax(0, 1fr);
   gap: 2rem;
   margin-top: 1rem;
 }
 
 .case-builder-sections {
-  border-right: var(--border);
-  padding-right: 1.5rem;
-}
-
-.case-builder-sections p {
-  margin-top: 0;
-}
-
-.case-builder-sections ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.case-builder-sections li + li {
-  margin-top: 0.5rem;
+  min-width: 0;
+  max-height: calc(100dvh - 6.5rem);
+  overflow-y: auto;
 }
 
 .case-builder-content {
   min-width: 0;
 }
 
+.case-builder-content textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  resize: vertical;
+}
+
 .case-builder-section {
-  scroll-margin-top: 1rem;
+  scroll-margin-top: 5.5rem;
 }
 
 .case-builder-section + .case-builder-section {
@@ -6316,16 +6302,59 @@ button .badge {
   margin: 1rem 0;
 }
 
+.case-builder-date {
+  position: relative;
+  width: 14rem;
+  max-width: 100%;
+}
+
+.case-builder-date input[type="date"] {
+  display: block;
+  height: 44px;
+  min-height: 0;
+  line-height: normal;
+  padding-right: 2.75rem;
+  margin-bottom: 0;
+}
+
+.case-builder-date svg {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.case-builder-date input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  right: 0.5rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
 .case-builder-check {
-  align-items: flex-start;
+  align-items: center;
   display: flex;
   gap: 0.5rem;
   margin: 0.75rem 0;
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  min-width: 0;
+  min-height: 1.5rem;
 }
 
 .case-builder-check input {
+  // Global form inputs use width: 100%; choices must leave room for their labels.
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
   flex: 0 0 auto;
-  margin-top: 0.25rem;
+  // Override the global checkbox margin; the label's gap supplies the spacing.
+  margin: 0 !important;
 }
 
 .case-builder-safety {
@@ -6334,9 +6363,11 @@ button .badge {
 
 .case-builder-safety p {
   margin: 0;
+  font-size: 0.875rem;
 }
 
 .case-review-group {
+  min-width: 0;
   border: var(--border);
   margin: 1.5rem 0;
   padding: 1rem;
@@ -6380,6 +6411,11 @@ button .badge {
 
 .case-next-action-review {
   margin-top: 1.5rem;
+}
+
+.case-pdf-passwords {
+  width: 100%;
+  max-width: 28rem;
 }
 
 .case-next-action-review h4 {
@@ -6471,7 +6507,6 @@ button .badge {
 }
 
 @media (prefers-color-scheme: dark) {
-  .case-builder-sections,
   .case-builder-section + .case-builder-section,
   .case-record-card,
   .case-record-markers li,
@@ -6481,16 +6516,33 @@ button .badge {
   }
 }
 
-@media (max-width: 700px) {
-  .case-builder-shell {
-    grid-template-columns: 1fr;
+@media (max-width: 640px) {
+  .case-builder-main .case-builder-shell {
+    grid-template-columns: minmax(0, 1fr);
+    // Match Settings' 1.25rem heading space after the nav's shared 0.5rem margin.
     gap: 1.25rem;
+    margin-top: 0;
   }
 
   .case-builder-sections {
-    border-bottom: var(--border);
-    border-right: 0;
-    padding: 0 0 1rem;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .case-builder-main .case-builder-shell .case-builder-sections {
+    width: 100%;
+    max-width: 100%;
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+
+  .case-builder-status:empty {
+    min-height: 0;
+    margin: 0;
+  }
+
+  .case-builder-section {
+    scroll-margin-top: 9rem;
   }
 
   .case-narrative-columns {

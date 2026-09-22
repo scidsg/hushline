@@ -1,0 +1,19 @@
+SYNTHETIC QA EXAMPLE — Library invoice review
+
+Purpose and scope
+This is a fictional quality-assurance example, not a real disclosure. I am asking a recipient to review a possible duplicate charge in an imaginary library renovation project. All names, dates, amounts, documents, and events below were invented for this demonstration. I have separated what the example describes as an observation from what remains uncertain. The private workspace also contains a reminder about identifying details; that reminder is intentionally excluded from this reviewed outline.
+
+What I observed
+On 3 September 2026, I reviewed the ordinary monthly summary for the fictional Example Library project. Two entries appeared to describe the same reading-room installation: invoice QA-104 for 4,800 example units and invoice QA-118 for the same amount. Both referred to the same room and completion week. The similarity prompted a question; it does not establish that a duplicate payment occurred. A legitimate correction, staged payment, or separate scope of work could explain the entries. I have not described any person as responsible for wrongdoing.
+
+Sequence of events
+Around 5 September, a routine project meeting included a discussion of the installation schedule. My fictional meeting note says the work had been completed once. On 8 September, I asked whether the monthly summary would identify corrections or reversals. In this scenario, the answer was that an updated summary might follow. I do not know whether that update was issued. These dates are an aid to understanding the sequence, not proof of a payment, authorization, or intent. The first meeting date is approximate.
+
+Material already known
+The inventory names a monthly summary and an ordinary meeting note already known to the fictional sender. No files were uploaded or attached to Case Builder. The inventory also names a restricted audit folder only to record that it has not been accessed and may be risky to seek. I have left that material alone. I am not asking anyone to obtain records without authorization, copy restricted information, or approach a source whose safety could be affected. The absence of a record should not be treated as evidence that it does not exist.
+
+Uncertainty and corroboration
+A fictional former project coordinator may remember the scope of the reading-room work, but has not been contacted for this example. Their possible knowledge is a lead, not corroboration that has already occurred. I cannot determine from the monthly summary whether the two entries produced separate payments, whether one was later reversed, or whether they cover different deliverables. The recipient should assess those possibilities independently. I have deliberately avoided adding a personal identity, contact details, access credentials, or a precise location for restricted material.
+
+Requested next step
+Please assess whether this limited account warrants an appropriate, authorized review. If further information is needed, consider the confidentiality and safety of anyone involved before seeking it. This outline does not claim legal privilege, establish misconduct, or guarantee anonymity. It is the complete text selected for this demonstration: private notes, excluded source items, and risk reminders remain in the original workspace. The same reviewed text is used for the password protected PDF and the prefilled Hush Line message. Opening the recipient page prepares the message but does not submit it.

@@ -10,6 +10,12 @@ Prerequisite: #2319
 
 ## Status and Scope
 
+Implementation update (2026-09-22): the maintainer-requested PDF and tip/self-send
+workflows are covered by the [sharing boundary addendum](./CASE-BUILDER-SHARING-SECURITY.md).
+That addendum supersedes the initial export deferral and chat-only sharing scope below.
+The remaining browser/device, no-autosave, telemetry, and review requirements still apply.
+This scope update does not represent an independent security review.
+
 This document defines the security boundary and implementation constraints for the Secure Case
 Builder before product implementation begins. It covers draft handling, browser and device risk,
 metadata, telemetry, export, clipboard, print, screenshots, legal-process exposure, and an

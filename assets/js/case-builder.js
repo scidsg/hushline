@@ -1,8 +1,28 @@
 "use strict";
 
+import { createCaseHandoff } from "./case-builder-handoff";
+
 (function () {
   const root = document.querySelector("[data-case-builder]");
   if (!root) return;
+  const handoff = createCaseHandoff();
+  let reviewGeneration = 0;
+
+  const sectionLinks = root.querySelectorAll(".case-builder-sections a");
+  function updateSelectedSection() {
+    const target = root.querySelector(".case-builder-section:target");
+    const selected =
+      Array.from(sectionLinks).find(
+        (link) => target && link.getAttribute("href") === `#${target.id}`,
+      ) || sectionLinks[0];
+    sectionLinks.forEach((link) => {
+      link.classList.toggle("active", link === selected);
+      if (link === selected) link.setAttribute("aria-current", "location");
+      else link.removeAttribute("aria-current");
+    });
+  }
+  window.addEventListener("hashchange", updateSelectedSection);
+  updateSelectedSection();
 
   const status = document.getElementById("case-builder-status");
   const discardLink = document.getElementById("case-builder-discard");
@@ -19,7 +39,9 @@
   const eventSources = document.getElementById("case-event-sources");
   const addEventButton = document.getElementById("case-event-add");
   const evidenceTitle = document.getElementById("case-evidence-title-input");
-  const evidenceDescription = document.getElementById("case-evidence-description");
+  const evidenceDescription = document.getElementById(
+    "case-evidence-description",
+  );
   const evidenceLocation = document.getElementById("case-evidence-location");
   const evidenceMissing = document.getElementById("case-evidence-missing");
   const evidenceUncertain = document.getElementById("case-evidence-uncertain");
@@ -27,8 +49,12 @@
   const addEvidenceButton = document.getElementById("case-evidence-add");
   const corroboratorLabel = document.getElementById("case-corroborator-label");
   const corroboratorBasis = document.getElementById("case-corroborator-basis");
-  const corroboratorUncertain = document.getElementById("case-corroborator-uncertain");
-  const addCorroboratorButton = document.getElementById("case-corroborator-add");
+  const corroboratorUncertain = document.getElementById(
+    "case-corroborator-uncertain",
+  );
+  const addCorroboratorButton = document.getElementById(
+    "case-corroborator-add",
+  );
   const connectionFrom = document.getElementById("case-connection-from");
   const connectionType = document.getElementById("case-connection-type");
   const connectionTo = document.getElementById("case-connection-to");
@@ -43,18 +69,30 @@
   const saveNarrativeDetailsButton = document.getElementById(
     "case-narrative-details-save",
   );
-  const narrativeSourcesEmpty = document.getElementById("case-narrative-sources-empty");
+  const narrativeSourcesEmpty = document.getElementById(
+    "case-narrative-sources-empty",
+  );
   const narrativeSources = document.getElementById("case-narrative-sources");
   const narrativeEmpty = document.getElementById("case-narrative-empty");
   const narrativeList = document.getElementById("case-narrative-list");
   const narrativeNewPiece = document.getElementById("case-narrative-new-piece");
-  const addNarrativePieceButton = document.getElementById("case-narrative-add-piece");
-  const reviewNextActionButton = document.getElementById("case-next-action-review");
-  const nextActionReviewPanel = document.getElementById("case-next-action-review-panel");
-  const nextActionReviewTitle = document.getElementById("case-next-action-review-title");
+  const addNarrativePieceButton = document.getElementById(
+    "case-narrative-add-piece",
+  );
+  const reviewNextActionButton = document.getElementById(
+    "case-next-action-review",
+  );
+  const nextActionReviewPanel = document.getElementById(
+    "case-next-action-review-panel",
+  );
+  const nextActionReviewTitle = document.getElementById(
+    "case-next-action-review-title",
+  );
   const nextActionWarning = document.getElementById("case-next-action-warning");
   const nextActionPreview = document.getElementById("case-next-action-preview");
-  const nextActionControls = document.getElementById("case-next-action-controls");
+  const nextActionControls = document.getElementById(
+    "case-next-action-controls",
+  );
 
   const views = {
     notes: {
@@ -106,13 +144,9 @@
   };
 
   const nextActionLabels = {
-    continue: "Continue preparing",
-    contact_counsel: "Contact counsel",
-    start_chat: "Start a Hush Line chat",
-    export_packet: "Export a packet",
-    drop_tip: "Drop a tip",
-    pause_in_open_page: "Pause while keeping this page open",
-    discard_and_leave: "Decide not to proceed",
+    export_packet: "Export a password protected PDF",
+    drop_tip: "Send as a tip",
+    send_to_self: "Send to myself",
   };
 
   const relationshipLabels = {
@@ -190,6 +224,7 @@
     button.type = "button";
     button.textContent = label;
     if (className) button.className = className;
+    if (button.classList.contains("btn-danger")) button.classList.add("btn");
     button.addEventListener("click", handler);
     return button;
   }
@@ -231,21 +266,25 @@
     return [
       ...additionalMarkers,
       record.review.uncertainty === "uncertain" ? "Uncertain" : "",
-      record.review.sensitivity === "sensitive" ? "Sensitive or identifying" : "",
+      record.review.sensitivity === "sensitive"
+        ? "Sensitive or identifying"
+        : "",
       record.disposition === "set_aside" ? "Set aside" : "",
     ];
   }
 
   function focusRecordAction(recordId, label) {
-    const card = Array.from(document.querySelectorAll("[data-record-id]")).find(function (
-      candidate,
-    ) {
-      return candidate.dataset.recordId === recordId;
-    });
+    const card = Array.from(document.querySelectorAll("[data-record-id]")).find(
+      function (candidate) {
+        return candidate.dataset.recordId === recordId;
+      },
+    );
     if (!card) return;
-    const button = Array.from(card.querySelectorAll("button")).find(function (candidate) {
-      return candidate.textContent === label;
-    });
+    const button = Array.from(card.querySelectorAll("button")).find(
+      function (candidate) {
+        return candidate.textContent === label;
+      },
+    );
     if (button) button.focus();
   }
 
@@ -253,13 +292,17 @@
     const actions = document.createElement("div");
     actions.className = "case-record-actions case-review-actions";
     const uncertaintyLabel =
-      record.review.uncertainty === "uncertain" ? "Clear uncertainty" : "Mark uncertain";
+      record.review.uncertainty === "uncertain"
+        ? "Clear uncertainty"
+        : "Mark uncertain";
     const sensitivityLabel =
       record.review.sensitivity === "sensitive"
         ? "Clear sensitive marker"
         : "Mark sensitive or identifying";
     const dispositionLabel =
-      record.disposition === "set_aside" ? "Return to preparation" : "Set aside";
+      record.disposition === "set_aside"
+        ? "Return to preparation"
+        : "Set aside";
 
     actions.append(
       createButton(uncertaintyLabel, "btn", function () {
@@ -269,7 +312,9 @@
         updateAudit(workspace.audit);
         renderWorkspace();
         const nextLabel =
-          record.review.uncertainty === "uncertain" ? "Clear uncertainty" : "Mark uncertain";
+          record.review.uncertainty === "uncertain"
+            ? "Clear uncertainty"
+            : "Mark uncertain";
         announce("Uncertainty marker updated.");
         focusRecordAction(record.id, nextLabel);
       }),
@@ -287,12 +332,15 @@
         focusRecordAction(record.id, nextLabel);
       }),
       createButton(dispositionLabel, "btn", function () {
-        record.disposition = record.disposition === "set_aside" ? "active" : "set_aside";
+        record.disposition =
+          record.disposition === "set_aside" ? "active" : "set_aside";
         updateAudit(record.audit);
         updateAudit(workspace.audit);
         renderWorkspace();
         const nextLabel =
-          record.disposition === "set_aside" ? "Return to preparation" : "Set aside";
+          record.disposition === "set_aside"
+            ? "Return to preparation"
+            : "Set aside";
         announce(
           record.disposition === "set_aside"
             ? "Item set aside in the open page."
@@ -316,7 +364,11 @@
   }
 
   function removeRelationshipsFor(itemId) {
-    for (let index = workspace.relationships.length - 1; index >= 0; index -= 1) {
+    for (
+      let index = workspace.relationships.length - 1;
+      index >= 0;
+      index -= 1
+    ) {
       const relationship = workspace.relationships[index];
       if (relationship.fromId === itemId || relationship.toId === itemId) {
         scrub(relationship);
@@ -336,9 +388,10 @@
         }
       });
     });
-    workspace.sharePlan.selectedItems = workspace.sharePlan.selectedItems.filter(function (item) {
-      return item.id !== itemId;
-    });
+    workspace.sharePlan.selectedItems =
+      workspace.sharePlan.selectedItems.filter(function (item) {
+        return item.id !== itemId;
+      });
   }
 
   function requestDelete(record, recordType, actions, returnControl) {
@@ -347,25 +400,31 @@
     prompt.className = "case-record-delete-prompt";
     prompt.textContent = `Delete this ${recordType} from the open page?`;
 
-    const confirmButton = createButton("Confirm delete", "btn-danger", function () {
-      const collectionName = collectionNames[recordType];
-      const collection = workspace[collectionName];
-      const index = collection.findIndex(function (candidate) {
-        return candidate.id === record.id;
-      });
-      if (index === -1) return;
+    const confirmButton = createButton(
+      "Confirm delete",
+      "btn-danger",
+      function () {
+        const collectionName = collectionNames[recordType];
+        const collection = workspace[collectionName];
+        const index = collection.findIndex(function (candidate) {
+          return candidate.id === record.id;
+        });
+        if (index === -1) return;
 
-      if (recordType !== "connection") {
-        removeRelationshipsFor(record.id);
-        removeNarrativeReferencesFor(record.id);
-      }
-      scrub(collection[index]);
-      collection.splice(index, 1);
-      updateAudit(workspace.audit);
-      renderWorkspace();
-      announce(`${itemTypeLabels[recordType] || "Connection"} deleted from the open page.`);
-      returnControl.focus();
-    });
+        if (recordType !== "connection") {
+          removeRelationshipsFor(record.id);
+          removeNarrativeReferencesFor(record.id);
+        }
+        scrub(collection[index]);
+        collection.splice(index, 1);
+        updateAudit(workspace.audit);
+        renderWorkspace();
+        announce(
+          `${itemTypeLabels[recordType] || "Connection"} deleted from the open page.`,
+        );
+        returnControl.focus();
+      },
+    );
     confirmButton.setAttribute("aria-describedby", prompt.id);
 
     actions.replaceChildren(
@@ -438,20 +497,24 @@
     prompt.className = "case-record-delete-prompt";
     prompt.textContent = "Delete this note from the open page?";
 
-    const confirmButton = createButton("Confirm delete", "btn-danger", function () {
-      const noteIndex = workspace.notes.findIndex(function (candidate) {
-        return candidate.id === note.id;
-      });
-      if (noteIndex === -1) return;
+    const confirmButton = createButton(
+      "Confirm delete",
+      "btn-danger",
+      function () {
+        const noteIndex = workspace.notes.findIndex(function (candidate) {
+          return candidate.id === note.id;
+        });
+        if (noteIndex === -1) return;
 
-      removeNarrativeReferencesFor(note.id);
-      scrub(workspace.notes[noteIndex]);
-      workspace.notes.splice(noteIndex, 1);
-      updateAudit(workspace.audit);
-      renderWorkspace();
-      announce("Note deleted from the open page.");
-      addNoteButton.focus();
-    });
+        removeNarrativeReferencesFor(note.id);
+        scrub(workspace.notes[noteIndex]);
+        workspace.notes.splice(noteIndex, 1);
+        updateAudit(workspace.audit);
+        renderWorkspace();
+        announce("Note deleted from the open page.");
+        addNoteButton.focus();
+      },
+    );
     confirmButton.setAttribute("aria-describedby", prompt.id);
 
     actions.replaceChildren(
@@ -496,14 +559,18 @@
   }
 
   function focusNoteAction(noteId, label) {
-    const item = Array.from(views.notes.list.children).find(function (candidate) {
-      return candidate.dataset.noteId === noteId;
-    });
+    const item = Array.from(views.notes.list.children).find(
+      function (candidate) {
+        return candidate.dataset.noteId === noteId;
+      },
+    );
     if (!item) return;
 
-    const button = Array.from(item.querySelectorAll("button")).find(function (candidate) {
-      return candidate.textContent === label;
-    });
+    const button = Array.from(item.querySelectorAll("button")).find(
+      function (candidate) {
+        return candidate.textContent === label;
+      },
+    );
     if (button) button.focus();
   }
 
@@ -517,7 +584,8 @@
       item.className = "case-record-card case-claim-card";
       item.dataset.recordId = claim.id;
       const title = document.createElement("h4");
-      title.textContent = claim.kind === "core" ? "Core claim" : "Background detail";
+      title.textContent =
+        claim.kind === "core" ? "Core claim" : "Background detail";
       item.appendChild(title);
       addText(item, "case-record-text", claim.summary);
       addMarkers(item, reviewMarkers(claim));
@@ -531,9 +599,11 @@
     const view = views.timelineEvents;
     view.list.replaceChildren();
     view.empty.hidden = workspace.timelineEvents.length !== 0;
-    const orderedEvents = workspace.timelineEvents.slice().sort(function (left, right) {
-      return left.date.localeCompare(right.date);
-    });
+    const orderedEvents = workspace.timelineEvents
+      .slice()
+      .sort(function (left, right) {
+        return left.date.localeCompare(right.date);
+      });
     orderedEvents.forEach(function (event) {
       const item = document.createElement("li");
       item.className = "case-record-card case-event-card";
@@ -544,7 +614,10 @@
       addText(item, "case-record-text", event.summary);
       addLabeledText(item, "Parties", event.parties);
       addLabeledText(item, "Source references", event.sourceReferences);
-      addMarkers(item, reviewMarkers(event, [event.approximate ? "Approximate date" : ""]));
+      addMarkers(
+        item,
+        reviewMarkers(event, [event.approximate ? "Approximate date" : ""]),
+      );
       addReviewActions(item, event);
       addDeleteAction(item, event, "event", addEventButton);
       view.list.appendChild(item);
@@ -567,8 +640,12 @@
       addMarkers(
         item,
         reviewMarkers(evidence, [
-          evidence.availability === "missing" ? "Missing or unavailable" : "Available",
-          evidence.review.accessRisk === "risky" ? "Risky to access — leave it alone" : "",
+          evidence.availability === "missing"
+            ? "Missing or unavailable"
+            : "Available",
+          evidence.review.accessRisk === "risky"
+            ? "Risky to access — leave it alone"
+            : "",
         ]),
       );
       addReviewActions(item, evidence);
@@ -591,7 +668,12 @@
       addText(item, "case-record-text", corroborator.basis);
       addMarkers(item, reviewMarkers(corroborator));
       addReviewActions(item, corroborator);
-      addDeleteAction(item, corroborator, "corroborator", addCorroboratorButton);
+      addDeleteAction(
+        item,
+        corroborator,
+        "corroborator",
+        addCorroboratorButton,
+      );
       view.list.appendChild(item);
     });
   }
@@ -602,7 +684,11 @@
         return { record, type: "claim", label: record.summary };
       }),
       ...workspace.timelineEvents.map(function (record) {
-        return { record, type: "event", label: `${record.date}: ${record.summary}` };
+        return {
+          record,
+          type: "event",
+          label: `${record.date}: ${record.summary}`,
+        };
       }),
       ...workspace.evidenceItems.map(function (record) {
         return { record, type: "evidence", label: record.title };
@@ -674,6 +760,7 @@
   }
 
   function invalidateNextActionReview() {
+    reviewGeneration += 1;
     nextActionReviewPanel.hidden = true;
     nextActionReviewTitle.textContent = "";
     nextActionWarning.textContent = "";
@@ -863,7 +950,8 @@
       const recordOption = document.createElement("option");
       recordOption.value = item.record.id;
       const label = `${itemTypeLabels[item.type]}: ${item.label}`;
-      recordOption.textContent = label.length > 100 ? `${label.slice(0, 97)}...` : label;
+      recordOption.textContent =
+        label.length > 100 ? `${label.slice(0, 97)}...` : label;
       select.appendChild(recordOption);
     });
   }
@@ -906,7 +994,8 @@
       item.className = "case-record-card case-review-card";
       item.dataset.recordId = reviewItem.id;
       const title = document.createElement("h4");
-      title.textContent = reviewItem.kind === "gap" ? "Incomplete area" : "Possible consequence";
+      title.textContent =
+        reviewItem.kind === "gap" ? "Incomplete area" : "Possible consequence";
       item.appendChild(title);
       addText(item, "case-record-text", reviewItem.description);
       addMarkers(item, reviewMarkers(reviewItem));
@@ -1051,7 +1140,9 @@
     const label = corroboratorLabel.value.trim();
     const basis = corroboratorBasis.value.trim();
     if (!label) {
-      announce("Enter a person or source label before adding the corroborator.");
+      announce(
+        "Enter a person or source label before adding the corroborator.",
+      );
       corroboratorLabel.focus();
       return;
     }
@@ -1155,7 +1246,9 @@
     updateAudit(workspace.audit);
     invalidateNextActionReview();
     renderNarrative();
-    announce("Audience and heading saved in the open page. Nothing was shared.");
+    announce(
+      "Audience and heading saved in the open page. Nothing was shared.",
+    );
   }
 
   function updateNarrativeDetail(field, value) {
@@ -1224,17 +1317,115 @@
     nextActionPreview.appendChild(list);
   }
 
-  function appendActionLink(label, href, handler) {
-    const link = document.createElement("a");
-    link.className = "btn";
-    link.href = href;
-    link.textContent = label;
-    if (handler) link.addEventListener("click", handler);
-    nextActionControls.appendChild(link);
+  function outlineText() {
+    const narrative = currentNarrative();
+    if (!narrative?.blocks.some((block) => block.text.trim())) return "";
+    return [narrative.title, ...narrative.blocks.map((block) => block.text)]
+      .filter((text) => text?.trim())
+      .join("\n\n");
+  }
+
+  function addPdfControls(text) {
+    const editor = document.createElement("div");
+    editor.className = "case-builder-editor case-pdf-passwords";
+    const fields = ["PDF password", "Confirm PDF password"].map(
+      (labelText, index) => {
+        const input = document.createElement("input");
+        input.type = "password";
+        input.id = `case-pdf-password-${index}`;
+        input.autocomplete = "new-password";
+        input.minLength = 12;
+        input.maxLength = 127;
+        const label = document.createElement("label");
+        label.htmlFor = input.id;
+        label.textContent = labelText;
+        editor.append(label, input);
+        return input;
+      },
+    );
+    addText(
+      editor,
+      "meta",
+      "Use a unique passphrase of at least 12 characters. Keep it somewhere safe; Hush Line cannot recover it.",
+    );
+    const generation = reviewGeneration;
+    const download = createButton(
+      "Download protected PDF",
+      "btn",
+      async function () {
+        if (
+          fields[0].value !== fields[1].value ||
+          [...fields[0].value].length < 12
+        ) {
+          announce("Enter matching PDF passwords of at least 12 characters.");
+          fields[0].focus();
+          return;
+        }
+        if (new TextEncoder().encode(fields[0].value).length > 127) {
+          announce(
+            "This PDF password is too long. Use no more than 127 UTF-8 bytes.",
+          );
+          fields[0].focus();
+          return;
+        }
+        download.disabled = true;
+        try {
+          const { createProtectedCasePdf } = await import("./case-builder-pdf");
+          const bytes = await createProtectedCasePdf(text, fields[0].value);
+          if (!workspace || reviewGeneration !== generation) return;
+          const url = URL.createObjectURL(
+            new Blob([bytes], { type: "application/pdf" }),
+          );
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = "case-outline.pdf";
+          link.click();
+          setTimeout(() => URL.revokeObjectURL(url), 30000);
+          announce(
+            "Password protected PDF downloaded. Your workspace remains open.",
+          );
+        } catch {
+          announce(
+            "The PDF could not be created. Check your password and supported text, then try again. Your outline is unchanged.",
+          );
+        } finally {
+          fields.forEach((field) => {
+            field.value = "";
+          });
+          download.disabled = false;
+        }
+      },
+    );
+    editor.appendChild(download);
+    nextActionControls.appendChild(editor);
+  }
+
+  function addHandoffControl(label, url, text) {
+    nextActionControls.appendChild(
+      createButton(label, "btn", function () {
+        if (text.length > 50000) {
+          announce(
+            "Shorten the outline to 50,000 characters before preparing a tip.",
+          );
+          return;
+        }
+        if (!handoff.open(url, text)) {
+          announce(
+            "Allow a new tab for Hush Line, then try again. Your outline remains here.",
+          );
+          return;
+        }
+        announce(
+          "Opened a new tab. Keep Case Builder open until your outline has arrived.",
+        );
+      }),
+    );
   }
 
   function reviewNextAction() {
-    const selectedAction = root.querySelector('input[name="case-next-action"]:checked');
+    const selectedAction = root.querySelector(
+      'input[name="case-next-action"]:checked',
+    );
     if (!selectedAction) {
       announce("Choose an action before reviewing it.");
       root.querySelector('input[name="case-next-action"]').focus();
@@ -1248,47 +1439,33 @@
     invalidateNextActionReview();
     nextActionReviewTitle.textContent = `${nextActionLabels[nextAction]} review`;
 
-    if (nextAction === "continue") {
+    if (nextAction === "export_packet") {
       nextActionWarning.textContent =
-        "Continue in any section. Nothing has been shared, saved, exported, or submitted.";
-      appendActionLink("Return to narrative", "#case-narrative");
-    } else if (nextAction === "contact_counsel") {
-      nextActionWarning.textContent =
-        "The directory opens separately and receives none of this outline. Contacting a listed " +
-        "person does not by itself create confidentiality, privilege, or legal protection. " +
-        "Leaving this page loses the workspace.";
-      appendActionLink("Open Directory to look for counsel", root.dataset.counselUrl);
-    } else if (nextAction === "start_chat") {
-      nextActionWarning.textContent =
-        "Direct sharing from the Case Builder is not available. A separate recipient and " +
-        "exact-content confirmation is required before any encrypted chat transfer. Opening " +
-        "Inbox transfers none of this outline and leaving this page loses the workspace.";
-      appendActionLink("Open Inbox without the draft", root.dataset.chatUrl);
-    } else if (nextAction === "export_packet") {
-      nextActionWarning.textContent =
-        "An exported file can reveal content and file metadata, and may remain in downloads, " +
-        "recent-file lists, previews, backups, or synchronized storage. This workspace does not " +
-        "create a download; review the exact outline below before making any copy outside it.";
+        "Download only the reviewed outline below, encrypted with your chosen password. " +
+        "The file may remain in downloads, backups, previews, or synchronized storage. " +
+        "Protect the password and any unlocked copies. Generation happens in your browser.";
+      if (outlineText()) addPdfControls(outlineText());
     } else if (nextAction === "drop_tip") {
       nextActionWarning.textContent =
-        "The directory opens separately so you can choose and verify a recipient. It receives " +
-        "none of this outline. A later submission can reveal content and connection metadata. " +
-        "Leaving this page loses the workspace.";
-      appendActionLink("Open Directory without the draft", root.dataset.tipUrl);
-    } else if (nextAction === "pause_in_open_page") {
+        "Choose a recipient in a new tab. The reviewed outline below will fill their message " +
+        "field; nothing is submitted until you send it. Keep this workspace open. " +
+        "The handoff expires after one hour and does not use browser storage.";
+      if (outlineText())
+        addHandoffControl(
+          "Choose a recipient",
+          root.dataset.tipUrl,
+          outlineText(),
+        );
+    } else if (nextAction === "send_to_self") {
       nextActionWarning.textContent =
-        "Keep this page open to pause. Reloading, closing, navigating away, a crash, or power " +
-        "loss loses the workspace. Nothing has been shared, saved, exported, or submitted.";
-      appendActionLink("Return to workspace", "#case-notes");
-    } else {
-      nextActionWarning.textContent =
-        "You can stop without sharing anything. Leaving discards the visible workspace from " +
-        "this page, but cannot securely erase browser or device artifacts.";
-      appendActionLink(
-        "Discard workspace and leave",
-        discardLink.getAttribute("href"),
-        clearWorkspace,
-      );
+        "Open your own tip page in a new tab with this outline. If you need an account, " +
+        "register and sign in to save it in your inbox as an end-to-end encrypted chat visible only to you. Keep Case Builder open.";
+      if (outlineText())
+        addHandoffControl(
+          "Open my tip page",
+          root.dataset.selfUrl,
+          outlineText(),
+        );
     }
 
     renderNarrativePreview();
@@ -1298,6 +1475,7 @@
   }
 
   function clearWorkspace() {
+    handoff.clear();
     if (workspace) scrub(workspace);
     workspace = null;
     narrativeChoices.clear();
@@ -1339,9 +1517,11 @@
   saveNarrativeDetailsButton.addEventListener("click", saveNarrativeDetails);
   addNarrativePieceButton.addEventListener("click", addNarrativePiece);
   reviewNextActionButton.addEventListener("click", reviewNextAction);
-  root.querySelectorAll('input[name="case-next-action"]').forEach(function (control) {
-    control.addEventListener("change", invalidateNextActionReview);
-  });
+  root
+    .querySelectorAll('input[name="case-next-action"]')
+    .forEach(function (control) {
+      control.addEventListener("change", invalidateNextActionReview);
+    });
   discardLink.addEventListener("click", clearWorkspace);
   window.addEventListener("pagehide", clearWorkspace);
   window.addEventListener("pageshow", function () {

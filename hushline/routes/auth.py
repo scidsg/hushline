@@ -24,6 +24,7 @@ from werkzeug.wrappers.response import Response
 from hushline.auth import (
     PENDING_PASSWORD_REHASH_SESSION_KEY,
     PENDING_PASSWORD_REHASH_SOURCE_DIGEST_SESSION_KEY,
+    POST_AUTH_REDIRECT_SESSION_KEY,
     authentication_required,
     clear_auth_session,
     get_session_user,
@@ -524,6 +525,10 @@ def register_auth_routes(app: Flask) -> None:
                         success=True,
                     )
 
+                # Finish the explicitly requested case delivery with the login-created chat key.
+                if session.get(POST_AUTH_REDIRECT_SESSION_KEY) == url_for("case_builder_import"):
+                    return redirect(pop_post_auth_redirect())
+
                 if not user.onboarding_complete:
                     return redirect(url_for("onboarding"))
 
@@ -679,6 +684,10 @@ def register_auth_routes(app: Flask) -> None:
                         password_rehash_source_hash,
                         success=True,
                     )
+
+                # Finish the explicitly requested case delivery with the login-created chat key.
+                if session.get(POST_AUTH_REDIRECT_SESSION_KEY) == url_for("case_builder_import"):
+                    return redirect(pop_post_auth_redirect())
 
                 if not user.onboarding_complete:
                     return redirect(url_for("onboarding"))

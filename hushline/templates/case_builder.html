@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="referrer" content="no-referrer" />
-    <title>Private case workspace - {{ brand_name }}</title>
+    <title>Case Builder - {{ brand_name }}</title>
     <link rel="stylesheet" href="{{ stylesheet_url }}" />
     <script defer src="{{ case_builder_script_url }}"></script>
   </head>
@@ -22,40 +22,17 @@
       </nav>
     </header>
 
-    <main id="main-content" class="case-builder-main">
+    <main id="main-content" class="case-builder-main settings-main">
       <div class="container case-builder-container">
         <div class="case-builder-heading">
-          <p class="meta">Secure Case Builder</p>
-          <h2>Private case workspace</h2>
-          <p>Capture private preparation notes here. They are not submitted tips.</p>
-        </div>
-
-        <section class="contextBanner case-builder-notice" aria-labelledby="workspace-limits-title">
-          <h3 id="workspace-limits-title">This workspace exists only in this open page</h3>
+          <h2>Case Builder</h2>
           <p>
-            Hush Line does not receive or save your note text while you work. Closing, reloading,
-            or leaving loses it. Anyone or any software that can see your device or screen may see
-            the content. Include only what you need.
+            Organize your thoughts, then choose what to share. Export your reviewed outline as a
+            password protected PDF, send it to yourself, or send it to a Hush Line user. Your
+            workspace is not saved automatically. To keep your outline, export or send it before
+            closing, reloading, or leaving this page.
           </p>
-          <details>
-            <summary>What Hush Line can and cannot see</summary>
-            <p>
-              Hush Line can receive ordinary connection details when this page and its files load,
-              including that the workspace page was requested. Your notes stay in this page's
-              memory and are not sent to Hush Line while you create, edit, or delete them.
-            </p>
-            <p>
-              Notes are readable by this page and your browser while it is open. This is not
-              encrypted or saved draft storage.
-            </p>
-            <p>
-              This does not protect notes from someone or software with access to your browser,
-              device, or screen. Manually copying or capturing text creates a copy outside this
-              workspace. Discarding or deleting removes content from the open page but cannot
-              securely erase browser or device artifacts.
-            </p>
-          </details>
-        </section>
+        </div>
 
         <noscript>
           <p class="contextBanner" role="alert">
@@ -64,24 +41,24 @@
         </noscript>
 
         <div
-          class="case-builder-shell"
+          class="case-builder-shell settings-content"
           data-case-builder
           data-counsel-url="{{ counsel_url }}"
           data-chat-url="{{ chat_url }}"
           data-tip-url="{{ tip_url }}"
+          data-self-url="{{ self_url }}"
         >
-          <nav class="case-builder-sections" aria-label="Workspace sections">
-            <p class="bold">Sections</p>
-            <ul>
-              <li><a href="#case-notes">Notes</a></li>
-              <li><a href="#case-claims">Claims</a></li>
-              <li><a href="#case-timeline">Timeline</a></li>
-              <li><a href="#case-evidence">Evidence</a></li>
-              <li><a href="#case-corroborators">Corroborators</a></li>
-              <li><a href="#case-connections">Connections</a></li>
-              <li><a href="#case-review">Review</a></li>
-              <li><a href="#case-narrative">Narrative</a></li>
-              <li><a href="#case-next-action">Next action</a></li>
+          <nav class="case-builder-sections settings-tabs" aria-label="Workspace sections">
+            <ul class="tab-list">
+              <li><a class="tab" href="#case-notes">Notes</a></li>
+              <li><a class="tab" href="#case-claims">Claims</a></li>
+              <li><a class="tab" href="#case-timeline">Timeline</a></li>
+              <li><a class="tab" href="#case-evidence">Evidence</a></li>
+              <li><a class="tab" href="#case-corroborators">Corroborators</a></li>
+              <li><a class="tab" href="#case-connections">Connections</a></li>
+              <li><a class="tab" href="#case-review">Review</a></li>
+              <li><a class="tab" href="#case-narrative">Narrative</a></li>
+              <li><a class="tab" href="#case-next-action">Next action</a></li>
             </ul>
           </nav>
 
@@ -173,7 +150,14 @@
               <p>Record relevant events. Events are arranged by date automatically.</p>
               <div class="case-builder-editor">
                 <label for="case-event-date">Date</label>
-                <input id="case-event-date" type="date" autocomplete="off" />
+                <div class="case-builder-date">
+                  <input id="case-event-date" type="date" autocomplete="off" />
+                  <svg aria-hidden="true" focusable="false" width="20" height="20"
+                       viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="3" y="5" width="18" height="16" rx="2" />
+                    <path d="M7 3v4M17 3v4M3 11h18" />
+                  </svg>
+                </div>
                 <label class="case-builder-check">
                   <input id="case-event-approximate" type="checkbox" />
                   Date is approximate
@@ -589,39 +573,23 @@
             >
               <h3 id="case-next-action-title">Next action and share plan</h3>
               <p>
-                Choose what, if anything, you want to review. No option sends, saves, exports, or
-                submits your outline automatically, and none is recommended.
+                Review your narrative outline before exporting it or preparing a tip.
+                Your private notes are not included automatically.
               </p>
 
               <fieldset class="case-review-group" id="case-next-actions">
                 <legend>What would you like to consider?</legend>
                 <label class="case-builder-check">
-                  <input type="radio" name="case-next-action" value="continue" />
-                  Continue preparing
-                </label>
-                <label class="case-builder-check">
-                  <input type="radio" name="case-next-action" value="contact_counsel" />
-                  Contact counsel
-                </label>
-                <label class="case-builder-check">
-                  <input type="radio" name="case-next-action" value="start_chat" />
-                  Start a Hush Line chat
-                </label>
-                <label class="case-builder-check">
                   <input type="radio" name="case-next-action" value="export_packet" />
-                  Export a packet
+                  Export a password protected PDF
                 </label>
                 <label class="case-builder-check">
                   <input type="radio" name="case-next-action" value="drop_tip" />
-                  Drop a tip
+                  Send as a tip
                 </label>
                 <label class="case-builder-check">
-                  <input type="radio" name="case-next-action" value="pause_in_open_page" />
-                  Pause while keeping this page open
-                </label>
-                <label class="case-builder-check">
-                  <input type="radio" name="case-next-action" value="discard_and_leave" />
-                  Decide not to proceed
+                  <input type="radio" name="case-next-action" value="send_to_self" />
+                  Send to myself
                 </label>
               </fieldset>
               <button type="button" id="case-next-action-review">Review selected action</button>
@@ -646,7 +614,7 @@
 
     <section class="case-builder-print-notice" aria-hidden="true">
       <h1>Printing is unavailable</h1>
-      <p>Case workspace content is hidden from print and PDF output.</p>
+      <p>Use Export a password protected PDF to download your reviewed outline. Browser printing hides workspace content.</p>
     </section>
   </body>
 </html>

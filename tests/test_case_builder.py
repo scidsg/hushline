@@ -2,10 +2,11 @@ from pathlib import Path
 
 import pytest
 from bs4 import BeautifulSoup
-from flask import url_for
+from flask import Flask, url_for
 from flask.testing import FlaskClient
 
-from hushline.model import User
+from hushline.db import db
+from hushline.model import ChatKey, Conversation, ConversationParticipant, User
 
 
 def _csp_directives(csp: str) -> dict[str, str]:
@@ -29,7 +30,11 @@ def test_case_builder_opens_without_an_account_and_does_not_create_session_state
     assert response.headers["Expires"] == "0"
 
     soup = BeautifulSoup(response.text, "html.parser")
-    assert soup.find("h2", string="Private case workspace") is not None
+    assert soup.find("h2", string="Case Builder") is not None
+    assert soup.title is not None
+    assert soup.title.get_text().startswith("Case Builder - ")
+    assert "Secure Case Builder" not in response.text
+    assert soup.select_one(".case-builder-notice") is None
     assert soup.find(attrs={"data-case-builder": True}) is not None
     assert soup.find("form") is None
 
@@ -80,20 +85,18 @@ def test_case_builder_does_not_render_authenticated_account_context(
     assert "data-chat-key-session-id" not in response.text
 
 
-def test_case_builder_explains_privacy_boundary_and_has_no_direct_share_or_export_controls(
+def test_case_builder_explains_export_options_and_unsaved_workspace(
     client: FlaskClient,
 ) -> None:
     response = client.get(url_for("case_builder"))
     soup = BeautifulSoup(response.text, "html.parser")
-    page_text = " ".join(soup.get_text(" ", strip=True).split())
-
-    assert "They are not submitted tips." in page_text
-    assert "Hush Line does not receive or save your note text while you work." in page_text
-    assert "Closing, reloading, or leaving loses it." in page_text
-    assert "What Hush Line can and cannot see" in page_text
-    assert "This is not encrypted or saved draft storage." in page_text
-    assert "Manually copying or capturing text creates a copy outside this workspace." in page_text
-    assert "cannot securely erase browser or device artifacts" in page_text
+    intro = soup.select_one(".case-builder-heading > p")
+    assert intro is not None
+    intro_text = " ".join(intro.get_text(" ", strip=True).split())
+    assert "Export your reviewed outline as a password protected PDF" in intro_text
+    assert "send it to yourself, or send it to a Hush Line user" in intro_text
+    assert "Your workspace is not saved automatically." in intro_text
+    assert "before closing, reloading, or leaving this page" in intro_text
 
     controls = [control.get_text(" ", strip=True).lower() for control in soup.select("a, button")]
     assert not any("send outline" in label for label in controls)
@@ -213,15 +216,7 @@ def test_case_builder_next_actions_require_review_and_warn_about_export_and_shar
         control.get("value")
         for control in soup.select('input[type="radio"][name="case-next-action"]')
     }
-    assert actions == {
-        "continue",
-        "contact_counsel",
-        "start_chat",
-        "export_packet",
-        "drop_tip",
-        "pause_in_open_page",
-        "discard_and_leave",
-    }
+    assert actions == {"export_packet", "drop_tip", "send_to_self"}
     assert not soup.select_one('input[name="case-next-action"]:checked')
     assert soup.find("button", id="case-next-action-review", attrs={"type": "button"})
     review_panel = soup.find(id="case-next-action-review-panel")
@@ -233,7 +228,8 @@ def test_case_builder_next_actions_require_review_and_warn_about_export_and_shar
     assert workspace.get("data-counsel-url") == url_for("directory")
     assert workspace.get("data-chat-url") == url_for("inbox")
     assert workspace.get("data-tip-url") == url_for("directory")
-    assert "No option sends, saves, exports, or submits your outline automatically" in page_text
+    assert workspace.get("data-self-url") == url_for("case_builder_self")
+    assert "Your private notes are not included automatically." in page_text
 
 
 def test_case_builder_uses_existing_strict_csp(client: FlaskClient) -> None:
@@ -243,6 +239,7 @@ def test_case_builder_uses_existing_strict_csp(client: FlaskClient) -> None:
     assert directives["default-src"] == "'self'"
     assert directives["script-src"] == "'self'"
     assert directives["script-src-elem"] == "'self'"
+    assert directives["style-src"] == "'self' 'unsafe-inline'"
     assert directives["connect-src"] == "'self' data:"
     assert directives["frame-ancestors"] == "'none'"
     assert response.headers["Referrer-Policy"] == "no-referrer"
@@ -279,8 +276,6 @@ def test_case_builder_client_keeps_workspace_in_memory_only() -> None:
         "history.",
         "location.",
         "URLSearchParams",
-        "createObjectURL",
-        "new Blob",
     )
     for forbidden_api in forbidden_apis:
         assert forbidden_api not in source
@@ -295,17 +290,13 @@ def test_case_builder_client_keeps_workspace_in_memory_only() -> None:
     assert "relationships: []" in source
     assert "selectedItems: []" in source
     assert "paragraph.textContent = value" in source
-    assert "workspace.timelineEvents.slice().sort" in source
+    assert "workspace.timelineEvents.slice().sort" in "".join(source.split())
     assert 'accessRisk: evidenceRisky.checked ? "risky" : "unmarked"' in source
     assert 'availability: evidenceMissing.checked ? "missing" : "available"' in source
     assert "narrativeDrafts: []" in source
     assert 'id: nextId("narrative-block")' in source
     assert "function reviewNextAction()" in source
-    assert "Direct sharing from the Case Builder is not available." in source
-    assert "file metadata" in source
-    assert "connection metadata" in source
-    assert "create confidentiality, privilege, or legal protection" in source
-    assert "This workspace does not " in source
+    assert "Generation happens in your browser." in source
     assert "removeRelationshipsFor(record.id)" in source
     assert "removeNarrativeReferencesFor(record.id)" in source
     assert "innerHTML" not in source
@@ -321,3 +312,124 @@ def test_case_builder_assets_are_built_and_print_content_is_suppressed() -> None
     assert "@media print" in stylesheet
     assert "body.case-builder-page > :not(.case-builder-print-notice)" in stylesheet
     assert "display: none !important" in stylesheet
+
+
+def test_case_builder_self_requires_registration(client: FlaskClient) -> None:
+    response = client.get(url_for("case_builder_self"))
+    assert response.status_code == 302
+    assert response.location == url_for("register", next=url_for("case_builder_import"))
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_case_builder_self_opens_own_profile(client: FlaskClient, user: User) -> None:
+    response = client.get(url_for("case_builder_self"))
+    assert response.status_code == 302
+    assert response.location == url_for("profile", username=user.primary_username.username)
+
+
+@pytest.fixture()
+def case_import_headers(
+    client: FlaskClient, app: Flask, monkeypatch: pytest.MonkeyPatch, _authenticated_user: None
+) -> dict[str, str]:
+    monkeypatch.setitem(app.config, "WTF_CSRF_ENABLED", True)
+    response = client.get(url_for("case_builder_import"))
+    assert response.status_code == 200
+    token = BeautifulSoup(response.text, "html.parser").find("input", attrs={"name": "csrf_token"})
+    assert token is not None
+    return {"X-CSRFToken": str(token.get("value"))}
+
+
+@pytest.fixture()
+def _case_import_key(user: User) -> None:
+    db.session.add(
+        ChatKey(
+            user=user,
+            key_version=1,
+            public_key="synthetic-public-chat-key",
+            public_signing_key="synthetic-public-signing-key",
+            encrypted_private_key="synthetic-wrapped-key",
+            kdf_algorithm="PBKDF2-SHA-256",
+            kdf_params={"iterations": 310000},
+            kdf_salt="synthetic-salt",
+            wrapping_algorithm="AES-GCM",
+        )
+    )
+    db.session.commit()
+
+
+def test_case_import_requires_authentication(client: FlaskClient) -> None:
+    response = client.get(url_for("case_builder_import"))
+    assert response.status_code == 302
+    assert "/login" in response.location
+    assert db.session.scalar(db.select(db.func.count()).select_from(Conversation)) == 0
+
+
+def test_case_import_requires_csrf_and_chat_key(
+    client: FlaskClient, case_import_headers: dict[str, str]
+) -> None:
+    assert client.post(url_for("case_builder_import"), json={}).status_code == 400
+    assert (
+        client.post(
+            url_for("case_builder_import"), json={}, headers=case_import_headers
+        ).status_code
+        == 409
+    )
+    assert db.session.scalar(db.select(db.func.count()).select_from(Conversation)) == 0
+
+
+@pytest.mark.usefixtures("_case_import_key")
+def test_case_import_creates_only_own_chat_and_reuses_it(
+    client: FlaskClient, user: User, case_import_headers: dict[str, str]
+) -> None:
+    endpoint = url_for("case_builder_import")
+    assert (
+        client.post(
+            endpoint, json={"content": "not accepted"}, headers=case_import_headers
+        ).status_code
+        == 400
+    )
+    response = client.post(endpoint, json={}, headers=case_import_headers)
+    assert response.status_code == 200
+    assert response.json is not None
+    assert response.json["saved"] is False
+    again = client.post(endpoint, json={}, headers=case_import_headers)
+    assert again.json == response.json
+    thread = db.session.scalar(db.select(Conversation))
+    assert thread is not None
+    assert len(thread.participants) == 1
+    assert thread.participants[0].user_id == user.id
+    assert not thread.messages
+    assert response.headers["Cache-Control"] == "no-store, max-age=0"
+
+
+@pytest.mark.usefixtures("_case_import_key")
+def test_case_import_cannot_target_another_account(
+    client: FlaskClient, user2: User, case_import_headers: dict[str, str]
+) -> None:
+    thread = Conversation()
+    participant = ConversationParticipant()
+    participant.user = user2
+    participant.has_usable_public_key = True
+    thread.participants.append(participant)
+    db.session.add(thread)
+    db.session.commit()
+    with client.session_transaction() as state:
+        state["case_builder_import_id"] = thread.public_id
+    assert (
+        client.post(
+            url_for("case_builder_import"), json={}, headers=case_import_headers
+        ).status_code
+        == 403
+    )
+    assert not thread.messages
+
+
+def test_case_import_preserves_csp(
+    client: FlaskClient, case_import_headers: dict[str, str]
+) -> None:
+    response = client.get(url_for("case_builder_import"))
+    directives = _csp_directives(response.headers["Content-Security-Policy"])
+    assert directives["script-src"] == "'self'"
+    assert directives["connect-src"] == "'self' data:"
+    assert directives["frame-ancestors"] == "'none'"
+    assert response.headers["Cache-Control"] == "no-store, max-age=0"
