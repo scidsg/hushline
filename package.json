@@ -14,6 +14,7 @@
     "playwright:visual:update": "playwright test --config=playwright.visual.config.js --update-snapshots"
   },
   "dependencies": {
+    "@libpdf/core": "0.4.2",
     "openpgp": "^6.3.0"
   },
   "overrides": {

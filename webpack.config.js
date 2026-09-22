@@ -7,6 +7,7 @@ const entries = new Object();
 modules = [
   // ours
   "admin-broadcasts",
+  "case-builder",
   "client-side-encryption",
   "chat-key-lifecycle",
   "diceware-words",
@@ -55,7 +56,8 @@ module.exports = (env) => {
       }),
     ],
     resolve: {
-      modules: [nodeModulesPath, 'node_modules'],
+      // Resolve each dependency's own versions before the shared build install.
+      modules: ['node_modules', nodeModulesPath],
     },
     resolveLoader: {
       modules: [nodeModulesPath, 'node_modules'],

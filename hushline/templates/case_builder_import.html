@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Send case to myself{% endblock %}
+{% block content %}
+  <h2>Send case to myself</h2>
+  <p>Your reviewed outline will be saved in your inbox as an end-to-end encrypted chat visible only to you. Keep Case Builder open until this finishes.</p>
+  <div id="case-import" data-url="{{ url_for('case_builder_import') }}">
+    {{ form.csrf_token }}
+    <p id="case-import-status" role="status" aria-live="polite">Waiting for your Case Builder outline…</p>
+    <button id="case-import-retry" type="button" hidden>Try again</button>
+  </div>
+  <noscript><p>JavaScript is required to encrypt your case. Nothing has been sent.</p></noscript>
+{% endblock %}

@@ -1,3 +1,5 @@
+import { receiveCaseDraft } from "./case-builder-handoff";
+
 document.addEventListener("DOMContentLoaded", function () {
   // Function to correct double periods at the end of sentences
   function correctDoublePeriods() {
@@ -15,13 +17,14 @@ document.addEventListener("DOMContentLoaded", function () {
     const urlParams = new URLSearchParams(window.location.search);
     const prefill = urlParams.get("prefill");
     const textarea = document.getElementById("content");
-    if (prefill) {
+    if (prefill && textarea) {
       textarea.value = prefill;
     }
   }
   // Run the function to correct double periods
   correctDoublePeriods();
   prefillMessage();
+  receiveCaseDraft();
 
   document
     .getElementById("messageForm")

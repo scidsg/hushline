@@ -1,7 +1,296 @@
 /******/ (() => { // webpackBootstrap
+/******/ 	"use strict";
+/******/ 	var __webpack_modules__ = ({
+
+/***/ "./assets/js/case-builder-handoff.js"
+/*!*******************************************!*\
+  !*** ./assets/js/case-builder-handoff.js ***!
+  \*******************************************/
+(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   createCaseHandoff: () => (/* binding */ createCaseHandoff),
+/* harmony export */   receiveCaseDraft: () => (/* binding */ receiveCaseDraft),
+/* harmony export */   requestCaseDraft: () => (/* binding */ requestCaseDraft)
+/* harmony export */ });
+// Drafts travel only between this page and the exact tab opened by the user.
+// No draft text is put in a URL, browser storage, or a network request.
+const requestType = "hushline-case-draft-request";
+const responseType = "hushline-case-draft-response";
+
+function createCaseHandoff() {
+  const pending = new Map();
+  const origin = window.location.origin;
+  function receive(event) {
+    if (event.origin !== origin || event.data?.type !== requestType) return;
+    const draft = pending.get(event.source);
+    if (!draft) return;
+    try {
+      const destination = new URL(event.source.location.href);
+      if (
+        destination.origin !== origin ||
+        !(
+          destination.pathname.startsWith("/to/") ||
+          (draft.selfImport && destination.pathname === "/case-builder/import")
+        )
+      )
+        return;
+      event.source.postMessage(
+        { type: responseType, text: draft.text },
+        origin,
+      );
+      pending.delete(event.source);
+      clearTimeout(draft.timer);
+    } catch {
+      // A tab on a different origin is never allowed to receive a draft.
+    }
+  }
+  window.addEventListener("message", receive);
+  function clear() {
+    for (const draft of pending.values()) clearTimeout(draft.timer);
+    pending.clear();
+  }
+  window.addEventListener("pagehide", clear);
+  return {
+    open(url, text) {
+      const destination = new URL(url, window.location.href);
+      if (destination.origin !== origin) throw new Error("Invalid destination");
+      const tab = window.open(destination.href, "_blank");
+      if (!tab) return false;
+      const timer = setTimeout(() => pending.delete(tab), 60 * 60 * 1000);
+      pending.set(tab, {
+        text,
+        timer,
+        selfImport: destination.pathname === "/case-builder/self",
+      });
+      return true;
+    },
+    clear,
+  };
+}
+
+function requestCaseDraft(onDraft) {
+  const parent = window.opener;
+  if (!parent) return;
+  const origin = window.location.origin;
+  try {
+    if (
+      parent.location.origin !== origin ||
+      parent.location.pathname !== "/case-builder"
+    )
+      return;
+  } catch {
+    return;
+  }
+  function receive(event) {
+    if (
+      event.source !== parent ||
+      event.origin !== origin ||
+      event.data?.type !== responseType
+    )
+      return;
+    if (
+      typeof event.data.text !== "string" ||
+      !event.data.text.trim() ||
+      event.data.text.length > 50000
+    )
+      return;
+    window.removeEventListener("message", receive);
+    onDraft(event.data.text);
+    window.opener = null;
+  }
+  window.addEventListener("message", receive);
+  parent.postMessage({ type: requestType }, origin);
+}
+
+function receiveCaseDraft() {
+  const fields = Array.from(document.querySelectorAll("#messageForm textarea"));
+  const field =
+    fields.find((item) => item.dataset.label?.toLowerCase() === "message") ||
+    (fields.length === 1 ? fields[0] : null);
+  if (!field || field.disabled || field.value) return;
+  requestCaseDraft((text) => {
+    if (!field.value) {
+      field.value = text;
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+      const notice = document.createElement("p");
+      notice.className = "contextBanner";
+      notice.setAttribute("role", "status");
+      notice.textContent =
+        "Your Case Builder outline is ready. Review the recipient and message before sending.";
+      field.closest(".field-group").prepend(notice);
+    }
+  });
+}
+
+
+/***/ },
+
+/***/ "./assets/js/case-builder-import.js"
+/*!******************************************!*\
+  !*** ./assets/js/case-builder-import.js ***!
+  \******************************************/
+(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   bindCaseImport: () => (/* binding */ bindCaseImport)
+/* harmony export */ });
+/* harmony import */ var _case_builder_handoff__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./case-builder-handoff */ "./assets/js/case-builder-handoff.js");
+
+
+function bindCaseImport() {
+  const root = document.getElementById("case-import");
+  if (!root || root.dataset.bound) return;
+  root.dataset.bound = "true";
+  const status = document.getElementById("case-import-status");
+  const retry = document.getElementById("case-import-retry");
+  const csrf = root.querySelector("input[name='csrf_token']").value;
+  let draft = "";
+  let busy = false;
+  async function save() {
+    if (!draft || busy) return;
+    busy = true;
+    retry.hidden = true;
+    status.textContent = "Encrypting your case for your inbox…";
+    try {
+      const keys = window.HushLineChatKeys;
+      const key = await keys.fetchChatKey("/settings/chat-key.json");
+      if (!key || !(await keys.signingPrivateKeyForChatKey(key)))
+        throw new Error("locked");
+      const headers = {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrf,
+      };
+      const prepared = await fetch(root.dataset.url, {
+        method: "POST",
+        credentials: "same-origin",
+        headers,
+        body: "{}",
+      });
+      if (!prepared.ok) throw new Error("unavailable");
+      const target = await prepared.json();
+      if (!target.saved) {
+        const participantId = String(target.participant_key.participant_id);
+        const encrypted = await keys.encryptForPublicKey(
+          JSON.stringify({
+            content: draft,
+            created_at: new Date().toISOString(),
+          }),
+          target.participant_key,
+          {
+            purpose: "hushline.chat.message",
+            conversation_public_id: target.conversation_public_id,
+            sender_participant_id: participantId,
+          },
+        );
+        const response = await fetch(target.message_url, {
+          method: "POST",
+          credentials: "same-origin",
+          headers,
+          body: JSON.stringify({
+            case_import: true,
+            encrypted_copies: { [participantId]: encrypted },
+          }),
+        });
+        if (!response.ok) throw new Error("unsaved");
+      }
+      draft = "";
+      window.location.replace(target.inbox_url);
+    } catch {
+      status.textContent =
+        "Your case could not be saved. Keep Case Builder open and try again. Your original outline is still in Case Builder.";
+      retry.hidden = false;
+    } finally {
+      busy = false;
+    }
+  }
+  retry.addEventListener("click", save);
+  (0,_case_builder_handoff__WEBPACK_IMPORTED_MODULE_0__.requestCaseDraft)((text) => {
+    draft = text;
+    void save();
+  });
+  window.addEventListener("pagehide", () => {
+    draft = "";
+  });
+}
+
+
+/***/ }
+
+/******/ 	});
+/************************************************************************/
+/******/ 	// The module cache
+/******/ 	var __webpack_module_cache__ = {};
+/******/
+/******/ 	// The require function
+/******/ 	function __webpack_require__(moduleId) {
+/******/ 		// Check if module is in cache
+/******/ 		var cachedModule = __webpack_module_cache__[moduleId];
+/******/ 		if (cachedModule !== undefined) {
+/******/ 			return cachedModule.exports;
+/******/ 		}
+/******/ 		// Check if module exists (development only)
+/******/ 		if (__webpack_modules__[moduleId] === undefined) {
+/******/ 			var e = new Error("Cannot find module '" + moduleId + "'");
+/******/ 			e.code = 'MODULE_NOT_FOUND';
+/******/ 			throw e;
+/******/ 		}
+/******/ 		// Create a new module (and put it into the cache)
+/******/ 		var module = __webpack_module_cache__[moduleId] = {
+/******/ 			// no module.id needed
+/******/ 			// no module.loaded needed
+/******/ 			exports: {}
+/******/ 		};
+/******/
+/******/ 		// Execute the module function
+/******/ 		__webpack_modules__[moduleId](module, module.exports, __webpack_require__);
+/******/
+/******/ 		// Return the exports of the module
+/******/ 		return module.exports;
+/******/ 	}
+/******/
+/************************************************************************/
+/******/ 	/* webpack/runtime/define property getters */
+/******/ 	(() => {
+/******/ 		// define getter functions for harmony exports
+/******/ 		__webpack_require__.d = (exports, definition) => {
+/******/ 			for(var key in definition) {
+/******/ 				if(__webpack_require__.o(definition, key) && !__webpack_require__.o(exports, key)) {
+/******/ 					Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
+/******/ 				}
+/******/ 			}
+/******/ 		};
+/******/ 	})();
+/******/
+/******/ 	/* webpack/runtime/hasOwnProperty shorthand */
+/******/ 	(() => {
+/******/ 		__webpack_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
+/******/ 	})();
+/******/
+/******/ 	/* webpack/runtime/make namespace object */
+/******/ 	(() => {
+/******/ 		// define __esModule on exports
+/******/ 		__webpack_require__.r = (exports) => {
+/******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 			}
+/******/ 			Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 		};
+/******/ 	})();
+/******/
+/************************************************************************/
+var __webpack_exports__ = {};
+// This entry needs to be wrapped in an IIFE because it needs to be isolated against other modules in the chunk.
+(() => {
 /*!*****************************************!*\
   !*** ./assets/js/chat-key-lifecycle.js ***!
   \*****************************************/
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _case_builder_import__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./case-builder-import */ "./assets/js/case-builder-import.js");
+
+
 (function () {
   const textEncoder = new TextEncoder();
   const textDecoder = new TextDecoder();
@@ -1768,6 +2057,7 @@
       ?.addEventListener("submit", clearChatKeyMaterial);
     bindChatKeyCleanupTriggers();
     bindConversation();
+    (0,_case_builder_import__WEBPACK_IMPORTED_MODULE_0__.bindCaseImport)();
   }
 
   window.HushLineChatKeys = {
@@ -1788,6 +2078,8 @@
   document.addEventListener("DOMContentLoaded", function () {
     bindPage();
   });
+})();
+
 })();
 
 /******/ })()

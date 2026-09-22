@@ -37,7 +37,7 @@ def test_user_registration_disabled(client: FlaskClient, user: User) -> None:
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Register" not in response.text
+    assert BeautifulSoup(response.text, "html.parser").find("a", href=url_for("register")) is None
 
 
 def test_user_registration_disabled_first_user(client: FlaskClient) -> None:
@@ -506,3 +506,24 @@ def test_user_login_handles_case_insensitive_duplicate_rows(
 
     assert response.status_code == 200
     flash_mock.assert_called_with("⛔️ Invalid username or password.")
+
+
+def test_case_import_login_returns_to_encrypted_delivery_before_optional_onboarding(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    user.onboarding_complete = False
+    db.session.commit()
+    response = client.get(url_for("login", next=url_for("case_builder_import", _external=False)))
+    assert response.status_code == 200
+    with client.session_transaction() as state:
+        assert state.get("post_auth_redirect") == url_for("case_builder_import")
+    response = client.post(
+        url_for("login"),
+        data={
+            "username": user.primary_username.username,
+            "password": user_password,
+        },
+    )
+    assert response.status_code == 302
+    assert response.location == url_for("case_builder_import")
+    assert user.onboarding_complete is False
