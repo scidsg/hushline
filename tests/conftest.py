@@ -144,7 +144,7 @@ def populate_db(session: Session) -> None:
 
 
 @pytest.fixture()
-def database(request: pytest.FixtureRequest, _db_template: None) -> str:
+def database(request: pytest.FixtureRequest, _db_template: None) -> Generator[str, None, None]:
     db_name = random_name(16)
     conn_str = CONN_FMT_STR.format(database="hushline")
     engine = create_engine(conn_str)
@@ -176,7 +176,11 @@ def database(request: pytest.FixtureRequest, _db_template: None) -> str:
 
     print(f"Postgres DB: {db_name}, template: {TEMPLATE_DB_NAME}")  # to help with debugging tests
 
-    return db_name
+    try:
+        yield db_name
+    finally:
+        with temp_session(CONN_FMT_STR.format(database="hushline")) as cleanup_session:
+            drop_database_if_exists(cleanup_session, db_name)
 
 
 @pytest.fixture(autouse=True)

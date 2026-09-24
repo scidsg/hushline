@@ -705,7 +705,7 @@ def can_encrypt_with_pgp_key(key: str) -> bool:
     try:
         recipient_cert = Cert.from_bytes(key.encode())
         test_message = b"pgp-encryption-test"
-        encrypted = encrypt([recipient_cert], test_message)
+        encrypted = encrypt(test_message, recipients=[recipient_cert])
         return bool(encrypted)
     except (RuntimeError, TypeError, ValueError) as e:
         current_app.logger.error(f"Error during encryption test: {e}")
@@ -727,7 +727,7 @@ def encrypt_message(message: str, user_pgp_keys: str | Sequence[str]) -> str:
     message_bytes = message.encode("utf-8")
 
     # Assuming there is no signer (i.e., unsigned encryption).
-    encrypted = encrypt(recipient_certs, message_bytes)
+    encrypted = encrypt(message_bytes, recipients=recipient_certs)
     if isinstance(encrypted, bytes):
         return encrypted.decode("utf-8")
     return encrypted
@@ -737,7 +737,7 @@ def encrypt_bytes(data: bytes, user_pgp_keys: str | Sequence[str]) -> bytes | No
     current_app.logger.info("Encrypting bytes for user with provided PGP key")
     try:
         recipient_certs = _load_recipient_certs(user_pgp_keys)
-        encrypted = encrypt(recipient_certs, data)
+        encrypted = encrypt(data, recipients=recipient_certs)
         if isinstance(encrypted, str):
             return encrypted.encode("utf-8")
         return encrypted
