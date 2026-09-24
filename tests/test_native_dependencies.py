@@ -24,7 +24,7 @@ def test_pysequoia_cert_parse_and_encrypt_runtime() -> None:
     public_key = (Path(__file__).parent / "test_pgp_key.txt").read_text(encoding="utf-8").strip()
 
     certificate = Cert.from_bytes(public_key.encode())
-    encrypted_message = encrypt([certificate], b"native-runtime-check")
+    encrypted_message = encrypt(b"native-runtime-check", recipients=[certificate])
 
     if isinstance(encrypted_message, str):
         encrypted_message = encrypted_message.encode("utf-8")

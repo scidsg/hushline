@@ -25,7 +25,7 @@ markdown = "^3.8"
 passlib = "^1.7.4"
 psycopg = { extras = ["binary", "pool"], version = "^3.1.19" }
 pyotp = "^2.9.0"
-pysequoia = "^0.1.23"
+pysequoia = "0.1.35"
 python = "^3.11"
 qrcode = "^7.4.2"
 requests = "^2.33.0"

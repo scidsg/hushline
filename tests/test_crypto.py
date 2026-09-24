@@ -855,7 +855,7 @@ def test_encrypt_message_uses_all_recipient_keys(app: Flask, mocker) -> None:  #
 
         assert crypto.encrypt_message("hello", ["key-one", "key-two"]) == "ciphertext"
         assert from_bytes.call_args_list == [call(b"key-one"), call(b"key-two")]
-        encrypt.assert_called_once_with([cert_one, cert_two], b"hello")
+        encrypt.assert_called_once_with(b"hello", recipients=[cert_one, cert_two])
 
 
 def test_load_recipient_certs_requires_at_least_one_key() -> None:

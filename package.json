@@ -14,7 +14,7 @@
     "playwright:visual:update": "playwright test --config=playwright.visual.config.js --update-snapshots"
   },
   "dependencies": {
-    "openpgp": "^6.3.0"
+    "openpgp": "npm:@protontech/openpgp@6.3.1"
   },
   "overrides": {
     "serialize-javascript": "^7.0.5"
