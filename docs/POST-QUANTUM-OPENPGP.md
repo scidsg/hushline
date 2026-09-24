@@ -85,11 +85,13 @@ does not make another classical recipient's copy quantum-resistant.
 - `npm run build:prod`: passed; existing Sass deprecation warnings remain.
 - Full and runtime-only npm audits: zero known vulnerabilities.
 - `make audit-python`: no known vulnerabilities.
-- Full `make test` with coverage and `--skip-local-only`: rerun in progress after
-  recovery from local storage exhaustion and a stopped S3 emulator (2,291 tests
-  passed before that connection failure). Test database teardown now drops each
-  generated database; previously the fixture retained one database per test,
-  eventually filling Docker's disk. Full coverage and required CI must pass before release.
+- Full `make test` with coverage and `--skip-local-only`: 2,340 passed, four
+  skipped, one deselected, one expected failure; 99% aggregate coverage. Test
+  database teardown now drops each generated database; previously the fixture
+  retained one database per test, eventually filling Docker's disk.
+- GitHub's compiled PQC browser tests also passed with the normal pinned browser.
+  Full required CI and review remain release gates. The RFC private test keys
+  are publicly specified test credentials; no scanner exemptions were added.
 - CI now installs the JavaScript lockfile for cross-library tests and runs the
   compiled PQC browser suite as a separate job.
 
