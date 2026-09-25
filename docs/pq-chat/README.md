@@ -8,11 +8,20 @@ The PQ chat discovery work is split into independently reviewable gates:
   [machine-readable evidence manifest](g2-evidence.json), and
   [go/no-go ADR](adr-0001-browser-protocol-candidate.md) record the browser
   implementation feasibility result for `scidsg/hushline#2367`.
+- **G3:** the [complete-design readiness ADR](adr-0002-complete-protocol-design-readiness.md)
+  and [machine-readable readiness record](g3-readiness.json) preserve the
+  prerequisite blocker for `scidsg/hushline#2368` and inventory every deferred
+  design and review artifact.
 
 G2 is a **no-go at the reviewed revisions**. It does not add a cryptographic
 dependency or change production behavior. Missing real-browser, continuous-PQ
 epoch, reference-peer, reproducibility, vulnerability, and ownership evidence
 is recorded as missing rather than inferred from upstream claims.
+
+G3 is **blocked before design** because G1 remains pending human approval and
+G2 has no passing protocol candidate or reviewed suite. No combined protocol,
+archive, device-state, wire, or migration design is selected, and all reviewer
+dispositions remain pending.
 
 ## G1 Review Packet
 

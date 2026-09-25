@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "issue": "scidsg/hushline#2368",
+  "parent_epic": "scidsg/hushline#2365",
+  "recorded_at": "2026-09-24",
+  "repository_baseline": "f84fb98e86286f3183f4c1f7e9f714549f10f9e2",
+  "decision": "blocked-prerequisites",
+  "production_changes": false,
+  "prerequisites": [
+    {
+      "gate": "G1",
+      "issue": "scidsg/hushline#2366",
+      "artifact_commit": "37abae6e11dd9c0e8306f5e962ae97504f5c0888",
+      "required_result": "approved",
+      "observed_result": "proposed-for-human-approval",
+      "satisfied": false,
+      "evidence": [
+        "README.md",
+        "baseline-flows.md",
+        "unchanged-ux-contract.md",
+        "threat-model.md"
+      ],
+      "blocker": "The product maintainer and security architect dispositions are pending."
+    },
+    {
+      "gate": "G2",
+      "issue": "scidsg/hushline#2367",
+      "artifact_commit": "f84fb98e86286f3183f4c1f7e9f714549f10f9e2",
+      "required_result": "go",
+      "observed_result": "no-go",
+      "satisfied": false,
+      "evidence": [
+        "adr-0001-browser-protocol-candidate.md",
+        "candidate-evaluation.md",
+        "g2-evidence.json"
+      ],
+      "blocker": "No browser protocol candidate or reviewed suite passed the G2 evidence gate."
+    }
+  ],
+  "required_deliverables": [
+    {
+      "id": "protocol-and-reviewed-suite",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "library-interfaces",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "authenticated-envelope-bindings",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "archive-construction-and-copy-inventory",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "account-identity-and-device-membership",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "prekey-lifecycle",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "state-transactions-and-storage-recovery",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "password-kdf-and-wrapping-lifecycle",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "archive-epochs-revocation-reset-and-migration",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "authentication-deniability-erasure-and-forward-secrecy-claims",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "key-and-data-flow-diagrams",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "wire-fixtures",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "state-transition-tables",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "failure-matrix",
+      "status": "blocked",
+      "evidence": null
+    }
+  ],
+  "reviewers": [
+    {
+      "role": "cryptographic engineer",
+      "reviewer": null,
+      "disposition": "pending",
+      "evidence": null
+    },
+    {
+      "role": "independent design reviewer",
+      "reviewer": null,
+      "disposition": "pending",
+      "evidence": null
+    }
+  ]
+}
