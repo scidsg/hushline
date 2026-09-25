@@ -19,7 +19,7 @@ This directory now includes a GitHub-first mirror of the public Hush Line Librar
 - [Threat model](./THREAT-MODEL.md)
 - [Two-way chat end-to-end encryption implementation reference](./TWO-WAY-CHAT-E2EE.md)
 - [Two-way chat E2EE technical whitepaper](./HUSH-LINE-TWO-WAY-CHAT-E2EE-WHITEPAPER.md)
-- [Post-quantum chat G1 review packet](./pq-chat/README.md)
+- [Post-quantum chat review packets](./pq-chat/README.md)
 - [Terms](./TERMS.md)
 - [Agent automation and policy](https://github.com/scidsg/hushline-agents)
 - [Security audit hitlist](./SECURITY-AUDIT-HITLIST.md)

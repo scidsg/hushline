@@ -1,4 +1,20 @@
-# Post-Quantum Chat G1 Review Packet
+# Post-Quantum Chat Review Packets
+
+The PQ chat discovery work is split into independently reviewable gates:
+
+- **G1:** this directory's baseline flow, unchanged-UX contract, and threat
+  model remain proposed for human approval below.
+- **G2:** the [browser protocol candidate evaluation](candidate-evaluation.md),
+  [machine-readable evidence manifest](g2-evidence.json), and
+  [go/no-go ADR](adr-0001-browser-protocol-candidate.md) record the browser
+  implementation feasibility result for `scidsg/hushline#2367`.
+
+G2 is a **no-go at the reviewed revisions**. It does not add a cryptographic
+dependency or change production behavior. Missing real-browser, continuous-PQ
+epoch, reference-peer, reproducibility, vulnerability, and ownership evidence
+is recorded as missing rather than inferred from upstream claims.
+
+## G1 Review Packet
 
 Status: **Proposed for human approval**  
 Issue: `scidsg/hushline#2366`  

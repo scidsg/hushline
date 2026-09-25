@@ -1,0 +1,154 @@
+{
+  "schema_version": 1,
+  "issue": "scidsg/hushline#2367",
+  "recorded_at": "2026-09-24",
+  "repository_baseline": "37abae6e11dd9c0e8306f5e962ae97504f5c0888",
+  "decision": "no-go",
+  "decision_reason": "No reviewed candidate has complete provenance, independently verified continuous-PQ epochs, reference-peer conformance, required real-browser coverage, benchmark evidence, CSP execution evidence, and named maintenance ownership.",
+  "production_changes": false,
+  "candidate": {
+    "package": "@getmaapp/signal-wasm",
+    "package_version": "0.6.6",
+    "package_integrity": null,
+    "wrapper_source_revision": null,
+    "upstream": "signalapp/libsignal",
+    "upstream_version": "0.101.0",
+    "upstream_revision": "b056faa6dd02961cff24064c54c089c52e1a0753",
+    "license": "AGPL-3.0-only",
+    "license_review": "compatible-in-principle-pending-distribution-review",
+    "handshake": "PQXDH revision 3 profile exposed by the wrapper",
+    "kem": "round-3 Kyber1024",
+    "kem_is_fips_203_ml_kem": false,
+    "kem_wire_type": "0x08",
+    "mlkem1024_wire_type": "0x0A",
+    "mlkem1024_enabled": false,
+    "pq_enablement": "Kyber prekey is mandatory in the exposed processPreKeyBundle path; no reviewed classical-only flag",
+    "continuous_ratchet": "libsignal Double Ratchet plus SPQR/Triple Ratchet claimed by the wrapper; not independently observed by Hush Line",
+    "wire_version": null,
+    "wire_version_reason": "The wrapper does not publish a separate stable wire-version identifier; pin the exact libsignal serialization and record fixture hashes before approval.",
+    "reproducible_build": "not_run",
+    "sbom": "not_generated",
+    "vulnerability_status": "not_audited_for_candidate_lock",
+    "published_security_advisories": "No libsignal GitHub advisory was visible at review time; this is not a vulnerability audit.",
+    "named_maintenance_owner": null,
+    "named_security_reviewer": null
+  },
+  "protocol_scenarios": [
+    {
+      "id": "offline-recipient-pqxdh",
+      "status": "not_run",
+      "evidence": null
+    },
+    {
+      "id": "bidirectional-messages",
+      "status": "not_run",
+      "evidence": null
+    },
+    {
+      "id": "two-independent-post-handshake-pq-epochs",
+      "status": "not_run",
+      "evidence": null
+    },
+    {
+      "id": "save-reload-state",
+      "status": "not_run",
+      "evidence": null
+    },
+    {
+      "id": "dropped-reordered-messages",
+      "status": "not_run",
+      "evidence": null
+    },
+    {
+      "id": "official-libsignal-reference-peer",
+      "status": "not_run",
+      "evidence": null
+    }
+  ],
+  "browser_matrix": [
+    {
+      "browser": "Safari on macOS",
+      "version": null,
+      "os": null,
+      "mode": "normal and private",
+      "status": "not_run"
+    },
+    {
+      "browser": "Safari on iOS",
+      "version": null,
+      "os": null,
+      "mode": "normal and private",
+      "status": "not_run"
+    },
+    {
+      "browser": "Firefox",
+      "version": null,
+      "os": null,
+      "mode": "normal and private",
+      "status": "not_run"
+    },
+    {
+      "browser": "Tor Browser",
+      "version": null,
+      "os": null,
+      "mode": "default security level and private storage",
+      "status": "not_run"
+    },
+    {
+      "browser": "Chromium",
+      "version": null,
+      "os": null,
+      "mode": "normal and private",
+      "status": "not_run"
+    },
+    {
+      "browser": "Storage capability fault injection",
+      "version": null,
+      "os": null,
+      "mode": "unavailable and quota-limited persistence",
+      "status": "not_run"
+    }
+  ],
+  "benchmarks": {
+    "hardware": null,
+    "production_bundle": null,
+    "network_profile": null,
+    "corpus": null,
+    "timing_runs_per_case": 0,
+    "cold_latency": "not_run",
+    "warm_latency": "not_run",
+    "bundle_transfer_bytes": "not_run",
+    "peak_memory_bytes": "not_run",
+    "main_thread_blocking_ms": "not_run",
+    "session_prekey_storage_bytes": "not_run",
+    "ciphertext_amplification": "not_run"
+  },
+  "csp": {
+    "status": "not_run",
+    "profile_route_script_src": "'self' 'wasm-unsafe-eval'",
+    "conversation_route_script_src": "'self'",
+    "worker_src": "'self' blob:",
+    "new_cdn_dependency": false,
+    "unsafe_eval_allowed": false,
+    "policy_changed": false,
+    "required_disposition": "Prove the production candidate on the existing conversation policy or obtain explicit approval for the smallest route-only expansion and add regression tests."
+  },
+  "evidence_safety": {
+    "synthetic_only": true,
+    "allowed": [
+      "public keys",
+      "protocol versions and algorithm identifiers",
+      "ciphertext hashes and sizes",
+      "ratchet epoch counters and transition assertions",
+      "timings and resource measurements",
+      "pass/fail outcomes"
+    ],
+    "forbidden": [
+      "plaintext messages",
+      "private keys or prekeys",
+      "shared secrets or message keys",
+      "serialized private ratchet state",
+      "credentials, session tokens, or production data"
+    ]
+  }
+}
