@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "issue": "scidsg/hushline#2372",
+  "parent_epic": "scidsg/hushline#2365",
+  "recorded_at": "2026-09-25",
+  "repository_baseline": "fe312ab3bef6ded364c115ec29b8c2c8f2dce60f",
+  "decision": "blocked-prerequisites",
+  "production_changes": false,
+  "prerequisites": [
+    {
+      "gate": "G5",
+      "issue": "scidsg/hushline#2370",
+      "artifact_commit": "f9ba0777a5a4029a1c95bac3e5fed6c7199b9229",
+      "required_result": "approved",
+      "observed_result": "blocked-prerequisite",
+      "satisfied": false,
+      "evidence": ["adr-0004-device-prekey-readiness.md", "g5-readiness.json"],
+      "blocker": "G5 produced no accepted authenticated device membership, capability binding, prekey format, atomic claim, freshness, or lifecycle implementation."
+    },
+    {
+      "gate": "G6",
+      "issue": "scidsg/hushline#2371",
+      "artifact_commit": "fe312ab3bef6ded364c115ec29b8c2c8f2dce60f",
+      "required_result": "approved",
+      "observed_result": "blocked-prerequisite",
+      "satisfied": false,
+      "evidence": [
+        "adr-0005-transactional-browser-state-readiness.md",
+        "g6-readiness.json"
+      ],
+      "blocker": "G6 produced no accepted encrypted state format, atomic transition, outbox, replay, cross-context serialization, bounds, or recovery implementation."
+    }
+  ],
+  "protocol_candidate": {
+    "gate": "G2",
+    "issue": "scidsg/hushline#2367",
+    "artifact_commit": "f84fb98e86286f3183f4c1f7e9f714549f10f9e2",
+    "required_result": "go",
+    "observed_result": "no-go",
+    "satisfied": false,
+    "evidence": [
+      "adr-0001-browser-protocol-candidate.md",
+      "candidate-evaluation.md",
+      "g2-evidence.json"
+    ],
+    "blocker": "No exact browser library, suite, serialization, reproducible build, reference interoperability result, or independently observed continuous-PQ epoch evidence is approved."
+  },
+  "production_surfaces": [
+    {
+      "path": "package.json",
+      "changed": false
+    },
+    {
+      "path": "package-lock.json",
+      "changed": false
+    },
+    {
+      "path": "assets/js/",
+      "changed": false
+    },
+    {
+      "path": "hushline/static/js/",
+      "changed": false
+    },
+    {
+      "path": "hushline/templates/",
+      "changed": false
+    },
+    {
+      "path": "hushline/routes/",
+      "changed": false
+    }
+  ],
+  "required_deliverables": [
+    {
+      "id": "exact-reviewed-library-suite-and-serialization",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "reproducible-self-hosted-worker-assets",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "narrow-protocol-worker-adapter",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "authenticated-application-context",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "bound-version-suite-and-capability-negotiation",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "offline-prekey-session-establishment",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "bidirectional-protocol-traffic",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "repeated-post-handshake-pq-epoch-refresh",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "bounded-skipped-and-out-of-order-delivery",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "authenticated-session-replacement",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "context-substitution-tamper-and-replay-rejection",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "bounded-failure-and-recovery-behavior",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "truthful-continuous-pq-status",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "complete-copy-transaction-integration",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "non-secret-protocol-instrumentation",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "csp-performance-and-unchanged-ux-evidence",
+      "status": "blocked",
+      "evidence": null
+    }
+  ],
+  "required_validation": [
+    "official-vectors-and-pinned-reference-peer",
+    "offline-prekey-session-establishment",
+    "bidirectional-traffic-and-reload",
+    "two-independent-post-handshake-pq-epochs",
+    "skipped-delayed-duplicate-and-out-of-order-delivery",
+    "participant-device-context-capability-and-version-substitution",
+    "prekey-session-epoch-transcript-and-ciphertext-tampering",
+    "replay-duplicate-and-cross-context-rejection",
+    "authenticated-session-replacement-and-stale-replacement-rejection",
+    "classical-contribution-failure-without-fallback",
+    "pq-contribution-failure-without-fallback",
+    "malformed-input-prekey-depletion-and-reviewed-failure-bounds",
+    "storage-worker-concurrency-termination-and-retry-faults",
+    "complete-copy-atomicity-and-confidentiality",
+    "secret-bearing-telemetry-absence",
+    "reproducible-build-sbom-license-vulnerability-integrity-and-csp",
+    "chromium-firefox-webkit-accessibility-performance-and-ux"
+  ],
+  "forbidden_interim_outcomes": [
+    "unreviewed-protocol-dependency",
+    "custom-kem-mixing-or-altered-ratchet-logic",
+    "unreviewed-serialization-translation",
+    "handshake-only-pq-compliance",
+    "disabled-failed-or-unobserved-refresh-pq-compliance",
+    "unbound-context-version-suite-or-capability",
+    "unauthenticated-session-replacement",
+    "accepted-substitution-tampering-or-replay",
+    "unbounded-skipped-keys-pending-epochs-retries-or-failures",
+    "classical-only-fallback",
+    "partial-required-copy-write",
+    "ui-thread-protocol-cryptography",
+    "secret-bearing-telemetry",
+    "third-party-runtime-cryptographic-assets",
+    "unapproved-csp-expansion",
+    "unverified-vector-reference-browser-or-build-claim"
+  ],
+  "reviewers": [
+    {
+      "role": "cryptography/browser engineer reviewer",
+      "reviewer": null,
+      "disposition": "pending",
+      "evidence": null
+    },
+    {
+      "role": "independent security reviewer",
+      "reviewer": null,
+      "disposition": "pending",
+      "evidence": null
+    }
+  ]
+}
