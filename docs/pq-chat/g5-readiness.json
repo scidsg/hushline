@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "issue": "scidsg/hushline#2370",
+  "parent_epic": "scidsg/hushline#2365",
+  "recorded_at": "2026-09-24",
+  "repository_baseline": "febe75caa6e7ad9ee1b1bedf786b0720f7767ad2",
+  "decision": "blocked-prerequisite",
+  "production_changes": false,
+  "prerequisite": {
+    "gate": "G4",
+    "issue": "scidsg/hushline#2369",
+    "artifact_commit": "febe75caa6e7ad9ee1b1bedf786b0720f7767ad2",
+    "required_result": "approved",
+    "observed_result": "blocked-prerequisite",
+    "satisfied": false,
+    "evidence": [
+      "adr-0003-server-storage-api-readiness.md",
+      "g4-readiness.json"
+    ],
+    "blocker": "G4 produced no accepted device storage, authorization, authenticated-envelope, transaction, retention, or migration contract."
+  },
+  "production_surfaces": [
+    {
+      "path": "hushline/model/",
+      "changed": false
+    },
+    {
+      "path": "migrations/versions/",
+      "changed": false
+    },
+    {
+      "path": "hushline/routes/",
+      "changed": false
+    },
+    {
+      "path": "hushline/static/js/",
+      "changed": false
+    }
+  ],
+  "required_deliverables": [
+    {
+      "id": "login-unlock-only-device-enrollment",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "account-key-continuity-and-signed-membership",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "capability-binding-and-device-list-freshness",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "substitution-replay-and-revocation-rejection",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "documented-server-rollback-and-fork-limits",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "authenticated-bounded-prekey-publication",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "atomic-one-time-prekey-claim",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "bounded-consumption-tombstones",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "safe-replenishment-and-signed-last-resort-key-rotation",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "expiry-depletion-and-clock-skew-behavior",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "creation-publication-and-claim-rate-limits",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "active-stale-and-tombstone-record-bounds",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "peer-metadata-minimization",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "offline-recipient-first-session",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "accessible-fail-closed-recovery-state",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "revocation-deletion-and-cleanup",
+      "status": "blocked",
+      "evidence": null
+    }
+  ],
+  "required_validation": [
+    "concurrent-single-use-prekey-claims",
+    "exhausted-expired-consumed-and-revoked-keys",
+    "forged-membership-substitution-stale-list-and-cross-account-rejection",
+    "authenticated-login-unlock-enrollment",
+    "offline-recipient-first-session",
+    "replenishment-rotation-and-cleanup",
+    "device-publication-and-claim-rate-limits",
+    "peer-response-metadata-minimization",
+    "accessibility-performance-csp-and-complete-copy-regression"
+  ],
+  "forbidden_interim_outcomes": [
+    "unauthenticated-device-enrollment",
+    "membership-or-capability-substitution",
+    "non-atomic-prekey-claim",
+    "reusable-one-time-prekey",
+    "unbounded-device-prekey-or-tombstone-retention",
+    "peer-device-fingerprint-ip-or-personal-label-disclosure",
+    "recipient-online-first-session-requirement",
+    "classical-only-fallback"
+  ],
+  "reviewers": [
+    {
+      "role": "backend/browser engineer reviewer",
+      "reviewer": null,
+      "disposition": "pending",
+      "evidence": null
+    },
+    {
+      "role": "independent security reviewer",
+      "reviewer": null,
+      "disposition": "pending",
+      "evidence": null
+    }
+  ]
+}
