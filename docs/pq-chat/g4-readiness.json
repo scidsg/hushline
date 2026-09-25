@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "issue": "scidsg/hushline#2369",
+  "parent_epic": "scidsg/hushline#2365",
+  "recorded_at": "2026-09-24",
+  "repository_baseline": "9d7abd7a1ca83a64914cae6465e8ee4cf160132f",
+  "decision": "blocked-prerequisite",
+  "production_changes": false,
+  "prerequisite": {
+    "gate": "G3",
+    "issue": "scidsg/hushline#2368",
+    "artifact_commit": "9d7abd7a1ca83a64914cae6465e8ee4cf160132f",
+    "required_result": "approved",
+    "observed_result": "blocked-prerequisites",
+    "satisfied": false,
+    "evidence": [
+      "adr-0002-complete-protocol-design-readiness.md",
+      "g3-readiness.json"
+    ],
+    "blocker": "G3 produced no reviewed protocol, authenticated-envelope, device identity, archive, transaction, or migration contract."
+  },
+  "production_surfaces": [
+    {
+      "path": "hushline/model/conversation.py",
+      "changed": false
+    },
+    {
+      "path": "migrations/versions/",
+      "changed": false
+    },
+    {
+      "path": "hushline/chat_key_lifecycle.py",
+      "changed": false
+    },
+    {
+      "path": "hushline/routes/message.py",
+      "changed": false
+    }
+  ],
+  "required_deliverables": [
+    {
+      "id": "reviewed-versioned-schema",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "device-session-authorization-and-transport-copies",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "archive-epochs-and-copies",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "idempotency-and-monotonic-conversation-version",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "envelope-provenance-context-and-payload-bounds",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "atomic-all-required-copy-commit",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "legacy-and-upgraded-read-compatibility",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "participant-access-and-admin-exclusion",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "rate-limit-read-state-notification-retention-and-deletion",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "expansion-backfill-and-safe-rollback",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "migration-and-security-test-evidence",
+      "status": "blocked",
+      "evidence": null
+    }
+  ],
+  "forbidden_interim_outcomes": [
+    "relabel-v2-as-pq",
+    "classical-only-fallback",
+    "partial-copy-commit",
+    "destructive-rollback",
+    "classical-writes-after-upgraded-traffic"
+  ],
+  "reviewers": [
+    {
+      "role": "backend security reviewer",
+      "reviewer": null,
+      "disposition": "pending",
+      "evidence": null
+    }
+  ]
+}
