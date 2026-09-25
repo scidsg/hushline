@@ -1,8 +1,11 @@
 # ADR-0007: Post-Quantum Chat Archive Readiness
 
-Status: **Blocked before implementation**  
-Date: 2026-09-25  
-Decision gate: G8 of `scidsg/hushline#2365`  
+Status: **Blocked before implementation**
+
+Date: 2026-09-25
+
+Decision gate: G8 of `scidsg/hushline#2365`
+
 Issue: `scidsg/hushline#2373`
 
 ## Context
