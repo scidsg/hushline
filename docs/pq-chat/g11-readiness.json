@@ -1,0 +1,220 @@
+{
+  "schema_version": 1,
+  "issue": "scidsg/hushline#2376",
+  "parent_epic": "scidsg/hushline#2365",
+  "recorded_at": "2026-09-25",
+  "repository_baseline": "a78b5c361cfbbf70a5678f4eabb8230dab359d90",
+  "decision": "blocked-prerequisites",
+  "production_changes": false,
+  "prerequisites": [
+    {
+      "gate": "G9",
+      "issue": "scidsg/hushline#2374",
+      "artifact_commit": "4df7845b5d5a494f3314e24e3d8b551d99458878",
+      "required_result": "approved",
+      "observed_result": "blocked-prerequisites",
+      "satisfied": false,
+      "evidence": [
+        "adr-0008-protected-delivery-readiness.md",
+        "g9-readiness.json"
+      ],
+      "blocker": "G9 produced no accepted protected write, authenticated capability/version input, atomic complete-copy commit, stable retry, or protected-storage acknowledgement implementation."
+    },
+    {
+      "gate": "G10",
+      "issue": "scidsg/hushline#2375",
+      "artifact_commit": "a78b5c361cfbbf70a5678f4eabb8230dab359d90",
+      "required_result": "approved",
+      "observed_result": "blocked-prerequisites",
+      "satisfied": false,
+      "evidence": [
+        "adr-0009-credential-lifecycle-readiness.md",
+        "g10-readiness.json"
+      ],
+      "blocker": "G10 produced no accepted capability/device lifecycle, archive epoch transition, stale-client rejection, or fresh-browser recovery implementation."
+    }
+  ],
+  "production_surfaces": [
+    {
+      "path": "hushline/model/conversation.py",
+      "changed": false
+    },
+    {
+      "path": "hushline/model/message.py",
+      "changed": false
+    },
+    {
+      "path": "migrations/versions/",
+      "changed": false
+    },
+    {
+      "path": "hushline/routes/message.py",
+      "changed": false
+    },
+    {
+      "path": "hushline/templates/conversation.html",
+      "changed": false
+    },
+    {
+      "path": "assets/js/",
+      "changed": false
+    },
+    {
+      "path": "hushline/config.py",
+      "changed": false
+    }
+  ],
+  "required_deliverables": [
+    {
+      "id": "authenticated-current-capability-and-version-negotiation",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "automatic-eligible-conversation-upgrade-without-extra-step",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "atomic-first-protected-write-and-floor-advance",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "authoritative-monotonic-conversation-minimum-version",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "server-rejects-explicit-missing-stripped-and-stale-below-floor-writes",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "client-rejects-downgrade-before-protected-write",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "legacy-and-protected-history-in-one-chronological-timeline",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "authenticated-per-message-version-and-security-truth",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "accessible-conversation-status-and-message-details",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "classical-authentication-limitation-remains-explicit",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "old-client-update-needed-state-preserves-draft",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "transient-failure-retry-state-preserves-draft-and-operation",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "success-only-after-protected-storage-acknowledgement",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "feature-disable-and-kill-switch-preserve-floor-and-protected-reads",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "rollback-floor-retains-readers-and-below-floor-write-refusal",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "normal-flow-click-prompt-accessibility-and-performance-contract",
+      "status": "blocked",
+      "evidence": null
+    }
+  ],
+  "state_invariants": [
+    "server-authoritative-conversation-minimum-write-version",
+    "conversation-minimum-write-version-never-decreases",
+    "first-protected-write-and-version-floor-advance-are-atomic",
+    "absent-stripped-stale-or-conflicting-negotiation-never-authorizes-below-floor-write",
+    "server-enforcement-is-independent-of-client-checks-and-feature-flags",
+    "feature-controls-never-reactivate-classical-writers-in-upgraded-conversations",
+    "rollback-retains-protected-readers-and-authoritative-version-floor",
+    "per-message-authenticated-version-drives-security-description",
+    "conversation-floor-never-relabels-legacy-ciphertext",
+    "success-and-draft-clearing-require-protected-storage-acknowledgement"
+  ],
+  "required_validation": [
+    "eligible-and-ineligible-authenticated-capability-combinations",
+    "zero-new-normal-path-field-credential-prompt-page-confirmation-or-click",
+    "concurrent-first-upgrade-write-and-monotonic-floor-linearization",
+    "legacy-only-protected-only-and-interleaved-history-chronology",
+    "per-message-version-status-details-classical-authentication-limitation-and-no-legacy-relabel",
+    "explicit-absent-stripped-substituted-replayed-forged-and-stale-negotiation-rejection",
+    "browser-and-direct-api-below-floor-write-rejection",
+    "stale-cached-assets-and-old-client-update-needed-draft-preservation",
+    "supported-client-recovery-after-old-client-refusal",
+    "network-protocol-storage-transaction-response-and-acknowledgement-faults",
+    "exact-operation-retry-single-commit-and-no-premature-success",
+    "feature-enable-disable-reenable-and-kill-switch-before-and-after-upgrade",
+    "protected-read-and-version-floor-preservation-during-feature-disable",
+    "expand-deploy-rollback-and-roll-forward-with-mixed-application-versions",
+    "unsafe-binary-rollback-refusal-below-reader-and-enforcement-floor",
+    "chromium-firefox-webkit-normal-and-private-modes",
+    "keyboard-screen-reader-accessibility-performance-and-csp",
+    "synthetic-before-after-click-prompt-timing-and-capture-free-playwright-artifacts"
+  ],
+  "forbidden_interim_outcomes": [
+    "unauthenticated-or-client-controlled-capability-negotiation",
+    "missing-negotiation-treated-as-classical-write-permission",
+    "protected-version-or-eligibility-invented-before-prerequisite-approval",
+    "conversation-floor-advance-without-complete-protected-write",
+    "protected-write-visible-without-conversation-floor-advance",
+    "conversation-version-decrease-clear-or-bypass",
+    "classical-write-after-upgrade-by-stale-client-direct-api-flag-or-rollback",
+    "legacy-ciphertext-rewrapped-relabelled-or-described-as-pq",
+    "conversation-status-used-to-overstate-per-message-protection",
+    "pq-authentication-claim-from-classically-authenticated-negotiation",
+    "draft-cleared-or-success-shown-before-protected-storage-acknowledgement",
+    "old-client-silent-fallback-or-false-success",
+    "feature-disable-or-kill-switch-removes-protected-read-access",
+    "rollback-to-binary-without-protected-reader-or-floor-enforcement",
+    "new-opt-in-setup-credential-pairing-confirmation-or-normal-path-prompt",
+    "secret-plaintext-draft-private-state-ciphertext-token-or-fingerprint-telemetry",
+    "unverified-migration-browser-accessibility-performance-rollback-or-review-claim"
+  ],
+  "reviewers": [
+    {
+      "role": "product/accessibility reviewer",
+      "reviewer": null,
+      "disposition": "pending",
+      "evidence": null
+    },
+    {
+      "role": "full-stack security reviewer",
+      "reviewer": null,
+      "disposition": "pending",
+      "evidence": null
+    },
+    {
+      "role": "independent security reviewer",
+      "reviewer": null,
+      "disposition": "pending",
+      "evidence": null
+    }
+  ]
+}

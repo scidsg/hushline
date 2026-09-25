@@ -49,6 +49,12 @@ The PQ chat discovery work is split into independently reviewable gates:
   password, session, device-revocation, archive-rotation, stale-device,
   deletion, compromise-boundary, and unchanged-unlock evidence that remains
   blocked.
+- **G11:** the [conversation-migration readiness ADR](adr-0010-conversation-migration-readiness.md)
+  and [machine-readable readiness record](g11-readiness.json) preserve G9 and
+  G10 as hard prerequisites for `scidsg/hushline#2376` and inventory the
+  authenticated negotiation, monotonic version, mixed-history, truthful
+  status, stale-client, draft-safety, feature-control, and rollback evidence
+  that remains blocked.
 
 G2 is a **no-go at the reviewed revisions**. It does not add a cryptographic
 dependency or change production behavior. Missing real-browser, continuous-PQ
@@ -97,6 +103,12 @@ there is no accepted device membership, archive hierarchy, complete-copy
 delivery, revocation, or epoch-transition contract to rotate safely. No
 production password, session, device, archive, account-deletion, emergency-exit,
 or browser-state behavior is changed.
+
+G11 is **blocked before implementation** because G9 and G10 are blocked and
+there is no accepted protected write, acknowledgement, capability,
+conversation-version, archive, or lifecycle contract to migrate safely. No
+production model, migration, route, browser asset, template, feature control,
+legacy reader, status copy, or conversation behavior is changed.
 
 ## G1 Review Packet
 
