@@ -43,6 +43,12 @@ The PQ chat discovery work is split into independently reviewable gates:
   initial-send, reply, signed-envelope, complete-copy, idempotency, atomic
   acknowledgement, failure, and unchanged-workflow evidence that remains
   blocked.
+- **G10:** the [credential-lifecycle readiness ADR](adr-0009-credential-lifecycle-readiness.md)
+  and [machine-readable readiness record](g10-readiness.json) preserve G5, G8,
+  and G9 as hard prerequisites for `scidsg/hushline#2375` and inventory the
+  password, session, device-revocation, archive-rotation, stale-device,
+  deletion, compromise-boundary, and unchanged-unlock evidence that remains
+  blocked.
 
 G2 is a **no-go at the reviewed revisions**. It does not add a cryptographic
 dependency or change production behavior. Missing real-browser, continuous-PQ
@@ -85,6 +91,12 @@ there is no accepted protocol output, archive-copy construction, signed
 envelope, complete-copy inventory, or atomic delivery contract to wire into
 initial messages and replies. No production message path, template, browser
 asset, fallback, notification, or conversation behavior is changed.
+
+G10 is **blocked before implementation** because G5, G8, and G9 are blocked and
+there is no accepted device membership, archive hierarchy, complete-copy
+delivery, revocation, or epoch-transition contract to rotate safely. No
+production password, session, device, archive, account-deletion, emergency-exit,
+or browser-state behavior is changed.
 
 ## G1 Review Packet
 
