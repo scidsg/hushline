@@ -37,6 +37,12 @@ The PQ chat discovery work is split into independently reviewable gates:
   accepted archive construction, and inventory the wrapping, complete-copy,
   fresh-browser, lifecycle, authorization, deletion, export, and
   archive-compromise evidence that remains blocked.
+- **G9:** the [protected-delivery readiness ADR](adr-0008-protected-delivery-readiness.md)
+  and [machine-readable readiness record](g9-readiness.json) preserve G7 and
+  G8 as hard prerequisites for `scidsg/hushline#2374` and inventory the
+  initial-send, reply, signed-envelope, complete-copy, idempotency, atomic
+  acknowledgement, failure, and unchanged-workflow evidence that remains
+  blocked.
 
 G2 is a **no-go at the reviewed revisions**. It does not add a cryptographic
 dependency or change production behavior. Missing real-browser, continuous-PQ
@@ -73,6 +79,12 @@ G3 produced no accepted archive construction, key hierarchy, wrapping context,
 copy inventory, epoch lifecycle, or recovery contract. No archive key, copy,
 schema, browser recovery path, export change, or PQ chat claim is added;
 existing E2EE behavior remains unchanged.
+
+G9 is **blocked before implementation** because G7 and G8 are both blocked and
+there is no accepted protocol output, archive-copy construction, signed
+envelope, complete-copy inventory, or atomic delivery contract to wire into
+initial messages and replies. No production message path, template, browser
+asset, fallback, notification, or conversation behavior is changed.
 
 ## G1 Review Packet
 

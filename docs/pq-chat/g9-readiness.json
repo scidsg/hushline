@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "issue": "scidsg/hushline#2374",
+  "parent_epic": "scidsg/hushline#2365",
+  "recorded_at": "2026-09-25",
+  "repository_baseline": "b7fd9a2292dd7c2f0311380a2180b2f62822e553",
+  "decision": "blocked-prerequisites",
+  "production_changes": false,
+  "prerequisites": [
+    {
+      "gate": "G7",
+      "issue": "scidsg/hushline#2372",
+      "artifact_commit": "1470c65380187184ce1ae5b6c3324c6ea2326254",
+      "required_result": "approved",
+      "observed_result": "blocked-prerequisites",
+      "satisfied": false,
+      "evidence": [
+        "adr-0006-protocol-integration-readiness.md",
+        "g7-readiness.json"
+      ],
+      "blocker": "G7 produced no accepted protocol dependency, suite, serialization, authenticated context, worker adapter, state transition, device output, or continuous-PQ implementation."
+    },
+    {
+      "gate": "G8",
+      "issue": "scidsg/hushline#2373",
+      "artifact_commit": "b7fd9a2292dd7c2f0311380a2180b2f62822e553",
+      "required_result": "approved",
+      "observed_result": "blocked-prerequisites",
+      "satisfied": false,
+      "evidence": ["adr-0007-pq-archive-readiness.md", "g8-readiness.json"],
+      "blocker": "G8 produced no accepted archive hierarchy, authenticated envelope, sender/recipient copy inventory, wrapping, lifecycle, recovery, or atomic-copy implementation."
+    }
+  ],
+  "production_surfaces": [
+    {
+      "path": "assets/js/client-side-encryption.js",
+      "changed": false
+    },
+    {
+      "path": "assets/js/chat-key-lifecycle.js",
+      "changed": false
+    },
+    {
+      "path": "hushline/templates/profile.html",
+      "changed": false
+    },
+    {
+      "path": "hushline/templates/conversation.html",
+      "changed": false
+    },
+    {
+      "path": "hushline/routes/message.py",
+      "changed": false
+    },
+    {
+      "path": "hushline/model/message.py",
+      "changed": false
+    }
+  ],
+  "required_deliverables": [
+    {
+      "id": "shared-opening-and-reply-protected-delivery-coordinator",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "protected-opening-message-without-classical-bypass",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "authenticated-sender-and-recipient-records",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "required-recipient-device-results",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "required-sender-self-history-and-archive-copies",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "reviewed-canonical-signed-envelope",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "bound-initial-nonce-and-authenticated-context",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "stable-logical-message-and-idempotency-identity",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "atomic-complete-copy-server-commit",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "commit-coupled-logical-acknowledgement",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "exact-byte-offline-and-ambiguous-result-retry",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "one-visible-message-and-side-effect-set",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "draft-submit-unlock-and-success-flow-preservation",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "chronology-unread-read-and-notification-preservation",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "participant-deletion-and-placeholder-preservation",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "missing-javascript-and-protocol-failure-closed",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "malformed-unauthorized-and-replayed-envelope-rejection",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "adjacent-legacy-intake-regression-coverage",
+      "status": "blocked",
+      "evidence": null
+    }
+  ],
+  "required_validation": [
+    "chromium-firefox-webkit-opening-message-and-replies",
+    "sender-recipient-device-self-history-and-archive-copy-audit",
+    "offline-recipient-opening-message-and-replies",
+    "signed-envelope-and-authorization-negative-tests",
+    "nonce-context-logical-id-and-conversation-substitution-rejection",
+    "participant-device-version-suite-epoch-purpose-and-direction-substitution-rejection",
+    "missing-extra-mixed-malformed-and-replayed-copy-rejection",
+    "faults-before-and-after-browser-state-and-outbox-persistence",
+    "faults-before-and-after-server-validation-each-copy-write-and-commit",
+    "faults-before-and-after-response-acknowledgement-notification-and-cleanup",
+    "offline-and-ambiguous-result-exact-byte-retry",
+    "idempotency-same-result-replay-and-different-byte-collision-rejection",
+    "single-visible-message-count-notification-and-acknowledgement-recovery",
+    "missing-javascript-malformed-payload-protocol-archive-and-storage-failure-closed",
+    "draft-unlock-submit-success-chronology-unread-read-notification-deletion-and-placeholder-regression",
+    "adjacent-legacy-profile-and-anonymous-intake-regression",
+    "accessibility-performance-csp-interaction-count-and-responsive-main-thread",
+    "capture-free-synthetic-ui-artifacts"
+  ],
+  "forbidden_interim_outcomes": [
+    "classical-only-opening-message-in-a-protected-conversation",
+    "protocol-only-or-incomplete-copy-pq-claim",
+    "invented-envelope-signature-nonce-context-or-copy-inventory",
+    "unsigned-malformed-unauthorized-stale-replayed-or-substituted-envelope-acceptance",
+    "acknowledgement-before-complete-copy-commit",
+    "partial-required-copy-persistence",
+    "retry-with-regenerated-protocol-output-or-ciphertext",
+    "idempotency-identity-reuse-with-different-bytes-or-context",
+    "duplicate-visible-message-unread-count-or-notification",
+    "dropped-message-after-committed-acknowledgement",
+    "plaintext-or-classical-fallback-for-protected-chat",
+    "missing-javascript-bypass-of-protected-delivery",
+    "server-side-reconstruction-from-plaintext",
+    "changed-normal-flow-credential-prompt-confirmation-or-send-step",
+    "secret-plaintext-private-state-ciphertext-or-token-telemetry",
+    "unverified-browser-fault-ux-cryptographic-or-review-claim"
+  ],
+  "reviewers": [
+    {
+      "role": "full-stack and security reviewer",
+      "reviewer": null,
+      "disposition": "pending",
+      "evidence": null
+    },
+    {
+      "role": "independent security reviewer",
+      "reviewer": null,
+      "disposition": "pending",
+      "evidence": null
+    }
+  ]
+}
