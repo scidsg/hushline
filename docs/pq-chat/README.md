@@ -21,6 +21,11 @@ The PQ chat discovery work is split into independently reviewable gates:
   hard prerequisite for `scidsg/hushline#2370` and inventory the enrollment,
   membership, prekey-lifecycle, privacy, and failure evidence that remains
   blocked.
+- **G6:** the [transactional browser-state readiness ADR](adr-0005-transactional-browser-state-readiness.md)
+  and [machine-readable readiness record](g6-readiness.json) preserve G3 as a
+  hard prerequisite for `scidsg/hushline#2371` and inventory the encrypted
+  storage, atomic send/receive, cross-context serialization, recovery, and
+  browser evidence that remains blocked.
 
 G2 is a **no-go at the reviewed revisions**. It does not add a cryptographic
 dependency or change production behavior. Missing real-browser, continuous-PQ
@@ -41,6 +46,11 @@ G5 is **blocked before implementation** because G4 produced no accepted device
 storage, authorization, authenticated-envelope, or transaction contract. No
 device or prekey records, endpoints, browser enrollment flow, or PQ chat claim
 is added; existing E2EE behavior remains unchanged.
+
+G6 is **blocked before implementation** because G3 produced no accepted
+protocol, state-transition, archive, device-state, or recovery contract. No
+ratchet state, IndexedDB adapter, durable outbox, cross-tab lock, or PQ chat
+claim is added; existing E2EE behavior remains unchanged.
 
 ## G1 Review Packet
 

@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "issue": "scidsg/hushline#2371",
+  "parent_epic": "scidsg/hushline#2365",
+  "recorded_at": "2026-09-25",
+  "repository_baseline": "9d7abd7a1ca83a64914cae6465e8ee4cf160132f",
+  "decision": "blocked-prerequisite",
+  "production_changes": false,
+  "prerequisite": {
+    "gate": "G3",
+    "issue": "scidsg/hushline#2368",
+    "artifact_commit": "9d7abd7a1ca83a64914cae6465e8ee4cf160132f",
+    "required_result": "approved",
+    "observed_result": "blocked-prerequisites",
+    "satisfied": false,
+    "evidence": [
+      "adr-0002-complete-protocol-design-readiness.md",
+      "g3-readiness.json"
+    ],
+    "blocker": "G3 produced no accepted protocol, state-transition, archive, device-state, transaction, wrapping, lifecycle, or recovery contract."
+  },
+  "production_surfaces": [
+    {
+      "path": "assets/js/",
+      "changed": false
+    },
+    {
+      "path": "hushline/static/js/",
+      "changed": false
+    },
+    {
+      "path": "hushline/templates/",
+      "changed": false
+    },
+    {
+      "path": "hushline/routes/",
+      "changed": false
+    }
+  ],
+  "required_deliverables": [
+    {
+      "id": "encrypted-device-scoped-indexeddb-adapter",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "approved-persisted-state-allowlist",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "session-only-unlock-material",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "atomic-send-state-ciphertext-and-logical-id",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "durable-outbox-unchanged-byte-retry",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "atomic-receive-advance-deduplication-and-archive",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "bounded-skipped-keys-and-pending-state",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "cross-tab-worker-serialization-and-fencing",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "abrupt-owner-termination-and-lock-expiration",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "quota-private-browsing-and-storage-exception-handling",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "reload-logout-and-storage-clear-behavior",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "fresh-browser-fresh-session-and-stale-restore-rejection",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "unchanged-everyday-unlock-ux",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "complete-copy-pq-confidentiality-regression",
+      "status": "blocked",
+      "evidence": null
+    }
+  ],
+  "required_validation": [
+    "transaction-and-network-boundary-fault-injection",
+    "simultaneous-tab-and-worker-sends",
+    "abrupt-tab-and-worker-termination",
+    "lock-expiration-takeover-and-fencing",
+    "offline-retry-with-unchanged-ciphertext",
+    "receive-replay-deduplication-and-archive-atomicity",
+    "skipped-key-and-pending-state-bounds",
+    "quota-denial-private-browsing-and-storage-exceptions",
+    "reload-logout-unlock-and-cleared-storage-regressions",
+    "corrupt-and-known-stale-snapshot-restores",
+    "fresh-browser-fresh-session-establishment",
+    "chromium-firefox-and-webkit-evidence",
+    "accessibility-performance-csp-ux-and-complete-copy-regression"
+  ],
+  "required_claim_limits": [
+    {
+      "id": "undetectable-browser-storage-rollback",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "javascript-wasm-memory-erasure",
+      "status": "blocked",
+      "evidence": null
+    }
+  ],
+  "forbidden_interim_outcomes": [
+    "plaintext-private-or-session-state-persistence",
+    "unlocked-secret-persistence-outside-authorized-session",
+    "server-readable-session-backup",
+    "send-advance-before-durable-outbox-commit",
+    "retry-with-regenerated-ciphertext",
+    "non-atomic-receive-advance-deduplication-or-archive",
+    "unbounded-skipped-keys-or-pending-state",
+    "unserialized-shared-ratchet-advance",
+    "unfenced-write-by-expired-lock-owner",
+    "stale-state-send-after-storage-loss-or-restore",
+    "mutable-ratchet-cloning-to-fresh-browser",
+    "classical-only-fallback",
+    "perfect-browser-secure-deletion-or-rollback-detection-claim"
+  ],
+  "reviewers": [
+    {
+      "role": "browser engineer reviewer",
+      "reviewer": null,
+      "disposition": "pending",
+      "evidence": null
+    },
+    {
+      "role": "independent security reviewer",
+      "reviewer": null,
+      "disposition": "pending",
+      "evidence": null
+    }
+  ]
+}
