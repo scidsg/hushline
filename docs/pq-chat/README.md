@@ -16,6 +16,11 @@ The PQ chat discovery work is split into independently reviewable gates:
   and [machine-readable readiness record](g4-readiness.json) preserve G3 as a
   hard prerequisite for `scidsg/hushline#2369` and inventory the schema, API,
   migration, and test evidence that cannot safely be implemented yet.
+- **G5:** the [device and prekey readiness ADR](adr-0004-device-prekey-readiness.md)
+  and [machine-readable readiness record](g5-readiness.json) preserve G4 as a
+  hard prerequisite for `scidsg/hushline#2370` and inventory the enrollment,
+  membership, prekey-lifecycle, privacy, and failure evidence that remains
+  blocked.
 
 G2 is a **no-go at the reviewed revisions**. It does not add a cryptographic
 dependency or change production behavior. Missing real-browser, continuous-PQ
@@ -31,6 +36,11 @@ G4 is **blocked before implementation** because G3 produced no reviewed schema
 or protocol contract. Production conversation models, migrations, lifecycle
 code, and message routes remain unchanged; in particular, no unreviewed
 classical fallback or incomplete device/archive-copy write path is introduced.
+
+G5 is **blocked before implementation** because G4 produced no accepted device
+storage, authorization, authenticated-envelope, or transaction contract. No
+device or prekey records, endpoints, browser enrollment flow, or PQ chat claim
+is added; existing E2EE behavior remains unchanged.
 
 ## G1 Review Packet
 
