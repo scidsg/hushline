@@ -1,0 +1,232 @@
+{
+  "schema_version": 1,
+  "issue": "scidsg/hushline#2373",
+  "parent_epic": "scidsg/hushline#2365",
+  "recorded_at": "2026-09-25",
+  "repository_baseline": "1470c65380187184ce1ae5b6c3324c6ea2326254",
+  "decision": "blocked-prerequisites",
+  "production_changes": false,
+  "prerequisites": [
+    {
+      "gate": "G4",
+      "issue": "scidsg/hushline#2369",
+      "artifact_commit": "febe75caa6e7ad9ee1b1bedf786b0720f7767ad2",
+      "required_result": "approved",
+      "observed_result": "blocked-prerequisite",
+      "satisfied": false,
+      "evidence": [
+        "adr-0003-server-storage-api-readiness.md",
+        "g4-readiness.json"
+      ],
+      "blocker": "G4 produced no accepted archive schema, authenticated envelope, complete-copy transaction, authorization, retention, deletion, or migration implementation."
+    },
+    {
+      "gate": "G6",
+      "issue": "scidsg/hushline#2371",
+      "artifact_commit": "fe312ab3bef6ded364c115ec29b8c2c8f2dce60f",
+      "required_result": "approved",
+      "observed_result": "blocked-prerequisite",
+      "satisfied": false,
+      "evidence": [
+        "adr-0005-transactional-browser-state-readiness.md",
+        "g6-readiness.json"
+      ],
+      "blocker": "G6 produced no accepted archive transition, wrapping, durable retry, fresh-browser recovery, or storage-failure implementation."
+    }
+  ],
+  "archive_design": {
+    "gate": "G3",
+    "issue": "scidsg/hushline#2368",
+    "artifact_commit": "9d7abd7a1ca83a64914cae6465e8ee4cf160132f",
+    "required_result": "approved",
+    "observed_result": "blocked-prerequisites",
+    "satisfied": false,
+    "evidence": [
+      "adr-0002-complete-protocol-design-readiness.md",
+      "g3-readiness.json"
+    ],
+    "blocker": "G3 produced no accepted archive key hierarchy, hybrid construction, wrapping context, copy inventory, epoch lifecycle, recovery contract, or compromise analysis."
+  },
+  "production_surfaces": [
+    {
+      "path": "hushline/model/conversation.py",
+      "changed": false
+    },
+    {
+      "path": "migrations/versions/",
+      "changed": false
+    },
+    {
+      "path": "hushline/chat_key_lifecycle.py",
+      "changed": false
+    },
+    {
+      "path": "hushline/routes/message.py",
+      "changed": false
+    },
+    {
+      "path": "hushline/static/js/",
+      "changed": false
+    },
+    {
+      "path": "hushline/settings/data_export.py",
+      "changed": false
+    },
+    {
+      "path": "hushline/settings/delete_account.py",
+      "changed": false
+    }
+  ],
+  "required_deliverables": [
+    {
+      "id": "archive-keys-separated-from-protocol-secrets",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "account-root-wrapped-archive-epoch-keys",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "normal-unlock-fresh-browser-history",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "no-pgp-extra-password-recovery-phrase-or-pairing",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "authenticated-sender-and-recipient-archive-copies-at-send",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "hybrid-pq-protection-for-every-archive-copy",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "atomic-complete-copy-write-and-stable-retry",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "authenticated-archive-envelope-and-context",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "offline-never-reopened-device-history",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "no-ratchet-snapshot-in-archive",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "archive-epoch-rotation-and-retention",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "participant-authorization-and-copy-inventory",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "participant-deletion-and-placeholders-across-copies",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "account-deletion-and-non-resurrection",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "existing-export-scope-regression",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "deliberate-plaintext-export-ceremony-and-label",
+      "status": "blocked",
+      "evidence": null
+    }
+  ],
+  "required_validation": [
+    "chromium-firefox-webkit-fresh-device-recovery",
+    "offline-sender-and-recipient-history",
+    "unread-history-with-original-target-device-never-reopened",
+    "wrong-password-and-wrong-unlock-root-rejection",
+    "forged-archive-envelope-and-ciphertext-rejection",
+    "archive-context-key-and-copy-substitution-rejection",
+    "atomic-send-retry-and-required-copy-failure-injection",
+    "persisted-copy-audit-with-no-classical-only-protected-copy",
+    "archive-and-protocol-key-separation",
+    "absence-of-archived-ratchet-snapshots",
+    "archive-epoch-provisioning-rotation-retention-and-retirement",
+    "participant-authorization-and-cross-account-denial",
+    "deletion-placeholder-account-deletion-and-non-resurrection",
+    "existing-export-scope-and-deliberate-plaintext-distinction",
+    "password-change-rewrap-and-password-reset-limitation"
+  ],
+  "required_claim_limits": [
+    {
+      "id": "stolen-archive-key-exposes-its-retained-scope",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "archive-rotation-does-not-retroactively-repair-captured-material",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "ratchet-progress-does-not-revoke-a-stolen-archive-key",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "browser-and-backup-erasure-is-not-guaranteed",
+      "status": "blocked",
+      "evidence": null
+    }
+  ],
+  "forbidden_interim_outcomes": [
+    "archive-key-reused-as-account-device-ratchet-chain-message-or-transport-key",
+    "old-ratchet-snapshot-backed-up-in-archive",
+    "server-readable-archive-secret",
+    "pgp-import-extra-password-recovery-phrase-or-device-pairing",
+    "classical-only-sender-recipient-retry-history-or-backup-copy",
+    "partial-required-copy-write",
+    "unbound-or-unauthenticated-archive-envelope",
+    "mutable-ratchet-cloning-to-fresh-browser",
+    "wrong-password-or-wrong-root-history-access",
+    "cross-participant-or-cross-account-archive-access",
+    "deleted-content-resurrection-from-archive-retry-or-backup",
+    "silent-existing-export-scope-expansion",
+    "unlabelled-plaintext-chat-export",
+    "ratchet-progress-revokes-stolen-archive-key-claim",
+    "archive-rotation-retroactively-repairs-captured-material-claim"
+  ],
+  "reviewers": [
+    {
+      "role": "cryptography/browser engineer reviewer",
+      "reviewer": null,
+      "disposition": "pending",
+      "evidence": null
+    },
+    {
+      "role": "independent security reviewer",
+      "reviewer": null,
+      "disposition": "pending",
+      "evidence": null
+    }
+  ]
+}

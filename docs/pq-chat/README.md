@@ -31,6 +31,12 @@ The PQ chat discovery work is split into independently reviewable gates:
   G6 as hard prerequisites for `scidsg/hushline#2372` and inventory the exact
   dependency, worker adapter, authenticated context, continuous-PQ epoch,
   failure, interoperability, and supply-chain evidence that remains blocked.
+- **G8:** the [archive readiness ADR](adr-0007-pq-archive-readiness.md) and
+  [machine-readable readiness record](g8-readiness.json) preserve G4 and G6 as
+  hard prerequisites for `scidsg/hushline#2373`, confirm that G3 supplied no
+  accepted archive construction, and inventory the wrapping, complete-copy,
+  fresh-browser, lifecycle, authorization, deletion, export, and
+  archive-compromise evidence that remains blocked.
 
 G2 is a **no-go at the reviewed revisions**. It does not add a cryptographic
 dependency or change production behavior. Missing real-browser, continuous-PQ
@@ -61,6 +67,12 @@ G7 is **blocked before implementation** because G5 and G6 are both blocked and
 G2 still records a no-go for every reviewed browser protocol candidate. No
 protocol dependency, worker/adapter, handshake, ratchet integration, CSP
 change, or PQ chat claim is added; existing E2EE behavior remains unchanged.
+
+G8 is **blocked before implementation** because G4 and G6 are both blocked and
+G3 produced no accepted archive construction, key hierarchy, wrapping context,
+copy inventory, epoch lifecycle, or recovery contract. No archive key, copy,
+schema, browser recovery path, export change, or PQ chat claim is added;
+existing E2EE behavior remains unchanged.
 
 ## G1 Review Packet
 
