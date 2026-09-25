@@ -1,0 +1,496 @@
+{
+  "schema_version": 1,
+  "report_version": 1,
+  "issue": "scidsg/hushline#2377",
+  "parent_epic": "scidsg/hushline#2365",
+  "recorded_at": "2026-09-25",
+  "repository_baseline": "1646e579c03eed0d418037dab30d24e579963d68",
+  "decision": "blocked-prerequisite",
+  "release_approved": false,
+  "production_changes": false,
+  "prerequisites": [
+    {
+      "gate": "G11",
+      "issue": "scidsg/hushline#2376",
+      "artifact_commit": "1646e579c03eed0d418037dab30d24e579963d68",
+      "required_result": "approved",
+      "observed_result": "blocked-prerequisites",
+      "satisfied": false,
+      "evidence": [
+        "adr-0010-conversation-migration-readiness.md",
+        "g11-readiness.json"
+      ],
+      "blocker": "G11 produced no accepted integrated PQ-chat implementation, protocol behavior, retained-copy paths, browser behavior, or release candidate to validate."
+    }
+  ],
+  "build_identity": {
+    "status": "blocked",
+    "implementation_commit": null,
+    "production_bundle_sha256": null,
+    "container_image_digest": null,
+    "dependency_lock_sha256": null,
+    "sbom_sha256": null,
+    "protocol_dependency": null,
+    "protocol_source_revision": null,
+    "protocol_artifact_integrity": null,
+    "protocol_suite": null,
+    "serialization_version": null,
+    "wire_version": null,
+    "database_revision": null,
+    "feature_configuration": null,
+    "browser_driver_manifest": null,
+    "operating_system": null,
+    "hardware": null,
+    "network_profile": null,
+    "synthetic_corpus": null,
+    "timing_runs_per_case": 0,
+    "measured_at_utc": null,
+    "reproduction_instructions": null,
+    "ci_run": null,
+    "evidence": null
+  },
+  "interoperability": [
+    {
+      "id": "official-vectors-and-pinned-reference-peer-handshake",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "bidirectional-traffic-and-multiple-observed-pq-epochs",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "bounded-out-of-order-delayed-and-duplicate-traffic",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "long-offline-gap-and-fresh-session-recovery",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "prekey-depletion-replenishment-and-concurrent-claim",
+      "status": "blocked",
+      "evidence": null
+    }
+  ],
+  "adversarial_cases": [
+    {
+      "id": "forged-substituted-and-stale-identity-device-membership",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "context-purpose-direction-participant-and-conversation-substitution",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "ciphertext-transcript-epoch-and-archive-wrapper-substitution",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "version-suite-capability-and-component-downgrade",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "message-prekey-session-copy-and-operation-replay",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "unauthorized-read-write-and-cross-scope-access",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "skipped-key-and-pending-state-exhaustion",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "device-enrollment-revocation-and-churn",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "malformed-boundary-and-oversized-payloads-without-truncation",
+      "status": "blocked",
+      "evidence": null
+    }
+  ],
+  "fault_injection": {
+    "status": "blocked",
+    "boundaries": [
+      "browser-state-and-outbox-persistence",
+      "cryptographic-state-transition",
+      "request-dispatch",
+      "server-authentication-and-validation",
+      "each-required-copy-write",
+      "transaction-commit",
+      "response-delivery",
+      "acknowledgement-persistence",
+      "notification-enqueue",
+      "timeline-render",
+      "client-cleanup"
+    ],
+    "conditions": [
+      "concurrent-tabs",
+      "worker-tab-and-browser-termination",
+      "offline-and-long-offline-intervals",
+      "network-drop-duplicate-delay-and-reorder",
+      "storage-unavailable-quota-and-transaction-failure",
+      "ambiguous-response-and-retry",
+      "known-stale-restore"
+    ],
+    "required_invariants": [
+      "no-key-or-nonce-reuse",
+      "no-divergent-ratchet-or-archive-state",
+      "no-duplicate-visible-message",
+      "no-duplicate-unread-count-or-notification-side-effect",
+      "no-loss-of-server-acknowledged-message",
+      "exact-operation-and-ciphertext-byte-reuse-on-ambiguous-retry",
+      "collision-or-mismatched-retry-rejected"
+    ],
+    "evidence": null
+  },
+  "copy_inventory": [
+    {
+      "path": "transport-request-and-response",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "path": "sender-self-history",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "path": "current-recipient-and-device-history",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "path": "offline-queue",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "path": "retry-and-outbox",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "path": "archive-and-fresh-browser-recovery",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "path": "backup-and-restore",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "path": "generic-and-content-notification-modes",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "path": "account-export-and-deliberate-plaintext-export",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "path": "participant-account-deletion-and-retention",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "path": "logs-traces-errors-analytics-and-diagnostics",
+      "status": "blocked",
+      "evidence": null
+    }
+  ],
+  "copy_invariant": "No content-bearing retained copy of a protected message may be plaintext, classical-only, missing its authenticated context, or protected under stale unauthorized state.",
+  "browser_matrix": [
+    {
+      "browser": "Chromium",
+      "version": null,
+      "driver_version": null,
+      "os": null,
+      "hardware": null,
+      "modes": ["normal", "private"],
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "browser": "Firefox",
+      "version": null,
+      "driver_version": null,
+      "os": null,
+      "hardware": null,
+      "modes": ["normal", "private"],
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "browser": "WebKit",
+      "version": null,
+      "driver_version": null,
+      "os": null,
+      "hardware": null,
+      "modes": ["normal", "private"],
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "browser": "storage-capability-fault-injection",
+      "version": null,
+      "driver_version": null,
+      "os": null,
+      "hardware": null,
+      "modes": [
+        "storage-unavailable",
+        "storage-quota-limited",
+        "cross-tab-api-unavailable-or-partitioned"
+      ],
+      "status": "blocked",
+      "evidence": null
+    }
+  ],
+  "browser_regressions": [
+    {
+      "id": "fresh-browser-retained-history-without-extra-credential-or-pairing",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "password-change-reset-logout-and-session-expiry",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "device-participant-conversation-and-account-deletion",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "generic-content-and-encrypted-email-notification-modes",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "mixed-legacy-protected-history-and-stale-client-behavior",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "anonymous-one-way-intake-and-adjacent-core-flow-regression",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "csp-unchanged-or-approved-minimal-policy-and-regression",
+      "status": "blocked",
+      "evidence": null
+    }
+  ],
+  "quality_budgets": [
+    {
+      "id": "lighthouse-accessibility",
+      "required": "score-equals-100",
+      "measured": null,
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "lighthouse-performance",
+      "required": "score-at-least-95",
+      "measured": null,
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "normal-path-interactions",
+      "required": "zero-new-required-fields-credentials-prompts-confirmations-pages-or-clicks",
+      "measured": null,
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "login-send-reply-and-thread-open-p95",
+      "required": "no-more-than-20-percent-or-250ms-regression-whichever-allows-more",
+      "minimum_runs_per_case": 30,
+      "measured": null,
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "main-thread-responsiveness",
+      "required": "no-individual-pq-task-over-50ms-without-yield-and-no-new-p95-long-task-regression",
+      "measured": null,
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "approved-crypto-payload-storage-memory-and-amplification-budgets",
+      "required": "human-approved-thresholds-from-accepted-design",
+      "measured": null,
+      "status": "blocked",
+      "evidence": null
+    }
+  ],
+  "operational_limits": {
+    "status": "blocked",
+    "maximum_plaintext_bytes": null,
+    "maximum_ciphertext_bytes": null,
+    "maximum_devices_per_account": null,
+    "prekey_low_watermark": null,
+    "prekey_batch_and_retention": null,
+    "maximum_skipped_keys": null,
+    "maximum_pending_epochs": null,
+    "maximum_history_corpus": null,
+    "maximum_retry_age_and_attempts": null,
+    "failure_and_recovery_behavior": null,
+    "evidence": null
+  },
+  "required_checks": [
+    {
+      "id": "make-lint",
+      "applicability": "required",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "focused-protocol-security-persistence-copy-lifecycle-and-browser-tests",
+      "applicability": "required",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "make-test",
+      "applicability": "required",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "ci-style-coverage",
+      "applicability": "required",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "workflow-security-checks",
+      "applicability": "required",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "codeql",
+      "applicability": "required",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "synthetic-end-to-end-playwright-screenshots-and-traces",
+      "applicability": "required",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "python-dependency-audit",
+      "applicability": "required",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "node-runtime-and-full-when-changed-dependency-audits",
+      "applicability": "required-as-scoped",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "rust-wasm-advisory-license-sbom-integrity-and-reproducible-build",
+      "applicability": "pending-integrated-build",
+      "status": "blocked",
+      "evidence": null
+    }
+  ],
+  "evidence_safety": {
+    "synthetic_only": true,
+    "allowed": [
+      "public-keys-and-algorithm-identifiers",
+      "protocol-version-and-non-secret-epoch-counters",
+      "ciphertext-hashes-and-sizes",
+      "synthetic-operation-identifiers",
+      "timings-resource-measurements-and-pass-fail-outcomes"
+    ],
+    "forbidden": [
+      "plaintext-disclosures-or-drafts",
+      "private-keys-or-prekeys",
+      "shared-message-chain-root-or-archive-secrets",
+      "serialized-private-ratchet-or-browser-state",
+      "credentials-session-tokens-or-stable-user-device-fingerprints",
+      "production-data"
+    ]
+  },
+  "residual_limitations": [
+    "no-accepted-integrated-pq-chat-build-exists",
+    "no-human-approved-threat-matrix-or-complete-copy-inventory-exists",
+    "no-reference-interoperability-or-continuous-pq-epoch-result-exists",
+    "no-adversarial-fault-or-complete-copy-audit-result-exists",
+    "no-real-browser-private-mode-or-storage-restriction-result-exists",
+    "no-pq-chat-accessibility-performance-or-crypto-budget-result-exists",
+    "no-pq-chat-ci-codeql-workflow-or-dependency-audit-result-exists",
+    "no-independent-security-review-or-release-approval-exists",
+    "classical-authentication-and-trustworthy-served-javascript-limits-remain",
+    "browser-erasure-retroactive-protection-anonymity-and-metadata-privacy-are-not-claimed"
+  ],
+  "forbidden_release_outcomes": [
+    "handshake-only-or-single-epoch-pq-claim",
+    "same-implementation-roundtrip-presented-as-reference-interoperability",
+    "classical-only-plaintext-missing-or-stale-protected-message-copy",
+    "partial-copy-write-or-acknowledgement-before-complete-commit",
+    "key-or-nonce-reuse-after-storage-network-crash-tab-or-retry-failure",
+    "duplicate-visible-message-notification-or-unread-side-effect",
+    "lost-server-acknowledged-message",
+    "unauthorized-read-write-replay-substitution-or-downgrade-acceptance",
+    "unbounded-skipped-key-prekey-device-payload-retry-or-state-exhaustion",
+    "unsupported-browser-or-failed-private-storage-mode-omitted-from-report",
+    "test-only-result-substituted-for-real-browser-evidence",
+    "budget-met-by-reduced-corpus-copy-set-security-or-supported-matrix",
+    "failed-mandatory-check-marked-flaky-waived-or-passing-without-approved-risk-acceptance",
+    "secret-bearing-log-trace-screenshot-report-or-ci-artifact",
+    "unverified-user-research-independent-audit-or-release-approval-claim"
+  ],
+  "reviewers": [
+    {
+      "role": "qa-and-security reviewer",
+      "reviewer": null,
+      "disposition": "pending",
+      "evidence": null
+    },
+    {
+      "role": "browser-accessibility-and-performance reviewer",
+      "reviewer": null,
+      "disposition": "pending",
+      "evidence": null
+    },
+    {
+      "role": "operations-and-release reviewer",
+      "reviewer": null,
+      "disposition": "pending",
+      "evidence": null
+    },
+    {
+      "role": "independent security reviewer",
+      "reviewer": null,
+      "disposition": "pending",
+      "evidence": null
+    }
+  ]
+}

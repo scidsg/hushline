@@ -55,6 +55,11 @@ The PQ chat discovery work is split into independently reviewable gates:
   authenticated negotiation, monotonic version, mixed-history, truthful
   status, stale-client, draft-safety, feature-control, and rollback evidence
   that remains blocked.
+- **G12:** the [release-validation readiness ADR](adr-0011-release-validation-readiness.md)
+  and [versioned validation report](g12-validation-report.json) preserve G11
+  as a hard prerequisite for `scidsg/hushline#2377` and inventory the
+  interoperability, adversarial, fault, persisted-copy, real-browser,
+  quality-budget, CI, audit, and human-review evidence that remains blocked.
 
 G2 is a **no-go at the reviewed revisions**. It does not add a cryptographic
 dependency or change production behavior. Missing real-browser, continuous-PQ
@@ -109,6 +114,11 @@ there is no accepted protected write, acknowledgement, capability,
 conversation-version, archive, or lifecycle contract to migrate safely. No
 production model, migration, route, browser asset, template, feature control,
 legacy reader, status copy, or conversation behavior is changed.
+
+G12 is **blocked before validation** because G11 is blocked and supplies no
+accepted integrated PQ-chat build to test. The report records every required
+result as blocked with no evidence link or measurement; it does not turn
+legacy tests, upstream claims, or this readiness review into release evidence.
 
 ## G1 Review Packet
 
