@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "issue": "scidsg/hushline#2396",
+  "replaces_issue": "scidsg/hushline#2366",
+  "parent_epic": "scidsg/hushline#2365",
+  "recorded_at": "2026-09-26",
+  "decision": "pending-human-approval",
+  "production_changes": false,
+  "review_subject": {
+    "packet_commit": "37abae6e11dd9c0e8306f5e962ae97504f5c0888",
+    "baseline_commit": "ab1d5ce3",
+    "artifacts": [
+      {
+        "path": "docs/pq-chat/baseline-flows.md",
+        "sha256": "77ccf123e204494737f52995bf602ccee72ba3338038287da3e73c0eab50c98b"
+      },
+      {
+        "path": "docs/pq-chat/unchanged-ux-contract.md",
+        "sha256": "1fa82394933243709702dfba5c1eddd4ead83983f20f8cd769688cbc4ac88dea"
+      },
+      {
+        "path": "docs/pq-chat/threat-model.md",
+        "sha256": "480d7fa912197ff14c26439340f22627f237fa3b17f219a236de6b2c103e65ba"
+      }
+    ]
+  },
+  "evidence_inventory": {
+    "baseline_flow_checklist": "baseline-flows.md#flow-checklist",
+    "synthetic_playwright_artifacts": "baseline-flows.md#synthetic-playwright-artifact-index",
+    "browser_and_storage_support": "baseline-flows.md#browser-and-storage-support-baseline",
+    "participant_topology": "baseline-flows.md#participant-topology",
+    "security_claim_matrix": "unchanged-ux-contract.md#security-claim-matrix",
+    "history_availability": "unchanged-ux-contract.md#history-availability-contract",
+    "ux_and_performance_budgets": "unchanged-ux-contract.md#measurable-ux-and-performance-budgets",
+    "private_browsing_and_storage": "unchanged-ux-contract.md#private-browsing-and-storage-restrictions",
+    "trust_and_compromise_boundaries": "threat-model.md#trust-and-compromise-boundaries",
+    "revocation_and_repair": "threat-model.md#revocation-and-repair-matrix"
+  },
+  "decisions": [
+    {
+      "id": "G1-D1",
+      "subject": "Preserve the everyday flows and zero-new-prompt rules in the UX contract",
+      "product_authority": "approval-required",
+      "security_authority": "consistency-review-required",
+      "product_disposition": "pending",
+      "security_disposition": "pending",
+      "qualification": null,
+      "evidence": null
+    },
+    {
+      "id": "G1-D2",
+      "subject": "Require complete-copy hybrid PQ confidentiality with no classical-only downgrade",
+      "product_authority": "consistency-review-required",
+      "security_authority": "approval-required",
+      "product_disposition": "pending",
+      "security_disposition": "pending",
+      "qualification": null,
+      "evidence": null
+    },
+    {
+      "id": "G1-D3",
+      "subject": "Accept classical authentication as an explicit limitation, not a PQ claim",
+      "product_authority": "consistency-review-required",
+      "security_authority": "approval-required",
+      "product_disposition": "pending",
+      "security_disposition": "pending",
+      "qualification": null,
+      "evidence": null
+    },
+    {
+      "id": "G1-D4",
+      "subject": "Accept the archive-compromise and browser-erasure limits as stated",
+      "product_authority": "consistency-review-required",
+      "security_authority": "approval-required",
+      "product_disposition": "pending",
+      "security_disposition": "pending",
+      "qualification": null,
+      "evidence": null
+    },
+    {
+      "id": "G1-D5",
+      "subject": "Accept the malicious-served-JavaScript exclusion and messaging limits",
+      "product_authority": "consistency-review-required",
+      "security_authority": "approval-required",
+      "product_disposition": "pending",
+      "security_disposition": "pending",
+      "qualification": null,
+      "evidence": null
+    },
+    {
+      "id": "G1-D6",
+      "subject": "Preserve normal-login history access and the reset-without-old-secret limitation",
+      "product_authority": "approval-required",
+      "security_authority": "approval-required",
+      "product_disposition": "pending",
+      "security_disposition": "pending",
+      "qualification": null,
+      "evidence": null
+    },
+    {
+      "id": "G1-D7",
+      "subject": "Accept the browser/storage support matrix and fail-closed behavior",
+      "product_authority": "approval-required",
+      "security_authority": "approval-required",
+      "product_disposition": "pending",
+      "security_disposition": "pending",
+      "qualification": null,
+      "evidence": null
+    },
+    {
+      "id": "G1-D8",
+      "subject": "Accept the measurable accessibility, performance, and flow budgets",
+      "product_authority": "approval-required",
+      "security_authority": "consistency-review-required",
+      "product_disposition": "pending",
+      "security_disposition": "pending",
+      "qualification": null,
+      "evidence": null
+    }
+  ],
+  "reviewers": [
+    {
+      "role": "product-maintainer",
+      "reviewer": null,
+      "disposition": "pending",
+      "reviewed_packet_commit": null,
+      "decided_at_utc": null,
+      "evidence": null
+    },
+    {
+      "role": "security-reviewer",
+      "reviewer": null,
+      "disposition": "pending",
+      "reviewed_packet_commit": null,
+      "decided_at_utc": null,
+      "evidence": null
+    }
+  ],
+  "completion": {
+    "status": "open-blocked-on-human-decisions",
+    "acceptance_criteria_complete": false,
+    "blocking_inputs": [
+      "named-product-maintainer-criterion-level-dispositions",
+      "named-security-reviewer-criterion-level-dispositions",
+      "dated-evidence-link-for-each-reviewer",
+      "both-reviewers-confirm-the-exact-packet-commit"
+    ],
+    "next_action": "The product maintainer and security reviewer must review packet commit 37abae6e11dd9c0e8306f5e962ae97504f5c0888 and provide dated, linked dispositions for G1-D1 through G1-D8."
+  },
+  "evidence_safety": {
+    "synthetic_only": true,
+    "not_user_research": true,
+    "not_independent_audit": true,
+    "agent_must_not_supply_human_dispositions": true
+  }
+}
