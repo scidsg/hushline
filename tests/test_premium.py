@@ -21,6 +21,7 @@ from hushline.model import (
     Username,
 )
 from hushline.premium import (
+    _invoice_id_from_stripe_event_data,
     _receipt_url_from_invoice,
     create_customer,
     create_products_and_prices,
@@ -247,6 +248,30 @@ def test_get_subscription_none_when_missing_subscription_id(app: Flask, user: Us
     assert get_subscription(user) is None
 
 
+def test_get_subscription_none_for_terminal_subscription(
+    app: Flask, mock_stripe: MagicMock, user: User
+) -> None:
+    user.stripe_subscription_id = "sub_expired"
+    user.stripe_subscription_status = StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED
+    db.session.commit()
+
+    assert get_subscription(user) is None
+    mock_stripe.Subscription.retrieve.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("event_data", "expected"),
+    [
+        ("{not-json", None),
+        (json.dumps({"data": {"object": {}}}), None),
+        (json.dumps({"data": {"object": {"id": 123}}}), None),
+        (json.dumps({"data": {"object": {"id": "inv_123"}}}), "inv_123"),
+    ],
+)
+def test_invoice_id_from_stripe_event_data(event_data: str, expected: str | None) -> None:
+    assert _invoice_id_from_stripe_event_data(event_data) == expected
+
+
 def test_handle_subscription_created(app: Flask, user: User) -> None:
     user.stripe_customer_id = "cus_123"
     db.session.commit()
@@ -404,6 +429,25 @@ def test_handle_subscription_updated_ignores_stale_update_after_incomplete_expir
     assert user.stripe_subscription_status == StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED
 
 
+def test_handle_subscription_updated_ignores_terminal_customer_tombstone(
+    app: Flask, user: User
+) -> None:
+    user.stripe_customer_id = "cus_terminal"
+    user.stripe_subscription_id = None
+    user.stripe_subscription_status = StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED
+    db.session.commit()
+    subscription = MagicMock(
+        id="sub_stale",
+        customer="cus_terminal",
+        status=StripeSubscriptionStatusEnum.INCOMPLETE.value,
+    )
+
+    handle_subscription_updated(subscription)
+
+    assert user.stripe_subscription_id is None
+    assert user.stripe_subscription_status == StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED
+
+
 def test_handle_subscription_updated_ignores_deleted_customer(app: Flask) -> None:
     subscription = MagicMock()
     subscription.id = "sub_deleted"
@@ -481,6 +525,19 @@ def test_handle_subscription_deleted_keeps_terminal_tombstone(app: Flask, user: 
 
     assert user.is_free_tier
     assert user.stripe_subscription_id == "sub_123"
+    assert user.stripe_subscription_status == StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED
+
+
+def test_handle_subscription_deleted_ignores_terminal_customer_tombstone(
+    app: Flask, user: User
+) -> None:
+    user.stripe_customer_id = "cus_terminal"
+    user.stripe_subscription_id = None
+    user.stripe_subscription_status = StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED
+    db.session.commit()
+
+    handle_subscription_deleted(MagicMock(id="sub_stale", customer="cus_terminal"))
+
     assert user.stripe_subscription_status == StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED
 
 

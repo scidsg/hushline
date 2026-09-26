@@ -16,6 +16,19 @@ from hushline.model import (
     Tier,
     User,
 )
+from hushline.user_deletion import (
+    _invoice_id_from_stripe_event_data,
+    _redact_processed_stripe_invoice_events,
+    _redact_processed_stripe_subscription_events,
+    _stripe_event_object_from_data,
+    deletion_blocking_stripe_invoice_counts_by_user_ids,
+    deletion_blocking_stripe_invoice_event_counts_by_user_ids,
+    deletion_blocking_stripe_subscription_event_counts_by_user_ids,
+    has_deletion_blocking_stripe_invoice,
+    has_deletion_blocking_stripe_invoice_event,
+    has_deletion_blocking_stripe_subscription_event,
+    stripe_invoice_counts_by_user_ids,
+)
 
 
 def _add_stripe_invoice(
@@ -90,6 +103,120 @@ def _add_stripe_subscription_event(user: User) -> StripeEvent:
     db.session.add(event)
     db.session.commit()
     return event
+
+
+def _add_raw_stripe_event(
+    event_id: str,
+    event_type: str,
+    event_data: str,
+    status: StripeEventStatusEnum = StripeEventStatusEnum.PENDING,
+) -> StripeEvent:
+    event = StripeEvent(MagicMock(id=event_id, created=1, type=event_type))
+    event.event_data = event_data
+    event.status = status
+    db.session.add(event)
+    db.session.commit()
+    return event
+
+
+def test_stripe_deletion_helpers_accept_empty_or_transient_users() -> None:
+    transient_user = MagicMock(id=None)
+
+    assert stripe_invoice_counts_by_user_ids(set()) == {}
+    assert deletion_blocking_stripe_invoice_counts_by_user_ids(set()) == {}
+    assert deletion_blocking_stripe_invoice_event_counts_by_user_ids(set()) == {}
+    assert deletion_blocking_stripe_subscription_event_counts_by_user_ids(set()) == {}
+    assert has_deletion_blocking_stripe_invoice(transient_user) is False
+    assert has_deletion_blocking_stripe_invoice_event(transient_user) is False
+    assert has_deletion_blocking_stripe_subscription_event(transient_user) is False
+
+
+@pytest.mark.parametrize(
+    ("event_data", "expected_object", "expected_invoice_id"),
+    [
+        ("{not-json", {}, None),
+        (json.dumps({"data": {"object": []}}), {}, None),
+        (json.dumps({"data": {"object": {"id": 123}}}), {"id": 123}, None),
+    ],
+)
+def test_stripe_event_parsing_rejects_unusable_objects(
+    event_data: str,
+    expected_object: dict[str, object],
+    expected_invoice_id: str | None,
+) -> None:
+    assert _stripe_event_object_from_data(event_data) == expected_object
+    assert _invoice_id_from_stripe_event_data(event_data) == expected_invoice_id
+
+
+def test_subscription_event_counts_match_subscription_id_and_skip_unknown(
+    user: User,
+) -> None:
+    user.stripe_customer_id = "cus_known"
+    user.stripe_subscription_id = "sub_known"
+    db.session.commit()
+    _add_raw_stripe_event(
+        "evt_subscription_match",
+        "customer.subscription.updated",
+        json.dumps({"data": {"object": {"customer": "cus_unknown", "id": "sub_known"}}}),
+    )
+    _add_raw_stripe_event(
+        "evt_subscription_unknown",
+        "customer.subscription.updated",
+        json.dumps({"data": {"object": {"customer": "cus_unknown", "id": "sub_unknown"}}}),
+    )
+
+    assert deletion_blocking_stripe_subscription_event_counts_by_user_ids({user.id}) == {user.id: 1}
+
+
+def test_invoice_event_counts_skip_invalid_and_unknown_invoices(user: User) -> None:
+    invoice = _add_stripe_invoice(user, "inv_known")
+    _add_raw_stripe_event("evt_invoice_invalid", "invoice.updated", "{not-json")
+    _add_raw_stripe_event(
+        "evt_invoice_unknown",
+        "invoice.updated",
+        json.dumps({"data": {"object": {"id": "inv_unknown"}}}),
+    )
+    _add_raw_stripe_event(
+        "evt_invoice_known",
+        "invoice.updated",
+        json.dumps({"data": {"object": {"id": invoice.invoice_id}}}),
+    )
+
+    assert deletion_blocking_stripe_invoice_event_counts_by_user_ids({user.id}) == {user.id: 1}
+
+
+def test_redaction_preserves_unprocessed_stripe_events(user: User) -> None:
+    invoice = _add_stripe_invoice(user, "inv_unprocessed")
+    invoice_event = _add_raw_stripe_event(
+        "evt_invoice_unprocessed",
+        "invoice.updated",
+        json.dumps({"data": {"object": {"id": invoice.invoice_id}}}),
+    )
+    user.stripe_subscription_id = "sub_unprocessed"
+    db.session.commit()
+    subscription_event = _add_raw_stripe_event(
+        "evt_subscription_unprocessed",
+        "customer.subscription.updated",
+        json.dumps(
+            {
+                "data": {
+                    "object": {
+                        "id": user.stripe_subscription_id,
+                        "customer": user.stripe_customer_id,
+                    }
+                }
+            }
+        ),
+    )
+
+    _redact_processed_stripe_invoice_events({invoice.invoice_id})
+    _redact_processed_stripe_subscription_events(
+        {"cus_inv_unprocessed"},
+        {"sub_unprocessed"},
+    )
+
+    assert invoice_event.event_data != "{}"
+    assert subscription_event.event_data != "{}"
 
 
 @pytest.mark.usefixtures("_authenticated_user")

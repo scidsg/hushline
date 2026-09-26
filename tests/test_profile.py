@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from types import CellType
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -34,6 +35,12 @@ suspended_message = "This account is suspended. New messages cannot be sent at t
 
 pgp_message_sig = "-----BEGIN PGP MESSAGE-----\n\n"
 chat_message_algorithm = "ECDH-P256-AES-GCM"
+
+
+def _closure_cell(function: object, name: str) -> CellType:
+    code = getattr(function, "__code__")
+    closure = getattr(function, "__closure__")
+    return dict(zip(code.co_freevars, closure, strict=True))[name]
 
 
 def _set_pgp_key(user: User) -> None:
@@ -931,6 +938,151 @@ def test_logged_in_profile_submit_initial_chat_nonce_rejects_stale_session_cooki
         db.select(InitialConversationNonce).where(InitialConversationNonce.consumed_at.is_not(None))
     ).all()
     assert len(consumed_nonce_rows) == 1
+
+
+def test_initial_conversation_helpers_reject_unusable_key_contexts(
+    app: Flask,
+    user: User,
+    user2: User,
+) -> None:
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    db.session.commit()
+    profile_view = app.view_functions["profile"]
+    payload_can_start = _closure_cell(profile_view, "_conversation_payload_can_start").cell_contents
+    copies_are_bound = _closure_cell(
+        payload_can_start, "_initial_conversation_copies_are_bound"
+    ).cell_contents
+    copy_context_is_bound = _closure_cell(
+        copies_are_bound, "_initial_conversation_copy_context_is_bound"
+    ).cell_contents
+    nonce = "coverage-nonce"
+    payload = _initial_chat_ciphertext(
+        label="coverage",
+        sender=user,
+        recipient=user2,
+        nonce=nonce,
+    )
+
+    assert not copy_context_is_bound(
+        role="sender",
+        encrypted_payload="{not-json",
+        sender=user,
+        recipient=user2,
+        initial_conversation_nonce=nonce,
+    )
+
+    sender_key = user.active_chat_key
+    assert sender_key is not None
+    signing_key = sender_key.public_signing_key
+    sender_key.public_signing_key = None
+    assert not copy_context_is_bound(
+        role="sender",
+        encrypted_payload=payload,
+        sender=user,
+        recipient=user2,
+        initial_conversation_nonce=nonce,
+    )
+    sender_key.public_signing_key = signing_key
+
+    assert not copy_context_is_bound(
+        role="unknown",
+        encrypted_payload=payload,
+        sender=user,
+        recipient=user2,
+        initial_conversation_nonce=nonce,
+    )
+    assert not copies_are_bound(
+        sender=user,
+        recipient=user2,
+        encrypted_conversation_copies={},
+        initial_conversation_nonce="",
+        require_known_nonce=False,
+    )
+
+    recipient_key = user2.active_chat_key
+    assert recipient_key is not None
+    recipient_key.public_signing_key = None
+    assert not copies_are_bound(
+        sender=user,
+        recipient=user2,
+        encrypted_conversation_copies={},
+        initial_conversation_nonce=nonce,
+        require_known_nonce=False,
+    )
+
+
+def test_create_initial_conversation_handles_nonce_consumption_race(
+    app: Flask,
+    user: User,
+    user2: User,
+) -> None:
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    db.session.commit()
+    create_conversation = _closure_cell(
+        app.view_functions["profile"], "_create_initial_conversation"
+    ).cell_contents
+    bound_cell = _closure_cell(create_conversation, "_initial_conversation_copies_are_bound")
+    consume_cell = _closure_cell(create_conversation, "_consume_initial_conversation_nonce")
+    original_bound = bound_cell.cell_contents
+    original_consume = consume_cell.cell_contents
+    bound_cell.cell_contents = lambda **kwargs: True
+    consume_cell.cell_contents = lambda *args: False
+    try:
+        result = create_conversation(
+            message=Message(username_id=user2.primary_username.id),
+            sender=user,
+            recipient=user2,
+            encrypted_conversation_copies={"recipient": "copy", "sender": "copy"},
+            initial_conversation_nonce="already-consumed",
+        )
+    finally:
+        bound_cell.cell_contents = original_bound
+        consume_cell.cell_contents = original_consume
+
+    assert result is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_chat_only_submission_rolls_back_when_conversation_creation_races(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    user2: User,
+) -> None:
+    user.pgp_key = None
+    user2.pgp_key = None
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    db.session.commit()
+    submission_data = get_profile_submission_data(client, user2.primary_username.username)
+    profile_view = app.view_functions["profile"]
+    create_cell = _closure_cell(profile_view, "_create_initial_conversation")
+    original_create = create_cell.cell_contents
+    create_cell.cell_contents = lambda **kwargs: None
+    try:
+        response = client.post(
+            url_for("profile", username=user2.primary_username.username),
+            data={
+                "field_0": msg_contact_method,
+                "field_1": msg_content,
+                "encrypted_conversation_copies": json.dumps(
+                    _initial_conversation_copies_for(
+                        sender=user,
+                        recipient=user2,
+                        nonce=submission_data["owner_guard_nonce"],
+                    )
+                ),
+                **submission_data,
+            },
+        )
+    finally:
+        create_cell.cell_contents = original_create
+
+    assert response.status_code == 400
+    assert "do not have any usable recipient PGP keys" in response.text
+    assert db.session.scalars(db.select(Message)).all() == []
 
 
 @pytest.mark.usefixtures("_authenticated_user")
