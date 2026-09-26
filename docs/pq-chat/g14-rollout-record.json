@@ -1,0 +1,439 @@
+{
+  "schema_version": 1,
+  "record_version": 1,
+  "issue": "scidsg/hushline#2379",
+  "parent_epic": "scidsg/hushline#2365",
+  "recorded_at": "2026-09-26",
+  "repository_baseline": "1d2c17f0ef4bc22694bd50ce1a24f892e8eb9cc1",
+  "decision": "blocked-prerequisite-and-human-release",
+  "release_approved": false,
+  "production_deployed": false,
+  "production_changes": false,
+  "prerequisites": [
+    {
+      "gate": "G13",
+      "issue": "scidsg/hushline#2378",
+      "artifact_commit": "1d2c17f0ef4bc22694bd50ce1a24f892e8eb9cc1",
+      "required_result": "approved",
+      "observed_result": "blocked-prerequisite-and-human-review",
+      "satisfied": false,
+      "evidence": [
+        "adr-0012-independent-review-readiness.md",
+        "g13-independent-review.json"
+      ],
+      "blocker": "G13 records no exact review subject, completed independent review, remediated and retested findings, reconciled wording, or human release approval."
+    }
+  ],
+  "gate_audit": [
+    {
+      "gate": "G1",
+      "issue": "scidsg/hushline#2366",
+      "observed_result": "pending-human-approval",
+      "satisfied": false,
+      "evidence": "README.md#g1-review-packet"
+    },
+    {
+      "gate": "G2",
+      "issue": "scidsg/hushline#2367",
+      "observed_result": "no-go",
+      "satisfied": false,
+      "evidence": "g2-evidence.json"
+    },
+    {
+      "gate": "G3",
+      "issue": "scidsg/hushline#2368",
+      "observed_result": "blocked-prerequisites",
+      "satisfied": false,
+      "evidence": "g3-readiness.json"
+    },
+    {
+      "gate": "G4",
+      "issue": "scidsg/hushline#2369",
+      "observed_result": "blocked-prerequisite",
+      "satisfied": false,
+      "evidence": "g4-readiness.json"
+    },
+    {
+      "gate": "G5",
+      "issue": "scidsg/hushline#2370",
+      "observed_result": "blocked-prerequisite",
+      "satisfied": false,
+      "evidence": "g5-readiness.json"
+    },
+    {
+      "gate": "G6",
+      "issue": "scidsg/hushline#2371",
+      "observed_result": "blocked-prerequisite",
+      "satisfied": false,
+      "evidence": "g6-readiness.json"
+    },
+    {
+      "gate": "G7",
+      "issue": "scidsg/hushline#2372",
+      "observed_result": "blocked-prerequisites",
+      "satisfied": false,
+      "evidence": "g7-readiness.json"
+    },
+    {
+      "gate": "G8",
+      "issue": "scidsg/hushline#2373",
+      "observed_result": "blocked-prerequisites",
+      "satisfied": false,
+      "evidence": "g8-readiness.json"
+    },
+    {
+      "gate": "G9",
+      "issue": "scidsg/hushline#2374",
+      "observed_result": "blocked-prerequisites",
+      "satisfied": false,
+      "evidence": "g9-readiness.json"
+    },
+    {
+      "gate": "G10",
+      "issue": "scidsg/hushline#2375",
+      "observed_result": "blocked-prerequisites",
+      "satisfied": false,
+      "evidence": "g10-readiness.json"
+    },
+    {
+      "gate": "G11",
+      "issue": "scidsg/hushline#2376",
+      "observed_result": "blocked-prerequisites",
+      "satisfied": false,
+      "evidence": "g11-readiness.json"
+    },
+    {
+      "gate": "G12",
+      "issue": "scidsg/hushline#2377",
+      "observed_result": "blocked-prerequisite",
+      "satisfied": false,
+      "evidence": "g12-validation-report.json"
+    },
+    {
+      "gate": "G13",
+      "issue": "scidsg/hushline#2378",
+      "observed_result": "blocked-prerequisite-and-human-review",
+      "satisfied": false,
+      "evidence": "g13-independent-review.json"
+    }
+  ],
+  "release_subject": {
+    "status": "blocked",
+    "signed_integration_commit": null,
+    "signature_verification": null,
+    "integration_pr_url": null,
+    "integration_review_evidence": null,
+    "release_candidate": null,
+    "release_version": null,
+    "release_url": null,
+    "production_bundle_sha256": null,
+    "container_image_digest": null,
+    "dependency_lock_sha256": null,
+    "sbom_sha256": null,
+    "database_revision": null,
+    "protocol_dependency": null,
+    "protocol_source_revision": null,
+    "protocol_artifact_integrity": null,
+    "protocol_suite": null,
+    "serialization_version": null,
+    "wire_version": null,
+    "feature_configuration": null,
+    "conflict_free_target_evidence": null,
+    "final_checks_evidence": null
+  },
+  "human_approvals": {
+    "runbook_approver": null,
+    "runbook_approved_at_utc": null,
+    "runbook_evidence": null,
+    "release_approver": null,
+    "release_approved_at_utc": null,
+    "release_evidence": null,
+    "approved_initial_population": null,
+    "approved_maximum_population": null
+  },
+  "owners": {
+    "release": null,
+    "operations": null,
+    "security": null,
+    "product": null,
+    "privacy": null,
+    "incident": null,
+    "rollback": null,
+    "documentation": null
+  },
+  "rollout_phases": [
+    {
+      "id": "R0-prepare-writers-off",
+      "order": 0,
+      "requires": [
+        "accepted-g1-through-g13",
+        "human-runbook-and-release-approval",
+        "owners-thresholds-and-incident-path-ready"
+      ],
+      "activation": "off",
+      "writers": "off",
+      "population": null,
+      "started_at_utc": null,
+      "completed_at_utc": null,
+      "status": "blocked",
+      "gate_decision": null,
+      "approver": null,
+      "evidence": null
+    },
+    {
+      "id": "R1-schema-and-readers",
+      "order": 1,
+      "requires": [
+        "R0-approved",
+        "additive-schema",
+        "backward-compatible-readers",
+        "writers-remain-off"
+      ],
+      "activation": "off",
+      "writers": "off",
+      "population": "synthetic-read-fixtures-only",
+      "started_at_utc": null,
+      "completed_at_utc": null,
+      "status": "blocked",
+      "gate_decision": null,
+      "approver": null,
+      "evidence": null
+    },
+    {
+      "id": "R2-synthetic-writers",
+      "order": 2,
+      "requires": [
+        "R1-approved-and-fully-deployed",
+        "synthetic-allowlist",
+        "all-health-thresholds-configured"
+      ],
+      "activation": "synthetic-only",
+      "writers": "synthetic-only",
+      "population": "explicitly-allowlisted-synthetic-accounts",
+      "started_at_utc": null,
+      "completed_at_utc": null,
+      "status": "blocked",
+      "gate_decision": null,
+      "approver": null,
+      "evidence": null
+    },
+    {
+      "id": "R3-approved-eligible-canary",
+      "order": 3,
+      "requires": [
+        "R2-approved",
+        "privacy-approved-observations",
+        "human-approved-eligibility-rule-and-canary-size"
+      ],
+      "activation": "approved-canary-only",
+      "writers": "approved-canary-only",
+      "population": null,
+      "started_at_utc": null,
+      "completed_at_utc": null,
+      "status": "blocked",
+      "gate_decision": null,
+      "approver": null,
+      "evidence": null
+    },
+    {
+      "id": "R4-approved-population-expansion",
+      "order": 4,
+      "requires": [
+        "R3-approved",
+        "recorded-human-approved-steps",
+        "per-step-observation-and-gate"
+      ],
+      "activation": "bounded-approved-steps",
+      "writers": "bounded-approved-steps",
+      "population": null,
+      "started_at_utc": null,
+      "completed_at_utc": null,
+      "status": "blocked",
+      "gate_decision": null,
+      "approver": null,
+      "evidence": null
+    },
+    {
+      "id": "R5-complete-or-hold",
+      "order": 5,
+      "requires": [
+        "R4-approved",
+        "final-observation-window-passed",
+        "production-record-complete"
+      ],
+      "activation": "no-greater-than-approved-maximum",
+      "writers": "no-greater-than-approved-maximum",
+      "population": null,
+      "started_at_utc": null,
+      "completed_at_utc": null,
+      "status": "blocked",
+      "gate_decision": null,
+      "approver": null,
+      "evidence": null
+    }
+  ],
+  "synthetic_smoke": {
+    "status": "blocked",
+    "synthetic_only": true,
+    "scenarios": [
+      "offline-handshake-bidirectional-traffic-and-multiple-pq-refresh-epochs",
+      "complete-copy-self-history-recipient-device-offline-retry-and-archive",
+      "fresh-browser-recovery-and-long-offline-delivery",
+      "ambiguous-retry-concurrent-tabs-and-process-termination",
+      "password-device-revocation-deletion-export-and-notification-lifecycle",
+      "kill-switch-deploy-rollback-stale-client-and-restore"
+    ],
+    "result": null,
+    "evidence": null
+  },
+  "health_observations": {
+    "status": "pending-privacy-review",
+    "privacy_approver": null,
+    "privacy_approval_evidence": null,
+    "minimum_aggregation_threshold": null,
+    "retention": null,
+    "access_policy": null,
+    "approved_dimensions": [],
+    "metrics": [
+      "protected-handshake-attempt-success-reject-and-failure-counts",
+      "protected-send-attempt-acknowledge-safe-retry-reject-and-failure-counts",
+      "protected-read-and-archive-recovery-success-and-failure-counts",
+      "post-handshake-pq-refresh-completion-and-failure-counts",
+      "protected-write-unavailable-stale-and-downgrade-attempt-counts",
+      "duplicate-loss-copy-audit-and-authorization-invariant-failure-counts",
+      "approved-latency-amplification-main-thread-and-availability-distributions"
+    ],
+    "required_metric_fields": [
+      "owner",
+      "numerator",
+      "denominator",
+      "minimum_aggregation_threshold",
+      "alert_threshold",
+      "observation_window",
+      "retention",
+      "access_policy",
+      "dashboard",
+      "response_action"
+    ],
+    "thresholds": [],
+    "forbidden": [
+      "plaintext-disclosures-or-drafts",
+      "private-keys-prekeys-or-credentials",
+      "shared-message-chain-root-archive-or-browser-state-secrets",
+      "ciphertext-or-serialized-private-state",
+      "stable-user-account-device-conversation-message-or-operation-identifiers",
+      "stable-pseudonyms-hashes-or-fingerprints",
+      "sensitive-user-level-events-or-cross-event-joins",
+      "raw-request-context-or-high-cardinality-dimension-combinations"
+    ],
+    "aggregate_results": null,
+    "evidence": null
+  },
+  "immediate_stop_conditions": [
+    "classical-only-write-to-an-upgraded-conversation",
+    "protected-history-unreadable-or-lost",
+    "authorization-or-complete-copy-invariant-failure",
+    "duplicate-visible-message-or-lost-acknowledged-message",
+    "secret-content-ciphertext-or-stable-identifier-in-observability",
+    "public-security-wording-conflicts-with-reviewed-behavior"
+  ],
+  "kill_switch": {
+    "status": "blocked",
+    "operations": ["stop-new-activation", "stop-new-protected-writes"],
+    "must_preserve": [
+      "monotonic-conversation-version-floor",
+      "legacy-and-protected-history-readers",
+      "server-and-browser-protocol-state",
+      "pending-drafts-operation-identities-and-safe-retry-bytes",
+      "accessible-actionable-blocked-send-errors"
+    ],
+    "must_never": [
+      "enable-classical-send-for-an-upgraded-conversation",
+      "disable-protected-readers",
+      "delete-or-rewind-protected-history-or-state",
+      "clear-a-pending-draft",
+      "mark-a-pending-or-rejected-send-as-delivered"
+    ],
+    "owner": null,
+    "invocation_evidence": null
+  },
+  "rollback_drill": {
+    "status": "blocked",
+    "synthetic_only": true,
+    "required_results": [
+      "multiple-pq-refresh-epochs-and-all-required-copies-created-before-stop",
+      "pending-draft-and-ambiguous-operation-preserved",
+      "no-classical-send-duplicate-or-false-success-while-stopped",
+      "legacy-and-protected-history-readable-while-writers-stopped",
+      "previous-reader-compatible-build-restored-without-schema-contraction",
+      "safe-retry-produces-exactly-one-visible-and-acknowledged-message",
+      "stale-client-send-blocked-with-actionable-error",
+      "aggregate-observations-alerts-and-recovery-time-reconciled"
+    ],
+    "recovery_time_objective": null,
+    "observed_recovery_time": null,
+    "owner": null,
+    "result": null,
+    "evidence": null
+  },
+  "documentation_gate": {
+    "status": "blocked",
+    "current_documents_remain_classical_until_release": true,
+    "documents": ["docs/TWO-WAY-CHAT-E2EE.md", "docs/USE-CASES.md"],
+    "required_topics": [
+      "complete-copy-hybrid-pq-confidentiality",
+      "continuous-post-handshake-pq-refresh",
+      "legacy-history-exclusion",
+      "archive-fresh-browser-offline-deletion-export-and-recovery-behavior",
+      "archive-compromise-stale-restore-and-recovery-limits",
+      "classical-authentication-limit",
+      "served-javascript-browser-password-metadata-device-and-erasure-limits",
+      "eligibility-stale-client-fail-closed-send-and-pending-draft-recovery"
+    ],
+    "reviewed_revision": null,
+    "approver": null,
+    "published_evidence": null
+  },
+  "production_record": {
+    "status": "not-deployed",
+    "release_version": null,
+    "release_url": null,
+    "approved_population": null,
+    "reached_population": null,
+    "phase_decisions": [],
+    "synthetic_smoke_result": null,
+    "privacy_review": null,
+    "aggregate_rollout_results": null,
+    "rollback_drill_result": null,
+    "incidents_and_resolutions": [],
+    "documentation_revision": null,
+    "final_gate_decision": null,
+    "final_decision_owner": null,
+    "decided_at_utc": null,
+    "evidence": null
+  },
+  "evidence_safety": {
+    "synthetic_only_before-approved-production-canary": true,
+    "no_real_disclosure_data_in_artifacts": true,
+    "forbidden": [
+      "plaintext-disclosures-or-drafts",
+      "credentials-tokens-private-keys-prekeys-or-secret-state",
+      "ciphertext-or-sensitive-user-level-telemetry",
+      "stable-cross-account-or-user-identifiers",
+      "real-user-screenshots-or-debug-dumps"
+    ]
+  },
+  "forbidden_completion_outcomes": [
+    "merged-library-disabled-flag-or-research-prototype-treated-as-release",
+    "production-action-without-exact-human-approved-candidate-and-phase",
+    "writers-enabled-before-compatible-schema-and-readers",
+    "real-account-writes-before-complete-synthetic-smoke",
+    "rollout-without-approved-thresholds-owners-and-observation-windows",
+    "empty-dashboard-or-missing-denominator-treated-as-success",
+    "classical-fallback-on-upgraded-conversation",
+    "kill-switch-or-rollback-disables-readers-or-loses-history-or-drafts",
+    "unreviewed-pq-claim-published-before-release",
+    "release-completion-without-version-population-results-and-gate-evidence",
+    "agent-authored-human-approval-or-production-result"
+  ]
+}

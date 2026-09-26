@@ -66,6 +66,12 @@ The PQ chat discovery work is split into independently reviewable gates:
   booking, full-integration scope, finding ownership, remediation, independent
   retest, residual-risk, evidence-rerun, security-wording, and release-gate
   records that remain blocked or pending.
+- **G14:** the [staged-release readiness ADR and runbook](adr-0013-staged-release-readiness.md)
+  and [versioned rollout record](g14-rollout-record.json) preserve G13 as a
+  hard prerequisite for `scidsg/hushline#2379` and define preflight approval,
+  readers-before-writers staging, synthetic smoke checks, privacy-preserving
+  health observations, stop thresholds, safe rollback, documentation, and
+  production evidence that remain blocked or pending.
 
 G2 is a **no-go at the reviewed revisions**. It does not add a cryptographic
 dependency or change production behavior. Missing real-browser, continuous-PQ
@@ -131,6 +137,14 @@ supplies no accepted release candidate, pinned dependency identity, or passing
 validation evidence. Reviewer booking remains a human action, and every review,
 finding, retest, risk disposition, wording reconciliation, and release decision
 field remains empty; the packet does not represent an independent audit.
+
+G14 is **blocked before release** because G13 is blocked and supplies no
+independently reviewed release candidate or human release approval. No schema,
+reader, writer, feature control, monitoring, deployment, public PQ claim, or
+production population changes through the readiness packet. The rollout record
+keeps every approval, threshold, owner, release identity, production result, and
+gate decision empty until humans provide linked evidence for the exact release
+candidate.
 
 ## G1 Review Packet
 
