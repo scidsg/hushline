@@ -3,7 +3,9 @@
 The PQ chat discovery work is split into independently reviewable gates:
 
 - **G1:** this directory's baseline flow, unchanged-UX contract, and threat
-  model remain proposed for human approval below.
+  model remain proposed for human approval below. The
+  [approval record](g1-approval-record.json) pins the review subject and keeps
+  the gate open until the required human decisions are recorded.
 - **G2:** the [browser protocol candidate evaluation](candidate-evaluation.md),
   [machine-readable evidence manifest](g2-evidence.json), and
   [go/no-go ADR](adr-0001-browser-protocol-candidate.md) record the browser
@@ -149,9 +151,11 @@ candidate.
 ## G1 Review Packet
 
 Status: **Proposed for human approval**  
-Issue: `scidsg/hushline#2366`  
+Issue: `scidsg/hushline#2396` (replaces delivery scope from
+`scidsg/hushline#2366`)<br>
 Parent epic: `scidsg/hushline#2365`  
 Baseline commit: `ab1d5ce3` (`v0.7.25`)  
+Review packet commit: `37abae6e11dd9c0e8306f5e962ae97504f5c0888`<br>
 Recorded: 2026-09-24
 
 This packet defines the product and security contract that must be approved
@@ -179,6 +183,9 @@ The contract is grounded in:
   private-browsing behavior.
 - [PQ chat threat model](threat-model.md) defines assets, adversaries, trust and
   compromise boundaries, and what revocation can and cannot repair.
+- [G1 approval record](g1-approval-record.json) pins the exact packet revision
+  and artifact digests and provides criterion-level product and security
+  disposition fields.
 
 The committed browser artifacts referenced by this packet use only seeded,
 fictional accounts. They are engineering evidence, not user research, an
@@ -200,10 +207,11 @@ independent audit, or evidence about production data.
 Approval is a human governance action. A code-authoring agent cannot fill the
 reviewer or evidence fields, infer approval from a merge, or mark G1 complete.
 The approving review must identify this packet's commit and explicitly accept
-or reject every row below.
+or reject every row below. The authoritative dispositions and dated evidence
+links are recorded in `g1-approval-record.json`; the current record is pending.
 
 <!-- prettier-ignore -->
-| Decision ID | Decision | Product maintainer | Security architect | Status |
+| Decision ID | Decision | Product maintainer | Security reviewer | Status |
 | --- | --- | --- | --- | --- |
 | G1-D1 | Preserve the everyday flows and zero-new-prompt rules in the UX contract | Pending | Review | Pending |
 | G1-D2 | Require complete-copy hybrid PQ confidentiality with no classical-only downgrade | Review | Pending | Pending |
@@ -226,7 +234,7 @@ explicit product and security reconsideration.
 | Role | Reviewer | Disposition | Reviewed commit | Dated evidence |
 | --- | --- | --- | --- | --- |
 | Product maintainer | Pending | Pending | Pending | Link to approving review or signed decision required |
-| Security architect | Pending | Pending | Pending | Link to approving review or signed decision required |
+| Security reviewer | Pending | Pending | Pending | Link to approving review or signed decision required |
 
 An approval applies only to the recorded commit. Later material changes require
 both roles to confirm or replace their disposition.
