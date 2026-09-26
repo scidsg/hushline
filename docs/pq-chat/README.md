@@ -60,6 +60,12 @@ The PQ chat discovery work is split into independently reviewable gates:
   as a hard prerequisite for `scidsg/hushline#2377` and inventory the
   interoperability, adversarial, fault, persisted-copy, real-browser,
   quality-budget, CI, audit, and human-review evidence that remains blocked.
+- **G13:** the [independent-review readiness ADR](adr-0012-independent-review-readiness.md)
+  and [versioned review record](g13-independent-review.json) preserve G12 as a
+  hard prerequisite for `scidsg/hushline#2378` and define the human reviewer
+  booking, full-integration scope, finding ownership, remediation, independent
+  retest, residual-risk, evidence-rerun, security-wording, and release-gate
+  records that remain blocked or pending.
 
 G2 is a **no-go at the reviewed revisions**. It does not add a cryptographic
 dependency or change production behavior. Missing real-browser, continuous-PQ
@@ -119,6 +125,12 @@ G12 is **blocked before validation** because G11 is blocked and supplies no
 accepted integrated PQ-chat build to test. The report records every required
 result as blocked with no evidence link or measurement; it does not turn
 legacy tests, upstream claims, or this readiness review into release evidence.
+
+G13 is **blocked before independent review** because G12 is blocked and
+supplies no accepted release candidate, pinned dependency identity, or passing
+validation evidence. Reviewer booking remains a human action, and every review,
+finding, retest, risk disposition, wording reconciliation, and release decision
+field remains empty; the packet does not represent an independent audit.
 
 ## G1 Review Packet
 

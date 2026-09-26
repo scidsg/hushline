@@ -1,0 +1,304 @@
+{
+  "schema_version": 1,
+  "record_version": 1,
+  "issue": "scidsg/hushline#2378",
+  "parent_epic": "scidsg/hushline#2365",
+  "recorded_at": "2026-09-25",
+  "repository_baseline": "21b356c81e488b6a47c185a6b4788b3a0ba9a0b4",
+  "decision": "blocked-prerequisite-and-human-review",
+  "release_approved": false,
+  "production_changes": false,
+  "prerequisites": [
+    {
+      "gate": "G12",
+      "issue": "scidsg/hushline#2377",
+      "artifact_commit": "21b356c81e488b6a47c185a6b4788b3a0ba9a0b4",
+      "required_result": "approved",
+      "observed_result": "blocked-prerequisite",
+      "satisfied": false,
+      "evidence": [
+        "adr-0011-release-validation-readiness.md",
+        "g12-validation-report.json"
+      ],
+      "blocker": "G12 records no accepted integrated release candidate, pinned dependency set, passing validation matrix, or independent review evidence."
+    }
+  ],
+  "review_engagement": {
+    "status": "pending-human-booking",
+    "engagement_owner": null,
+    "independent_reviewer": null,
+    "review_organization": null,
+    "independence_and_conflict_attestation": null,
+    "scope_accepted_at_utc": null,
+    "scheduled_start_at_utc": null,
+    "scheduled_final_assessment_at_utc": null,
+    "scheduled_retest_window": null,
+    "secure_reporting_channel": null,
+    "booking_evidence": null,
+    "required_timing": "Book before the release candidate is complete; perform the final assessment and every dispositive retest against the exact pinned release candidate."
+  },
+  "review_subject": {
+    "status": "blocked",
+    "implementation_commit": null,
+    "release_candidate_identifier": null,
+    "production_bundle_sha256": null,
+    "container_image_digest": null,
+    "dependency_lock_sha256": null,
+    "sbom_sha256": null,
+    "protocol_dependency": null,
+    "protocol_source_revision": null,
+    "protocol_artifact_integrity": null,
+    "protocol_suite": null,
+    "serialization_version": null,
+    "wire_version": null,
+    "database_revision": null,
+    "feature_configuration": null,
+    "browser_driver_manifest": null,
+    "g12_validation_report": null,
+    "review_report": null,
+    "public_safe_summary": null
+  },
+  "review_scope": [
+    {
+      "id": "protocol-adapter-and-reference-interoperability",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "build-supply-chain-source-pin-integrity-sbom-and-reproducibility",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "key-hierarchy-archive-wrapping-recovery-and-deletion",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "device-enrollment-authorization-prekeys-revocation-and-churn",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "concurrency-tabs-workers-retries-and-atomic-state",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "api-storage-authentication-authorization-and-limits",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "csp-served-assets-worker-boundaries-and-server-served-javascript-trust",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "conversation-migration-downgrade-stale-client-and-mixed-history",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "password-guessing-credential-session-device-and-account-lifecycle",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "transport-archive-and-every-alternate-content-copy",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "claimed-guarantees-classical-authentication-and-compromise-boundaries",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "deployment-feature-control-operational-rollback-and-compromise-recovery",
+      "status": "blocked",
+      "evidence": null
+    }
+  ],
+  "mandatory_claim_checks": [
+    "complete-copy-hybrid-pq-confidentiality-for-transport-archive-self-history-offline-retry-notification-export-backup-and-deletion-paths",
+    "classical-authentication-is-a-limit-and-is-never-described-as-pq-authentication",
+    "server-served-javascript-and-a-compromised-active-origin-remain-outside-the-confidentiality-claim",
+    "offline-password-guessing-resistance-is-measured-against-the-pinned-credential-and-archive-design",
+    "browser-state-loss-stale-restore-cross-context-concurrency-and-transaction-rollback-fail-closed",
+    "device-revocation-archive-rotation-and-compromise-recovery-do-not-claim-retroactive-protection-or-erasure",
+    "disable-and-rollback-never-enable-a-classical-write-below-an-established-protected-floor",
+    "everyday-login-unlock-send-reply-history-and-private-mode-contract-remains-unchanged",
+    "anonymity-metadata-privacy-and-browser-erasure-are-not-overclaimed"
+  ],
+  "review_methods": [
+    "independent-design-and-code-review",
+    "pinned-dependency-and-reproducible-build-review",
+    "official-vector-and-independent-reference-peer-reproduction",
+    "adversarial-authorization-downgrade-replay-and-substitution-testing",
+    "fault-injection-concurrency-crash-retry-and-stale-restore-testing",
+    "complete-retained-copy-and-data-lifecycle-trace",
+    "real-browser-private-mode-accessibility-performance-and-csp-review",
+    "migration-feature-disable-rollback-roll-forward-and-compromise-recovery-drill",
+    "security-wording-and-guarantee-boundary-review"
+  ],
+  "finding_record_contract": {
+    "required_fields": [
+      "finding_id",
+      "confidential_tracking_reference",
+      "public_safe_title",
+      "severity",
+      "security_impact",
+      "affected_guarantee",
+      "affected_data_paths",
+      "affected_revision_and_dependencies",
+      "reproducer_location",
+      "reproducer",
+      "remediation_owner",
+      "remediation_link",
+      "regression_test_evidence",
+      "author_verification_evidence",
+      "independent_retest_reviewer",
+      "independent_retest_status",
+      "independent_retest_evidence",
+      "residual_scope",
+      "maintainer_disposition",
+      "reviewer_disposition",
+      "follow_up_owner",
+      "follow_up_link",
+      "target_date"
+    ],
+    "allowed_severities": [
+      "critical",
+      "high",
+      "medium",
+      "low",
+      "informational"
+    ],
+    "allowed_retest_statuses": [
+      "not-started",
+      "failed",
+      "passed",
+      "not-applicable"
+    ],
+    "public_record_rule": "Keep exploit details and sensitive reproducers in the coordinated private-disclosure channel; commit only a public-safe title, scope, status, and durable restricted evidence reference.",
+    "owner_rule": "Every finding requires one accountable remediation owner and a reviewer-authored reproducer or durable reproducer location.",
+    "critical_retest_rule": "Critical and high findings, and any finding affecting confidentiality, complete-copy protection, authorization, downgrade resistance, or unchanged everyday UX, require remediation and a passed retest by the independent reviewer on the remediated pinned build.",
+    "nonblocking_disposition_rule": "A remaining nonblocking finding requires explicit maintainer and reviewer dispositions, bounded residual scope, a named follow-up owner, a linked follow-up, and a target date.",
+    "nonwaivable_rule": "A finding that invalidates the epic confidentiality contract, complete-copy requirement, or unchanged everyday UX contract cannot be waived as complete."
+  },
+  "findings": [],
+  "remediation_and_retest": {
+    "status": "blocked",
+    "open_security_critical_findings": null,
+    "failed_independent_retests": null,
+    "undisposed_nonblocking_findings": null,
+    "required_sequence": [
+      "reviewer-records-finding-and-private-reproducer",
+      "maintainer-assigns-remediation-owner",
+      "owner-links-minimal-remediation-and-regression-tests",
+      "author-verification-runs-on-remediated-pinned-build",
+      "independent-reviewer-reproduces-and-records-retest",
+      "affected-g12-evidence-is-rerun",
+      "public-security-wording-is-reconciled",
+      "maintainer-and-reviewer-dispose-any-bounded-nonblocking-residual"
+    ],
+    "evidence": null
+  },
+  "required_evidence_reruns": [
+    {
+      "id": "protocol-reference-and-continuous-pq-epochs",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "adversarial-authorization-downgrade-replay-and-boundary-matrix",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "fault-concurrency-retry-and-atomic-complete-copy-matrix",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "complete-copy-storage-notification-export-backup-and-deletion-audit",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "chromium-firefox-webkit-private-mode-and-storage-restriction-matrix",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "unchanged-ux-accessibility-performance-and-csp-evidence",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "migration-lifecycle-disable-rollback-and-compromise-recovery-drills",
+      "status": "blocked",
+      "evidence": null
+    },
+    {
+      "id": "ci-codeql-workflow-security-and-dependency-audits",
+      "status": "blocked",
+      "evidence": null
+    }
+  ],
+  "security_wording_reconciliation": {
+    "status": "blocked",
+    "reviewer_conclusion": null,
+    "affected_public_documents": null,
+    "approved_changes": null,
+    "approver": null,
+    "evidence": null
+  },
+  "release_gate": {
+    "status": "pending-human-decision",
+    "reviewed_revision_and_dependencies": null,
+    "independent_review_disposition": null,
+    "security_critical_findings_closed": null,
+    "nonblocking_findings_disposed": null,
+    "affected_evidence_rerun": null,
+    "security_wording_reconciled": null,
+    "release_decision": null,
+    "release_decision_owner": null,
+    "decided_at_utc": null,
+    "evidence": null
+  },
+  "evidence_safety": {
+    "synthetic_only": true,
+    "private_disclosure_required_for_exploit_details": true,
+    "forbidden": [
+      "real-user-or-production-data",
+      "plaintext-disclosures-or-drafts",
+      "credentials-session-tokens-or-private-keys",
+      "shared-message-chain-root-archive-or-browser-state-secrets",
+      "premature-public-vulnerability-reproducers"
+    ]
+  },
+  "blocking_reasons": [
+    "g12-has-no-accepted-or-validated-release-candidate",
+    "exact-reviewed-revision-and-dependencies-are-unavailable",
+    "independent-reviewer-engagement-is-not-booked",
+    "independent-review-report-and-public-safe-summary-do-not-exist",
+    "no-finding-remediation-or-independent-retest-results-exist",
+    "no-human-release-gate-decision-exists"
+  ],
+  "forbidden_completion_outcomes": [
+    "upstream-protocol-review-substituted-for-hush-line-review",
+    "initial-spike-or-unpinned-build-substituted-for-release-candidate-review",
+    "review-claimed-without-independent-reviewer-and-durable-report-evidence",
+    "finding-without-owner-and-reproducer",
+    "author-only-verification-substituted-for-independent-retest",
+    "security-critical-finding-waived-without-remediation-and-passed-independent-retest",
+    "nonblocking-finding-left-without-maintainer-and-reviewer-risk-disposition",
+    "confidentiality-complete-copy-or-ux-contract-invalidating-finding-waived",
+    "affected-g12-evidence-not-rerun-after-remediation",
+    "public-security-wording-left-in-conflict-with-reviewer-conclusions",
+    "agent-authored-reviewer-disposition-or-release-approval",
+    "vulnerability-details-or-real-user-data-published-prematurely"
+  ]
+}
