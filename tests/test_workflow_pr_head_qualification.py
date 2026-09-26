@@ -363,18 +363,93 @@ def test_securedrop_refresh_summary_uses_checked_random_github_output_delimiter(
     assert 'delimiter="SECUREDROP_SUMMARY_$(date +%s)"' not in summary_section
 
 
-def test_epic_child_close_workflow_uses_trusted_head_branch_not_pr_body() -> None:
+def test_epic_child_acceptance_workflow_is_never_triggered_by_merge() -> None:
+    workflow_text = _workflow_text(".github/workflows/close-epic-child-issue-on-merge.yml")
+    trigger_section = workflow_text.split("permissions:", 1)[0]
+
+    assert "workflow_dispatch:" in trigger_section
+    assert "pull_request_target:" not in trigger_section
+    assert "pull_request:" not in trigger_section
+    assert "github.event.pull_request.merged" not in workflow_text
+    assert "issues: write" in workflow_text
+
+
+def test_epic_child_acceptance_workflow_binds_the_exact_child_and_revision() -> None:
     workflow_text = _workflow_text(".github/workflows/close-epic-child-issue-on-merge.yml")
 
-    assert "pull_request_target:" in workflow_text
-    assert "issues: write" in workflow_text
+    assert "getCollaboratorPermissionLevel" in workflow_text
+    assert 'permission.data.permission !== "admin"' in workflow_text
+    assert 'await requireAdmin(actor, "Acceptance actor")' in workflow_text
+    assert 'await requireAdmin(triggeringActor, "Triggering actor")' in workflow_text
     assert "pullRequest.head.repo?.full_name" in workflow_text
     assert "headRepo !== expectedRepo" in workflow_text
     assert "baseRef.match(/^codex\\/epic-(\\d+)$/)" in workflow_text
     assert "headRef.match(/^codex\\/daily-issue-(\\d+)$/)" in workflow_text
-    assert "const issueNumber = Number(headMatch[1]);" in workflow_text
+    assert "Number(headMatch[1]) !== issueNumber" in workflow_text
+    assert "pullRequest.merge_commit_sha" in workflow_text
+    assert "acceptedRevision" in workflow_text
+    assert '"GET /repos/{owner}/{repo}/issues/{issue_number}/parent"' in workflow_text
+    assert "parentResponse.data.number !== epicNumber" in workflow_text
+    assert "revisionIsOnBranch(acceptedRevision, baseHead)" in workflow_text
     assert "context.payload.pull_request.body" not in workflow_text
+    assert "issue.body" not in workflow_text
     assert "Linked issue:" not in workflow_text
+
+
+def test_epic_child_acceptance_workflow_keeps_partial_and_pending_work_open() -> None:
+    workflow_text = _workflow_text(".github/workflows/close-epic-child-issue-on-merge.yml")
+
+    assert "record-status" in workflow_text
+    assert "implementation-ready" in workflow_text
+    assert "validation-passed" in workflow_text
+    assert "human-review-pending" in workflow_text
+    assert "production-released" in workflow_text
+    assert 'decision === "accept-complete" && stage === "human-review-pending"' in workflow_text
+    assert 'if (decision === "accept-complete") {' in workflow_text
+    assert 'state: "closed"' in workflow_text
+    assert "remains open at lifecycle stage" in workflow_text
+
+
+def test_epic_child_acceptance_workflow_requires_native_and_accepted_dependencies() -> None:
+    workflow_text = _workflow_text(".github/workflows/close-epic-child-issue-on-merge.yml")
+
+    assert "/dependencies/blocked_by" in workflow_text
+    assert 'dependency.state !== "closed"' in workflow_text
+    assert 'comment.user?.login !== "github-actions[bot]"' in workflow_text
+    assert "hushline-epic-child-acceptance:v1" in workflow_text
+    assert 'candidate.decision === "accept-complete"' in workflow_text
+    assert "closed without an accepted deliverable" in workflow_text
+    assert "revisionIsOnBranch(acceptedDependency.accepted_revision, baseHead)" in workflow_text
+
+
+def test_epic_child_acceptance_workflow_requires_structured_evidence_and_release_gates() -> None:
+    workflow_text = _workflow_text(".github/workflows/close-epic-child-issue-on-merge.yml")
+
+    assert "criterion_evidence must be valid JSON" in workflow_text
+    assert "criterion_evidence must cover every acceptance criterion" in workflow_text
+    assert 'parsed.protocol !== "https:"' in workflow_text
+    assert 'deliveryKind === "production-launch" && decision === "accept-complete"' in workflow_text
+    assert (
+        'stage === "production-released" && deliveryKind !== "production-launch"' in workflow_text
+    )
+    assert 'isLaunchAcceptance && stage !== "production-released"' in workflow_text
+    assert '"deployment_evidence"' in workflow_text
+    assert '"release_approval"' in workflow_text
+    assert "...evidenceLines" in workflow_text
+
+
+def test_epic_child_acceptance_workflow_is_idempotent() -> None:
+    workflow_text = _workflow_text(".github/workflows/close-epic-child-issue-on-merge.yml")
+
+    assert (
+        "group: epic-child-decision-${{ github.repository }}-${{ inputs.issue_number }}"
+        in workflow_text
+    )
+    assert "cancel-in-progress: false" in workflow_text
+    assert "const exactMarker = encodedRecord(marker, record);" in workflow_text
+    assert "includes(exactMarker)" in workflow_text
+    assert "The requested ${decision} event is already recorded" in workflow_text
+    assert 'issue.state === "closed"' in workflow_text
 
 
 def test_workflow_pr_head_guard_rejects_unqualified_long_head_with_equals() -> None:
