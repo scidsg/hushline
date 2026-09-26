@@ -960,6 +960,16 @@ def test_stash_post_auth_redirect_target_rejects_unsafe_target(app: Flask) -> No
         assert session[POST_AUTH_REDIRECT_SESSION_KEY] == "/already-set"
 
 
+def test_stash_post_auth_redirect_target_rejects_parsed_absolute_target(app: Flask) -> None:
+    with app.test_request_context("/login", method="GET"), patch(
+        "hushline.auth.urlsplit",
+        return_value=SimpleNamespace(scheme="https", netloc=""),
+    ):
+        stash_post_auth_redirect_target("/apparently-local")
+
+        assert POST_AUTH_REDIRECT_SESSION_KEY not in session
+
+
 @pytest.mark.parametrize(
     "target",
     [

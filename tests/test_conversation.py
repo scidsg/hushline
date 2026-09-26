@@ -38,8 +38,10 @@ from hushline.routes.message import (
     _conversation_activity_timeout,
     _conversation_notification_body,
     _conversation_presence_heartbeat_ms,
+    _conversation_rate_limit_config,
     _decode_jwk_coordinate,
     _is_chat_ciphertext_envelope,
+    _lock_conversation_message_rate_limit_buckets,
 )
 
 _SENDER_SIGNING_PRIVATE_KEY = ec.derive_private_key(1, ec.SECP256R1())
@@ -416,10 +418,36 @@ def test_canonical_chat_signature_payload_rejects_missing_fields() -> None:
 
 @pytest.mark.parametrize(
     "value",
-    ["", "not-base64", base64.urlsafe_b64encode(b"short").decode()],
+    ["", "!", "not-base64", base64.urlsafe_b64encode(b"short").decode()],
 )
 def test_decode_jwk_coordinate_rejects_invalid_values(value: str) -> None:
     assert _decode_jwk_coordinate(value) is None
+
+
+def test_conversation_rate_limit_config_uses_default_for_invalid_value(app: Flask) -> None:
+    app.config["TEST_CONVERSATION_LIMIT"] = "not-an-integer"
+
+    assert _conversation_rate_limit_config("TEST_CONVERSATION_LIMIT", 7) == 7
+
+
+def test_conversation_rate_limit_lock_is_postgres_only(
+    app: Flask, user: User, user2: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    conversation = _make_conversation(user, user2)
+    participant = _participant_for(conversation, user)
+    bind = MagicMock()
+    bind.dialect.name = "sqlite"
+    monkeypatch.setattr(db.session, "get_bind", lambda: bind)
+    execute = MagicMock()
+    monkeypatch.setattr(db.session, "execute", execute)
+
+    _lock_conversation_message_rate_limit_buckets(
+        thread=conversation,
+        participant=participant,
+        user=user,
+    )
+
+    execute.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -1206,6 +1234,103 @@ def test_delete_conversation_requires_participant(
 
     assert response.status_code == 404
     assert db.session.get(Conversation, conversation_id) is not None
+
+
+@pytest.mark.parametrize(
+    ("endpoint", "method"),
+    [
+        ("conversation", "get"),
+        ("conversation_presence", "post"),
+        ("append_conversation_message", "post"),
+        ("delete_conversation", "post"),
+    ],
+)
+def test_conversation_routes_404_when_session_user_disappears(
+    client: FlaskClient,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+    endpoint: str,
+    method: str,
+) -> None:
+    _authenticate_as(client, user)
+    monkeypatch.setattr("hushline.auth.get_session_user", lambda: user)
+    monkeypatch.setattr(db.session, "get", lambda model, object_id: None)
+
+    response = getattr(client, method)(url_for(endpoint, public_id="missing-user"))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("endpoint", "method"),
+    [
+        ("conversation", "get"),
+        ("conversation_presence", "post"),
+        ("append_conversation_message", "post"),
+    ],
+)
+def test_conversation_routes_404_when_participant_disappears(  # noqa: PLR0913
+    client: FlaskClient,
+    user: User,
+    user2: User,
+    monkeypatch: pytest.MonkeyPatch,
+    endpoint: str,
+    method: str,
+) -> None:
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+    monkeypatch.setattr(Conversation, "participant_for_user_id", lambda self, user_id: None)
+
+    response = getattr(client, method)(url_for(endpoint, public_id=conversation.public_id))
+
+    assert response.status_code == 404
+
+
+def test_delete_conversation_404_when_locked_participant_disappears(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conversation = _make_conversation(user, user2)
+    _authenticate_as(client, user)
+    monkeypatch.setattr(
+        "hushline.routes.message._locked_conversation_participants",
+        lambda thread: [],
+    )
+
+    response = client.post(url_for("delete_conversation", public_id=conversation.public_id))
+
+    assert response.status_code == 404
+
+
+def test_delete_last_participant_detaches_non_placeholder_initial_message(
+    client: FlaskClient,
+    user: User,
+    user2: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conversation = _make_conversation(user, user2)
+    initial_message = Message(username_id=user2.primary_username.id)
+    initial_message.conversation = conversation
+    db.session.add(initial_message)
+    other_participant = _participant_for(conversation, user2)
+    other_participant.deleted_at = datetime.now(timezone.utc)
+    db.session.commit()
+    initial_message_id = initial_message.id
+    _authenticate_as(client, user)
+    is_placeholder = MagicMock(side_effect=[True, False])
+    monkeypatch.setattr(
+        "hushline.routes.message._message_is_chat_only_placeholder",
+        is_placeholder,
+    )
+
+    response = client.post(url_for("delete_conversation", public_id=conversation.public_id))
+
+    assert response.status_code == 302
+    retained_message = db.session.get(Message, initial_message_id)
+    assert retained_message is not None
+    assert retained_message.conversation_id is None
 
 
 def test_delete_conversation_redirects_unauthenticated_user(
