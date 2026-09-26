@@ -1,77 +1,435 @@
-name: Close Epic Child Issue on Merge
+name: Record or Accept Epic Child Delivery
 
 on:
-  pull_request_target:
-    types:
-      - closed
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Child issue number
+        required: true
+        type: string
+      pull_request_number:
+        description: Merged child pull request number
+        required: true
+        type: string
+      accepted_revision:
+        description: Exact 40-character integrated commit SHA being reviewed
+        required: true
+        type: string
+      lifecycle_stage:
+        description: Current delivery stage
+        required: true
+        type: choice
+        options:
+          - implementation-ready
+          - validation-passed
+          - human-review-pending
+          - production-released
+      decision:
+        description: Record status without closing, or accept the completed child
+        required: true
+        type: choice
+        options:
+          - record-status
+          - accept-complete
+      delivery_kind:
+        description: Production launches require release-specific evidence
+        required: true
+        type: choice
+        options:
+          - standard
+          - production-launch
+      criterion_evidence:
+        description: JSON object mapping every acceptance criterion to HTTPS evidence URLs
+        required: true
+        type: string
+      deployment_evidence:
+        description: HTTPS production deployment evidence (required for launches)
+        required: false
+        type: string
+      release_approval:
+        description: HTTPS human release-approval evidence (required for launches)
+        required: false
+        type: string
 
 permissions:
+  contents: read
   issues: write
   pull-requests: read
 
+concurrency:
+  group: epic-child-decision-${{ github.repository }}-${{ inputs.issue_number }}
+  cancel-in-progress: false
+
 jobs:
-  close-child-issue:
-    if: ${{ github.event.pull_request.merged == true && startsWith(github.event.pull_request.base.ref, 'codex/epic-') }}
+  record-delivery-decision:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ACCEPTANCE_ACTOR: ${{ github.actor }}
+      TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+      ISSUE_NUMBER: ${{ inputs.issue_number }}
+      PULL_REQUEST_NUMBER: ${{ inputs.pull_request_number }}
+      ACCEPTED_REVISION: ${{ inputs.accepted_revision }}
+      LIFECYCLE_STAGE: ${{ inputs.lifecycle_stage }}
+      ACCEPTANCE_DECISION: ${{ inputs.decision }}
+      DELIVERY_KIND: ${{ inputs.delivery_kind }}
+      CRITERION_EVIDENCE: ${{ inputs.criterion_evidence }}
+      DEPLOYMENT_EVIDENCE: ${{ inputs.deployment_evidence }}
+      RELEASE_APPROVAL: ${{ inputs.release_approval }}
     steps:
-      - name: Close linked child issue
+      - name: Validate and record maintainer decision
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         with:
           script: |
-            const pullRequest = context.payload.pull_request;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const prNumber = pullRequest.number;
+            const apiVersion = "2026-03-10";
+            const acceptanceMarker = "hushline-epic-child-acceptance:v1";
+            const statusMarker = "hushline-epic-child-status:v1";
+
+            function positiveInteger(value, name) {
+              if (!/^\d+$/.test(value)) {
+                throw new Error(`${name} must be a positive integer.`);
+              }
+              const parsed = Number(value);
+              if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+                throw new Error(`${name} must be a positive integer.`);
+              }
+              return parsed;
+            }
+
+            function httpsUrl(value, name, required = true) {
+              const text = String(value || "").trim();
+              if (!text && !required) {
+                return null;
+              }
+              let parsed;
+              try {
+                parsed = new URL(text);
+              } catch {
+                throw new Error(`${name} must be a valid HTTPS URL.`);
+              }
+              if (parsed.protocol !== "https:") {
+                throw new Error(`${name} must be a valid HTTPS URL.`);
+              }
+              return parsed.href;
+            }
+
+            function normalizeCriterionEvidence(raw) {
+              let evidence;
+              try {
+                evidence = JSON.parse(raw);
+              } catch {
+                throw new Error("criterion_evidence must be valid JSON.");
+              }
+              if (!evidence || Array.isArray(evidence) || typeof evidence !== "object") {
+                throw new Error("criterion_evidence must be a JSON object.");
+              }
+              const entries = Object.entries(evidence);
+              if (entries.length === 0) {
+                throw new Error("criterion_evidence must cover every acceptance criterion.");
+              }
+              if (entries.length > 50) {
+                throw new Error("criterion_evidence cannot contain more than 50 criteria.");
+              }
+
+              const normalized = {};
+              for (const [criterion, links] of entries.sort(([left], [right]) => left.localeCompare(right))) {
+                const criterionName = String(criterion).trim();
+                if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$/.test(criterionName)) {
+                  throw new Error("Each criterion must use a stable alphanumeric identifier.");
+                }
+                const candidates = Array.isArray(links) ? links : [links];
+                if (candidates.length === 0) {
+                  throw new Error(`Criterion ${criterionName} has no evidence.`);
+                }
+                if (candidates.length > 20) {
+                  throw new Error(`Criterion ${criterionName} has more than 20 evidence links.`);
+                }
+                normalized[criterionName] = candidates.map((link) =>
+                  httpsUrl(link, `Evidence for criterion ${criterionName}`),
+                );
+              }
+              return normalized;
+            }
+
+            function encodedRecord(marker, record) {
+              const payload = Buffer.from(JSON.stringify(record), "utf8").toString("base64url");
+              return `<!-- ${marker}:${payload} -->`;
+            }
+
+            function recordFromComment(comment, marker) {
+              if (
+                comment.user?.login !== "github-actions[bot]" ||
+                comment.user?.type !== "Bot"
+              ) {
+                return null;
+              }
+              const match = String(comment.body || "").match(
+                new RegExp(`<!-- ${marker}:([A-Za-z0-9_-]+) -->`),
+              );
+              if (!match) {
+                return null;
+              }
+              try {
+                return JSON.parse(Buffer.from(match[1], "base64url").toString("utf8"));
+              } catch {
+                return null;
+              }
+            }
+
+            async function requireAdmin(username, role) {
+              const permission = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner,
+                repo,
+                username,
+              });
+              if (permission.data.permission !== "admin") {
+                throw new Error(`${role} ${username} must have repository admin permission.`);
+              }
+            }
+
+            async function commentsFor(issueNumber) {
+              return github.paginate(github.rest.issues.listComments, {
+                owner,
+                repo,
+                issue_number: issueNumber,
+                per_page: 100,
+              });
+            }
+
+            async function revisionIsOnBranch(revision, branchHead) {
+              const comparison = await github.rest.repos.compareCommitsWithBasehead({
+                owner,
+                repo,
+                basehead: `${revision}...${branchHead}`,
+              });
+              return comparison.data.status === "ahead" || comparison.data.status === "identical";
+            }
+
+            const actor = process.env.ACCEPTANCE_ACTOR;
+            const triggeringActor = process.env.TRIGGERING_ACTOR;
+            await requireAdmin(actor, "Acceptance actor");
+            await requireAdmin(triggeringActor, "Triggering actor");
+
+            const issueNumber = positiveInteger(process.env.ISSUE_NUMBER, "issue_number");
+            const prNumber = positiveInteger(
+              process.env.PULL_REQUEST_NUMBER,
+              "pull_request_number",
+            );
+            const acceptedRevision = String(process.env.ACCEPTED_REVISION || "").toLowerCase();
+            if (!/^[0-9a-f]{40}$/.test(acceptedRevision)) {
+              throw new Error("accepted_revision must be a full 40-character commit SHA.");
+            }
+
+            const stage = process.env.LIFECYCLE_STAGE;
+            const decision = process.env.ACCEPTANCE_DECISION;
+            const deliveryKind = process.env.DELIVERY_KIND;
+            const validStages = new Set([
+              "implementation-ready",
+              "validation-passed",
+              "human-review-pending",
+              "production-released",
+            ]);
+            if (!validStages.has(stage)) {
+              throw new Error(`Unsupported lifecycle stage: ${stage}`);
+            }
+            if (!new Set(["record-status", "accept-complete"]).has(decision)) {
+              throw new Error(`Unsupported acceptance decision: ${decision}`);
+            }
+            if (!new Set(["standard", "production-launch"]).has(deliveryKind)) {
+              throw new Error(`Unsupported delivery kind: ${deliveryKind}`);
+            }
+            if (decision === "accept-complete" && stage === "human-review-pending") {
+              throw new Error("A child awaiting human review cannot be accepted as complete.");
+            }
+
+            const criterionEvidence = normalizeCriterionEvidence(process.env.CRITERION_EVIDENCE);
+            const isLaunchAcceptance =
+              deliveryKind === "production-launch" && decision === "accept-complete";
+            const deploymentEvidence = httpsUrl(
+              process.env.DEPLOYMENT_EVIDENCE,
+              "deployment_evidence",
+              isLaunchAcceptance,
+            );
+            const releaseApproval = httpsUrl(
+              process.env.RELEASE_APPROVAL,
+              "release_approval",
+              isLaunchAcceptance,
+            );
+            if (stage === "production-released" && deliveryKind !== "production-launch") {
+              throw new Error("The production-released stage is reserved for production launches.");
+            }
+            if (isLaunchAcceptance && stage !== "production-released") {
+              throw new Error("A production launch can only complete at production-released.");
+            }
+
+            const pullRequestResponse = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: prNumber,
+            });
+            const pullRequest = pullRequestResponse.data;
+            const expectedRepo = `${owner}/${repo}`;
             const baseRef = String(pullRequest.base.ref || "");
             const headRef = String(pullRequest.head.ref || "");
             const headRepo = String(pullRequest.head.repo?.full_name || "");
-            const expectedRepo = `${owner}/${repo}`;
-
-            if (headRepo !== expectedRepo) {
-              core.info(`Skipping PR #${prNumber}: head repository ${headRepo} is not ${expectedRepo}.`);
-              return;
-            }
-
             const baseMatch = baseRef.match(/^codex\/epic-(\d+)$/);
-            if (!baseMatch) {
-              core.info(`Skipping PR #${prNumber}: base branch ${baseRef} is not an epic branch.`);
-              return;
-            }
-
-            // Do not trust mutable PR body text to choose an issue to close.
-            // Agent-created child PRs use same-repository heads named codex/daily-issue-<issue>.
             const headMatch = headRef.match(/^codex\/daily-issue-(\d+)$/);
-            if (!headMatch) {
-              core.info(`Skipping PR #${prNumber}: head branch ${headRef} is not an agent child branch.`);
-              return;
+            if (!pullRequest.merged || !pullRequest.merged_at) {
+              throw new Error(`Pull request #${prNumber} has not been merged.`);
+            }
+            if (headRepo !== expectedRepo || !baseMatch || !headMatch) {
+              throw new Error(`Pull request #${prNumber} is not a same-repository epic child PR.`);
+            }
+            if (Number(headMatch[1]) !== issueNumber) {
+              throw new Error(`Pull request #${prNumber} does not deliver issue #${issueNumber}.`);
+            }
+            if (String(pullRequest.merge_commit_sha || "").toLowerCase() !== acceptedRevision) {
+              throw new Error(`Pull request #${prNumber} does not match accepted_revision.`);
             }
 
-            const issueNumber = Number(headMatch[1]);
-            if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
-              core.info("Agent child branch did not contain a valid issue number.");
-              return;
-            }
-            const issue = await github.rest.issues.get({
+            const epicNumber = Number(baseMatch[1]);
+            const issueResponse = await github.rest.issues.get({
               owner,
               repo,
               issue_number: issueNumber,
             });
-
-            if (issue.data.state === "closed") {
-              core.info(`Issue #${issueNumber} is already closed.`);
-              return;
+            const issue = issueResponse.data;
+            if (issue.pull_request) {
+              throw new Error(`#${issueNumber} is a pull request, not a child issue.`);
+            }
+            const parentResponse = await github.request(
+              "GET /repos/{owner}/{repo}/issues/{issue_number}/parent",
+              {
+                owner,
+                repo,
+                issue_number: issueNumber,
+                headers: { "X-GitHub-Api-Version": apiVersion },
+              },
+            );
+            if (parentResponse.data.number !== epicNumber) {
+              throw new Error(`#${issueNumber} is not a child of epic #${epicNumber}.`);
             }
 
-            await github.rest.issues.createComment({
-              owner,
-              repo,
-              issue_number: issueNumber,
-              body: `Closed automatically after PR #${prNumber} merged into epic branch \`${baseRef}\`.`,
-            });
+            const baseBranch = await github.rest.repos.getBranch({ owner, repo, branch: baseRef });
+            const baseHead = baseBranch.data.commit.sha;
+            if (!(await revisionIsOnBranch(acceptedRevision, baseHead))) {
+              throw new Error(`Accepted revision ${acceptedRevision} is not on ${baseRef}.`);
+            }
 
-            await github.rest.issues.update({
-              owner,
-              repo,
-              issue_number: issueNumber,
-              state: "closed",
-            });
+            // The marker contains only stable acceptance inputs so reruns and repeated
+            // dispatches are idempotent. The author and workflow run remain visible
+            // in the comment and GitHub's workflow-run audit trail.
+            const record = {
+              schema: 1,
+              issue: issueNumber,
+              epic: epicNumber,
+              pull_request: prNumber,
+              source_head_revision: pullRequest.head.sha,
+              accepted_revision: acceptedRevision,
+              lifecycle_stage: stage,
+              decision,
+              delivery_kind: deliveryKind,
+              criterion_evidence: criterionEvidence,
+              deployment_evidence: deploymentEvidence,
+              release_approval: releaseApproval,
+            };
+            const marker = decision === "accept-complete" ? acceptanceMarker : statusMarker;
+            const exactMarker = encodedRecord(marker, record);
+            const existingComments = await commentsFor(issueNumber);
+            const duplicate = existingComments.some(
+              (comment) => String(comment.body || "").includes(exactMarker),
+            );
+            if (duplicate && (decision !== "accept-complete" || issue.state === "closed")) {
+              core.info(`The requested ${decision} event is already recorded for issue #${issueNumber}.`);
+              return;
+            }
+            if (issue.state === "closed") {
+              throw new Error(`Issue #${issueNumber} is closed without this exact acceptance record.`);
+            }
+
+            if (decision === "accept-complete") {
+              const dependencies = await github.paginate(
+                "GET /repos/{owner}/{repo}/issues/{issue_number}/dependencies/blocked_by",
+                {
+                  owner,
+                  repo,
+                  issue_number: issueNumber,
+                  per_page: 100,
+                  headers: { "X-GitHub-Api-Version": apiVersion },
+                },
+              );
+              for (const dependency of dependencies) {
+                if (dependency.repository_url !== `https://api.github.com/repos/${owner}/${repo}`) {
+                  throw new Error(`Dependency #${dependency.number} is outside ${expectedRepo}.`);
+                }
+                if (dependency.state !== "closed") {
+                  throw new Error(`Dependency #${dependency.number} is still open.`);
+                }
+                const dependencyComments = await commentsFor(dependency.number);
+                const acceptedRecords = dependencyComments
+                  .map((comment) => recordFromComment(comment, acceptanceMarker))
+                  .filter(Boolean);
+                const acceptedDependency = acceptedRecords.find(
+                  (candidate) =>
+                    candidate.issue === dependency.number &&
+                    candidate.epic === epicNumber &&
+                    candidate.decision === "accept-complete" &&
+                    /^[0-9a-f]{40}$/.test(candidate.accepted_revision || ""),
+                );
+                if (!acceptedDependency) {
+                  throw new Error(
+                    `Dependency #${dependency.number} is closed without an accepted deliverable.`,
+                  );
+                }
+                if (!(await revisionIsOnBranch(acceptedDependency.accepted_revision, baseHead))) {
+                  throw new Error(
+                    `Accepted dependency #${dependency.number} is not present on ${baseRef}.`,
+                  );
+                }
+              }
+            }
+
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+            const verb = decision === "accept-complete" ? "Accepted" : "Recorded";
+            const evidenceLines = Object.entries(criterionEvidence).flatMap(
+              ([criterion, links]) => [
+                `- Criterion: \`${criterion}\``,
+                ...links.map((link) => `  - Evidence: <${link}>`),
+              ],
+            );
+            const body = [
+              exactMarker,
+              `${verb} by @${actor} through [workflow run ${context.runId}](${runUrl}).`,
+              "",
+              `- Lifecycle stage: \`${stage}\``,
+              `- Delivery kind: \`${deliveryKind}\``,
+              `- Pull request: #${prNumber}`,
+              `- Accepted revision: \`${acceptedRevision}\``,
+              `- Criterion evidence entries: ${Object.keys(criterionEvidence).length}`,
+              ...evidenceLines,
+              ...(deploymentEvidence ? [`- Deployment evidence: <${deploymentEvidence}>`] : []),
+              ...(releaseApproval ? [`- Release approval: <${releaseApproval}>`] : []),
+            ].join("\n");
+
+            if (!duplicate) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                body,
+              });
+            }
+
+            if (decision === "accept-complete") {
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                state: "closed",
+                state_reason: "completed",
+              });
+            } else {
+              core.info(`Issue #${issueNumber} remains open at lifecycle stage ${stage}.`);
+            }
