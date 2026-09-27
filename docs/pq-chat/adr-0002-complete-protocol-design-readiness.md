@@ -1,9 +1,10 @@
 # ADR-0002: Complete Protocol Design Readiness
 
 Status: **Blocked before design**  
-Date: 2026-09-24  
+Date: 2026-09-26<br>
 Decision gate: G3 of `scidsg/hushline#2365`  
-Issue: `scidsg/hushline#2368`
+Issue: `scidsg/hushline#2398` (replaces delivery scope from
+`scidsg/hushline#2368`)
 
 ## Context
 
@@ -25,8 +26,8 @@ both dependencies and inventories the deliverables that cannot yet be produced.
 <!-- prettier-ignore -->
 | Gate | Required input | Local evidence | Finding |
 | --- | --- | --- | --- |
-| G1 / `scidsg/hushline#2366` | Human-approved product and security contract at an exact commit | Commit `37abae6e11dd9c0e8306f5e962ae97504f5c0888`; [review packet](README.md#g1-review-packet) | **Unsatisfied:** product-maintainer and security-architect dispositions remain pending |
-| G2 / `scidsg/hushline#2367` | Passing, pinned browser protocol and reviewed suite | Commit `f84fb98e86286f3183f4c1f7e9f714549f10f9e2`; [ADR-0001](adr-0001-browser-protocol-candidate.md) and [evidence](g2-evidence.json) | **Unsatisfied:** the recorded decision is no-go and no suite is selected |
+| G1 / `scidsg/hushline#2396` | Human-approved product and security contract at an exact commit | Commit `da0f416e65fc64514ffb6a3c575ef0ba7c9e2f8b`; [review packet](README.md#g1-review-packet) and [approval record](g1-approval-record.json) | **Unsatisfied:** product-maintainer and security-reviewer dispositions remain pending |
+| G2 / `scidsg/hushline#2397` | Passing, pinned browser protocol and reviewed suite | Commit `f3275adbf7614bee8d9ad10d3b6fbe7d0efd863d`; [ADR-0001](adr-0001-browser-protocol-candidate.md), [evidence](g2-evidence.json), and [prototype](../../prototypes/pq-ratchet/README.md) | **Unsatisfied:** the recorded decision is no-go; the prototype is unexecuted, has no reference peer, and cannot persist the remote-identity trust map |
 
 A closed issue, merged artifact, package claim, or automated review is not a
 substitute for either required result.
@@ -39,6 +40,12 @@ formats, device/prekey semantics, recovery behavior, or migration behavior
 against the unresolved inputs. Doing so would either assume decisions reserved
 for G1 reviewers or build the combined system around a protocol candidate that
 G2 explicitly rejected.
+
+The executable harness added by G2 does not satisfy the issue's requirement for
+a passing prototype. Its machine-readable evidence records
+`implemented-not-executed`, all required protocol scenarios as `not_run`, and
+the official reference peer as `not_implemented`. Harness source alone cannot
+be promoted into reviewed wire fixtures or construction provenance.
 
 No complete integration specification, wire fixture, security approval, or
 independent review is claimed by this ADR. Existing production chat behavior,
@@ -61,8 +68,9 @@ Production-dependent tickets remain blocked.
 
 ## Unblocking and Review Sequence
 
-1. Record the designated G1 human approvals, including dated evidence and the
-   exact reviewed commit, and resolve every rejected or qualified row.
+1. Record the designated G1 human approvals in `g1-approval-record.json`,
+   including dated evidence and the exact reviewed commit, and resolve every
+   rejected or qualified row.
 2. Replace the G2 no-go only with a passing ADR and evidence set satisfying its
    reconsideration gate, including a pinned suite and named ownership.
 3. Update `g3-readiness.json` to reference those accepted commits. Draft the
@@ -75,6 +83,11 @@ Production-dependent tickets remain blocked.
 The author of a future specification cannot self-approve either review role.
 Approval must remain pending until the reviewers provide dated, linked
 evidence.
+
+The automation safeguard from `scidsg/hushline#2395` is present on the
+integration branch at commit `f64157494059066efedb11df0396e5aa0c22745b`.
+That prevents an automated merge from being mistaken for acceptance, but it
+does not satisfy either cryptographic prerequisite or either G3 human review.
 
 ## Consequences
 
