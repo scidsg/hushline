@@ -15,8 +15,9 @@ The PQ chat discovery work is split into independently reviewable gates:
   disposition is treated as evidence.
 - **G3:** the [complete-design readiness ADR](adr-0002-complete-protocol-design-readiness.md)
   and [machine-readable readiness record](g3-readiness.json) preserve the
-  prerequisite blocker for `scidsg/hushline#2368` and inventory every deferred
-  design and review artifact.
+  prerequisite blocker for `scidsg/hushline#2398` (which replaces delivery
+  scope from `scidsg/hushline#2368`) and inventory every deferred design and
+  review artifact.
 - **G4:** the [server-storage readiness ADR](adr-0003-server-storage-api-readiness.md)
   and [machine-readable readiness record](g4-readiness.json) preserve G3 as a
   hard prerequisite for `scidsg/hushline#2369` and inventory the schema, API,
@@ -86,9 +87,11 @@ Missing real-browser, reference-peer, reproducibility, vulnerability, and
 ownership evidence is recorded as missing rather than inferred from harness
 code or upstream claims.
 
-G3 is **blocked before design** because G1 remains pending human approval and
-G2 has no passing protocol candidate or reviewed suite. No combined protocol,
-archive, device-state, wire, or migration design is selected, and all reviewer
+G3 is **blocked before design** at the exact G1 and G2 revisions merged for
+`scidsg/hushline#2396` and `scidsg/hushline#2397`: G1 remains pending human
+approval, while G2 records a no-go and an unexecuted prototype rather than a
+passing protocol candidate or reviewed suite. No combined protocol, archive,
+device-state, wire, or migration design is selected, and all reviewer
 dispositions remain pending.
 
 G4 is **blocked before implementation** because G3 produced no reviewed schema

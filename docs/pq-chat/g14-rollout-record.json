@@ -41,7 +41,7 @@
     },
     {
       "gate": "G3",
-      "issue": "scidsg/hushline#2368",
+      "issue": "scidsg/hushline#2398",
       "observed_result": "blocked-prerequisites",
       "satisfied": false,
       "evidence": "g3-readiness.json"
