@@ -34,7 +34,7 @@
     },
     {
       "gate": "G2",
-      "issue": "scidsg/hushline#2367",
+      "issue": "scidsg/hushline#2397",
       "observed_result": "no-go",
       "satisfied": false,
       "evidence": "g2-evidence.json"

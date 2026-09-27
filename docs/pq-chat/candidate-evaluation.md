@@ -1,9 +1,10 @@
 # PQ Chat Browser Protocol Candidate Evaluation
 
 Status: **No-go at reviewed revisions; G2 is not closed as a successful gate**  
-Issue: `scidsg/hushline#2367`  
-Parent epic: `scidsg/hushline#2365`  
-Recorded: 2026-09-24  
+Issue: `scidsg/hushline#2397` (replaces delivery scope from
+`scidsg/hushline#2367`)<br>
+Parent epic: `scidsg/hushline#2365`<br>
+Recorded: 2026-09-26<br>
 Repository baseline: `37abae6e11dd9c0e8306f5e962ae97504f5c0888`
 
 ## Scope and Evidence Standard
@@ -26,6 +27,18 @@ Line evidence for all of these gates:
 - the G1 latency, transfer, memory, blocking, storage, and amplification
   measurements; and
 - route-specific CSP execution without an unapproved expansion.
+
+An [isolated synthetic browser prototype](../../prototypes/pq-ratchet/README.md)
+now implements the browser half of these checks. It requires Kyber prekey
+consumption, parses SignalMessage field 5 and the SPQR v1 epoch header, exercises
+bidirectional delivery, serialization, reload and transport faults, and records
+non-secret measurements. The committed lock records exact registry integrity,
+but the implementation environment could not resolve the npm registry, so the
+install, byte-hash verification, and execution result remain unrun. The wrapper
+also does not supply the required official reference peer or an export for the
+remote-identity trust map, so session continuation cannot establish complete
+identity-state persistence. Harness availability therefore does not change this
+decision.
 
 The detailed status is data, not prose, in
 [`g2-evidence.json`](g2-evidence.json). A repository test rejects a `go`
@@ -55,19 +68,19 @@ classical and Kyber prekey tombstoning remains an application responsibility.
 Sources reviewed:
 
 - [package listing and API](https://www.npmjs.com/package/@getmaapp/signal-wasm)
-- [source manifest](https://github.com/getmaapp/signal-wasm/blob/main/Cargo.toml)
+- [source manifest at npm `gitHead`](https://github.com/getmaapp/signal-wasm/blob/0a5e3cb8bf282efb3521d7cdac5476caf3fb1acd/Cargo.toml)
 - [0.6.6 changelog](https://github.com/getmaapp/signal-wasm/blob/main/CHANGELOG.md#066---2026-08-19)
 - [pinned libsignal revision](https://github.com/signalapp/libsignal/tree/b056faa6dd02961cff24064c54c089c52e1a0753)
 - [Signal PQXDH revision 3](https://signal.org/docs/specifications/pqxdh/)
 - [Signal Double/Triple Ratchet specification](https://signal.org/docs/specifications/doubleratchet/)
 
-The pin is not sufficient for a go decision. The reviewed public material does
-not bind the npm tarball to an exact wrapper commit in this repository, provide
-a reproducible-build attestation, or provide a Hush Line-generated SBOM and
-vulnerability result. GitHub reports no published libsignal security advisory,
-but absence from that single channel is not a dependency vulnerability audit.
-The wrapper's dated security report covers an older release and is not an
-independent audit of 0.6.6.
+The pin is not sufficient for a go decision. npm records the wrapper `gitHead`
+and tarball integrity, but there is no reproducible-build attestation proving
+that the published WASM was built from that source. There is also no Hush
+Line-generated SBOM or vulnerability result. GitHub reports no published
+libsignal security advisory, but absence from that single channel is not a
+dependency vulnerability audit. The wrapper's dated security report covers an
+older release and is not an independent audit of 0.6.6.
 
 Most importantly, no committed result exposes or independently verifies two or
 more completed SPQR epochs. Ciphertext round trips alone cannot distinguish

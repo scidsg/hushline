@@ -1,0 +1,20 @@
+{
+  "name": "hushline-pq-ratchet-prototype",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "serve": "node server.mjs",
+    "test": "playwright test",
+    "provenance": "node scripts/provenance.mjs"
+  },
+  "dependencies": {
+    "@getmaapp/signal-wasm": "0.6.6"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.55.1"
+  }
+}
