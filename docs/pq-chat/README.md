@@ -9,7 +9,10 @@ The PQ chat discovery work is split into independently reviewable gates:
 - **G2:** the [browser protocol candidate evaluation](candidate-evaluation.md),
   [machine-readable evidence manifest](g2-evidence.json), and
   [go/no-go ADR](adr-0001-browser-protocol-candidate.md) record the browser
-  implementation feasibility result for `scidsg/hushline#2367`.
+  implementation feasibility result for `scidsg/hushline#2397`. The
+  [isolated synthetic browser prototype](../../prototypes/pq-ratchet/README.md)
+  supplies an executable harness but no unexecuted result or missing human
+  disposition is treated as evidence.
 - **G3:** the [complete-design readiness ADR](adr-0002-complete-protocol-design-readiness.md)
   and [machine-readable readiness record](g3-readiness.json) preserve the
   prerequisite blocker for `scidsg/hushline#2368` and inventory every deferred
@@ -75,10 +78,13 @@ The PQ chat discovery work is split into independently reviewable gates:
   health observations, stop thresholds, safe rollback, documentation, and
   production evidence that remain blocked or pending.
 
-G2 is a **no-go at the reviewed revisions**. It does not add a cryptographic
-dependency or change production behavior. Missing real-browser, continuous-PQ
-epoch, reference-peer, reproducibility, vulnerability, and ownership evidence
-is recorded as missing rather than inferred from upstream claims.
+G2 is a **no-go at the reviewed revisions**. The isolated prototype adds no
+production cryptographic dependency and changes no production behavior. Its
+SPQR wire observer, traffic faults, reload path, benchmark collection, and CSP
+probe are ready to execute after the dependency lock is generated and reviewed.
+Missing real-browser, reference-peer, reproducibility, vulnerability, and
+ownership evidence is recorded as missing rather than inferred from harness
+code or upstream claims.
 
 G3 is **blocked before design** because G1 remains pending human approval and
 G2 has no passing protocol candidate or reviewed suite. No combined protocol,

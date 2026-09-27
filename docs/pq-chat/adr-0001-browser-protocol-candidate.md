@@ -1,9 +1,10 @@
 # ADR-0001: Browser Protocol Candidate Gate
 
 Status: **No-go**  
-Date: 2026-09-24  
+Date: 2026-09-26<br>
 Decision gate: G2 of `scidsg/hushline#2365`  
-Issue: `scidsg/hushline#2367`
+Issue: `scidsg/hushline#2397` (replaces delivery scope from
+`scidsg/hushline#2367`)
 
 ## Context
 
@@ -30,8 +31,8 @@ or browser support claim.
 it wraps the official libsignal revision and exposes the necessary session
 operations. It is not approved now because:
 
-1. the npm artifact is not tied here to an exact wrapper source commit and
-   reproducible build/SBOM;
+1. the npm artifact records an exact wrapper `gitHead`, but lacks a verified
+   source-to-binary reproducible build and reviewed SBOM;
 2. it implements round-3 Kyber1024 (`0x08`), not FIPS 203 ML-KEM, and that
    algorithm choice has not received Hush Line approval;
 3. Hush Line has not independently observed multiple SPQR epochs or a
@@ -49,6 +50,17 @@ absence of independent review make it unsuitable as the reference needed to
 validate itself. Official libsignal is the reference peer, not a browser build.
 OpenMLS is not advanced because its reviewed public suite/browser support does
 not satisfy this gate.
+
+The repository now contains an
+[executable isolated prototype](../../prototypes/pq-ratchet/README.md) for the
+browser-side candidate. It independently decodes SPQR v1 epoch metadata from
+the ciphertext wire field instead of equating successful decryption with PQ
+refresh. It remains unexecuted at this revision: registry DNS prevented a
+locked install and artifact-hash verification, and the official reference-peer
+adapter, required physical browsers, named owners, audit review, and human CSP
+disposition remain missing. The wrapper also cannot export its remote-identity
+trust map, so the prototype reports session continuation separately and fails
+the complete identity-state persistence criterion.
 
 ## Consequences
 

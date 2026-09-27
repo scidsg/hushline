@@ -27,6 +27,21 @@ def test_g2_evidence_is_linked_and_keeps_the_no_go_disposition() -> None:
     assert "Status: **No-go at reviewed revisions" in evaluation
     assert evidence["decision"] == "no-go"
     assert evidence["production_changes"] is False
+    assert evidence["issue"] == "scidsg/hushline#2397"
+    assert evidence["replaces_issue"] == "scidsg/hushline#2367"
+
+
+def test_g2_executable_prototype_does_not_claim_unrun_evidence() -> None:
+    evidence = _evidence()
+    prototype = evidence["prototype"]
+
+    assert prototype["path"] == "prototypes/pq-ratchet"
+    assert prototype["status"] == "implemented-not-executed"
+    assert prototype["dependency_lock"] == "committed-unexecuted"
+    assert prototype["identity_trust_persistence"] == "unsupported-by-wrapper"
+    assert prototype["reference_peer"] == "not_implemented"
+    assert prototype["results"] is None
+    assert evidence["decision"] == "no-go"
 
 
 def test_g2_candidate_pin_distinguishes_kyber_from_ml_kem() -> None:
@@ -36,6 +51,7 @@ def test_g2_candidate_pin_distinguishes_kyber_from_ml_kem() -> None:
     assert candidate["package_version"] == "0.6.6"
     assert candidate["upstream_version"] == "0.101.0"
     assert candidate["upstream_revision"] == ("b056faa6dd02961cff24064c54c089c52e1a0753")
+    assert candidate["wire_version"] == ("libsignal v0.101.0 serialization with SPQR v1 payloads")
     assert candidate["kem"] == "round-3 Kyber1024"
     assert candidate["kem_is_fips_203_ml_kem"] is False
     assert candidate["kem_wire_type"] == "0x08"
