@@ -25,3 +25,7 @@ Set one of these in deployed environments:
 - `SERVER_NAME=your-public-hostname`
 
 `PUBLIC_BASE_URL` is preferred for user-visible or third-party callback URLs because it pins both scheme and host. If neither value is set, production requests that need canonical external URLs will now fail closed instead of deriving the host from request headers.
+
+WebAuthn ceremonies require both `WEBAUTHN_RP_ID` and `WEBAUTHN_ORIGIN`. The RP ID is a hostname without a scheme or port; the origin is an exact origin such as `https://tips.example.org`. They are validated together and are never inferred from `Host`, `Forwarded`, or other proxy-controlled request headers. `WEBAUTHN_RP_NAME` defaults to `Hush Line`.
+
+See [WebAuthn verifier and privacy review](WEBAUTHN-SECURITY.md) for dependency, attestation, and authenticator-identity limitations.

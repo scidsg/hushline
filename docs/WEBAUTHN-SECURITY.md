@@ -1,0 +1,15 @@
+# WebAuthn verifier and privacy review
+
+Hush Line pins `webauthn` 3.0.1 (Duo Labs `py_webauthn`) for server-side WebAuthn parsing and verification. The project is production-stable, supports Python 3.10 and later, publishes source, and uses the BSD-3-Clause license, which is compatible with Hush Line's AGPL-3.0 distribution. The pinned release fixes rejection of malformed attestation format values.
+
+Its direct verification dependencies resolve in `poetry.lock` to `cbor2` 6.1.2 (MIT), `cryptography` 50.0.0 (Apache-2.0 or BSD-3-Clause), `pyasn1` 0.6.2 (BSD-2-Clause), `pyasn1-modules` 0.4.2 (BSD-2-Clause), and `pyOpenSSL` 26.4.0 (Apache-2.0). Those licenses are compatible with distribution of Hush Line. `pyOpenSSL` 26.4.0 is used because its declared range includes the existing `cryptography` 50 dependency. All of these packages remain subject to the repository dependency-audit workflow.
+
+The integration supplies an exact configured origin and RP ID to every verification call. Configuration fails closed when either value is absent or invalid, and request host or proxy headers are not trust inputs. Registration and authentication require user presence and user verification. Challenges are random, short-lived, account-, purpose-, and session-bound, stored only as hashes, rate limited, and atomically consumed before response verification.
+
+Registration requests `none` attestation. Hush Line does not retain attestation objects, AAGUIDs, certificates, or other authenticator-vendor identifiers. A security key proves control of a credential private key and the configured user-verification ceremony; it does not prove a person's civil identity, employment, device ownership, or that one physical authenticator is permanently unique. Synced credentials may be reported as multi-device and backed up, so they must not be represented as hardware-bound.
+
+Credential IDs and public keys are authentication material, not disclosure content, but they are excluded from account data exports and must not be logged. Verifier exceptions are converted to generic service errors so malformed credential data and public keys do not enter application logs.
+
+## Integration interfaces
+
+Enrollment callers use `WebAuthnCeremonyService.begin_registration()` and `finish_registration()`. Login callers use `begin_authentication()` and `finish_authentication()` with the default `authentication` purpose; reviewed recovery flows use the same pair with `WebAuthnPurpose.RECOVERY`. Callers obtain the binding from `current_webauthn_session_binding()` and must not supply a request host as ceremony configuration. The begin methods return JSON-ready browser options, and the finish methods return the persisted, account-owned credential only after successful verification.

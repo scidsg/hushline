@@ -1,9 +1,13 @@
 import json
 import os
+import re
+from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum, unique
+from ipaddress import ip_address
 from json import JSONDecodeError
 from typing import Any, Mapping, Optional, Self
+from urllib.parse import urlsplit
 
 import bleach
 from markupsafe import Markup
@@ -20,10 +24,110 @@ ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED = "ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED
 ENCRYPTED_FIELD_LEGACY_READS_ENABLED = "ENCRYPTED_FIELD_LEGACY_READS_ENABLED"
 ENCRYPTED_FIELD_WRITE_FORMAT = "ENCRYPTED_FIELD_WRITE_FORMAT"
 SPLASH_SCREEN_DURATION_MS = "SPLASH_SCREEN_DURATION_MS"
+WEBAUTHN_ORIGIN = "WEBAUTHN_ORIGIN"
+WEBAUTHN_RP_ID = "WEBAUTHN_RP_ID"
+WEBAUTHN_HOSTNAME_MAX_LENGTH = 253
+WEBAUTHN_RP_NAME_MAX_LENGTH = 100
 
 
 class ConfigParseError(Exception):
     pass
+
+
+@dataclass(frozen=True)
+class WebAuthnRelyingPartyConfig:
+    rp_id: str
+    origin: str
+    rp_name: str
+
+
+def validate_webauthn_relying_party_config(
+    config: Mapping[str, Any], *, required: bool
+) -> WebAuthnRelyingPartyConfig | None:
+    """Validate WebAuthn trust roots without consulting the current request."""
+    raw_rp_id = config.get(WEBAUTHN_RP_ID)
+    raw_origin = config.get(WEBAUTHN_ORIGIN)
+    if raw_rp_id is None and raw_origin is None:
+        if required:
+            raise ConfigParseError(
+                "WEBAUTHN_RP_ID and WEBAUTHN_ORIGIN must be explicitly configured"
+            )
+        return None
+    if not isinstance(raw_rp_id, str) or not raw_rp_id.strip():
+        raise ConfigParseError("WEBAUTHN_RP_ID must be a non-empty hostname")
+    if not isinstance(raw_origin, str) or not raw_origin.strip():
+        raise ConfigParseError("WEBAUTHN_ORIGIN must be an explicit origin")
+
+    rp_id = raw_rp_id.strip().lower()
+    if len(rp_id) > WEBAUTHN_HOSTNAME_MAX_LENGTH or any(char in rp_id for char in "/:@?#"):
+        raise ConfigParseError("WEBAUTHN_RP_ID must be a hostname without a scheme or port")
+    try:
+        rp_id.encode("ascii")
+    except UnicodeEncodeError as exc:
+        raise ConfigParseError("WEBAUTHN_RP_ID must use its ASCII IDNA form") from exc
+    try:
+        rp_ip = ip_address(rp_id)
+    except ValueError:
+        rp_ip = None
+    if rp_ip is None and any(
+        not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label)
+        for label in rp_id.split(".")
+    ):
+        raise ConfigParseError("WEBAUTHN_RP_ID must be a valid hostname")
+
+    origin = raw_origin.strip()
+    parsed = urlsplit(origin)
+    try:
+        parsed.port
+    except ValueError as exc:
+        raise ConfigParseError("WEBAUTHN_ORIGIN contains an invalid port") from exc
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.path
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ConfigParseError("WEBAUTHN_ORIGIN must contain only scheme, hostname, and port")
+    origin_host = parsed.hostname.lower()
+    try:
+        origin_host.encode("ascii")
+    except UnicodeEncodeError as exc:
+        raise ConfigParseError("WEBAUTHN_ORIGIN must use an ASCII IDNA hostname") from exc
+    if origin_host != rp_id and (rp_ip is not None or not origin_host.endswith(f".{rp_id}")):
+        raise ConfigParseError("WEBAUTHN_RP_ID must equal or be a parent of the origin hostname")
+
+    try:
+        parsed_ip = ip_address(origin_host)
+    except ValueError:
+        parsed_ip = None
+    if len(origin_host) > WEBAUTHN_HOSTNAME_MAX_LENGTH or (
+        parsed_ip is None
+        and any(
+            not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label)
+            for label in origin_host.split(".")
+        )
+    ):
+        raise ConfigParseError("WEBAUTHN_ORIGIN must contain a valid hostname")
+    is_local = origin_host == "localhost" or (parsed_ip is not None and parsed_ip.is_loopback)
+    is_onion = origin_host.endswith(".onion")
+    if parsed.scheme != "https" and not (is_local or is_onion):
+        raise ConfigParseError("WEBAUTHN_ORIGIN must use HTTPS except for localhost or onion sites")
+
+    rp_name = config.get("WEBAUTHN_RP_NAME", "Hush Line")
+    if (
+        not isinstance(rp_name, str)
+        or not rp_name.strip()
+        or len(rp_name) > WEBAUTHN_RP_NAME_MAX_LENGTH
+    ):
+        raise ConfigParseError("WEBAUTHN_RP_NAME must be between 1 and 100 characters")
+    return WebAuthnRelyingPartyConfig(
+        rp_id=rp_id,
+        origin=origin,
+        rp_name=rp_name.strip(),
+    )
 
 
 @unique
@@ -79,13 +183,40 @@ def load_config(env: Optional[Mapping[str, str]] = None) -> Mapping[str, Any]:
         _load_stripe,
         _load_blob_storage,
         _load_hushline_misc,
+        _load_webauthn,
         # load strings and JSON last as overrides
         _load_strings,
         _load_json,
     ]:
         config |= func(env)
 
+    validate_webauthn_relying_party_config(config, required=False)
     return config
+
+
+def _load_webauthn(env: Mapping[str, str]) -> Mapping[str, Any]:
+    data: dict[str, Any] = {}
+    for key in (WEBAUTHN_RP_ID, WEBAUTHN_ORIGIN, "WEBAUTHN_RP_NAME"):
+        if key in env:
+            data[key] = env[key]
+
+    integer_defaults = {
+        "WEBAUTHN_CHALLENGE_TTL_SECONDS": 300,
+        "WEBAUTHN_RATE_LIMIT_WINDOW_SECONDS": 600,
+        "WEBAUTHN_RATE_LIMIT_ACCOUNT_MAX": 10,
+        "WEBAUTHN_RATE_LIMIT_SESSION_MAX": 10,
+        "WEBAUTHN_MAX_RESPONSE_BYTES": 65536,
+        "WEBAUTHN_MAX_CREDENTIALS_PER_USER": 20,
+    }
+    for key, default in integer_defaults.items():
+        try:
+            value = int(env.get(key, default))
+        except (TypeError, ValueError) as exc:
+            raise ConfigParseError(f"{key} must be an integer") from exc
+        if value <= 0:
+            raise ConfigParseError(f"{key} must be greater than zero")
+        data[key] = value
+    return data
 
 
 def _load_flask(env: Mapping[str, str]) -> Mapping[str, Any]:

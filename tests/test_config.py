@@ -13,6 +13,8 @@ from hushline.config import (
     PASSWORD_HASH_REHASH_ON_AUTH_ENABLED,
     PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT,
     SPLASH_SCREEN_DURATION_MS,
+    WEBAUTHN_ORIGIN,
+    WEBAUTHN_RP_ID,
     AliasMode,
     ConfigParseError,
     EncryptedFieldWriteFormat,
@@ -123,6 +125,36 @@ def test_public_base_url_invalid(value: str, match: str) -> None:
 
     with pytest.raises(ConfigParseError, match=match):
         load_config(env)
+
+
+def test_webauthn_relying_party_configuration_is_explicit_and_validated() -> None:
+    cfg = load_config(
+        {
+            WEBAUTHN_RP_ID: "example.org",
+            WEBAUTHN_ORIGIN: "https://tips.example.org",
+        }
+    )
+    assert cfg[WEBAUTHN_RP_ID] == "example.org"
+    assert cfg[WEBAUTHN_ORIGIN] == "https://tips.example.org"
+
+
+@pytest.mark.parametrize(
+    ("rp_id", "origin"),
+    [
+        ("", ""),
+        ("example.org", ""),
+        ("", "https://example.org"),
+        ("example.org", "http://example.org"),
+        ("example.org", "https://attacker.example"),
+        ("https://example.org", "https://example.org"),
+        ("example.org", "https://example.org/path"),
+        ("example.org", "https://bad_host.example.org"),
+        ("127.0.0.1", "http://subdomain.127.0.0.1"),
+    ],
+)
+def test_webauthn_relying_party_configuration_fails_closed(rp_id: str, origin: str) -> None:
+    with pytest.raises(ConfigParseError, match="WEBAUTHN"):
+        load_config({WEBAUTHN_RP_ID: rp_id, WEBAUTHN_ORIGIN: origin})
 
 
 def test_smtp_notification_reply_to_loads() -> None:
