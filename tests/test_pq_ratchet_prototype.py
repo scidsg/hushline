@@ -30,9 +30,12 @@ def test_prototype_observes_wire_epochs_and_required_faults() -> None:
     assert "epoch.value > 0" in source
     assert "handshakeResult.kyberPreKeyId !== undefined" in source
     assert "prekeyStore.export_pre_key(key.id)" in source
+    assert 'kem: "round-3 Kyber1024"' in source
+    assert "kem_is_fips_203_ml_kem: false" in source
     for requirement in (
         "bidirectional",
         "state_reload",
+        "application_identity_binding_verified",
         "dropped_message_recovered",
         "reordered_messages_recovered",
         "replay.rejected",
@@ -51,6 +54,7 @@ def test_prototype_keeps_evidence_non_secret_and_reference_peer_open() -> None:
     returned_report = source[report_start:report_end]
     assert "SYNTHETIC_MESSAGE" not in returned_report
     assert 'reference_peer: { status: "not_run" }' in returned_report
+    assert "trusted_peer_identity" not in returned_report
     assert "must never contain\nplaintext, private keys, ratchet state" in readme
     assert "Keep issue `scidsg/hushline#2397` open" in readme
 
@@ -63,3 +67,24 @@ def test_prototype_tests_existing_csp_without_changing_production_policy() -> No
     assert "strictCsp ? \"'self'\"" in server
     assert "\"'self' 'wasm-unsafe-eval'\"" in server
     assert "current conversation CSP does not silently broaden" in browser_test
+
+
+def test_prototype_continues_in_memory_when_session_storage_is_unavailable() -> None:
+    source = (PROTOTYPE / "src" / "prototype.mjs").read_text(encoding="utf-8")
+    browser_test = (PROTOTYPE / "tests" / "prototype.spec.mjs").read_text(encoding="utf-8")
+
+    assert "fail_closed_after_page_reload: true" in source
+    assert "in_memory_export_import_passed: true" in source
+    assert "expect(result.scenarioContinued).toBe(true)" in browser_test
+    assert "expect(result.resume.resumed).toBe(false)" in browser_test
+
+
+def test_manual_report_requires_reload_evidence_before_download() -> None:
+    source = (PROTOTYPE / "src" / "prototype.mjs").read_text(encoding="utf-8")
+    page = (PROTOTYPE / "src" / "index.html").read_text(encoding="utf-8")
+
+    assert 'const REPORT_KEY = "hushline-pq-prototype-synthetic-report-v1"' in source
+    assert 'document.querySelector("#resume").hidden = false' in source
+    assert "page_reload: pageReload" in source
+    assert 'id="resume"' in page
+    assert 'id="download"' in page

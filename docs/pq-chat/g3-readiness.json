@@ -44,7 +44,7 @@
         "g2-evidence.json",
         "../../prototypes/pq-ratchet/README.md"
       ],
-      "blocker": "No browser protocol candidate or reviewed suite passed the G2 evidence gate; the prototype is implemented but unexecuted, has no reference peer, and cannot persist the remote-identity trust map."
+      "blocker": "No browser protocol candidate or reviewed suite passed the G2 evidence gate; the prototype is implemented but unexecuted and has no official reference-peer result."
     }
   ],
   "required_deliverables": [

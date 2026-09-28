@@ -13,13 +13,15 @@ PQXDH setup and continuous hybrid PQ ratcheting. The implementation must retain
 normal-login history, complete-copy confidentiality, two-party offline
 delivery, browser restrictions, performance budgets, and the current security
 claim limits. A package claim or a PQ handshake followed only by classical
-ratcheting is insufficient.
+ratcheting is insufficient. The proposed G1 contract is the development
+baseline; its pending human disposition does not block this prototype or
+technical evidence work.
 
 The [candidate evaluation](candidate-evaluation.md) found one plausible WASM
 wrapper, one divergent pure-TypeScript profile, and official libsignal as a
 native reference peer. None has a complete Hush Line evidence set. The G1
-contract also remains pending human approval, so a successful G2 result could
-not silently choose among unresolved product/security decisions.
+contract still requires human acceptance before release, and a successful G2
+result cannot silently change its product or security boundaries.
 
 ## Decision
 
@@ -59,8 +61,8 @@ refresh. It remains unexecuted at this revision: registry DNS prevented a
 locked install and artifact-hash verification, and the official reference-peer
 adapter, required physical browsers, named owners, audit review, and human CSP
 disposition remain missing. The wrapper also cannot export its remote-identity
-trust map, so the prototype reports session continuation separately and fails
-the complete identity-state persistence criterion.
+trust map, so the prototype persists and enforces an explicit application-owned
+public-key fingerprint binding while reporting the wrapper limitation.
 
 ## Consequences
 
@@ -75,8 +77,9 @@ the complete identity-state persistence criterion.
 
 ## Costed Reconsideration
 
-Reconsideration is a separate, time-boxed engineering spike after G1 approval
-and named ownership. Planning estimate, not a delivery commitment:
+Reconsideration is a time-boxed engineering spike against the proposed G1
+contract. Named ownership and final human acceptance remain release gates, not
+development prerequisites. Planning estimate, not a delivery commitment:
 
 <!-- prettier-ignore -->
 | Work | Estimate |

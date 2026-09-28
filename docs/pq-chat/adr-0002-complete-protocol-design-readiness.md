@@ -27,7 +27,7 @@ both dependencies and inventories the deliverables that cannot yet be produced.
 | Gate | Required input | Local evidence | Finding |
 | --- | --- | --- | --- |
 | G1 / `scidsg/hushline#2396` | Human-approved product and security contract at an exact commit | Commit `da0f416e65fc64514ffb6a3c575ef0ba7c9e2f8b`; [review packet](README.md#g1-review-packet) and [approval record](g1-approval-record.json) | **Unsatisfied:** product-maintainer and security-reviewer dispositions remain pending |
-| G2 / `scidsg/hushline#2397` | Passing, pinned browser protocol and reviewed suite | Commit `f3275adbf7614bee8d9ad10d3b6fbe7d0efd863d`; [ADR-0001](adr-0001-browser-protocol-candidate.md), [evidence](g2-evidence.json), and [prototype](../../prototypes/pq-ratchet/README.md) | **Unsatisfied:** the recorded decision is no-go; the prototype is unexecuted, has no reference peer, and cannot persist the remote-identity trust map |
+| G2 / `scidsg/hushline#2397` | Passing, pinned browser protocol and reviewed suite | Commit `f3275adbf7614bee8d9ad10d3b6fbe7d0efd863d`; [ADR-0001](adr-0001-browser-protocol-candidate.md), [evidence](g2-evidence.json), and [prototype](../../prototypes/pq-ratchet/README.md) | **Unsatisfied:** the recorded decision is no-go; the prototype is unexecuted and has no official reference-peer result |
 
 A closed issue, merged artifact, package claim, or automated review is not a
 substitute for either required result.

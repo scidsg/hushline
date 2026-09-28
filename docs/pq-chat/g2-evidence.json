@@ -12,7 +12,7 @@
     "status": "implemented-not-executed",
     "dependency_lock": "committed-unexecuted",
     "spqr_observation": "SignalMessage protobuf field 5; SPQR v1 serialized version and epoch varints",
-    "identity_trust_persistence": "unsupported-by-wrapper",
+    "identity_trust_persistence": "application-binding-implemented-not-executed; wrapper-store-export-unsupported",
     "reference_peer": "not_implemented",
     "results": null
   },

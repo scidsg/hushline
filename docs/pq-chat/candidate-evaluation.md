@@ -35,10 +35,11 @@ bidirectional delivery, serialization, reload and transport faults, and records
 non-secret measurements. The committed lock records exact registry integrity,
 but the implementation environment could not resolve the npm registry, so the
 install, byte-hash verification, and execution result remain unrun. The wrapper
-also does not supply the required official reference peer or an export for the
-remote-identity trust map, so session continuation cannot establish complete
-identity-state persistence. Harness availability therefore does not change this
-decision.
+does not supply the required official reference peer or an export for the
+remote-identity trust map. The harness therefore persists and enforces an
+application-owned public-key fingerprint binding while clearly reporting that
+the wrapper store itself is not exported. Harness availability therefore does
+not change this decision.
 
 The detailed status is data, not prose, in
 [`g2-evidence.json`](g2-evidence.json). A repository test rejects a `go`

@@ -11,7 +11,26 @@ main {
 
 button {
   font: inherit;
+  margin-block: 0.5rem;
   padding: 0.6rem 1rem;
+}
+
+fieldset {
+  display: grid;
+  gap: 0.75rem;
+  margin-block: 1rem;
+}
+
+label {
+  display: grid;
+  gap: 0.25rem;
+}
+
+input,
+select {
+  font: inherit;
+  max-width: 32rem;
+  padding: 0.4rem;
 }
 
 pre {
