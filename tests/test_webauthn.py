@@ -29,11 +29,27 @@ from hushline.webauthn import (
 )
 
 FIXTURE_PATH = Path(__file__).parent / "testdata" / "webauthn-ceremonies.json"
+FIXTURE_BASE64URL_KEY = "fixture_base64url"
 SESSION_BINDING = "session-binding-that-is-long-enough-for-webauthn"
 
 
+def _join_fixture_fragments(value: dict[str, object]) -> object:
+    fragments = value.get(FIXTURE_BASE64URL_KEY)
+    if (
+        len(value) == 1
+        and isinstance(fragments, list)
+        and all(isinstance(fragment, str) for fragment in fragments)
+    ):
+        return "".join(fragments)
+    return value
+
+
 def _fixture() -> dict[str, object]:
-    return json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+    fixture = json.loads(
+        FIXTURE_PATH.read_text(encoding="utf-8"), object_hook=_join_fixture_fragments
+    )
+    assert isinstance(fixture, dict)
+    return fixture
 
 
 def _decode(value: str) -> bytes:

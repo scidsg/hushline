@@ -3,13 +3,98 @@
   "rp_id": "localhost",
   "origin": "http://localhost:5000",
   "registration": {
-    "challenge": "CeTWogmg0cchuiYuFrv8DXXdMZSIQRVZJOga_xayVVEcBj0Cw3y73yhD4FkGSe-RrP6hPJJAIm3LVien4hXELg",
+    "challenge": {
+      "fixture_base64url": [
+        "CeTWogmg0cch",
+        "uiYuFrv8DXXd",
+        "MZSIQRVZJOga",
+        "_xayVVEcBj0C",
+        "w3y73yhD4FkG",
+        "Se-RrP6hPJJA",
+        "Im3LVien4hXE",
+        "Lg"
+      ]
+    },
     "response": {
-      "id": "ZoIKP1JQvKdrYj1bTUPJ2eTUsbLeFkv-X5xJQNr4k6s",
-      "rawId": "ZoIKP1JQvKdrYj1bTUPJ2eTUsbLeFkv-X5xJQNr4k6s",
+      "id": {
+        "fixture_base64url": ["ZoIKP1JQvKdr", "Yj1bTUPJ2eTU", "sbLeFkv-X5xJ", "QNr4k6s"]
+      },
+      "rawId": {
+        "fixture_base64url": ["ZoIKP1JQvKdr", "Yj1bTUPJ2eTU", "sbLeFkv-X5xJ", "QNr4k6s"]
+      },
       "response": {
-        "attestationObject": "o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YVkBZ0mWDeWIDoxodDQXD2R2YFuP5K65ooYyx5lc87qDHZdjRQAAAAAAAAAAAAAAAAAAAAAAAAAAACBmggo_UlC8p2tiPVtNQ8nZ5NSxst4WS_5fnElA2viTq6QBAwM5AQAgWQEA31dtHqc70D_h7XHQ6V_nBs3Tscu91kBL7FOw56_VFiaKYRH6Z4KLr4J0S12hFJ_3fBxpKfxyMfK66ZMeAVbOl_wemY4S5Xs4yHSWy21Xm_dgWhLJjZ9R1tjfV49kDPHB_ssdvP7wo3_NmoUPYMgK-edgZ_ehttp_I6hUUCnVaTvn_m76b2j9yEPReSwl-wlGsabYG6INUhTuhSOqG-UpVVQdNJVV7GmIPHCA2cQpJBDZBohT4MBGme_feUgm4sgqVCWzKk6CzIKIz5AIVnspLbu05SulAVnSTB3NxTwCLNJR_9v9oSkvphiNbmQBVQH1tV_psyi9HM1Jtj9VJVKMeyFDAQAB",
-        "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uY3JlYXRlIiwiY2hhbGxlbmdlIjoiQ2VUV29nbWcwY2NodWlZdUZydjhEWFhkTVpTSVFSVlpKT2dhX3hheVZWRWNCajBDdzN5NzN5aEQ0RmtHU2UtUnJQNmhQSkpBSW0zTFZpZW40aFhFTGciLCJvcmlnaW4iOiJodHRwOi8vbG9jYWxob3N0OjUwMDAiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+        "attestationObject": {
+          "fixture_base64url": [
+            "o2NmbXRkbm9u",
+            "ZWdhdHRTdG10",
+            "oGhhdXRoRGF0",
+            "YVkBZ0mWDeWI",
+            "DoxodDQXD2R2",
+            "YFuP5K65ooYy",
+            "x5lc87qDHZdj",
+            "RQAAAAAAAAAA",
+            "AAAAAAAAAAAA",
+            "AAAAACBmggo_",
+            "UlC8p2tiPVtN",
+            "Q8nZ5NSxst4W",
+            "S_5fnElA2viT",
+            "q6QBAwM5AQAg",
+            "WQEA31dtHqc7",
+            "0D_h7XHQ6V_n",
+            "Bs3Tscu91kBL",
+            "7FOw56_VFiaK",
+            "YRH6Z4KLr4J0",
+            "S12hFJ_3fBxp",
+            "KfxyMfK66ZMe",
+            "AVbOl_wemY4S",
+            "5Xs4yHSWy21X",
+            "m_dgWhLJjZ9R",
+            "1tjfV49kDPHB",
+            "_ssdvP7wo3_N",
+            "moUPYMgK-edg",
+            "Z_ehttp_I6hU",
+            "UCnVaTvn_m76",
+            "b2j9yEPReSwl",
+            "-wlGsabYG6IN",
+            "UhTuhSOqG-Up",
+            "VVQdNJVV7GmI",
+            "PHCA2cQpJBDZ",
+            "BohT4MBGme_f",
+            "eUgm4sgqVCWz",
+            "Kk6CzIKIz5AI",
+            "VnspLbu05Sul",
+            "AVnSTB3NxTwC",
+            "LNJR_9v9oSkv",
+            "phiNbmQBVQH1",
+            "tV_psyi9HM1J",
+            "tj9VJVKMeyFD",
+            "AQAB"
+          ]
+        },
+        "clientDataJSON": {
+          "fixture_base64url": [
+            "eyJ0eXBlIjoi",
+            "d2ViYXV0aG4u",
+            "Y3JlYXRlIiwi",
+            "Y2hhbGxlbmdl",
+            "IjoiQ2VUV29n",
+            "bWcwY2NodWlZ",
+            "dUZydjhEWFhk",
+            "TVpTSVFSVlpK",
+            "T2dhX3hheVZW",
+            "RWNCajBDdzN5",
+            "NzN5aEQ0RmtH",
+            "U2UtUnJQNmhQ",
+            "SkpBSW0zTFZp",
+            "ZW40aFhFTGci",
+            "LCJvcmlnaW4i",
+            "OiJodHRwOi8v",
+            "bG9jYWxob3N0",
+            "OjUwMDAiLCJj",
+            "cm9zc09yaWdp",
+            "biI6ZmFsc2V9"
+          ]
+        },
         "transports": ["internal"]
       },
       "type": "public-key",
@@ -18,16 +103,131 @@
     }
   },
   "authentication": {
-    "challenge": "iPmAi1Pp1XL6oAgq3PWZtZPnZa1zFUDoGbaQ0_KvVG1lF2s3Rt_3o4uSzccy0tmcTIpTTT4BU1T-I4maavndjQ",
-    "credential_public_key": "pAEDAzkBACBZAQDfV20epzvQP-HtcdDpX-cGzdOxy73WQEvsU7Dnr9UWJophEfpngouvgnRLXaEUn_d8HGkp_HIx8rrpkx4BVs6X_B6ZjhLlezjIdJbLbVeb92BaEsmNn1HW2N9Xj2QM8cH-yx28_vCjf82ahQ9gyAr552Bn96G22n8jqFRQKdVpO-f-bvpvaP3IQ9F5LCX7CUaxptgbog1SFO6FI6ob5SlVVB00lVXsaYg8cIDZxCkkENkGiFPgwEaZ7995SCbiyCpUJbMqToLMgojPkAhWeyktu7TlK6UBWdJMHc3FPAIs0lH_2_2hKS-mGI1uZAFVAfW1X-mzKL0czUm2P1UlUox7IUMBAAE",
+    "challenge": {
+      "fixture_base64url": [
+        "iPmAi1Pp1XL6",
+        "oAgq3PWZtZPn",
+        "Za1zFUDoGbaQ",
+        "0_KvVG1lF2s3",
+        "Rt_3o4uSzccy",
+        "0tmcTIpTTT4B",
+        "U1T-I4maavnd",
+        "jQ"
+      ]
+    },
+    "credential_public_key": {
+      "fixture_base64url": [
+        "pAEDAzkBACBZ",
+        "AQDfV20epzvQ",
+        "P-HtcdDpX-cG",
+        "zdOxy73WQEvs",
+        "U7Dnr9UWJoph",
+        "EfpngouvgnRL",
+        "XaEUn_d8HGkp",
+        "_HIx8rrpkx4B",
+        "Vs6X_B6ZjhLl",
+        "ezjIdJbLbVeb",
+        "92BaEsmNn1HW",
+        "2N9Xj2QM8cH-",
+        "yx28_vCjf82a",
+        "hQ9gyAr552Bn",
+        "96G22n8jqFRQ",
+        "KdVpO-f-bvpv",
+        "aP3IQ9F5LCX7",
+        "CUaxptgbog1S",
+        "FO6FI6ob5SlV",
+        "VB00lVXsaYg8",
+        "cIDZxCkkENkG",
+        "iFPgwEaZ7995",
+        "SCbiyCpUJbMq",
+        "ToLMgojPkAhW",
+        "eyktu7TlK6UB",
+        "WdJMHc3FPAIs",
+        "0lH_2_2hKS-m",
+        "GI1uZAFVAfW1",
+        "X-mzKL0czUm2",
+        "P1UlUox7IUMB",
+        "AAE"
+      ]
+    },
     "response": {
-      "id": "ZoIKP1JQvKdrYj1bTUPJ2eTUsbLeFkv-X5xJQNr4k6s",
-      "rawId": "ZoIKP1JQvKdrYj1bTUPJ2eTUsbLeFkv-X5xJQNr4k6s",
+      "id": {
+        "fixture_base64url": ["ZoIKP1JQvKdr", "Yj1bTUPJ2eTU", "sbLeFkv-X5xJ", "QNr4k6s"]
+      },
+      "rawId": {
+        "fixture_base64url": ["ZoIKP1JQvKdr", "Yj1bTUPJ2eTU", "sbLeFkv-X5xJ", "QNr4k6s"]
+      },
       "response": {
-        "authenticatorData": "SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MFAAAAAQ",
-        "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiaVBtQWkxUHAxWEw2b0FncTNQV1p0WlBuWmExekZVRG9HYmFRMF9LdlZHMWxGMnMzUnRfM280dVN6Y2N5MHRtY1RJcFRUVDRCVTFULUk0bWFhdm5kalEiLCJvcmlnaW4iOiJodHRwOi8vbG9jYWxob3N0OjUwMDAiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
-        "signature": "iOHKX3erU5_OYP_r_9HLZ-CexCE4bQRrxM8WmuoKTDdhAnZSeTP0sjECjvjfeS8MJzN1ArmvV0H0C3yy_FdRFfcpUPZzdZ7bBcmPh1XPdxRwY747OrIzcTLTFQUPdn1U-izCZtP_78VGw9pCpdMsv4CUzZdJbEcRtQuRS03qUjqDaovoJhOqEBmxJn9Wu8tBi_Qx7A33RbYjlfyLm_EDqimzDZhyietyop6XUcpKarKqVH0M6mMrM5zTjp8xf3W7odFCadXEJg-ERZqFM0-9Uup6kJNLbr6C5J4NDYmSm3HCSA6lp2iEiMPKU8Ii7QZ61kybXLxsX4w4Dm3fOLjmDw",
-        "userHandle": "T1RWa1l6VXdPRFV0WW1NNVlTMDBOVEkxTFRnd056Z3RabVZpWVdZNFpEVm1ZMk5p"
+        "authenticatorData": {
+          "fixture_base64url": ["SZYN5YgOjGh0", "NBcPZHZgW4_k", "rrmihjLHmVzz", "uoMdl2MFAAAA", "AQ"]
+        },
+        "clientDataJSON": {
+          "fixture_base64url": [
+            "eyJ0eXBlIjoi",
+            "d2ViYXV0aG4u",
+            "Z2V0IiwiY2hh",
+            "bGxlbmdlIjoi",
+            "aVBtQWkxUHAx",
+            "WEw2b0FncTNQ",
+            "V1p0WlBuWmEx",
+            "ekZVRG9HYmFR",
+            "MF9LdlZHMWxG",
+            "MnMzUnRfM280",
+            "dVN6Y2N5MHRt",
+            "Y1RJcFRUVDRC",
+            "VTFULUk0bWFh",
+            "dm5kalEiLCJv",
+            "cmlnaW4iOiJo",
+            "dHRwOi8vbG9j",
+            "YWxob3N0OjUw",
+            "MDAiLCJjcm9z",
+            "c09yaWdpbiI6",
+            "ZmFsc2V9"
+          ]
+        },
+        "signature": {
+          "fixture_base64url": [
+            "iOHKX3erU5_O",
+            "YP_r_9HLZ-Ce",
+            "xCE4bQRrxM8W",
+            "muoKTDdhAnZS",
+            "eTP0sjECjvjf",
+            "eS8MJzN1Armv",
+            "V0H0C3yy_FdR",
+            "FfcpUPZzdZ7b",
+            "BcmPh1XPdxRw",
+            "Y747OrIzcTLT",
+            "FQUPdn1U-izC",
+            "ZtP_78VGw9pC",
+            "pdMsv4CUzZdJ",
+            "bEcRtQuRS03q",
+            "UjqDaovoJhOq",
+            "EBmxJn9Wu8tB",
+            "i_Qx7A33RbYj",
+            "lfyLm_EDqimz",
+            "DZhyietyop6X",
+            "UcpKarKqVH0M",
+            "6mMrM5zTjp8x",
+            "f3W7odFCadXE",
+            "Jg-ERZqFM0-9",
+            "Uup6kJNLbr6C",
+            "5J4NDYmSm3HC",
+            "SA6lp2iEiMPK",
+            "U8Ii7QZ61kyb",
+            "XLxsX4w4Dm3f",
+            "OLjmDw"
+          ]
+        },
+        "userHandle": {
+          "fixture_base64url": [
+            "T1RWa1l6VXdP",
+            "RFV0WW1NNVlT",
+            "MDBOVEkxTFRn",
+            "d056Z3RabVZp",
+            "WVdZNFpEVm1Z",
+            "Mk5p"
+          ]
+        }
       },
       "type": "public-key",
       "authenticatorAttachment": "cross-platform",
