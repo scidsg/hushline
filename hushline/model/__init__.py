@@ -55,3 +55,4 @@ from hushline.model.stripe_invoice import StripeInvoice
 from hushline.model.tier import Tier
 from hushline.model.user import User
 from hushline.model.username import Username
+from hushline.model.webauthn import WebAuthnChallenge, WebAuthnCredential, WebAuthnUserHandle

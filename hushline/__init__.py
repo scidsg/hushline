@@ -16,7 +16,12 @@ from hushline.cli_encrypted_field import register_encrypted_field_commands
 from hushline.cli_password_hash import register_password_hash_commands
 from hushline.cli_reg import register_reg_commands
 from hushline.cli_stripe import register_stripe_commands
-from hushline.config import SPLASH_SCREEN_DURATION_MS, AliasMode, load_config
+from hushline.config import (
+    SPLASH_SCREEN_DURATION_MS,
+    AliasMode,
+    load_config,
+    validate_webauthn_relying_party_config,
+)
 from hushline.db import db, migrate
 from hushline.external_urls import canonical_external_url
 from hushline.md import md_to_html
@@ -62,6 +67,7 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
     # hushline specific configs
 
     app.config.from_mapping(config)
+    validate_webauthn_relying_party_config(app.config, required=False)
     configure_jinja(app)
     db.init_app(app)
     migrate.init_app(app, db)
