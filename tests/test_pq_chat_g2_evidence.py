@@ -38,7 +38,9 @@ def test_g2_executable_prototype_does_not_claim_unrun_evidence() -> None:
     assert prototype["path"] == "prototypes/pq-ratchet"
     assert prototype["status"] == "implemented-not-executed"
     assert prototype["dependency_lock"] == "committed-unexecuted"
-    assert prototype["identity_trust_persistence"] == "unsupported-by-wrapper"
+    assert prototype["identity_trust_persistence"] == (
+        "application-binding-implemented-not-executed; wrapper-store-export-unsupported"
+    )
     assert prototype["reference_peer"] == "not_implemented"
     assert prototype["results"] is None
     assert evidence["decision"] == "no-go"

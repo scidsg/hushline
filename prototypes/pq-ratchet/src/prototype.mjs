@@ -23,6 +23,35 @@ const SYNTHETIC_MESSAGE = encoder.encode(
   "fictional Hush Line PQ prototype message",
 );
 const SNAPSHOT_KEY = "hushline-pq-prototype-synthetic-state-v1";
+const REPORT_KEY = "hushline-pq-prototype-synthetic-report-v1";
+const IMPLEMENTATION = Object.freeze({
+  candidate: "@getmaapp/signal-wasm",
+  candidate_version: "0.6.6",
+  declared_license: "AGPL-3.0-only",
+  kem: "round-3 Kyber1024",
+  kem_is_fips_203_ml_kem: false,
+  kem_wire_type: "0x08",
+  npm_integrity:
+    "sha512-cYpzAe+HV1xfiXJ1tfDEvAjNkIsKwQApmFgniWJw/dTonOx4By6NzJ7J5izi+pjvfrn5zuXa0TmcHJ7Y/bLZYg==",
+  pqxdh_revision: 3,
+  spqr_wire_version: 1,
+  upstream: "signalapp/libsignal",
+  upstream_revision: "b056faa6dd02961cff24064c54c089c52e1a0753",
+  upstream_version: "0.101.0",
+  wrapper_source_revision: "0a5e3cb8bf282efb3521d7cdac5476caf3fb1acd",
+});
+const FIXTURE = Object.freeze({
+  implementation: IMPLEMENTATION,
+  schema_version: 1,
+  scenarios: [
+    "offline-pqxdh",
+    "bidirectional-traffic",
+    "two-spqr-epochs",
+    "state-export-import",
+    "drop-reorder-replay",
+  ],
+  synthetic_plaintext_bytes: SYNTHETIC_MESSAGE.length,
+});
 
 function invariant(value, message) {
   if (!value) throw new Error(message);
@@ -128,6 +157,7 @@ async function createParticipant(name, keyBase) {
   );
   return {
     address: new ProtocolAddress(name, 1),
+    identityFingerprint: await sha256(publicKey.serialize()),
     identityKeyPair,
     identityStore,
     kyberPrekey,
@@ -139,7 +169,19 @@ async function createParticipant(name, keyBase) {
     sessionStore,
     signedPrekey,
     signedPrekeyStore,
+    trustedPeerIdentity: null,
   };
+}
+
+function bindPeerIdentity(participant, peer) {
+  participant.trustedPeerIdentity = peer.identityFingerprint;
+}
+
+function verifyPeerIdentity(participant, peer) {
+  invariant(
+    participant.trustedPeerIdentity === peer.identityFingerprint,
+    "peer identity binding mismatch",
+  );
 }
 
 async function establish(alice, bob) {
@@ -162,6 +204,7 @@ async function establish(alice, bob) {
 }
 
 async function encrypt(sender, recipient) {
+  verifyPeerIdentity(sender, recipient);
   return encryptMessage(
     SYNTHETIC_MESSAGE,
     recipient.address,
@@ -172,6 +215,7 @@ async function encrypt(sender, recipient) {
 }
 
 async function decrypt(recipient, sender, ciphertext) {
+  verifyPeerIdentity(recipient, sender);
   const result = await decryptMessage(
     ciphertext.body,
     ciphertext.message_type,
@@ -221,6 +265,7 @@ async function snapshot(participant, peerAddress) {
   invariant(session, "session missing from saved state");
   return {
     identity: encodeBytes(participant.identityKeyPair.serialize()),
+    identity_fingerprint: participant.identityFingerprint,
     registration_id: participant.registrationId,
     session: encodeBytes(session),
     prekeys,
@@ -235,6 +280,7 @@ async function snapshot(participant, peerAddress) {
     kyber_usage: encodeBytes(
       await participant.kyberPrekeyStore.export_kyber_usage(),
     ),
+    trusted_peer_identity: participant.trustedPeerIdentity,
   };
 }
 
@@ -244,6 +290,7 @@ async function restoreParticipant(name, saved, peerAddress) {
   );
   const participant = {
     address: new ProtocolAddress(name, 1),
+    identityFingerprint: saved.identity_fingerprint,
     identityKeyPair,
     identityStore: new InMemIdentityKeyStore(
       identityKeyPair,
@@ -254,6 +301,7 @@ async function restoreParticipant(name, saved, peerAddress) {
     registrationId: saved.registration_id,
     sessionStore: new InMemSessionStore(),
     signedPrekeyStore: new InMemSignedPreKeyStore(),
+    trustedPeerIdentity: saved.trusted_peer_identity,
   };
   for (const key of saved.prekeys) {
     await participant.prekeyStore.import_pre_key(
@@ -330,8 +378,26 @@ async function saveSnapshots(alice, bob) {
     bob: await snapshot(bob, alice.address),
   };
   const serialized = JSON.stringify(saved);
-  sessionStorage.setItem(SNAPSHOT_KEY, serialized);
-  return { saved, bytes: new Blob([serialized]).size };
+  const bytes = new Blob([serialized]).size;
+  try {
+    sessionStorage.setItem(SNAPSHOT_KEY, serialized);
+    return {
+      saved,
+      bytes,
+      storage: { available: true, persisted_for_page_reload: true },
+    };
+  } catch (error) {
+    return {
+      saved,
+      bytes,
+      storage: {
+        available: false,
+        fail_closed_after_page_reload: true,
+        persisted_for_page_reload: false,
+        ...safeError(error),
+      },
+    };
+  }
 }
 
 async function restoreSnapshots(saved) {
@@ -347,11 +413,26 @@ async function restoreSnapshots(saved) {
     saved.bob,
     aliceAddress,
   );
+  verifyPeerIdentity(alice, bob);
+  verifyPeerIdentity(bob, alice);
   return { alice, bob };
+}
+
+async function fixtureHash({ benchmarkRuns, epochTarget }) {
+  return sha256(
+    encoder.encode(
+      JSON.stringify({
+        ...FIXTURE,
+        benchmark_runs: benchmarkRuns,
+        epoch_target: epochTarget,
+      }),
+    ),
+  );
 }
 
 export async function runPrototype({
   benchmarkRuns = 30,
+  environment = null,
   epochTarget = 2,
 } = {}) {
   const longTasks = [];
@@ -368,6 +449,8 @@ export async function runPrototype({
   await init();
   let alice = await createParticipant("alice-synthetic", 1);
   let bob = await createParticipant("bob-synthetic", 1000);
+  bindPeerIdentity(alice, bob);
+  bindPeerIdentity(bob, alice);
   await establish(alice, bob);
   const handshake = await encrypt(alice, bob);
   invariant(
@@ -458,9 +541,13 @@ export async function runPrototype({
   return {
     schema_version: 1,
     synthetic_only: true,
+    recorded_at_utc: new Date().toISOString(),
+    fixture_sha256: await fixtureHash({ benchmarkRuns, epochTarget }),
+    implementation: IMPLEMENTATION,
     algorithm: "round-3 Kyber1024 PQXDH plus SPQR v1",
     fips_203_ml_kem: false,
     browser: navigator.userAgent,
+    operator_recorded_environment: environment,
     secure_context: isSecureContext,
     cross_origin_isolated: globalThis.crossOriginIsolated === true,
     pqxdh: {
@@ -470,9 +557,12 @@ export async function runPrototype({
     bidirectional: true,
     state_reload: {
       session_continuation_passed: true,
-      identity_trust_persistence: "unsupported-by-wrapper",
-      acceptance_passed: false,
-      session_storage_bytes: persisted.bytes,
+      application_identity_binding_verified: true,
+      wrapper_identity_store_export: "unsupported",
+      in_memory_export_import_passed: true,
+      page_reload_available: persisted.storage.persisted_for_page_reload,
+      serialized_state_bytes: persisted.bytes,
+      storage: persisted.storage,
     },
     faults: {
       dropped_message_recovered: true,
@@ -493,6 +583,7 @@ export async function runPrototype({
       cold_latency_ms: coldLatency,
       warm_latency_p50_ms: percentile(durations, 0.5),
       warm_latency_p95_ms: percentile(durations, 0.95),
+      warm_latency_samples_ms: durations,
       bundle_transfer_bytes: bundleBytes(),
       js_heap_delta_bytes:
         memoryBefore === null || memoryAfter === null
@@ -507,6 +598,14 @@ export async function runPrototype({
       longest_main_thread_task_ms: longTasks.length
         ? Math.max(...longTasks)
         : null,
+      main_thread_long_task_count: longTasks.length,
+      main_thread_long_task_samples_ms: longTasks,
+      main_thread_long_task_p95_ms: longTasks.length
+        ? percentile(longTasks, 0.95)
+        : null,
+      main_thread_50ms_budget_passed: longTasks.length
+        ? Math.max(...longTasks) <= 50
+        : null,
       ciphertext_amplification: ciphertextBytes / plaintextBytes,
     },
     csp: document.location.search.includes("csp=conversation")
@@ -518,12 +617,31 @@ export async function runPrototype({
 
 export async function resumePersistedPrototype() {
   await init();
-  const serialized = sessionStorage.getItem(SNAPSHOT_KEY);
+  let serialized;
+  try {
+    serialized = sessionStorage.getItem(SNAPSHOT_KEY);
+  } catch (error) {
+    return {
+      resumed: false,
+      reason: "storage-unavailable",
+      fail_closed: true,
+      ...safeError(error),
+    };
+  }
   if (!serialized) return { resumed: false, reason: "state-unavailable" };
-  const { alice, bob } = await restoreSnapshots(JSON.parse(serialized));
-  const ciphertext = await encrypt(alice, bob);
-  await decrypt(bob, alice, ciphertext);
-  return { resumed: true, ciphertext_sha256: await sha256(ciphertext.body) };
+  try {
+    const { alice, bob } = await restoreSnapshots(JSON.parse(serialized));
+    const ciphertext = await encrypt(alice, bob);
+    await decrypt(bob, alice, ciphertext);
+    return { resumed: true, ciphertext_sha256: await sha256(ciphertext.body) };
+  } catch (error) {
+    return {
+      resumed: false,
+      reason: "state-invalid",
+      fail_closed: true,
+      ...safeError(error),
+    };
+  }
 }
 
 export function probeStorage() {
@@ -541,16 +659,110 @@ export function probeStorage() {
 
 window.pqPrototype = { probeStorage, resumePersistedPrototype, runPrototype };
 
-document.querySelector("#run")?.addEventListener("click", async () => {
+let latestReport = null;
+
+function manualEnvironment() {
+  const value = (selector) =>
+    document.querySelector(selector)?.value.trim() || null;
+  return {
+    browser_version: value("#browser-version"),
+    hardware: value("#hardware"),
+    mode: value("#browser-mode"),
+    operating_system: value("#operating-system"),
+  };
+}
+
+function pendingReport() {
+  try {
+    const serialized = sessionStorage.getItem(REPORT_KEY);
+    const report = serialized ? JSON.parse(serialized) : null;
+    return report?.schema_version === 1 && report?.synthetic_only === true
+      ? report
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+const reportAwaitingReload = pendingReport();
+if (reportAwaitingReload) {
+  latestReport = reportAwaitingReload;
+  document.querySelector("#resume").hidden = false;
+  document.querySelector("#status").textContent =
+    "Saved synthetic state found. Resume it to complete the page-reload check.";
+}
+
+document
+  .querySelector("#scenario")
+  ?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const status = document.querySelector("#status");
+    const result = document.querySelector("#result");
+    status.textContent = "Running…";
+    try {
+      const environment = manualEnvironment();
+      invariant(
+        Object.values(environment).every(Boolean),
+        "execution environment is incomplete",
+      );
+      const report = await runPrototype({ environment });
+      latestReport = report;
+      result.textContent = JSON.stringify(report, null, 2);
+      if (report.state_reload.page_reload_available) {
+        try {
+          sessionStorage.setItem(REPORT_KEY, JSON.stringify(report));
+          status.textContent =
+            "Synthetic scenario complete. Refresh this page, then resume the saved scenario.";
+          document.querySelector("#download").hidden = true;
+        } catch {
+          status.textContent =
+            "Synthetic scenario complete, but the reload report could not be saved.";
+          document.querySelector("#download").hidden = false;
+        }
+      } else {
+        status.textContent =
+          "Synthetic scenario complete in memory; page-reload recovery is unavailable.";
+        document.querySelector("#download").hidden = false;
+      }
+    } catch (error) {
+      latestReport = null;
+      result.textContent = JSON.stringify(safeError(error), null, 2);
+      status.textContent = "Synthetic scenario failed.";
+      document.querySelector("#download").hidden = true;
+    }
+  });
+
+document.querySelector("#resume")?.addEventListener("click", async () => {
   const status = document.querySelector("#status");
   const result = document.querySelector("#result");
-  status.textContent = "Running…";
+  status.textContent = "Resuming…";
+  const pageReload = await resumePersistedPrototype();
+  latestReport = { ...latestReport, page_reload: pageReload };
+  result.textContent = JSON.stringify(latestReport, null, 2);
+  document.querySelector("#download").hidden = false;
+  document.querySelector("#resume").hidden = true;
   try {
-    const report = await runPrototype();
-    result.textContent = JSON.stringify(report, null, 2);
-    status.textContent = "Synthetic scenario complete.";
-  } catch (error) {
-    result.textContent = JSON.stringify(safeError(error), null, 2);
-    status.textContent = "Synthetic scenario failed.";
+    sessionStorage.removeItem(REPORT_KEY);
+  } catch {
+    // The result already records the storage capability; keep the UI usable.
   }
+  status.textContent = pageReload.resumed
+    ? "Page-reload check complete."
+    : "Page-reload check failed closed.";
+});
+
+document.querySelector("#download")?.addEventListener("click", () => {
+  if (!latestReport) return;
+  const url = URL.createObjectURL(
+    new Blob([`${JSON.stringify(latestReport, null, 2)}\n`], {
+      type: "application/json",
+    }),
+  );
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "pq-ratchet-synthetic-report.json";
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 });

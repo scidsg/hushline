@@ -44,19 +44,28 @@ record independently observed epoch numbers. It then checks bidirectional
 traffic, exported/imported sessions, an actual page reload from session storage,
 dropped and reordered messages, replay rejection, 30 warm measurements, bundle
 transfer, available heap/long-task metrics, state size, and ciphertext
-amplification. The wrapper does not expose its remote-identity trust map, so the
-report distinguishes session continuation from complete trusted-identity state
-persistence and marks the latter acceptance check failed.
+amplification. Because the wrapper cannot export its internal remote-identity
+map, the harness owns an explicit public-key fingerprint binding and verifies it
+before every send and receive and after state import. The report preserves that
+distinction instead of claiming the wrapper added an export it does not have.
+
+If session storage is blocked or quota-limited, the cryptographic scenario
+continues with the in-memory export. The report marks page-reload recovery
+unavailable and fail-closed; it does not retry with a classical or plaintext
+path. This follows the capability behavior in the G1 contract.
 
 ## Real-browser matrix
 
 Start `npm run serve`, then open `http://127.0.0.1:4179/` in the exact browser
 under review and choose **Run synthetic scenario**. Repeat in normal and private
 modes on physical macOS Safari, iOS Safari, Firefox, Tor Browser, and Chromium.
-Record the full browser/OS/device version and hardware alongside the downloaded
-or copied non-secret JSON. Repeat with storage disabled and with quota pressure;
-after refresh, the prototype must report unavailable state rather than retrying
-with a classical or plaintext path.
+Enter the full browser, OS, device, and mode values before the run, then download
+the non-secret JSON report. For writable storage, refresh the page and select
+**Resume saved scenario** before downloading so the report includes the actual
+page-reload result. The report includes the entered environment and a fixture
+hash. Repeat with storage disabled and with quota pressure; the scenario must
+continue in memory, and a refresh must report unavailable state rather than
+retrying with a classical or plaintext path.
 
 The route `/?csp=conversation` applies the current authenticated-conversation
 `script-src 'self'` policy. The candidate is expected to be blocked there. The

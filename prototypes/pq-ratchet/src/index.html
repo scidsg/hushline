@@ -14,7 +14,49 @@
         Uses fictional peers and emits only non-secret protocol metadata and
         measurements. This is not production chat or an interoperability claim.
       </p>
-      <button id="run" type="button">Run synthetic scenario</button>
+      <form id="scenario">
+        <fieldset>
+          <legend>Execution environment</legend>
+          <p>
+            Record exact values from the browser and device under review. Do not
+            enter a person’s name, production data, or other sensitive
+            information.
+          </p>
+          <label>
+            Browser and exact version
+            <input
+              id="browser-version"
+              autocomplete="off"
+              maxlength="120"
+              required
+            />
+          </label>
+          <label>
+            Operating system and exact version
+            <input
+              id="operating-system"
+              autocomplete="off"
+              maxlength="120"
+              required
+            />
+          </label>
+          <label>
+            Hardware model
+            <input id="hardware" autocomplete="off" maxlength="120" required />
+          </label>
+          <label>
+            Browser mode
+            <select id="browser-mode">
+              <option value="normal">Normal</option>
+              <option value="private">Private</option>
+              <option value="storage-restricted">Storage restricted</option>
+            </select>
+          </label>
+        </fieldset>
+        <button id="run" type="submit">Run synthetic scenario</button>
+      </form>
+      <button id="resume" type="button" hidden>Resume saved scenario</button>
+      <button id="download" type="button" hidden>Download JSON report</button>
       <p id="status" role="status" aria-live="polite">Ready.</p>
       <pre id="result" aria-label="Non-secret result"></pre>
     </main>
