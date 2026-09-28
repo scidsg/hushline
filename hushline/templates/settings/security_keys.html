@@ -1,0 +1,88 @@
+{% extends "settings/base.html" %}
+
+{% block settings_content %}
+  <h3>Security Keys</h3>
+  <p>
+    Add USB or NFC security keys to protect your account. Register at least two
+    keys, keep the backup in a separate safe place, and do not rely on a single
+    key for recovery.
+  </p>
+
+  <h4>Enrolled Keys</h4>
+  {% if credentials %}
+    <ul id="security-key-list">
+      {% for credential in credentials %}
+        <li>
+          <strong>{{ credential.name or 'Security key' }}</strong>
+          <span class="meta">Added {{ credential.created_at.strftime('%Y-%m-%d') }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p id="security-key-empty" class="meta">No security keys are enrolled.</p>
+  {% endif %}
+
+  {% if credentials|length >= max_credentials %}
+    <p class="error" role="alert">
+      You have reached the limit of {{ max_credentials }} security keys.
+    </p>
+  {% elif not enrollment_authorized %}
+    <h4>Confirm Your Identity</h4>
+    <p class="meta">
+      Enter your current password{% if user.totp_secret %} and 2FA code{% endif %}
+      before adding a security key. Confirmation expires after five minutes.
+    </p>
+    <form
+      method="POST"
+      action="{{ url_for('settings.authorize_security_key') }}"
+      class="formBody"
+      id="security-key-authorization-form"
+    >
+      {{ authorization_form.hidden_tag() }}
+      {{ authorization_form.password.label }}
+      {{ authorization_form.password(autocomplete='current-password') }}
+      {% if user.totp_secret %}
+        {{ authorization_form.verification_code.label }}
+        {{ authorization_form.verification_code(autocomplete='one-time-code', inputmode='numeric') }}
+      {% endif %}
+      {{ authorization_form.submit }}
+    </form>
+  {% else %}
+    <h4>Add a Security Key</h4>
+    <form
+      class="formBody"
+      id="security-key-enrollment-form"
+      data-options-url="{{ url_for('settings.security_key_registration_options') }}"
+      data-verify-url="{{ url_for('settings.verify_security_key_registration') }}"
+    >
+      <label for="security-key-name">Key Label</label>
+      <input
+        id="security-key-name"
+        name="name"
+        type="text"
+        maxlength="100"
+        required
+        autocomplete="off"
+        aria-describedby="security-key-name-help"
+      />
+      <p id="security-key-name-help" class="meta">
+        Use a label you will recognize, such as “Office USB key” or “Backup NFC key.”
+      </p>
+      <button type="submit" id="security-key-enroll-button">Add Security Key</button>
+    </form>
+    <p
+      id="security-key-status"
+      class="meta"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    ></p>
+  {% endif %}
+
+  <p><a href="{{ url_for('settings.auth') }}">Back to authentication settings</a></p>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script defer src="{{ url_for('static', filename='js/security-keys.js') }}"></script>
+{% endblock %}

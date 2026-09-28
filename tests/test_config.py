@@ -157,6 +157,14 @@ def test_webauthn_relying_party_configuration_fails_closed(rp_id: str, origin: s
         load_config({WEBAUTHN_RP_ID: rp_id, WEBAUTHN_ORIGIN: origin})
 
 
+def test_webauthn_credential_limit_allows_a_backup_key() -> None:
+    with pytest.raises(ConfigParseError, match="at least two"):
+        load_config({"WEBAUTHN_MAX_CREDENTIALS_PER_USER": "1"})
+
+    cfg = load_config({"WEBAUTHN_MAX_CREDENTIALS_PER_USER": "2"})
+    assert cfg["WEBAUTHN_MAX_CREDENTIALS_PER_USER"] == 2
+
+
 def test_smtp_notification_reply_to_loads() -> None:
     env = dict(**os.environ)
     env["NOTIFICATIONS_REPLY_TO"] = "reply@example.com"

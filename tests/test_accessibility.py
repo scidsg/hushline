@@ -195,6 +195,38 @@ def test_settings_nav_marks_current_page(client: FlaskClient) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
+def test_security_key_enrollment_has_accessible_labels_and_status(
+    client: FlaskClient, user_password: str
+) -> None:
+    client.post(
+        url_for("settings.authorize_security_key"),
+        data={"password": user_password, "verification_code": ""},
+    )
+
+    response = client.get(url_for("settings.security_keys"))
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    form = soup.find("form", id="security-key-enrollment-form")
+    name_input = soup.find("input", id="security-key-name")
+    label = soup.find("label", attrs={"for": "security-key-name"})
+    status = soup.find(id="security-key-status")
+    button = soup.find("button", id="security-key-enroll-button")
+
+    assert form is not None
+    assert name_input is not None
+    assert name_input.get("required") == ""
+    assert name_input.get("aria-describedby") == "security-key-name-help"
+    assert label is not None
+    assert label.get_text(strip=True) == "Key Label"
+    assert status is not None
+    assert status.get("role") == "status"
+    assert status.get("aria-live") == "polite"
+    assert status.get("aria-atomic") == "true"
+    assert button is not None
+    assert button.get("type") == "submit"
+
+
+@pytest.mark.usefixtures("_authenticated_user")
 def test_inbox_filter_nav_marks_current_page(client: FlaskClient) -> None:
     response = client.get(url_for("inbox"), follow_redirects=True)
     assert response.status_code == 200
