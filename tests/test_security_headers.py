@@ -143,6 +143,19 @@ def test_settings_profile_keeps_frame_restrictions(client: FlaskClient) -> None:
     assert response.headers["X-Frame-Options"] == "DENY"
 
 
+@pytest.mark.usefixtures("_authenticated_user")
+def test_security_key_settings_keeps_csp_enforced(client: FlaskClient) -> None:
+    response = client.get(url_for("settings.security_keys"))
+    assert response.status_code == 200
+
+    directives = _csp_directives(response.headers)
+    assert directives["script-src"] == "'self'"
+    assert directives["script-src-elem"] == "'self'"
+    assert directives["connect-src"] == "'self' data:"
+    assert "'unsafe-inline'" not in directives["script-src"]
+    assert "https://" not in directives["script-src"]
+
+
 @pytest.mark.usefixtures("_authenticated_admin")
 def test_settings_branding_keeps_csp_enforced(client: FlaskClient) -> None:
     response = client.get(url_for("settings.branding"))

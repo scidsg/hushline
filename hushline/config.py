@@ -28,6 +28,7 @@ WEBAUTHN_ORIGIN = "WEBAUTHN_ORIGIN"
 WEBAUTHN_RP_ID = "WEBAUTHN_RP_ID"
 WEBAUTHN_HOSTNAME_MAX_LENGTH = 253
 WEBAUTHN_RP_NAME_MAX_LENGTH = 100
+WEBAUTHN_MIN_CREDENTIALS_PER_USER = 2
 
 
 class ConfigParseError(Exception):
@@ -215,6 +216,10 @@ def _load_webauthn(env: Mapping[str, str]) -> Mapping[str, Any]:
             raise ConfigParseError(f"{key} must be an integer") from exc
         if value <= 0:
             raise ConfigParseError(f"{key} must be greater than zero")
+        if key == "WEBAUTHN_MAX_CREDENTIALS_PER_USER" and value < WEBAUTHN_MIN_CREDENTIALS_PER_USER:
+            raise ConfigParseError(
+                "WEBAUTHN_MAX_CREDENTIALS_PER_USER must allow at least two credentials"
+            )
         data[key] = value
     return data
 

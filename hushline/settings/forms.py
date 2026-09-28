@@ -84,6 +84,18 @@ class ChangeUsernameForm(FlaskForm):
     submit = SubmitField("Change Username", name="update_display_name", widget=Button())
 
 
+class SecurityKeyAuthorizationForm(FlaskForm):
+    password = PasswordField(
+        "Current Password",
+        validators=[DataRequired(), Length(max=User.PASSWORD_MAX_LENGTH)],
+    )
+    verification_code = StringField(
+        "2FA Code",
+        validators=[OptionalField(), Length(min=6, max=6)],
+    )
+    submit = SubmitField("Continue", name="authorize_security_key", widget=Button())
+
+
 class DataExportForm(FlaskForm):
     encrypt_export = BooleanField("Encrypt export with my PGP key", default=True)
     submit = SubmitField("Download My Data", name="download_data", widget=Button())

@@ -20,10 +20,11 @@
     ] %}
       {% for (endpoint, display_name, show) in buttons %}
         {% if show %}
+          {% set is_current = endpoint == request.endpoint or (endpoint == 'settings.auth' and request.endpoint == 'settings.security_keys') %}
           <li role="presentation">
             <a
-              class="tab{% if endpoint == request.endpoint %} active{% endif %}"
-              {% if endpoint == request.endpoint %}aria-current="page"{% endif %}
+              class="tab{% if is_current %} active{% endif %}"
+              {% if is_current %}aria-current="page"{% endif %}
               href="{{ url_for(endpoint) }}"
             >
               {{ display_name }}

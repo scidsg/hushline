@@ -22,6 +22,7 @@ modules = [
   "premium",
   "premium-waiting",
   "service-worker",
+  "security-keys",
   "settings-fields",
   "settings-location",
   "settings",
