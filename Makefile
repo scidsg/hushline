@@ -285,8 +285,8 @@ lighthouse-accessibility: runner-wait-for-app ## Run Lighthouse accessibility ch
 	  sleep $$((i * 5)); \
 	done; \
 	SCORE=$$(python3 -c "import json,sys; from pathlib import Path; data=json.loads(Path(sys.argv[1]).read_text()); print(round(data['categories']['accessibility']['score'] * 100))" "$$report_file"); \
-	if [ "$$SCORE" -lt 95 ]; then \
-	  echo "Accessibility score must be at least 95, got $$SCORE"; \
+	if [ "$$SCORE" -lt 100 ]; then \
+	  echo "Accessibility score must be 100, got $$SCORE"; \
 	  exit 1; \
 	fi
 

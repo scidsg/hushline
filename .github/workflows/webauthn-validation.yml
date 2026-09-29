@@ -1,0 +1,104 @@
+---
+name: WebAuthn Integrated Validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/webauthn-validation.yml"
+      - "assets/js/security-key-login.js"
+      - "assets/js/security-keys.js"
+      - "docker-compose.yaml"
+      - "hushline/auth.py"
+      - "hushline/config.py"
+      - "hushline/model/webauthn.py"
+      - "hushline/routes/auth.py"
+      - "hushline/settings/security_keys.py"
+      - "hushline/templates/settings/security_keys.html"
+      - "hushline/templates/verify_2fa_login.html"
+      - "hushline/webauthn.py"
+      - "migrations/**"
+      - "package.json"
+      - "package-lock.json"
+      - "poetry.lock"
+      - "pyproject.toml"
+      - "tests/playwright/e2ee/security-key-enrollment.spec.js"
+      - "tests/test_2fa.py"
+      - "tests/test_config.py"
+      - "tests/test_recovery_codes.py"
+      - "tests/test_routes_auth.py"
+      - "tests/test_security_headers.py"
+      - "tests/test_security_key_login.py"
+      - "tests/test_settings.py"
+      - "tests/test_settings_security_keys.py"
+      - "tests/test_settings_twofa.py"
+      - "tests/test_webauthn.py"
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Lint integrated build
+        run: make lint
+      - name: Run full behavior-critical coverage
+        run: make test PYTEST_ADDOPTS="--skip-local-only"
+
+  dependency-audits:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Audit Python dependencies
+        run: make audit-python
+      - name: Audit Node runtime dependencies
+        run: make audit-node-runtime
+      - name: Audit all Node dependencies
+        run: make audit-node-full
+
+  virtual-authenticator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build:prod
+      - run: npx playwright install --with-deps chromium
+      - name: Start pinned integrated application
+        run: |
+          docker compose up -d postgres blob-storage
+          attempt=0
+          until curl -fsS http://localhost:4566/_localstack/health | grep -Eq 'running|available'; do
+            attempt=$((attempt + 1))
+            if [ "$attempt" -ge 30 ]; then
+              docker compose logs blob-storage
+              exit 1
+            fi
+            sleep 2
+          done
+          docker compose run --rm dev_data
+          docker compose up -d app
+          make runner-wait-for-app
+      - name: Run virtual-authenticator ceremonies
+        run: npm run playwright:e2e -- security-key-enrollment.spec.js
+      - name: Upload sanitized browser evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: webauthn-browser-evidence
+          path: test-results/playwright-e2e
+          if-no-files-found: error
+          retention-days: 14

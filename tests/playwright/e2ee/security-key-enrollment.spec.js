@@ -73,6 +73,65 @@ async function installSyntheticSecurityKey(page) {
   });
 }
 
+async function addVirtualSecurityKey(cdp, transport) {
+  const { authenticatorId } = await cdp.send(
+    "WebAuthn.addVirtualAuthenticator",
+    {
+      options: {
+        protocol: "ctap2",
+        ctap2Version: "ctap2_1",
+        transport,
+        hasResidentKey: true,
+        hasUserVerification: true,
+        isUserVerified: true,
+        automaticPresenceSimulation: true,
+      },
+    },
+  );
+  return authenticatorId;
+}
+
+async function getOnlyVirtualCredential(cdp, authenticatorId) {
+  const { credentials } = await cdp.send("WebAuthn.getCredentials", {
+    authenticatorId,
+  });
+  expect(credentials).toHaveLength(1);
+  return credentials[0];
+}
+
+async function restoreVirtualSecurityKey(cdp, transport, credential) {
+  const authenticatorId = await addVirtualSecurityKey(cdp, transport);
+  await cdp.send("WebAuthn.addCredential", { authenticatorId, credential });
+  return authenticatorId;
+}
+
+async function enrollVirtualSecurityKey(page, label) {
+  await page.getByLabel("Key Label").fill(label);
+  await page.getByRole("button", { name: "Add Security Key" }).click();
+  await expect(page.getByRole("status")).toContainText("Security key added");
+}
+
+async function authorizeAfterRecentStrongAuthentication(page) {
+  await page.fill("#password", TEST_PASSWORD);
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.locator("#security-key-enrollment-form")).toBeVisible();
+}
+
+async function loginWithSecurityKey(page) {
+  await page.goto("/login", { waitUntil: "networkidle" });
+  await page.fill("#username", "jerryseinfeld");
+  await page.fill("#password", TEST_PASSWORD);
+  await page.locator('button[type="submit"]').click();
+  await expect(
+    page.getByRole("button", { name: "Verify Security Key" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Verify Security Key" }).click();
+  await expect(page.locator("body")).toHaveAttribute(
+    "data-authenticated",
+    "true",
+  );
+}
+
 test("enrolls a primary and backup security key with keyboard and status feedback", async ({
   page,
 }) => {
@@ -177,4 +236,119 @@ test("network interruption after key response gives safe recovery guidance", asy
   await expect(
     page.getByRole("button", { name: "Add Security Key" }),
   ).toBeEnabled();
+});
+
+test("virtual authenticators cover enrollment, login, revocation, and backup recovery", async ({
+  browser,
+  page,
+}, testInfo) => {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("WebAuthn.enable", { enableUI: false });
+  const primary = await addVirtualSecurityKey(cdp, "usb");
+
+  await loginAndAuthorize(page);
+  await enrollVirtualSecurityKey(page, "Primary virtual USB key");
+  const primaryCredential = await getOnlyVirtualCredential(cdp, primary);
+
+  await page.reload({ waitUntil: "networkidle" });
+  await authorizeAfterRecentStrongAuthentication(page);
+  await cdp.send("WebAuthn.removeVirtualAuthenticator", {
+    authenticatorId: primary,
+  });
+  const backup = await addVirtualSecurityKey(cdp, "nfc");
+  await enrollVirtualSecurityKey(page, "Backup virtual NFC key");
+  const backupCredential = await getOnlyVirtualCredential(cdp, backup);
+  await page.reload({ waitUntil: "networkidle" });
+  await expect(
+    page.getByText("Primary virtual USB key", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Backup virtual NFC key", { exact: true }),
+  ).toBeVisible();
+  await testInfo.attach("security-keys-enrolled", {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: "image/png",
+  });
+
+  await page.goto("/logout", { waitUntil: "networkidle" });
+  await cdp.send("WebAuthn.removeVirtualAuthenticator", {
+    authenticatorId: backup,
+  });
+  const restoredPrimary = await restoreVirtualSecurityKey(
+    cdp,
+    "usb",
+    primaryCredential,
+  );
+  await loginWithSecurityKey(page);
+
+  await page.goto("/settings/security-keys", { waitUntil: "networkidle" });
+  await page.fill("#password", TEST_PASSWORD);
+  await page.getByRole("button", { name: "Continue" }).click();
+  const primaryRow = page.locator("#security-key-list li", {
+    hasText: "Primary virtual USB key",
+  });
+  await primaryRow.getByRole("button", { name: "Remove" }).click();
+  await expect(page.getByText("Security key removed")).toBeVisible();
+  await expect(
+    page.getByText("Primary virtual USB key", { exact: true }),
+  ).toHaveCount(0);
+
+  await page.goto("/logout", { waitUntil: "networkidle" });
+  await cdp.send("WebAuthn.removeVirtualAuthenticator", {
+    authenticatorId: restoredPrimary,
+  });
+  await restoreVirtualSecurityKey(cdp, "nfc", backupCredential);
+  await loginWithSecurityKey(page);
+  await page.goto("/settings/security-keys", { waitUntil: "networkidle" });
+  await expect(
+    page.getByText("Backup virtual NFC key", { exact: true }),
+  ).toBeVisible();
+  await testInfo.attach("backup-key-recovery", {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: "image/png",
+  });
+
+  await page.fill("#password", TEST_PASSWORD);
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel(/remove every second factor/i).check();
+  await page.getByRole("button", { name: "Disable All MFA" }).click();
+  await expect(page.getByText("MFA disabled")).toBeVisible();
+  await expect(page.locator("#security-key-empty")).toContainText(
+    "No security keys are enrolled",
+  );
+  await testInfo.attach("validation-metadata", {
+    body: Buffer.from(
+      JSON.stringify(
+        {
+          schema_version: 1,
+          build_sha: process.env.GITHUB_SHA || null,
+          browser: { name: "chromium", version: browser.version() },
+          rp_id: "localhost",
+          origin: new URL(page.url()).origin,
+          authenticators: [
+            { protocol: "ctap2_1", transport: "usb", kind: "virtual" },
+            { protocol: "ctap2_1", transport: "nfc", kind: "virtual" },
+          ],
+          passed_scenarios: [
+            "primary enrollment",
+            "backup enrollment",
+            "primary login",
+            "primary revocation",
+            "backup recovery login",
+            "factor cleanup",
+          ],
+          excluded_material: [
+            "credential IDs",
+            "private keys",
+            "challenges",
+            "cookies",
+            "CSRF tokens",
+          ],
+        },
+        null,
+        2,
+      ),
+    ),
+    contentType: "application/json",
+  });
 });
