@@ -17,6 +17,7 @@ from flask import (
     url_for,
 )
 from flask_wtf.csrf import validate_csrf
+from sqlalchemy import or_
 from werkzeug.wrappers.response import Response
 from wtforms.validators import ValidationError
 
@@ -36,14 +37,18 @@ from hushline.model import (
     RecoveryCode,
     RecoveryCodeBatch,
     User,
+    WebAuthnChallenge,
     WebAuthnCredential,
 )
 from hushline.recovery_codes import acknowledge_recovery_codes, generate_recovery_codes
 from hushline.settings.forms import (
+    MfaPolicyChangeForm,
     RecoveryCodeAcknowledgementForm,
     RecoveryCodeGenerationForm,
     SecurityKeyAuthorizationForm,
     SecurityKeyRemovalForm,
+    SecurityKeyRenameForm,
+    TotpRemovalForm,
 )
 
 ENROLLMENT_AUTHORIZATION_TTL_SECONDS = 300
@@ -53,6 +58,77 @@ def _active_credentials(user: User) -> list[WebAuthnCredential]:
     return [
         credential for credential in user.webauthn_credentials if credential.disabled_at is None
     ]
+
+
+def _lock_user(user_id: int) -> User:
+    return db.session.scalars(
+        db.select(User)
+        .where(User.id == user_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).one()
+
+
+def _invalidate_webauthn_challenges(user_id: int, *, when: datetime) -> None:
+    db.session.execute(
+        db.update(WebAuthnChallenge)
+        .where(
+            WebAuthnChallenge.user_id == user_id,
+            WebAuthnChallenge.consumed_at.is_(None),
+        )
+        .values(consumed_at=when)
+    )
+
+
+def _invalidate_recovery_codes(user_id: int, *, when: datetime) -> None:
+    db.session.execute(
+        db.update(RecoveryCodeBatch)
+        .where(
+            RecoveryCodeBatch.user_id == user_id,
+            RecoveryCodeBatch.invalidated_at.is_(None),
+        )
+        .values(invalidated_at=when)
+    )
+
+
+def _prune_revoked_credentials(user_id: int) -> None:
+    retention_limit = int(current_app.config.get("WEBAUTHN_MAX_REVOKED_CREDENTIALS_PER_USER", 20))
+    retention_days = int(current_app.config.get("WEBAUTHN_REVOKED_CREDENTIAL_RETENTION_DAYS", 30))
+    retention_cutoff = datetime.now(UTC) - timedelta(days=retention_days)
+    retained_ids = (
+        db.select(WebAuthnCredential.id)
+        .where(
+            WebAuthnCredential.user_id == user_id,
+            WebAuthnCredential.disabled_at.is_not(None),
+        )
+        .order_by(WebAuthnCredential.disabled_at.desc(), WebAuthnCredential.id.desc())
+        .limit(retention_limit)
+    )
+    db.session.execute(
+        db.delete(WebAuthnCredential)
+        .where(
+            WebAuthnCredential.user_id == user_id,
+            WebAuthnCredential.disabled_at.is_not(None),
+            or_(
+                WebAuthnCredential.disabled_at < retention_cutoff,
+                WebAuthnCredential.id.not_in(retained_ids),
+            ),
+        )
+        .execution_options(synchronize_session=False)
+    )
+
+
+def _rotate_after_factor_policy_change(user: User) -> None:
+    prior_authentication = session.get(STRONG_AUTHENTICATION_SESSION_KEY)
+    method = (
+        prior_authentication.get("method")
+        if isinstance(prior_authentication, Mapping)
+        else "factor_policy_change"
+    )
+    rotate_user_session_id(user)
+    db.session.commit()
+    session["session_id"] = user.session_id
+    record_strong_authentication(user=user, method=str(method))
 
 
 def _current_user() -> User:
@@ -205,10 +281,13 @@ def _render_security_keys(
         generated_codes=generated_codes,
         generation_form=RecoveryCodeGenerationForm(),
         has_recovery_factor=bool(credentials or user.totp_secret),
+        mfa_policy_form=MfaPolicyChangeForm(),
         max_credentials=int(current_app.config["WEBAUTHN_MAX_CREDENTIALS_PER_USER"]),
         password_confirmed=password_confirmed,
         recovery_code_count=_usable_recovery_code_count(user),
         removal_form=SecurityKeyRemovalForm(),
+        rename_form=SecurityKeyRenameForm(),
+        totp_removal_form=TotpRemovalForm(),
         user=user,
     )
 
@@ -450,6 +529,7 @@ def register_security_key_routes(bp: Blueprint) -> None:
             credential_id = int(form.credential_id.data)
         except (TypeError, ValueError):
             abort(HTTPStatus.BAD_REQUEST)
+        user = _lock_user(user.id)
         credential = db.session.scalar(
             db.select(WebAuthnCredential).where(
                 WebAuthnCredential.id == credential_id,
@@ -459,25 +539,135 @@ def register_security_key_routes(bp: Blueprint) -> None:
         )
         if credential is None:
             abort(HTTPStatus.NOT_FOUND)
-        other_credentials = [item for item in _active_credentials(user) if item.id != credential.id]
-        if not (other_credentials or user.totp_secret):
+        other_credential_count = db.session.scalar(
+            db.select(db.func.count())
+            .select_from(WebAuthnCredential)
+            .where(
+                WebAuthnCredential.user_id == user.id,
+                WebAuthnCredential.id != credential.id,
+                WebAuthnCredential.disabled_at.is_(None),
+            )
+        )
+        if not (other_credential_count or user.totp_secret):
+            db.session.rollback()
             flash("Add another security key or authenticator app before removing this key.")
             return redirect(url_for(".security_keys"))
 
-        credential.disabled_at = datetime.now(UTC)
-        prior_authentication = session.get(STRONG_AUTHENTICATION_SESSION_KEY)
-        method = (
-            prior_authentication.get("method")
-            if isinstance(prior_authentication, Mapping)
-            else "recovery_policy_change"
-        )
-        rotate_user_session_id(user)
-        db.session.commit()
-        session["session_id"] = user.session_id
-        record_strong_authentication(user=user, method=str(method))
+        now = datetime.now(UTC)
+        credential.disabled_at = now
+        _invalidate_webauthn_challenges(user.id, when=now)
+        _prune_revoked_credentials(user.id)
+        _rotate_after_factor_policy_change(user)
         _clear_enrollment_authorization()
         session.pop(WEBAUTHN_SESSION_BINDING_KEY, None)
         flash("Security key removed. Other sessions have been signed out.", "success")
+        return redirect(url_for(".security_keys"))
+
+    @bp.post("/security-keys/rename")
+    @authentication_required
+    def rename_security_key() -> Response:
+        user = _current_user()
+        form = SecurityKeyRenameForm()
+        if not form.validate_on_submit():
+            abort(HTTPStatus.BAD_REQUEST)
+        if not _has_recent_enrollment_authorization(user):
+            _clear_enrollment_authorization()
+            flash("Confirm your identity again before renaming a security key.")
+            return redirect(url_for(".security_keys"))
+        try:
+            credential_id = int(form.credential_id.data)
+        except (TypeError, ValueError):
+            abort(HTTPStatus.BAD_REQUEST)
+        name = (form.name.data or "").strip()
+        if not name or len(name) > WebAuthnCredential.MAX_NAME_LENGTH:
+            abort(HTTPStatus.BAD_REQUEST)
+        credential = db.session.scalar(
+            db.select(WebAuthnCredential)
+            .where(
+                WebAuthnCredential.id == credential_id,
+                WebAuthnCredential.user_id == user.id,
+                WebAuthnCredential.disabled_at.is_(None),
+            )
+            .with_for_update()
+        )
+        if credential is None:
+            abort(HTTPStatus.NOT_FOUND)
+        credential.name = name
+        db.session.commit()
+        flash("Security key renamed.", "success")
+        return redirect(url_for(".security_keys"))
+
+    @bp.post("/security-keys/remove-totp")
+    @authentication_required
+    def remove_totp_factor() -> Response:
+        user = _current_user()
+        form = TotpRemovalForm()
+        if not form.validate_on_submit():
+            abort(HTTPStatus.BAD_REQUEST)
+        if not _has_recent_enrollment_authorization(user):
+            _clear_enrollment_authorization()
+            flash("Confirm your identity again before removing your authenticator app.")
+            return redirect(url_for(".security_keys"))
+        user = _lock_user(user.id)
+        active_credential_count = db.session.scalar(
+            db.select(db.func.count())
+            .select_from(WebAuthnCredential)
+            .where(
+                WebAuthnCredential.user_id == user.id,
+                WebAuthnCredential.disabled_at.is_(None),
+            )
+        )
+        if not user.totp_secret:
+            db.session.rollback()
+            abort(HTTPStatus.NOT_FOUND)
+        if not active_credential_count:
+            db.session.rollback()
+            flash("Add a security key before removing your only second factor.")
+            return redirect(url_for(".security_keys"))
+        user.totp_secret = None
+        _rotate_after_factor_policy_change(user)
+        _clear_enrollment_authorization()
+        flash(
+            "Authenticator app removed. Your security keys are still required at login, and "
+            "other sessions have been signed out.",
+            "success",
+        )
+        return redirect(url_for(".security_keys"))
+
+    @bp.post("/security-keys/disable-mfa")
+    @authentication_required
+    def disable_mfa() -> Response:
+        user = _current_user()
+        form = MfaPolicyChangeForm()
+        if not form.validate_on_submit():
+            abort(HTTPStatus.BAD_REQUEST)
+        if not _has_recent_enrollment_authorization(user):
+            _clear_enrollment_authorization()
+            flash("Confirm your identity again before disabling MFA.")
+            return redirect(url_for(".security_keys"))
+
+        user = _lock_user(user.id)
+        now = datetime.now(UTC)
+        db.session.execute(
+            db.update(WebAuthnCredential)
+            .where(
+                WebAuthnCredential.user_id == user.id,
+                WebAuthnCredential.disabled_at.is_(None),
+            )
+            .values(disabled_at=now)
+        )
+        user.totp_secret = None
+        _invalidate_recovery_codes(user.id, when=now)
+        _invalidate_webauthn_challenges(user.id, when=now)
+        _prune_revoked_credentials(user.id)
+        _rotate_after_factor_policy_change(user)
+        _clear_enrollment_authorization()
+        session.pop(WEBAUTHN_SESSION_BINDING_KEY, None)
+        flash(
+            "MFA disabled. Security keys, authenticator codes, and recovery codes no longer "
+            "protect this account. Other sessions have been signed out.",
+            "success",
+        )
         return redirect(url_for(".security_keys"))
 
     @bp.route("/security-keys/registration/options", methods=["POST"])
@@ -578,6 +768,9 @@ def register_security_key_routes(bp: Blueprint) -> None:
             )
         finally:
             _clear_enrollment_authorization()
+
+        user = _lock_user(user.id)
+        _rotate_after_factor_policy_change(user)
 
         response = jsonify(
             {"message": "Security key added. Keep a backup key in a separate safe place."}

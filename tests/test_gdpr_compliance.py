@@ -8,7 +8,7 @@ from flask import url_for
 from flask.testing import FlaskClient
 
 from hushline.db import db
-from hushline.model import AuthenticationLog, Message, User, Username
+from hushline.model import AuthenticationLog, Message, User, Username, WebAuthnCredential
 
 
 def _read_privacy_policy() -> str:
@@ -45,7 +45,26 @@ def test_gdpr_compliance_evidence_policy_and_functionality(
     # Functional check: Right of access/data portability returns only current user's records.
     own_message = Message(username_id=user.primary_username.id)
     other_message = Message(username_id=user2.primary_username.id)
-    db.session.add_all([own_message, other_message])
+    user.totp_secret = "JBSWY3DPEHPK3PXP"
+    user.smtp_password = "export-must-not-contain-this-password"
+    credential = WebAuthnCredential(
+        user_id=user.id,
+        credential_id=b"export-private-credential-id",
+        public_key=b"export-private-public-key",
+        algorithm=-7,
+        sign_count=0,
+        transports=[],
+        device_type="single_device",
+        backed_up=False,
+        name="Export test key",
+    )
+    authentication_log = AuthenticationLog(
+        user_id=user.id,
+        successful=True,
+        otp_code="123456",
+        timecode=123,
+    )
+    db.session.add_all([own_message, other_message, credential, authentication_log])
     db.session.commit()
 
     export_response = client.post(url_for("settings.data_export"), data={"encrypt_export": "false"})
@@ -54,6 +73,10 @@ def test_gdpr_compliance_evidence_policy_and_functionality(
 
     with zipfile.ZipFile(io.BytesIO(export_response.data)) as zip_file:
         users = _read_csv_from_zip(zip_file, "db/users.csv")
+        assert "password_hash" not in users[0]
+        assert "session_id" not in users[0]
+        assert "smtp_password" not in users[0]
+        assert "totp_secret" not in users[0]
         user_ids = {row.get("id") for row in users}
         assert str(user.id) in user_ids
         assert str(user2.id) not in user_ids
@@ -62,6 +85,17 @@ def test_gdpr_compliance_evidence_policy_and_functionality(
         username_ids = {row.get("username_id") for row in messages}
         assert str(user.primary_username.id) in username_ids
         assert str(user2.primary_username.id) not in username_ids
+        assert "db/webauthn_credentials.csv" not in zip_file.namelist()
+
+        authentication_logs = _read_csv_from_zip(zip_file, "db/authentication_logs.csv")
+        if authentication_logs:
+            assert "otp_code" not in authentication_logs[0]
+            assert "timecode" not in authentication_logs[0]
+
+        archive_bytes = b"".join(zip_file.read(name) for name in zip_file.namelist())
+        assert b"export-private-credential-id" not in archive_bytes
+        assert b"export-private-public-key" not in archive_bytes
+        assert b"export-must-not-contain-this-password" not in archive_bytes
 
     # Functional check: Right to erasure deletes account and related data.
     username_id = user.primary_username.id

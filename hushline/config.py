@@ -208,6 +208,8 @@ def _load_webauthn(env: Mapping[str, str]) -> Mapping[str, Any]:
         "WEBAUTHN_RATE_LIMIT_SESSION_MAX": 10,
         "WEBAUTHN_MAX_RESPONSE_BYTES": 65536,
         "WEBAUTHN_MAX_CREDENTIALS_PER_USER": 20,
+        "WEBAUTHN_MAX_REVOKED_CREDENTIALS_PER_USER": 20,
+        "WEBAUTHN_REVOKED_CREDENTIAL_RETENTION_DAYS": 30,
     }
     for key, default in integer_defaults.items():
         try:

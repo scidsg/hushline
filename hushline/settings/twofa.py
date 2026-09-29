@@ -16,10 +16,8 @@ from werkzeug.wrappers.response import Response
 
 from hushline.auth import authentication_required
 from hushline.db import db
-from hushline.model import User
-from hushline.routes import (
-    TwoFactorForm,
-)
+from hushline.model import User, WebAuthnCredential
+from hushline.settings.forms import TotpEnrollmentForm
 
 
 def register_2fa_routes(bp: Blueprint) -> None:
@@ -28,7 +26,7 @@ def register_2fa_routes(bp: Blueprint) -> None:
     def toggle_2fa() -> Response:
         user = db.session.get(User, session["user_id"])
         if user and user.totp_secret:
-            return redirect(url_for(".disable_2fa"))
+            return redirect(url_for(".confirm_disable_2fa"))
 
         return redirect(url_for(".enable_2fa"))
 
@@ -36,7 +34,28 @@ def register_2fa_routes(bp: Blueprint) -> None:
     @authentication_required
     def enable_2fa() -> Response | str:
         user = db.session.get(User, session.get("user_id"))
-        form = TwoFactorForm()
+        form = TotpEnrollmentForm()
+        has_security_key = bool(
+            user
+            and db.session.scalar(
+                db.select(WebAuthnCredential.id).where(
+                    WebAuthnCredential.user_id == user.id,
+                    WebAuthnCredential.disabled_at.is_(None),
+                )
+            )
+        )
+        from hushline.settings.security_keys import (
+            _clear_enrollment_authorization,
+            _has_recent_enrollment_authorization,
+            _rotate_after_factor_policy_change,
+        )
+
+        if user and user.totp_secret:
+            flash("An authenticator app is already enrolled. Remove it before adding another.")
+            return redirect(url_for(".security_keys"))
+        if has_security_key and user and not _has_recent_enrollment_authorization(user):
+            flash("Confirm your password and an enrolled security key before adding 2FA.")
+            return redirect(url_for(".security_keys"))
 
         if form.validate_on_submit():
             temp_totp_secret = session.get("temp_totp_secret")
@@ -46,14 +65,18 @@ def register_2fa_routes(bp: Blueprint) -> None:
                 and temp_totp_secret
                 and pyotp.TOTP(temp_totp_secret).verify(verification_code, valid_window=1)
                 and user
+                and user.check_password(form.password.data)
+                and (not has_security_key or _has_recent_enrollment_authorization(user))
             ):
                 user.totp_secret = temp_totp_secret
-                db.session.commit()
+                _rotate_after_factor_policy_change(user)
+                _clear_enrollment_authorization()
                 session.pop("temp_totp_secret", None)
+                session.clear()
                 flash("👍 2FA setup successful. Please log in again with 2FA.")
-                return redirect(url_for("logout"))
+                return redirect(url_for("login"))
 
-            flash("⛔️ Invalid 2FA code. Please try again.")
+            flash("⛔️ Current password or 2FA code is incorrect.")
             return redirect(url_for(".enable_2fa"))
 
         # Generate new 2FA secret and QR code
@@ -80,12 +103,8 @@ def register_2fa_routes(bp: Blueprint) -> None:
     @bp.route("/disable-2fa", methods=["POST"])
     @authentication_required
     def disable_2fa() -> Response | str:
-        user = db.session.get(User, session["user_id"])
-        if user:
-            user.totp_secret = None
-        db.session.commit()
-        flash("🔓 2FA has been disabled.")
-        return redirect(url_for(".auth"))
+        flash("Confirm your identity before changing your MFA factor policy.")
+        return redirect(url_for(".security_keys"))
 
     @bp.route("/confirm-disable-2fa")
     @authentication_required

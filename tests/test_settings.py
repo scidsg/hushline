@@ -27,6 +27,7 @@ from hushline.model import (
     Tier,
     User,
     Username,
+    WebAuthnCredential,
 )
 from hushline.password_hasher import PINNED_WERKZEUG_SCRYPT_METHOD
 from hushline.settings import (
@@ -442,6 +443,19 @@ def test_change_password_revokes_sibling_session(
 ) -> None:
     stolen_session_id = user.session_id
     new_password = "ChangedPassword123!!"
+    credential = WebAuthnCredential(
+        user_id=user.id,
+        credential_id=b"password-change-key",
+        public_key=b"password-change-public-key",
+        algorithm=-7,
+        sign_count=0,
+        transports=[],
+        device_type="single_device",
+        backed_up=False,
+        name="Password change key",
+    )
+    db.session.add(credential)
+    db.session.commit()
 
     sibling_client = app.test_client()
     with sibling_client.session_transaction() as sess:
@@ -464,7 +478,9 @@ def test_change_password_revokes_sibling_session(
     assert "Password successfully changed. Please log in again." in response.text
 
     db.session.refresh(user)
+    db.session.refresh(credential)
     assert user.session_id != stolen_session_id
+    assert credential.disabled_at is None
 
     response = sibling_client.get(url_for("inbox"), follow_redirects=False)
     assert response.status_code == 302

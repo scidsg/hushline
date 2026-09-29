@@ -34,6 +34,7 @@ from hushline.model import (
     OrganizationSetting,
     PasswordResetToken,
     User,
+    WebAuthnCredential,
 )
 from hushline.routes.auth import (
     PASSWORD_RESET_CONFIRMATION_MESSAGE,
@@ -622,11 +623,23 @@ def test_password_reset_sets_new_password_and_consumes_token(
     client: FlaskClient, user: User, user_password: str
 ) -> None:
     original_session_id = user.session_id
+    user.totp_secret = TOTP_SECRET
+    credential = WebAuthnCredential(
+        user_id=user.id,
+        credential_id=b"password-reset-key",
+        public_key=b"password-reset-public-key",
+        algorithm=-7,
+        sign_count=0,
+        transports=[],
+        device_type="single_device",
+        backed_up=False,
+        name="Password reset key",
+    )
     reset_token, raw_token = PasswordResetToken.create_for_user(
         user.id,
         ttl=timedelta(hours=1),
     )
-    db.session.add(reset_token)
+    db.session.add_all([reset_token, credential])
     db.session.commit()
 
     invalid_response = client.post(
@@ -656,6 +669,9 @@ def test_password_reset_sets_new_password_and_consumes_token(
     assert user.session_id != original_session_id
     assert user.check_password(new_password)
     assert not user.check_password(user_password)
+    assert user.totp_secret == TOTP_SECRET
+    db.session.refresh(credential)
+    assert credential.disabled_at is None
     token = db.session.scalars(db.select(PasswordResetToken)).one()
     assert token.used_at is not None
 

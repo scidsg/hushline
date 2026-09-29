@@ -2,10 +2,10 @@
 {% block title %}Settings{% endblock %}
 
 {% block content %}
-  <h2>Disable Two-Factor Authentication</h2>
-  <p>Are you sure you want to disable 2FA?</p>
-  <form method="POST" action="{{ url_for('settings.disable_2fa') }}">
-    <button type="submit">Yes, Disable 2FA</button>
-  </form>
-  <a href="{{ url_for('settings.auth') }}">Cancel</a>
+  <h2>Manage Multi-Factor Authentication</h2>
+  <p>
+    Disabling MFA requires your current password and an enrolled second factor. Review the
+    consequences before changing your factor policy.
+  </p>
+  <a href="{{ url_for('settings.security_keys') }}">Continue to MFA settings</a>
 {% endblock %}

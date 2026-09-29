@@ -306,7 +306,7 @@ def test_settings_common_remaining_paths(app, user: User) -> None:  # type: igno
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-def test_enable_2fa_invalid_code_path(client: FlaskClient, user: User) -> None:
+def test_enable_2fa_invalid_code_path(client: FlaskClient, user: User, user_password: str) -> None:
     response = client.get(url_for("settings.enable_2fa"), follow_redirects=False)
     assert response.status_code == 200
     with client.session_transaction() as sess:
@@ -315,7 +315,7 @@ def test_enable_2fa_invalid_code_path(client: FlaskClient, user: User) -> None:
     assert bad_code != secret[:6]
     response = client.post(
         url_for("settings.enable_2fa"),
-        data={"verification_code": bad_code},
+        data={"password": user_password, "verification_code": bad_code},
         follow_redirects=False,
     )
     assert response.status_code == 302

@@ -10,6 +10,8 @@ Registration requests `none` attestation. Hush Line does not retain attestation 
 
 Credential IDs and public keys are authentication material, not disclosure content, but they are excluded from account data exports and must not be logged. Verifier exceptions are converted to generic service errors so malformed credential data and public keys do not enter application logs.
 
+Removing a credential disables it under the account policy lock, consumes outstanding WebAuthn challenges, rotates the account session identifier, and keeps revoked credential records only within configured age and count bounds. Concurrent assertions either finish before revocation and are invalidated by session rotation, or fail against the disabled credential. Ordinary removal cannot remove the last primary factor; disabling every factor is a separate, acknowledged action after password-plus-factor reauthentication and also invalidates recovery codes.
+
 ## Integration interfaces
 
 Enrollment callers use `WebAuthnCeremonyService.begin_registration()` and `finish_registration()`. Login callers use `begin_authentication()` and `finish_authentication()` with the default `authentication` purpose; reviewed recovery flows use the same pair with `WebAuthnPurpose.RECOVERY`. Callers obtain the binding from `current_webauthn_session_binding()` and must not supply a request host as ceremony configuration. The begin methods return JSON-ready browser options, and the finish methods return the persisted, account-owned credential only after successful verification.

@@ -241,7 +241,9 @@ def test_contract_notifications_full_body_mode_server_encrypts_for_multiple_reci
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-def test_contract_2fa_enable_then_disable_round_trip(client: FlaskClient, user: User) -> None:
+def test_contract_2fa_enable_then_disable_round_trip(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
     assert user.totp_secret is None
 
     response = client.post(url_for("settings.toggle_2fa"), follow_redirects=False)
@@ -256,11 +258,11 @@ def test_contract_2fa_enable_then_disable_round_trip(client: FlaskClient, user: 
 
     response = client.post(
         url_for("settings.enable_2fa"),
-        data={"verification_code": verification_code},
+        data={"password": user_password, "verification_code": verification_code},
         follow_redirects=False,
     )
     assert response.status_code == 302
-    assert response.headers["Location"].endswith(url_for("logout"))
+    assert response.headers["Location"].endswith(url_for("login"))
 
     db.session.refresh(user)
     assert user.totp_secret is not None
@@ -271,13 +273,21 @@ def test_contract_2fa_enable_then_disable_round_trip(client: FlaskClient, user: 
         sess["username"] = user.primary_username.username
         sess["is_authenticated"] = True
 
-    response = client.get(url_for("settings.auth"), follow_redirects=True)
-    assert response.status_code == 200
-    assert "Disable 2FA" in response.text
-
-    response = client.post(url_for("settings.disable_2fa"), follow_redirects=False)
+    current_code = pyotp.TOTP(user.totp_secret).now()
+    response = client.post(
+        url_for("settings.authorize_security_key"),
+        data={"password": user_password, "verification_code": current_code},
+        follow_redirects=False,
+    )
     assert response.status_code == 302
-    assert response.headers["Location"].endswith(url_for("settings.auth"))
+
+    response = client.post(
+        url_for("settings.disable_mfa"),
+        data={"confirm": "y"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("settings.security_keys"))
     db.session.refresh(user)
     assert user.totp_secret is None
 
