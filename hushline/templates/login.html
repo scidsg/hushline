@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Login{% endblock %}
 
+{% block scripts %}
+  <script defer src="{{ url_for('static', filename='js/security-key-login.js') }}"></script>
+{% endblock %}
+
 {% block content %}
   <h2>Login</h2>
   <form method="POST" action="{{ url_for('login') }}" data-submit-spinner="true">

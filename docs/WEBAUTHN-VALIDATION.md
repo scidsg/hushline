@@ -17,6 +17,9 @@ results:
 - A real Chromium CDP virtual-authenticator ceremony against the integrated application. It uses
   two distinct CTAP 2.1 authenticators to enroll primary and backup credentials, log in, revoke the
   primary credential, recover with the backup, and clean up the synthetic account.
+- The login ceremony exercises the password form's document replacement and repeated initialization.
+  The verification button must start exactly one WebAuthn request after that transition. The login
+  page preloads the handler because script elements imported during document replacement do not run.
 - Two sanitized screenshots and JSON metadata containing the commit, browser version, configured
   RP/origin, virtual transports, completed scenarios, and excluded sensitive fields.
 

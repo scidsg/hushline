@@ -93,7 +93,10 @@ async function addVirtualSecurityKey(cdp, transport) {
 }
 
 async function enrollVirtualSecurityKey(page, label) {
-  await page.getByLabel("Key Label").fill(label);
+  await page
+    .locator("#security-key-enrollment-form")
+    .getByLabel("Key Label")
+    .fill(label);
   await page.getByRole("button", { name: "Add Security Key" }).click();
   await virtualExpect(page.getByRole("status")).toContainText(
     "Security key added",
@@ -127,11 +130,34 @@ async function loginWithSecurityKey(page, username) {
   await virtualExpect(
     page.getByRole("button", { name: "Verify Security Key" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Verify Security Key" }).click();
+  const verifyButton = page.getByRole("button", {
+    name: "Verify Security Key",
+  });
+  await virtualExpect(verifyButton).toHaveAttribute(
+    "data-security-key-login-bound",
+    "true",
+  );
+  let optionsRequests = 0;
+  const countOptions = (request) => {
+    if (
+      new URL(request.url()).pathname === "/verify-security-key-login/options"
+    ) {
+      optionsRequests += 1;
+    }
+  };
+  page.on("request", countOptions);
+  // Repeated document initialization must not install duplicate ceremony handlers.
+  await page.evaluate(() => {
+    document.dispatchEvent(new CustomEvent("hushline:document-replaced"));
+    document.dispatchEvent(new CustomEvent("hushline:document-replaced"));
+  });
+  await verifyButton.click();
   await virtualExpect(page.locator("body")).toHaveAttribute(
     "data-authenticated",
     "true",
   );
+  page.off("request", countOptions);
+  expect(optionsRequests).toBe(1);
 }
 
 test("enrolls a primary and backup security key with keyboard and status feedback", async ({
