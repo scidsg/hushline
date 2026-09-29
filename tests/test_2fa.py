@@ -1,5 +1,7 @@
 import secrets
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, tzinfo
+from threading import Barrier
 from unittest.mock import patch
 
 import pyotp
@@ -8,9 +10,10 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 from werkzeug.security import generate_password_hash
 
+from hushline.auth import totp_code_was_used
 from hushline.config import PASSWORD_HASH_REHASH_ON_AUTH_ENABLED
 from hushline.db import db
-from hushline.model import User
+from hushline.model import AuthenticationLog, User
 from hushline.password_hasher import PINNED_WERKZEUG_SCRYPT_METHOD
 
 TOTP_SECRET = "KBOVHCCELV67CYGOQ2QYU5SCNYVAREMH"
@@ -232,6 +235,83 @@ def test_reuse_of_2fa_code_should_fail(
     )
     # Should be rejected for replaying the same OTP in the same timecode.
     assert valid_2fa_response.status_code == 429
+
+
+@pytest.mark.usefixtures("_2fa_user")
+def test_security_key_success_does_not_hide_reused_2fa_code(
+    client: FlaskClient, user: User, user_password: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    current_now = datetime.now().replace(microsecond=0)
+    fixed_now = current_now - timedelta(seconds=current_now.second % 30) + timedelta(seconds=5)
+
+    class FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz: tzinfo | None = None) -> datetime:  # type: ignore[override]
+            if tz is not None:
+                return tz.fromutc(fixed_now.replace(tzinfo=tz))
+            return fixed_now
+
+    monkeypatch.setattr("hushline.routes.auth.datetime", FrozenDateTime)
+    totp = pyotp.TOTP(TOTP_SECRET)
+    code_time = fixed_now - timedelta(seconds=30)
+    verification_code = totp.at(code_time)
+    timecode = totp.timecode(code_time)
+    prior_totp = AuthenticationLog(
+        user_id=user.id,
+        successful=True,
+        otp_code=verification_code,
+        timecode=timecode,
+    )
+    prior_totp.timestamp = fixed_now - timedelta(seconds=1)
+    # Non-TOTP successes do not store an OTP code or timecode.
+    later_security_key = AuthenticationLog(user_id=user.id, successful=True)
+    later_security_key.timestamp = fixed_now
+    db.session.add_all([prior_totp, later_security_key])
+    db.session.commit()
+
+    client.post(
+        url_for("login"),
+        data={"username": user.primary_username.username, "password": user_password},
+    )
+    response = client.post(
+        url_for("verify_2fa_login"),
+        data={"verification_code": verification_code},
+    )
+
+    assert response.status_code == 429
+    with client.session_transaction() as session:
+        assert session["is_authenticated"] is False
+
+
+def test_concurrent_totp_replay_check_allows_only_one_success(app: Flask, user: User) -> None:
+    user_id = user.id
+    code = "123456"
+    timecode = 12345678
+    barrier = Barrier(2)
+
+    def attempt() -> bool:
+        with app.app_context():
+            barrier.wait()
+            used = totp_code_was_used(user_id=user_id, code=code, timecode=timecode)
+            if used:
+                db.session.rollback()
+            else:
+                db.session.add(
+                    AuthenticationLog(
+                        user_id=user_id,
+                        successful=True,
+                        otp_code=code,
+                        timecode=timecode,
+                    )
+                )
+                db.session.commit()
+            db.session.remove()
+            return not used
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(lambda _index: attempt(), range(2)))
+
+    assert sorted(results) == [False, True]
 
 
 @pytest.mark.usefixtures("_2fa_user")

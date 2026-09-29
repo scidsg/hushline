@@ -19,6 +19,7 @@ from hushline.auth import (
 )
 from hushline.db import db
 from hushline.model import (
+    AuthenticationLog,
     RecoveryCodeBatch,
     User,
     WebAuthnChallenge,
@@ -96,6 +97,7 @@ def test_security_key_settings_lists_keys_and_recovery_guidance(
     response = client.get(url_for("settings.security_keys"))
 
     assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
     assert "Office USB key" in response.text
     assert "Backup NFC key" in response.text
     assert "Register at least two" in response.text
@@ -151,6 +153,39 @@ def test_mfa_account_requires_existing_totp_factor(
     _authorize(client, user_password, pyotp.TOTP(user.totp_secret).now())
     response = client.get(url_for("settings.security_keys"))
     assert 'id="security-key-enrollment-form"' in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_security_key_success_does_not_hide_reused_totp_reauthentication(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    user.totp_secret = pyotp.random_base32()
+    totp = pyotp.TOTP(user.totp_secret)
+    code = totp.now()
+    now = datetime.now()
+    timecode = totp.timecode(now)
+    prior_totp = AuthenticationLog(
+        user_id=user.id,
+        successful=True,
+        otp_code=code,
+        timecode=timecode,
+    )
+    prior_totp.timestamp = now - timedelta(seconds=1)
+    # Non-TOTP successes do not store an OTP code or timecode.
+    later_security_key = AuthenticationLog(user_id=user.id, successful=True)
+    later_security_key.timestamp = now
+    db.session.add_all([prior_totp, later_security_key])
+    db.session.commit()
+
+    response = client.post(
+        url_for("settings.authorize_security_key"),
+        data={"password": user_password, "verification_code": code},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    with client.session_transaction() as session:
+        assert WEBAUTHN_ENROLLMENT_AUTHORIZATION_SESSION_KEY not in session
 
 
 @pytest.mark.usefixtures("_authenticated_user")
