@@ -161,6 +161,7 @@ def test_security_key_settings_keeps_csp_enforced(client: FlaskClient) -> None:
 def test_security_key_login_keeps_csp_enforced(
     client: FlaskClient, user: User, user_password: str
 ) -> None:
+    login_page = client.get(url_for("login"))
     db.session.add(
         WebAuthnCredential(
             user_id=user.id,
@@ -182,13 +183,14 @@ def test_security_key_login_keeps_csp_enforced(
 
     response = client.get(url_for("verify_2fa_login"))
 
-    assert response.status_code == 200
-    assert url_for("static", filename="js/security-key-login.js") in response.text
-    directives = _csp_directives(response.headers)
-    assert directives["script-src"] == "'self'"
-    assert directives["script-src-elem"] == "'self'"
-    assert directives["connect-src"] == "'self' data:"
-    assert "'unsafe-inline'" not in directives["script-src"]
+    for response in (login_page, response):
+        assert response.status_code == 200
+        assert url_for("static", filename="js/security-key-login.js") in response.text
+        directives = _csp_directives(response.headers)
+        assert directives["script-src"] == "'self'"
+        assert directives["script-src-elem"] == "'self'"
+        assert directives["connect-src"] == "'self' data:"
+        assert "'unsafe-inline'" not in directives["script-src"]
 
 
 @pytest.mark.usefixtures("_authenticated_admin")

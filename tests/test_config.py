@@ -127,15 +127,24 @@ def test_public_base_url_invalid(value: str, match: str) -> None:
         load_config(env)
 
 
-def test_webauthn_relying_party_configuration_is_explicit_and_validated() -> None:
-    cfg = load_config(
-        {
-            WEBAUTHN_RP_ID: "example.org",
-            WEBAUTHN_ORIGIN: "https://tips.example.org",
-        }
-    )
-    assert cfg[WEBAUTHN_RP_ID] == "example.org"
-    assert cfg[WEBAUTHN_ORIGIN] == "https://tips.example.org"
+@pytest.mark.parametrize(
+    ("rp_id", "origin"),
+    [
+        ("example.org", "https://tips.example.org"),
+        ("staging.example.org", "https://pr-2421.staging.example.org"),
+        (
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.onion",
+            "http://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.onion",
+        ),
+        ("localhost", "http://localhost:8080"),
+    ],
+)
+def test_webauthn_relying_party_configuration_is_explicit_and_validated(
+    rp_id: str, origin: str
+) -> None:
+    cfg = load_config({WEBAUTHN_RP_ID: rp_id, WEBAUTHN_ORIGIN: origin})
+    assert cfg[WEBAUTHN_RP_ID] == rp_id
+    assert cfg[WEBAUTHN_ORIGIN] == origin
 
 
 @pytest.mark.parametrize(

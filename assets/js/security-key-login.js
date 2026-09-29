@@ -55,12 +55,15 @@ async function responseJson(response) {
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+function initializeSecurityKeyLogin() {
   const container = document.getElementById("security-key-login");
   if (!container) return;
 
   const button = document.getElementById("security-key-login-button");
   const status = document.getElementById("security-key-login-status");
+  if (!button || !status || button.dataset.securityKeyLoginBound === "true")
+    return;
+  button.dataset.securityKeyLoginBound = "true";
   const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
   const isSettingsConfirmation = container.dataset.context === "settings";
   const failureSuffix = isSettingsConfirmation
@@ -107,7 +110,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const credential = await navigator.credentials.get({
         publicKey: authenticationOptions(options),
       });
-      if (!credential) throw new Error("No security key response was received.");
+      if (!credential)
+        throw new Error("No security key response was received.");
 
       status.textContent = "Verifying your security key…";
       const verifyResponse = await fetch(container.dataset.verifyUrl, {
@@ -129,26 +133,35 @@ document.addEventListener("DOMContentLoaded", () => {
         !result.redirect.startsWith("/") ||
         result.redirect.startsWith("//")
       ) {
-        throw new Error("Login completed, but the redirect was invalid. Reload this page.");
+        throw new Error(
+          "Login completed, but the redirect was invalid. Reload this page.",
+        );
       }
       window.location.assign(result.redirect);
     } catch (error) {
       if (error?.name === "NotAllowedError") {
-        status.textContent =
-          `Security key verification was canceled or timed out. ${failureSuffix}`;
+        status.textContent = `Security key verification was canceled or timed out. ${failureSuffix}`;
       } else if (error?.name === "SecurityError") {
         status.textContent = [
           "This site cannot use security keys in the current browser context.",
           failureSuffix,
         ].join(" ");
       } else if (error instanceof TypeError) {
-        status.textContent =
-          `A network or browser error interrupted verification. ${failureSuffix}`;
+        status.textContent = `A network or browser error interrupted verification. ${failureSuffix}`;
       } else {
         status.textContent =
-          error?.message || `Security key verification failed. ${failureSuffix}`;
+          error?.message ||
+          `Security key verification failed. ${failureSuffix}`;
       }
       button.disabled = false;
     }
   });
-});
+}
+
+// Password login can replace the document while retaining the chat-key runtime.
+// Imported script tags do not execute during that transition.
+document.addEventListener("DOMContentLoaded", initializeSecurityKeyLogin);
+document.addEventListener(
+  "hushline:document-replaced",
+  initializeSecurityKeyLogin,
+);

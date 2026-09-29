@@ -103,6 +103,25 @@ def test_configuration_is_explicit_and_does_not_trust_request_host(app: Flask, u
         )
 
 
+def test_configured_rp_is_not_replaced_by_proxy_or_request_headers(app: Flask, user: User) -> None:
+    _configure(app)
+    headers = {
+        "Host": "attacker.example",
+        "Forwarded": "host=attacker.example;proto=https",
+        "X-Forwarded-Host": "attacker.example",
+        "X-Forwarded-Proto": "https",
+    }
+    with app.test_request_context(headers=headers):
+        options = WebAuthnCeremonyService.begin_registration(
+            user=user,
+            username=user.primary_username.username,
+            display_name=None,
+            session_binding=SESSION_BINDING,
+        )
+
+    assert options["rp"] == {"id": "localhost", "name": "Hush Line Test"}
+
+
 def test_registration_options_are_private_bounded_and_account_specific(
     app: Flask, user: User
 ) -> None:
