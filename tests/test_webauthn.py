@@ -377,7 +377,17 @@ def test_authentication_options_require_user_verification_and_limit_credentials(
         device_type="single_device",
         backed_up=False,
     )
-    db.session.add(credential)
+    backup_credential = WebAuthnCredential(
+        user_id=user.id,
+        credential_id=b"backup-authentication-options-key",
+        public_key=b"backup-public-key",
+        algorithm=-7,
+        sign_count=0,
+        transports=["nfc"],
+        device_type="single_device",
+        backed_up=False,
+    )
+    db.session.add_all([credential, backup_credential])
     db.session.commit()
 
     options = WebAuthnCeremonyService.begin_authentication(
@@ -386,9 +396,10 @@ def test_authentication_options_require_user_verification_and_limit_credentials(
     )
 
     assert options["userVerification"] == "required"
-    assert [_decode(item["id"]) for item in options["allowCredentials"]] == [
-        credential.credential_id
-    ]
+    assert {_decode(item["id"]) for item in options["allowCredentials"]} == {
+        credential.credential_id,
+        backup_credential.credential_id,
+    }
 
 
 def test_authentication_fixture_verifies_signature_user_handle_and_counter(

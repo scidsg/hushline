@@ -96,6 +96,23 @@ class SecurityKeyAuthorizationForm(FlaskForm):
     submit = SubmitField("Continue", name="authorize_security_key", widget=Button())
 
 
+class RecoveryCodeGenerationForm(FlaskForm):
+    submit = SubmitField("Generate Recovery Codes", widget=Button())
+
+
+class RecoveryCodeAcknowledgementForm(FlaskForm):
+    saved_codes = BooleanField(
+        "I saved these recovery codes in a secure place.",
+        validators=[DataRequired()],
+    )
+    submit = SubmitField("Finish", widget=Button())
+
+
+class SecurityKeyRemovalForm(FlaskForm):
+    credential_id = HiddenField(validators=[DataRequired()])
+    submit = SubmitField("Remove", widget=Button())
+
+
 class DataExportForm(FlaskForm):
     encrypt_export = BooleanField("Encrypt export with my PGP key", default=True)
     submit = SubmitField("Download My Data", name="download_data", widget=Button())

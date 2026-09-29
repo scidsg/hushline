@@ -76,6 +76,7 @@ The app and public directory support more than individual profiles. Current disc
 | Visitor          | Use an invite code when registrations are gated                                | I can still join approved deployments                                                                    | Registration with invite-code support                 |
 | Visitor          | Complete a CAPTCHA during registration                                         | The platform can reduce low-effort automated abuse                                                       | Registration CAPTCHA                                  |
 | Existing user    | Log in and complete a TOTP challenge                                           | I can access my account securely                                                                         | Login and 2FA verification                            |
+| Existing user    | Recover with an enrolled factor or recovery code                               | I can regain secure access without a server-side bypass                                                  | Login and authentication settings                     |
 | Existing user    | Request password reset help without exposing whether my username exists        | I receive a generic response while Hush Line avoids treating notification recipients as recovery factors | Password reset flow                                   |
 | Logged-in sender | Start an account conversation with another account after submitting a message  | I can follow up inside Hush Line without relying only on the one-time anonymous reply link               | Public message form, conversation page                |
 | Logged-in sender | Unlock my Hush Line chat key in the browser before reading or replying         | Conversation plaintext stays out of server-side storage and is only decrypted in my browser              | Conversation page                                     |
@@ -190,6 +191,12 @@ Conversation plaintext is not stored by the server. Conversation messages are st
 Deleting an account conversation is local to the participant who deletes it. The conversation is removed from that participant's inbox, their encrypted copies are removed, and messages they authored appear as deleted placeholders to remaining participants. Other participants keep the thread and any encrypted copies still available to them. The shared conversation record is removed only after every participant has deleted their side. If the conversation began from a one-way intake message, that original message is detached or removed only when the shared conversation is fully removed.
 
 Password changes require the active Hush Line chat key to be rewrapped in the browser before the password is changed. Password reset cannot rewrap an active chat key because the old password is unavailable; reset locks old chat history encrypted to that key. Old chat history remains unavailable unless a future recovery mechanism is explicitly designed, reviewed, documented, and tested.
+
+Authentication recovery restores account access and permits replacement of lost factors, but does
+not recover or unwrap encrypted chat history. Recovery-code generation requires recent strong
+authentication, displays each high-entropy code only once, and invalidates prior sets. Codes are
+stored only as hashes and consumed once. Password reset, notification email, support staff, and
+administrators do not bypass an enrolled second factor.
 
 Conversation notifications are generic activity alerts. They do not include conversation plaintext or conversation ciphertext, even when the recipient has enabled message-content notifications for one-way tip intake.
 

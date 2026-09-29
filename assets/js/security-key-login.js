@@ -62,6 +62,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const button = document.getElementById("security-key-login-button");
   const status = document.getElementById("security-key-login-status");
   const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+  const isSettingsConfirmation = container.dataset.context === "settings";
+  const failureSuffix = isSettingsConfirmation
+    ? "Your settings were not changed."
+    : "You are not logged in.";
 
   if (
     !window.isSecureContext ||
@@ -71,7 +75,9 @@ document.addEventListener("DOMContentLoaded", () => {
     button.disabled = true;
     status.textContent = [
       "This browser cannot use security keys.",
-      "Use a configured alternative or a supported browser in a secure connection.",
+      isSettingsConfirmation
+        ? "Use an enrolled authenticator app or a supported browser in a secure connection."
+        : "Use a configured alternative or a supported browser in a secure connection.",
     ].join(" ");
     return;
   }
@@ -129,18 +135,18 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
       if (error?.name === "NotAllowedError") {
         status.textContent =
-          "Security key verification was canceled or timed out. You are not logged in.";
+          `Security key verification was canceled or timed out. ${failureSuffix}`;
       } else if (error?.name === "SecurityError") {
         status.textContent = [
           "This site cannot use security keys in the current browser context.",
-          "You are not logged in.",
+          failureSuffix,
         ].join(" ");
       } else if (error instanceof TypeError) {
         status.textContent =
-          "A network or browser error interrupted verification. You are not logged in.";
+          `A network or browser error interrupted verification. ${failureSuffix}`;
       } else {
         status.textContent =
-          error?.message || "Security key verification failed. You are not logged in.";
+          error?.message || `Security key verification failed. ${failureSuffix}`;
       }
       button.disabled = false;
     }

@@ -15,6 +15,7 @@ from hushline.routes.forms import (  # noqa: F401
     LoginForm,
     PasswordResetForm,
     PasswordResetRequestForm,
+    RecoveryCodeLoginForm,
     RegistrationForm,
     TwoFactorForm,
 )
