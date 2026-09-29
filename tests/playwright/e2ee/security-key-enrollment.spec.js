@@ -17,10 +17,8 @@ async function loginAndAuthorize(page) {
 
   await page.goto("/settings/security-keys", { waitUntil: "networkidle" });
   await page.fill("#password", TEST_PASSWORD);
-  await Promise.all([
-    page.waitForNavigation({ waitUntil: "networkidle" }),
-    page.getByRole("button", { name: "Continue" }).click(),
-  ]);
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.locator("#security-key-enrollment-form")).toBeVisible();
 }
 
 function syntheticRegistrationOptions() {
@@ -113,10 +111,7 @@ async function enrollVirtualSecurityKey(page, label) {
 
 async function authorizeAfterRecentStrongAuthentication(page) {
   await page.fill("#password", TEST_PASSWORD);
-  await Promise.all([
-    page.waitForNavigation({ waitUntil: "networkidle" }),
-    page.getByRole("button", { name: "Continue" }).click(),
-  ]);
+  await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.locator("#security-key-enrollment-form")).toBeVisible();
 }
 
