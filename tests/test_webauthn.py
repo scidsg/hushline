@@ -363,6 +363,34 @@ def test_stale_challenge_and_issue_rate_limits_are_enforced(app: Flask, user: Us
         )
 
 
+def test_authentication_options_require_user_verification_and_limit_credentials(
+    app: Flask, user: User
+) -> None:
+    _configure(app)
+    credential = WebAuthnCredential(
+        user_id=user.id,
+        credential_id=b"authentication-options-key",
+        public_key=b"public-key",
+        algorithm=-7,
+        sign_count=0,
+        transports=["usb"],
+        device_type="single_device",
+        backed_up=False,
+    )
+    db.session.add(credential)
+    db.session.commit()
+
+    options = WebAuthnCeremonyService.begin_authentication(
+        user=user,
+        session_binding=SESSION_BINDING,
+    )
+
+    assert options["userVerification"] == "required"
+    assert [_decode(item["id"]) for item in options["allowCredentials"]] == [
+        credential.credential_id
+    ]
+
+
 def test_authentication_fixture_verifies_signature_user_handle_and_counter(
     app: Flask, user: User
 ) -> None:

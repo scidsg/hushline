@@ -3,6 +3,7 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from hmac import new as hmac_new
+from http import HTTPStatus
 from typing import Any
 
 import pyotp
@@ -17,18 +18,22 @@ from flask import (
     session,
     url_for,
 )
+from flask_wtf.csrf import validate_csrf
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError, MultipleResultsFound
 from werkzeug.wrappers.response import Response
+from wtforms.validators import ValidationError
 
 from hushline.auth import (
+    PENDING_LOGIN_CHAT_KEY_SESSION_KEY,
+    PENDING_MFA_METHODS_SESSION_KEY,
     PENDING_PASSWORD_REHASH_SESSION_KEY,
     PENDING_PASSWORD_REHASH_SOURCE_DIGEST_SESSION_KEY,
+    WEBAUTHN_SESSION_BINDING_KEY,
     authentication_required,
     clear_auth_session,
     get_session_user,
     pop_post_auth_redirect,
-    rotate_chat_key_session_id,
     rotate_user_session_id,
     set_session_user,
     stash_post_auth_redirect_target,
@@ -65,7 +70,12 @@ PASSWORD_RESET_CONFIRMATION_MESSAGE = (
 PASSWORD_RESET_INVALID_LINK_MESSAGE = (
     "Password reset links expire quickly and can only be used once. Request a new reset if needed."  # noqa: S105
 )
-PENDING_LOGIN_CHAT_KEY_SESSION_KEY = "pending_login_chat_key_payload"
+TOTP_MFA_METHOD = "totp"
+SECURITY_KEY_MFA_METHOD = "security_key"
+
+
+class PendingLoginStateError(Exception):
+    pass
 
 
 def _now() -> datetime:
@@ -161,6 +171,43 @@ def _provision_pending_login_chat_key(user: User) -> None:
     payload = session.pop(PENDING_LOGIN_CHAT_KEY_SESSION_KEY, None)
     if isinstance(payload, dict):
         _create_initial_chat_key_from_payload(user, payload)
+
+
+def _active_mfa_methods(user: User) -> list[str]:
+    methods: list[str] = []
+    if user.totp_secret:
+        methods.append(TOTP_MFA_METHOD)
+    if any(credential.disabled_at is None for credential in user.webauthn_credentials):
+        methods.append(SECURITY_KEY_MFA_METHOD)
+    return methods
+
+
+def _pending_mfa_methods(user: User) -> frozenset[str]:
+    methods = session.get(PENDING_MFA_METHODS_SESSION_KEY)
+    if methods is None:
+        # Continue pre-deployment TOTP challenges without weakening the current
+        # account policy. New password logins always store the permitted set.
+        return frozenset(_active_mfa_methods(user))
+    if not isinstance(methods, list) or any(not isinstance(method, str) for method in methods):
+        return frozenset()
+    return frozenset(methods).intersection({TOTP_MFA_METHOD, SECURITY_KEY_MFA_METHOD})
+
+
+def _json_csrf_error() -> str | None:
+    if current_app.config.get("WTF_CSRF_ENABLED") is False:
+        return None
+    token = request.headers.get("X-CSRFToken") or request.headers.get("X-CSRF-Token")
+    try:
+        validate_csrf(token)
+    except ValidationError:
+        return "Invalid CSRF token."
+    return None
+
+
+def _json_error(message: str, status: HTTPStatus) -> tuple[Response, int]:
+    response = make_response({"error": message})
+    response.headers["Cache-Control"] = "no-store"
+    return response, status.value
 
 
 def _password_reset_rate_limited(identifier_hash: str, ip_hash: str) -> bool:
@@ -281,6 +328,58 @@ def _apply_pending_password_rehash(user: User, *, source_hash: str) -> bool:
     user._password_hash = replacement_hash
     db.session.add(user)
     return True
+
+
+def _complete_pending_login(user: User, auth_log: AuthenticationLog) -> str:
+    password_rehash_source_hash = user.password_hash
+    has_pending_password_rehash = PENDING_PASSWORD_REHASH_SESSION_KEY in session
+    username = session.get("username")
+    pending_session_id = session.get("session_id")
+    if not isinstance(username, str) or not isinstance(pending_session_id, str):
+        clear_auth_session()
+        raise PendingLoginStateError("Pending login state was invalid")
+
+    replacement_session_id = User.new_session_id()
+    claimed_user_id = db.session.scalar(
+        db.update(User)
+        .where(User.id == user.id, User.session_id == pending_session_id)
+        .values(session_id=replacement_session_id)
+        .returning(User.id)
+    )
+    if claimed_user_id is None:
+        db.session.rollback()
+        clear_auth_session()
+        raise PendingLoginStateError("Pending login was already completed")
+    user.session_id = replacement_session_id
+
+    db.session.add(auth_log)
+    set_session_user(user=user, username=username, is_authenticated=True)
+    session.pop(PENDING_MFA_METHODS_SESSION_KEY, None)
+    session.pop(WEBAUTHN_SESSION_BINDING_KEY, None)
+    try:
+        _apply_pending_password_rehash(user, source_hash=password_rehash_source_hash)
+        _provision_pending_login_chat_key(user)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        clear_auth_session()
+        if has_pending_password_rehash:
+            emit_password_rehash_on_auth_telemetry(
+                password_rehash_source_hash,
+                success=False,
+            )
+        raise
+    if has_pending_password_rehash:
+        emit_password_rehash_on_auth_telemetry(
+            password_rehash_source_hash,
+            success=True,
+        )
+
+    if not user.onboarding_complete:
+        return url_for("onboarding")
+    if current_app.config.get("STRIPE_SECRET_KEY") and user.tier_id is None:
+        return url_for("premium.select_tier")
+    return pop_post_auth_redirect()
 
 
 def _lock_first_user_registration() -> None:
@@ -480,10 +579,12 @@ def register_auth_routes(app: Flask) -> None:
                     password_rehash_source_hash,
                 )
                 login_chat_key_payload = _validated_login_chat_key_payload(user)
+                mfa_methods = _active_mfa_methods(user)
+                session.pop(WEBAUTHN_SESSION_BINDING_KEY, None)
 
-                # 2FA enabled?
-                if user.totp_secret:
+                if mfa_methods:
                     set_session_user(user=user, username=username.username, is_authenticated=False)
+                    session[PENDING_MFA_METHODS_SESSION_KEY] = mfa_methods
                     _stash_pending_login_chat_key(user, login_chat_key_payload)
                     if pending_password_rehash is not None:
                         _stash_pending_password_rehash(
@@ -498,6 +599,7 @@ def register_auth_routes(app: Flask) -> None:
                         raise
                     return redirect(url_for("verify_2fa_login"))
 
+                session.pop(PENDING_MFA_METHODS_SESSION_KEY, None)
                 rotate_user_session_id(user)
                 set_session_user(user=user, username=username.username, is_authenticated=True)
 
@@ -604,11 +706,29 @@ def register_auth_routes(app: Flask) -> None:
         if session.get("is_authenticated", False):
             return redirect(url_for("inbox"))
 
+        pending_methods = _pending_mfa_methods(user)
+        allow_totp = TOTP_MFA_METHOD in pending_methods and bool(user.totp_secret)
+        allow_security_key = SECURITY_KEY_MFA_METHOD in pending_methods and any(
+            credential.disabled_at is None for credential in user.webauthn_credentials
+        )
+        if not allow_totp and not allow_security_key:
+            clear_auth_session()
+            flash("⛔️ No permitted second factor is available. Please log in again.")
+            return redirect(url_for("login"))
+
         form = TwoFactorForm()
 
+        def render_mfa() -> str:
+            return render_template(
+                "verify_2fa_login.html",
+                form=form,
+                allow_totp=allow_totp,
+                allow_security_key=allow_security_key,
+            )
+
         if request.method == "POST" and form.validate():
-            if not user.totp_secret:
-                flash("⛔️ 2FA is not enabled.")
+            if not allow_totp or not user.totp_secret:
+                flash("⛔️ Authenticator app verification is not permitted for this login.")
                 return redirect(url_for("login"))
 
             totp = pyotp.TOTP(user.totp_secret)
@@ -648,55 +768,127 @@ def register_auth_routes(app: Flask) -> None:
 
             if rate_limit:
                 flash("⏲️ Please wait a moment before trying again.")
-                return render_template("verify_2fa_login.html", form=form), 429
+                return render_mfa(), 429
 
             if totp.verify(verification_code, valid_window=1):
                 auth_log = AuthenticationLog(
                     user_id=user.id, successful=True, otp_code=verification_code, timecode=timecode
                 )
-                db.session.add(auth_log)
-                rotate_user_session_id(user)
-                session["session_id"] = user.session_id
-                session["is_authenticated"] = True
-                rotate_chat_key_session_id()
-                password_rehash_source_hash = user.password_hash
-                has_pending_password_rehash = PENDING_PASSWORD_REHASH_SESSION_KEY in session
                 try:
-                    _apply_pending_password_rehash(user, source_hash=password_rehash_source_hash)
-                    _provision_pending_login_chat_key(user)
-                    db.session.commit()
-                except Exception:
-                    db.session.rollback()
-                    clear_auth_session()
-                    if has_pending_password_rehash:
-                        emit_password_rehash_on_auth_telemetry(
-                            password_rehash_source_hash,
-                            success=False,
-                        )
-                    raise
-                if has_pending_password_rehash:
-                    emit_password_rehash_on_auth_telemetry(
-                        password_rehash_source_hash,
-                        success=True,
-                    )
-
-                if not user.onboarding_complete:
-                    return redirect(url_for("onboarding"))
-
-                # If premium features are enabled, prompt the user to select a tier if they haven't
-                if app.config.get("STRIPE_SECRET_KEY") and user.tier_id is None:
-                    return redirect(url_for("premium.select_tier"))
-
-                return redirect(pop_post_auth_redirect())
+                    return redirect(_complete_pending_login(user, auth_log))
+                except PendingLoginStateError:
+                    flash("⛔️ This login was already completed. Please log in again.")
+                    return redirect(url_for("login"))
 
             auth_log = AuthenticationLog(user_id=user.id, successful=False)
             db.session.add(auth_log)
             db.session.commit()
 
             flash("⛔️ Invalid 2FA code. Please try again.")
-            return render_template("verify_2fa_login.html", form=form), 401
+            return render_mfa(), 401
 
-        return render_template("verify_2fa_login.html", form=form)
+        return render_mfa()
+
+    @app.post("/verify-security-key-login/options")
+    def security_key_login_options() -> Response | tuple[Response, int]:
+        from hushline.webauthn import (
+            WebAuthnCeremonyService,
+            WebAuthnConfigurationError,
+            WebAuthnRateLimitError,
+            WebAuthnServiceError,
+            current_webauthn_session_binding,
+        )
+
+        csrf_error = _json_csrf_error()
+        if csrf_error:
+            return _json_error(csrf_error, HTTPStatus.BAD_REQUEST)
+        user = get_session_user()
+        if user is None or session.get("is_authenticated", False):
+            return _json_error("This login is no longer pending.", HTTPStatus.UNAUTHORIZED)
+        if SECURITY_KEY_MFA_METHOD not in _pending_mfa_methods(user) or not any(
+            credential.disabled_at is None for credential in user.webauthn_credentials
+        ):
+            return _json_error(
+                "Security key verification is not permitted for this login.",
+                HTTPStatus.FORBIDDEN,
+            )
+
+        try:
+            options = WebAuthnCeremonyService.begin_authentication(
+                user=user,
+                session_binding=current_webauthn_session_binding(),
+            )
+        except WebAuthnRateLimitError:
+            return _json_error(
+                "Too many security key attempts. Please wait and try again.",
+                HTTPStatus.TOO_MANY_REQUESTS,
+            )
+        except WebAuthnConfigurationError:
+            return _json_error(
+                "Security key verification is temporarily unavailable.",
+                HTTPStatus.SERVICE_UNAVAILABLE,
+            )
+        except WebAuthnServiceError:
+            return _json_error(
+                "Security key verification could not be started.",
+                HTTPStatus.BAD_REQUEST,
+            )
+
+        response = make_response(options)
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @app.post("/verify-security-key-login")
+    def verify_security_key_login() -> Response | tuple[Response, int]:
+        from hushline.webauthn import (
+            WebAuthnCeremonyService,
+            WebAuthnServiceError,
+            current_webauthn_session_binding,
+        )
+
+        csrf_error = _json_csrf_error()
+        if csrf_error:
+            return _json_error(csrf_error, HTTPStatus.BAD_REQUEST)
+        user = get_session_user()
+        if user is None or session.get("is_authenticated", False):
+            return _json_error("This login is no longer pending.", HTTPStatus.UNAUTHORIZED)
+        if SECURITY_KEY_MFA_METHOD not in _pending_mfa_methods(user) or not any(
+            credential.disabled_at is None for credential in user.webauthn_credentials
+        ):
+            return _json_error(
+                "Security key verification is not permitted for this login.",
+                HTTPStatus.FORBIDDEN,
+            )
+
+        payload = request.get_json(silent=True)
+        credential_response = payload.get("credential") if isinstance(payload, dict) else None
+        if not isinstance(credential_response, dict):
+            return _json_error("Security key response is invalid.", HTTPStatus.BAD_REQUEST)
+
+        try:
+            WebAuthnCeremonyService.finish_authentication(
+                user=user,
+                session_binding=current_webauthn_session_binding(),
+                response=credential_response,
+            )
+        except WebAuthnServiceError:
+            db.session.add(AuthenticationLog(user_id=user.id, successful=False))
+            db.session.commit()
+            return _json_error(
+                "The security key could not be verified. Please try again.",
+                HTTPStatus.UNAUTHORIZED,
+            )
+
+        try:
+            redirect_target = _complete_pending_login(
+                user,
+                AuthenticationLog(user_id=user.id, successful=True),
+            )
+        except PendingLoginStateError:
+            return _json_error("This login is no longer pending.", HTTPStatus.UNAUTHORIZED)
+        response = make_response({"redirect": redirect_target})
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.route("/logout")
     @authentication_required

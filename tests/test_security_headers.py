@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,7 @@ from hushline.model import (
     OrganizationSetting,
     StripeSubscriptionStatusEnum,
     User,
+    WebAuthnCredential,
 )
 
 
@@ -154,6 +156,39 @@ def test_security_key_settings_keeps_csp_enforced(client: FlaskClient) -> None:
     assert directives["connect-src"] == "'self' data:"
     assert "'unsafe-inline'" not in directives["script-src"]
     assert "https://" not in directives["script-src"]
+
+
+def test_security_key_login_keeps_csp_enforced(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    db.session.add(
+        WebAuthnCredential(
+            user_id=user.id,
+            credential_id=b"csp-login-key",
+            public_key=b"public-key",
+            algorithm=-7,
+            sign_count=0,
+            transports=["usb"],
+            device_type="single_device",
+            backed_up=False,
+            created_at=datetime.now(UTC),
+        )
+    )
+    db.session.commit()
+    client.post(
+        url_for("login"),
+        data={"username": user.primary_username.username, "password": user_password},
+    )
+
+    response = client.get(url_for("verify_2fa_login"))
+
+    assert response.status_code == 200
+    assert url_for("static", filename="js/security-key-login.js") in response.text
+    directives = _csp_directives(response.headers)
+    assert directives["script-src"] == "'self'"
+    assert directives["script-src-elem"] == "'self'"
+    assert directives["connect-src"] == "'self' data:"
+    assert "'unsafe-inline'" not in directives["script-src"]
 
 
 @pytest.mark.usefixtures("_authenticated_admin")
