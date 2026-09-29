@@ -101,12 +101,22 @@ async function enrollVirtualSecurityKey(page, label) {
 }
 
 async function authorizeAfterRecentStrongAuthentication(page) {
-  if (await page.locator("#security-key-enrollment-form").isVisible()) return;
-  await page.fill("#password", TEST_PASSWORD);
-  await page.getByRole("button", { name: "Continue" }).click();
-  await virtualExpect(
-    page.locator("#security-key-enrollment-form"),
-  ).toBeVisible();
+  const enrollmentForm = page.locator("#security-key-enrollment-form");
+  if (await enrollmentForm.isVisible()) return;
+
+  const password = page.locator("#password");
+  if (await password.isVisible()) {
+    await password.fill(TEST_PASSWORD);
+    await page.getByRole("button", { name: "Continue" }).click();
+  }
+
+  const securityKeyConfirmation = page.getByRole("button", {
+    name: "Confirm With Security Key",
+  });
+  if (await securityKeyConfirmation.isVisible()) {
+    await securityKeyConfirmation.click();
+  }
+  await virtualExpect(enrollmentForm).toBeVisible();
 }
 
 async function loginWithSecurityKey(page, username) {
