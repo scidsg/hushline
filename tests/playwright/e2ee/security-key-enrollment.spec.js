@@ -105,17 +105,21 @@ async function enrollVirtualSecurityKey(page, label) {
 
 async function authorizeAfterRecentStrongAuthentication(page) {
   const enrollmentForm = page.locator("#security-key-enrollment-form");
+  const password = page.locator("#password");
+  const securityKeyConfirmation = page.getByRole("button", {
+    name: "Confirm With Security Key",
+  });
+  await virtualExpect(
+    enrollmentForm.or(password).or(securityKeyConfirmation),
+  ).toBeVisible();
   if (await enrollmentForm.isVisible()) return;
 
-  const password = page.locator("#password");
   if (await password.isVisible()) {
     await password.fill(TEST_PASSWORD);
     await page.getByRole("button", { name: "Continue" }).click();
   }
 
-  const securityKeyConfirmation = page.getByRole("button", {
-    name: "Confirm With Security Key",
-  });
+  await virtualExpect(enrollmentForm.or(securityKeyConfirmation)).toBeVisible();
   if (await securityKeyConfirmation.isVisible()) {
     await securityKeyConfirmation.click();
   }
