@@ -17,7 +17,10 @@ from hushline.auth import (
     POST_AUTH_REDIRECT_SESSION_KEY,
     WEBAUTHN_SESSION_BINDING_KEY,
 )
-from hushline.config import PASSWORD_HASH_REHASH_ON_AUTH_ENABLED
+from hushline.config import (
+    PASSWORD_HASH_REHASH_ON_AUTH_ENABLED,
+    WEBAUTHN_ENROLLMENT_ENABLED,
+)
 from hushline.db import db
 from hushline.model import AuthenticationLog, ChatKey, User, WebAuthnCredential
 from hushline.password_hasher import PINNED_WERKZEUG_SCRYPT_METHOD
@@ -190,6 +193,27 @@ def test_security_key_options_are_bound_to_pending_account_and_enforce_rate_limi
     assert response.status_code == 429
     with client.session_transaction() as session:
         assert session["is_authenticated"] is False
+
+
+def test_enrollment_kill_switch_does_not_disable_enrolled_key_login(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    user_password: str,
+    mocker: MockFixture,
+) -> None:
+    _credential(user)
+    app.config[WEBAUTHN_ENROLLMENT_ENABLED] = False
+    _password_login(client, user, user_password)
+    begin = mocker.patch(
+        "hushline.webauthn.WebAuthnCeremonyService.begin_authentication",
+        return_value={"challenge": "challenge", "allowCredentials": []},
+    )
+
+    response = client.post(url_for("security_key_login_options"), json={})
+
+    assert response.status_code == 200
+    begin.assert_called_once()
 
 
 def test_tampered_security_key_assertion_does_not_authenticate(

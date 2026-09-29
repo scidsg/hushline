@@ -157,6 +157,8 @@ def test_metrics_settings_shows_admin_highlights(
     assert "MFA Enabled 2 100.0%" in metrics_text
     assert "PGP Enabled 1 50.0%" in metrics_text
     assert "Chat Keys Created 1 50.0%" in metrics_text
+    assert "Security Key Users 1 50.0%" in metrics_text
+    assert "Active Security Keys 1" in metrics_text
     assert "Metrics key" not in response.text
     assert "metrics-security-key" not in response.text
 

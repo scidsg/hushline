@@ -17,6 +17,7 @@ from hushline.auth import (
     WEBAUTHN_ENROLLMENT_AUTHORIZATION_SESSION_KEY,
     WEBAUTHN_SESSION_BINDING_KEY,
 )
+from hushline.config import WEBAUTHN_ENROLLMENT_ENABLED
 from hushline.db import db
 from hushline.model import (
     AuthenticationLog,
@@ -229,6 +230,45 @@ def test_registration_options_require_recent_account_bound_authorization(
     assert response.headers["Cache-Control"] == "no-store"
     assert begin_registration.call_args.kwargs["user"].id == user.id
     assert begin_registration.call_args.kwargs["username"] == user.primary_username.username
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_enrollment_kill_switch_blocks_only_new_credentials(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    user_password: str,
+    mocker: MockFixture,
+) -> None:
+    credential = _credential(user, b"existing-key", "Existing key")
+    app.config[WEBAUTHN_ENROLLMENT_ENABLED] = False
+    begin = mocker.patch("hushline.webauthn.WebAuthnCeremonyService.begin_registration")
+    finish = mocker.patch("hushline.webauthn.WebAuthnCeremonyService.finish_registration")
+
+    page = client.get(url_for("settings.security_keys"))
+    _mark_recent_strong_authentication(client, user)
+    _authorize(client, user_password)
+    options = client.post(
+        url_for("settings.security_key_registration_options"),
+        json={"name": "Blocked key"},
+    )
+    verification = client.post(
+        url_for("settings.verify_security_key_registration"),
+        json={"name": "Blocked key", "credential": {"id": "blocked"}},
+    )
+
+    assert page.status_code == 200
+    assert "New security key enrollment is currently paused" in page.text
+    assert 'id="security-key-enrollment-form"' not in page.text
+    assert "Existing key" in page.text
+    assert options.status_code == 503
+    assert verification.status_code == 503
+    assert options.headers["Cache-Control"] == "no-store"
+    assert verification.headers["Cache-Control"] == "no-store"
+    begin.assert_not_called()
+    finish.assert_not_called()
+    db.session.refresh(credential)
+    assert credential.disabled_at is None
 
 
 @pytest.mark.usefixtures("_authenticated_user")

@@ -37,7 +37,7 @@ Hush Line is built for safety-critical reporting workflows where trust, anonymit
 | Anonymous submissions  | No submitter account required for sending disclosures                                                          |
 | Encryption             | End-to-end encrypted submissions with recipient PGP keys, plus server-side fallback path                       |
 | Receiver trust         | Verified account workflow and trusted directory UX                                                             |
-| Account security       | Password authentication with optional TOTP 2FA                                                                 |
+| Account security       | Password authentication with optional TOTP / WebAuthn key MFA                                                  |
 | Privacy access         | Tor onion support and privacy-preserving defaults                                                              |
 | Communication workflow | Message status management, reply links, signed E2EE account conversations, and optional email forwarding modes |
 | Org customization      | Branding controls, onboarding guidance, and configurable profile fields                                        |

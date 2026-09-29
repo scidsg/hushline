@@ -7,6 +7,7 @@ from flask.testing import FlaskClient
 from werkzeug.datastructures import Headers
 
 from hushline import PERMISSIONS_POLICY
+from hushline.config import WEBAUTHN_ENROLLMENT_ENABLED
 from hushline.db import db
 from hushline.model import (
     Conversation,
@@ -146,16 +147,20 @@ def test_settings_profile_keeps_frame_restrictions(client: FlaskClient) -> None:
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-def test_security_key_settings_keeps_csp_enforced(client: FlaskClient) -> None:
-    response = client.get(url_for("settings.security_keys"))
-    assert response.status_code == 200
+def test_security_key_settings_keeps_csp_enforced(app: Flask, client: FlaskClient) -> None:
+    enabled_response = client.get(url_for("settings.security_keys"))
+    app.config[WEBAUTHN_ENROLLMENT_ENABLED] = False
+    paused_response = client.get(url_for("settings.security_keys"))
 
-    directives = _csp_directives(response.headers)
-    assert directives["script-src"] == "'self'"
-    assert directives["script-src-elem"] == "'self'"
-    assert directives["connect-src"] == "'self' data:"
-    assert "'unsafe-inline'" not in directives["script-src"]
-    assert "https://" not in directives["script-src"]
+    assert "New security key enrollment is currently paused" in paused_response.text
+    for response in (enabled_response, paused_response):
+        assert response.status_code == 200
+        directives = _csp_directives(response.headers)
+        assert directives["script-src"] == "'self'"
+        assert directives["script-src-elem"] == "'self'"
+        assert directives["connect-src"] == "'self' data:"
+        assert "'unsafe-inline'" not in directives["script-src"]
+        assert "https://" not in directives["script-src"]
 
 
 def test_security_key_login_keeps_csp_enforced(
