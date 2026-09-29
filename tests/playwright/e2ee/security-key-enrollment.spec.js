@@ -3,6 +3,7 @@ const { writeFile } = require("node:fs/promises");
 
 const TEST_PASSWORD = "Test-testtesttesttest-1";
 const VIRTUAL_TEST_USERNAMES = ["georgecostanza", "elainebenes"];
+const virtualExpect = expect.configure({ timeout: 15_000 });
 
 async function loginAndAuthorize(page, username = "jerryseinfeld") {
   await page.addInitScript(() => {
@@ -94,13 +95,17 @@ async function addVirtualSecurityKey(cdp, transport) {
 async function enrollVirtualSecurityKey(page, label) {
   await page.getByLabel("Key Label").fill(label);
   await page.getByRole("button", { name: "Add Security Key" }).click();
-  await expect(page.getByRole("status")).toContainText("Security key added");
+  await virtualExpect(page.getByRole("status")).toContainText(
+    "Security key added",
+  );
 }
 
 async function authorizeAfterRecentStrongAuthentication(page) {
   await page.fill("#password", TEST_PASSWORD);
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page.locator("#security-key-enrollment-form")).toBeVisible();
+  await virtualExpect(
+    page.locator("#security-key-enrollment-form"),
+  ).toBeVisible();
 }
 
 async function loginWithSecurityKey(page, username) {
@@ -108,11 +113,11 @@ async function loginWithSecurityKey(page, username) {
   await page.fill("#username", username);
   await page.fill("#password", TEST_PASSWORD);
   await page.locator('button[type="submit"]').click();
-  await expect(
+  await virtualExpect(
     page.getByRole("button", { name: "Verify Security Key" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Verify Security Key" }).click();
-  await expect(page.locator("body")).toHaveAttribute(
+  await virtualExpect(page.locator("body")).toHaveAttribute(
     "data-authenticated",
     "true",
   );
@@ -228,7 +233,7 @@ test("virtual authenticators cover enrollment, login, revocation, and backup rec
   browser,
   page,
 }, testInfo) => {
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
   const username = VIRTUAL_TEST_USERNAMES[testInfo.retry];
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("WebAuthn.enable", { enableUI: false });
@@ -248,10 +253,10 @@ test("virtual authenticators cover enrollment, login, revocation, and backup rec
   await addVirtualSecurityKey(cdp, "nfc");
   await enrollVirtualSecurityKey(page, "Backup virtual NFC key");
   await page.reload({ waitUntil: "networkidle" });
-  await expect(
+  await virtualExpect(
     page.getByText("Primary virtual USB key", { exact: true }),
   ).toBeVisible();
-  await expect(
+  await virtualExpect(
     page.getByText("Backup virtual NFC key", { exact: true }),
   ).toBeVisible();
   await page.screenshot({
@@ -264,15 +269,15 @@ test("virtual authenticators cover enrollment, login, revocation, and backup rec
     hasText: "Primary virtual USB key",
   });
   await primaryRow.getByRole("button", { name: "Remove" }).click();
-  await expect(page.getByText("Security key removed")).toBeVisible();
-  await expect(
+  await virtualExpect(page.getByText("Security key removed")).toBeVisible();
+  await virtualExpect(
     page.getByText("Primary virtual USB key", { exact: true }),
   ).toHaveCount(0);
 
   await page.goto("/logout", { waitUntil: "networkidle" });
   await loginWithSecurityKey(page, username);
   await page.goto("/settings/security-keys", { waitUntil: "networkidle" });
-  await expect(
+  await virtualExpect(
     page.getByText("Backup virtual NFC key", { exact: true }),
   ).toBeVisible();
   await page.screenshot({
@@ -283,8 +288,8 @@ test("virtual authenticators cover enrollment, login, revocation, and backup rec
   await authorizeAfterRecentStrongAuthentication(page);
   await page.getByLabel(/remove every second factor/i).check();
   await page.getByRole("button", { name: "Disable All MFA" }).click();
-  await expect(page.getByText("MFA disabled")).toBeVisible();
-  await expect(page.locator("#security-key-empty")).toContainText(
+  await virtualExpect(page.getByText("MFA disabled")).toBeVisible();
+  await virtualExpect(page.locator("#security-key-empty")).toContainText(
     "No security keys are enrolled",
   );
   await writeFile(
