@@ -22,5 +22,14 @@
       <p>{{ chat_key_count }}</p>
       <p>{{ chat_key_percentage | round(2) }}%</p>
     </div>
+    <div class="metric">
+      <p>Security Key Users</p>
+      <p>{{ security_key_user_count }}</p>
+      <p>{{ security_key_user_percentage | round(2) }}%</p>
+    </div>
+    <div class="metric">
+      <p>Active Security Keys</p>
+      <p>{{ active_security_key_count }}</p>
+    </div>
   </div>
 {% endblock %}

@@ -33,6 +33,7 @@ from hushline.auth import (
     rotate_user_session_id,
     totp_code_was_used,
 )
+from hushline.config import webauthn_enrollment_is_enabled
 from hushline.db import db
 from hushline.model import (
     AuthenticationLog,
@@ -268,11 +269,13 @@ def _render_security_keys(
     if not password_confirmed:
         _clear_password_confirmation()
     credentials = _active_credentials(user)
+    enrollment_enabled = webauthn_enrollment_is_enabled(current_app.config, user_id=user.id)
     return render_template(
         "settings/security_keys.html",
         acknowledgement_form=RecoveryCodeAcknowledgementForm(),
         authorization_form=SecurityKeyAuthorizationForm(),
         enrollment_authorized=authorized,
+        enrollment_enabled=enrollment_enabled,
         credentials=credentials,
         generated_codes=generated_codes,
         generation_form=RecoveryCodeGenerationForm(),
@@ -684,6 +687,11 @@ def register_security_key_routes(bp: Blueprint) -> None:
             return _json_error(csrf_error, HTTPStatus.BAD_REQUEST)
 
         user = _current_user()
+        if not webauthn_enrollment_is_enabled(current_app.config, user_id=user.id):
+            return _json_error(
+                "New security key enrollment is currently paused. Enrolled keys still work.",
+                HTTPStatus.SERVICE_UNAVAILABLE,
+            )
         if not _has_recent_enrollment_authorization(user):
             _clear_enrollment_authorization()
             return _json_error(
@@ -738,6 +746,11 @@ def register_security_key_routes(bp: Blueprint) -> None:
             return _json_error(csrf_error, HTTPStatus.BAD_REQUEST)
 
         user = _current_user()
+        if not webauthn_enrollment_is_enabled(current_app.config, user_id=user.id):
+            return _json_error(
+                "New security key enrollment is currently paused. Enrolled keys still work.",
+                HTTPStatus.SERVICE_UNAVAILABLE,
+            )
         if not _has_recent_enrollment_authorization(user):
             _clear_enrollment_authorization()
             return _json_error(

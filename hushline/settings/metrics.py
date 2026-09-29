@@ -46,6 +46,22 @@ def register_metrics_routes(bp: Blueprint) -> None:
             )
             or 0
         )
+        security_key_user_count = (
+            db.session.scalar(
+                db.select(func.count(distinct(WebAuthnCredential.user_id))).where(
+                    WebAuthnCredential.disabled_at.is_(None)
+                )
+            )
+            or 0
+        )
+        active_security_key_count = (
+            db.session.scalar(
+                db.select(func.count(WebAuthnCredential.id)).where(
+                    WebAuthnCredential.disabled_at.is_(None)
+                )
+            )
+            or 0
+        )
 
         return render_template(
             "settings/metrics.html",
@@ -54,7 +70,10 @@ def register_metrics_routes(bp: Blueprint) -> None:
             mfa_count=mfa_count,
             pgp_key_count=pgp_key_count,
             chat_key_count=chat_key_count,
+            security_key_user_count=security_key_user_count,
+            active_security_key_count=active_security_key_count,
             mfa_percentage=_percentage(mfa_count, user_count),
             pgp_key_percentage=_percentage(pgp_key_count, user_count),
             chat_key_percentage=_percentage(chat_key_count, user_count),
+            security_key_user_percentage=_percentage(security_key_user_count, user_count),
         )

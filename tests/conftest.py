@@ -209,6 +209,8 @@ def app(
             "BLOB_STORAGE_PUBLIC_DRIVER": "file-system",
             "BLOB_STORAGE_PUBLIC_FS_ROOT": str(tmpdir),
             "SESSION_FERNET_KEY": "jY0gDbATEOQolx2SGj46YnkkbN6HQBB4YCABzwl1H1A=",
+            "WEBAUTHN_ENROLLMENT_ENABLED": "true",
+            "WEBAUTHN_ENROLLMENT_USER_IDS": "*",
         },
     )
 

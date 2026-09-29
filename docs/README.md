@@ -18,6 +18,7 @@ This directory now includes a GitHub-first mirror of the public Hush Line Librar
 - [Privacy](./PRIVACY.md)
 - [Threat model](./THREAT-MODEL.md)
 - [WebAuthn validation protocol](./WEBAUTHN-VALIDATION.md)
+- [Security-key rollout runbook and release record](./WEBAUTHN-ROLLOUT.md)
 - [Two-way chat end-to-end encryption implementation reference](./TWO-WAY-CHAT-E2EE.md)
 - [Two-way chat E2EE technical whitepaper](./HUSH-LINE-TWO-WAY-CHAT-E2EE-WHITEPAPER.md)
 - [Terms](./TERMS.md)

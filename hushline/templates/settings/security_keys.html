@@ -7,6 +7,12 @@
     keys, keep the backup in a separate safe place, and do not rely on a single
     key for recovery.
   </p>
+  {% if not enrollment_enabled %}
+    <p class="meta" role="status">
+      New security key enrollment is currently paused. Enrolled keys continue to work for
+      login and account recovery.
+    </p>
+  {% endif %}
 
   <h4>Enrolled Keys</h4>
   {% if credentials %}
@@ -121,7 +127,7 @@
       </form>
     {% endif %}
   {% else %}
-    {% if credentials|length < max_credentials %}
+    {% if enrollment_enabled and credentials|length < max_credentials %}
       <h4>Add a Security Key</h4>
       <form
         class="formBody"

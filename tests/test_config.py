@@ -13,12 +13,15 @@ from hushline.config import (
     PASSWORD_HASH_REHASH_ON_AUTH_ENABLED,
     PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT,
     SPLASH_SCREEN_DURATION_MS,
+    WEBAUTHN_ENROLLMENT_ENABLED,
+    WEBAUTHN_ENROLLMENT_USER_IDS,
     WEBAUTHN_ORIGIN,
     WEBAUTHN_RP_ID,
     AliasMode,
     ConfigParseError,
     EncryptedFieldWriteFormat,
     load_config,
+    webauthn_enrollment_is_enabled,
 )
 
 CFG_NAME = "DOES_NOT_EXIST"
@@ -178,6 +181,41 @@ def test_webauthn_credential_limit_allows_a_backup_key() -> None:
 
     cfg = load_config({"WEBAUTHN_REVOKED_CREDENTIAL_RETENTION_DAYS": "14"})
     assert cfg["WEBAUTHN_REVOKED_CREDENTIAL_RETENTION_DAYS"] == 14
+
+
+def test_webauthn_enrollment_requires_explicit_switch_and_population() -> None:
+    cfg = load_config({})
+    assert cfg[WEBAUTHN_ENROLLMENT_ENABLED] is False
+    assert cfg[WEBAUTHN_ENROLLMENT_USER_IDS] == frozenset()
+    assert not webauthn_enrollment_is_enabled(cfg, user_id=7)
+
+    cfg = load_config(
+        {
+            WEBAUTHN_ENROLLMENT_ENABLED: "true",
+            WEBAUTHN_ENROLLMENT_USER_IDS: "7, 12",
+        }
+    )
+    assert webauthn_enrollment_is_enabled(cfg, user_id=7)
+    assert not webauthn_enrollment_is_enabled(cfg, user_id=8)
+
+    cfg = load_config(
+        {
+            WEBAUTHN_ENROLLMENT_ENABLED: "true",
+            WEBAUTHN_ENROLLMENT_USER_IDS: "*",
+        }
+    )
+    assert webauthn_enrollment_is_enabled(cfg, user_id=8)
+
+
+@pytest.mark.parametrize("population", ["username", "0", "1,-2"])
+def test_webauthn_enrollment_rejects_invalid_population(population: str) -> None:
+    with pytest.raises(ConfigParseError, match="positive integers"):
+        load_config(
+            {
+                WEBAUTHN_ENROLLMENT_ENABLED: "true",
+                WEBAUTHN_ENROLLMENT_USER_IDS: population,
+            }
+        )
 
 
 def test_smtp_notification_reply_to_loads() -> None:

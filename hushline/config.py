@@ -26,6 +26,8 @@ ENCRYPTED_FIELD_WRITE_FORMAT = "ENCRYPTED_FIELD_WRITE_FORMAT"
 SPLASH_SCREEN_DURATION_MS = "SPLASH_SCREEN_DURATION_MS"
 WEBAUTHN_ORIGIN = "WEBAUTHN_ORIGIN"
 WEBAUTHN_RP_ID = "WEBAUTHN_RP_ID"
+WEBAUTHN_ENROLLMENT_ENABLED = "WEBAUTHN_ENROLLMENT_ENABLED"
+WEBAUTHN_ENROLLMENT_USER_IDS = "WEBAUTHN_ENROLLMENT_USER_IDS"
 WEBAUTHN_HOSTNAME_MAX_LENGTH = 253
 WEBAUTHN_RP_NAME_MAX_LENGTH = 100
 WEBAUTHN_MIN_CREDENTIALS_PER_USER = 2
@@ -223,7 +225,32 @@ def _load_webauthn(env: Mapping[str, str]) -> Mapping[str, Any]:
                 "WEBAUTHN_MAX_CREDENTIALS_PER_USER must allow at least two credentials"
             )
         data[key] = value
+
+    data[WEBAUTHN_ENROLLMENT_ENABLED] = parse_bool(env.get(WEBAUTHN_ENROLLMENT_ENABLED, "false"))
+    raw_user_ids = env.get(WEBAUTHN_ENROLLMENT_USER_IDS, "").strip()
+    if raw_user_ids == "*":
+        data[WEBAUTHN_ENROLLMENT_USER_IDS] = "*"
+    else:
+        try:
+            user_ids = frozenset(int(value.strip()) for value in raw_user_ids.split(",") if value)
+        except ValueError as exc:
+            raise ConfigParseError(
+                "WEBAUTHN_ENROLLMENT_USER_IDS must be '*' or comma-separated positive integers"
+            ) from exc
+        if any(user_id <= 0 for user_id in user_ids):
+            raise ConfigParseError(
+                "WEBAUTHN_ENROLLMENT_USER_IDS must be '*' or comma-separated positive integers"
+            )
+        data[WEBAUTHN_ENROLLMENT_USER_IDS] = user_ids
     return data
+
+
+def webauthn_enrollment_is_enabled(config: Mapping[str, Any], *, user_id: int) -> bool:
+    """Return whether this account is in the explicitly enabled enrollment population."""
+    if config.get(WEBAUTHN_ENROLLMENT_ENABLED) is not True:
+        return False
+    population = config.get(WEBAUTHN_ENROLLMENT_USER_IDS)
+    return population == "*" or (isinstance(population, frozenset) and user_id in population)
 
 
 def _load_flask(env: Mapping[str, str]) -> Mapping[str, Any]:

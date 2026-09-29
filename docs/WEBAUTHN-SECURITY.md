@@ -12,6 +12,8 @@ Credential IDs and public keys are authentication material, not disclosure conte
 
 Security-key inventory and pending MFA pages are served with `Cache-Control: no-store` so browser and intermediary caches do not retain key labels, last-used timestamps, or the account's enabled factor choices.
 
+New enrollment is deny-by-default and separately controlled from authentication. Operators must enable the enrollment switch and select an explicit numeric user-ID cohort (or explicitly approve `*` for all users). Turning the switch off hides enrollment and makes both enrollment endpoints fail with `503`; it does not change stored factor policy or disable authentication, recovery, rename, or removal for enrolled credentials. Aggregate admin metrics report active-key and key-user counts without exposing credential material or account identifiers.
+
 Removing a credential disables it under the account policy lock, consumes outstanding WebAuthn challenges, rotates the account session identifier, and prunes revoked credential records against configured age and count bounds during factor-policy changes. Concurrent assertions either finish before revocation and are invalidated by session rotation, or fail against the disabled credential. Ordinary removal cannot remove the last primary factor; disabling every factor is a separate, acknowledged action after password-plus-factor reauthentication and also invalidates recovery codes.
 
 TOTP codes remain single-use within their time step across mixed-factor activity. Replay detection checks the exact successful TOTP use under the account policy lock, so a later security-key or recovery-code success cannot hide the used code and concurrent submissions cannot both pass.
