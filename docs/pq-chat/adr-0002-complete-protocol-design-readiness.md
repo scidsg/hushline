@@ -1,101 +1,89 @@
-# ADR-0002: Complete Protocol Design Readiness
+# ADR-0002: Complete PQ Account-Chat Protocol Design
 
-Status: **Blocked before design**  
-Date: 2026-09-26<br>
+Status: **Proposed for independent cryptographic review**<br>
+Date: 2026-09-29<br>
 Decision gate: G3 of `scidsg/hushline#2365`  
 Issue: `scidsg/hushline#2398` (replaces delivery scope from
 `scidsg/hushline#2368`)
 
 ## Context
 
-G3 must select and independently review the combined account-chat design:
-protocol and library interfaces, authenticated envelope context, archive key
-hierarchy and every retained copy, device identity and enrollment, prekeys,
-transactional state, password-root wrapping, epochs, revocation, reset,
-migration, failure behavior, and the exact limits of its security claims.
+The earlier revision stopped before design because G1 human acceptance and G2
+execution evidence were pending. Maintainer direction now makes those release
+gates rather than development blockers. This revision therefore supplies the
+combined, implementable proposal and preserves every missing execution or
+human-review result as an explicit release condition.
 
-That work depends on two accepted inputs. G1 must provide an approved product
-and security contract. G2 must provide a passing browser protocol and suite with
-the required provenance, interoperability, continuous-PQ, browser, performance,
-CSP, vulnerability, and ownership evidence. The machine-readable
-[G3 readiness record](g3-readiness.json) pins the local evidence inspected for
-both dependencies and inventories the deliverables that cannot yet be produced.
-
-## Dependency Finding
-
-<!-- prettier-ignore -->
-| Gate | Required input | Local evidence | Finding |
-| --- | --- | --- | --- |
-| G1 / `scidsg/hushline#2396` | Human-approved product and security contract at an exact commit | Commit `da0f416e65fc64514ffb6a3c575ef0ba7c9e2f8b`; [review packet](README.md#g1-review-packet) and [approval record](g1-approval-record.json) | **Unsatisfied:** product-maintainer and security-reviewer dispositions remain pending |
-| G2 / `scidsg/hushline#2397` | Passing, pinned browser protocol and reviewed suite | Commit `f3275adbf7614bee8d9ad10d3b6fbe7d0efd863d`; [ADR-0001](adr-0001-browser-protocol-candidate.md), [evidence](g2-evidence.json), and [prototype](../../prototypes/pq-ratchet/README.md) | **Unsatisfied:** the recorded decision is no-go; the prototype is unexecuted and has no official reference-peer result |
-
-A closed issue, merged artifact, package claim, or automated review is not a
-substitute for either required result.
+G1's unchanged-UX/security packet is the product baseline. G2 supplies the
+pinned PQXDH/SPQR browser boundary at `0f6d5e9e211b0310290a12bdcb9e2cf797ea3ec2`.
+Its prototype is still recorded as implemented but unexecuted, and the official
+reference peer, physical-browser matrix, supply-chain review, named ownership,
+and CSP disposition remain missing. This ADR does not turn those missing
+results into passing evidence.
 
 ## Decision
 
-G3 is blocked before cryptographic design. Do not select or specify protocol
-revisions, cipher suites, archive constructions, KDF parameters, envelope wire
-formats, device/prekey semantics, recovery behavior, or migration behavior
-against the unresolved inputs. Doing so would either assume decisions reserved
-for G1 reviewers or build the combined system around a protocol candidate that
-G2 explicitly rejected.
+Adopt the [version-1 proposed protocol](protocol-design.md) as the exact G3
+implementation and independent-review subject:
 
-The executable harness added by G2 does not satisfy the issue's requirement for
-a passing prototype. Its machine-readable evidence records
-`implemented-not-executed`, all required protocol scenarios as `not_run`, and
-the official reference peer as `not_implemented`. Harness source alone cannot
-be promoted into reviewed wire fixtures or construction provenance.
+- online delivery is pinned to the G2 Signal PQXDH revision 3, round-3
+  Kyber1024, and SPQR v1 candidate without calling Kyber FIPS 203 ML-KEM;
+- retained history is independently sealed for each participant archive epoch
+  with RFC 9794 X-Wing in an RFC 9180 HPKE base-mode profile using
+  HKDF-SHA-256 and AES-256-GCM;
+- RFC 8785 JCS contexts bind message, conversation, sender, account/device
+  recipients, purpose, key/version/epoch, membership freshness, capabilities,
+  suite, exact transport bytes, and archive ciphertext hashes;
+- account identity, signed device membership, paired classical/PQ one-time
+  prekeys, password-root wrapping, encrypted device-local state, archive
+  epochs, revocation, reset, and fresh-browser recovery have exact lifecycle
+  and storage boundaries;
+- send, receive, retry, prekey consumption, and copy publication have atomic
+  transitions and fail closed; and
+- migration is monotonic, legacy history is not relabelled, and rollback keeps
+  the new reader while stopping writers.
 
-No complete integration specification, wire fixture, security approval, or
-independent review is claimed by this ADR. Existing production chat behavior,
-wire/storage formats, CSP, dependencies, and security claims remain unchanged.
-Production-dependent tickets remain blocked.
+The [wire fixtures](g3-wire-fixtures.json) pin canonical bytes, hashes, copy
+order, idempotency input, and required mutation failures. Their ciphertext is
+explicitly opaque synthetic framing data. It is not a fabricated X-Wing,
+Signal, HPKE, or signature known-answer vector.
 
-## Deferred Deliverable Matrix
+## Archive choice
 
-<!-- prettier-ignore -->
-| Review area | Evidence required after prerequisites pass | Current disposition |
-| --- | --- | --- |
-| Protocol and library boundary | Exact dependency/source revisions, reviewed suite and combiner, stable interface/error contract, provenance and ownership | Blocked by G2 no-go |
-| Authenticated envelope | Canonical bindings for message ID, conversation ID, account/device recipients, sender, purpose, key version, capability negotiation, exact transport bytes, and archive hashes | Blocked; no selected wire protocol |
-| Archive and complete-copy inventory | Established hybrid wrapping construction, domain separation, key hierarchy, and sender/recipient/offline/history/backup copy analysis proving no recoverable classical-only duplicate | Blocked by G1 approval and G2 selection |
-| Identity and devices | Account identity continuity, signed membership, enrollment/removal, freshness and rollback limits, and storage-tier recovery boundaries | Blocked by G1 approval and G2 selection |
-| Prekeys and state | Generation, publication, atomic consumption, replay/exhaustion policy, replenishment, transaction boundaries, crash/retry ordering, and rollback behavior | Blocked; candidate semantics are unapproved |
-| Password and archive lifecycle | Password-root KDF/wrapping costs, encrypted device storage, fresh-browser unlock, archive epochs, change/reset, revocation, and migration without recoverable old ratchet backups | Blocked by unresolved history/reset contract and protocol selection |
-| Claim limits | Active-quantum authentication and deniability limits, browser erasure limits, and archive effects on forward secrecy and compromise recovery | Blocked pending combined-system analysis |
-| Review evidence | Versioned specification, key/data-flow diagrams, wire fixtures, state-transition tables, failure matrix, and dispositions resolving all blocking findings | Not produced; human review cannot begin on an unspecified system |
+X-Wing is selected because its standardized construction supplies the
+classical/PQ combiner instead of asking Hush Line to invent one. HPKE supplies
+the KEM/KDF/AEAD composition and X-Wing seals a separate sender and recipient
+archive copy. No classical duplicate, server escrow, root-derived archive
+keypair, old ratchet snapshot, plaintext retry, or partial-copy commit is
+permitted.
 
-## Unblocking and Review Sequence
+The exact X-Wing-as-HPKE application profile still requires combined-system
+cryptographic review. A fixed HPKE private-use KEM ID is confined to the HPKE
+suite derivation; the wire carries a textual suite name and never negotiates an
+unassigned IANA number.
 
-1. Record the designated G1 human approvals in `g1-approval-record.json`,
-   including dated evidence and the exact reviewed commit, and resolve every
-   rejected or qualified row.
-2. Replace the G2 no-go only with a passing ADR and evidence set satisfying its
-   reconsideration gate, including a pinned suite and named ownership.
-3. Update `g3-readiness.json` to reference those accepted commits. Draft the
-   combined specification and non-secret fixtures only after both
-   prerequisites are true.
-4. Have a named cryptographic engineer review the construction and a separate
-   human design reviewer record approval or blocking findings for the exact
-   specification commit. Resolve blocking findings before G3 can be complete.
+## Review and release disposition
 
-The author of a future specification cannot self-approve either review role.
-Approval must remain pending until the reviewers provide dated, linked
-evidence.
+The design and fixture deliverables are complete enough for implementation and
+review, but G3 is not accepted. A named cryptographic engineer and a separate
+independent design reviewer must review the same exact revision, record findings
+in `g3-readiness.json`, and independently retest remediations. Blocking findings
+must be resolved before production-dependent cryptographic implementation or a
+release claim.
 
-The automation safeguard from `scidsg/hushline#2395` is present on the
-integration branch at commit `f64157494059066efedb11df0396e5aa0c22745b`.
-That prevents an automated merge from being mistaken for acceptance, but it
-does not satisfy either cryptographic prerequisite or either G3 human review.
+The following also remain release evidence, not inferred facts: passing G2
+prototype/reference-peer results, actual supported-browser and storage results,
+reviewed dependency provenance/SBOM/vulnerability evidence, named maintenance
+ownership, approved CSP behavior, and G1 product/security acceptance.
 
 ## Consequences
 
-- No classical-only fallback, partial-copy design, or provisional algorithm is
-  introduced to create apparent progress.
-- No synthetic wire bytes or cryptographic vectors are fabricated without an
-  approved implementation and reference peer.
-- A future G3 artifact must review the combined system; updating primitive
-  names or reviewing components independently is insufficient.
-- This blocked disposition preserves the current G1 UX/security proposal and
-  the G2 no-go rather than silently overriding either one.
+- Downstream tickets now have concrete interfaces, algorithms, bytes,
+  transitions, copy inventory, recovery rules, and failure behavior to
+  implement and test.
+- Production chat behavior, schema, dependencies, CSP, and claims remain
+  unchanged by this specification PR.
+- Classical authentication, browser erasure, archive compromise, ratchet
+  forward-secrecy, and malicious-served-JavaScript limits remain explicit.
+- Any algorithm, context field, copy rule, KDF cost, epoch rule, or migration
+  change requires a new specification/fixture version and renewed review.

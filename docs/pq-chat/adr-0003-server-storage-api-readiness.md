@@ -13,28 +13,29 @@ copies. Its schema and request validation depend on G3's reviewed protocol,
 authenticated-envelope bindings, account/device identity rules, archive
 construction, transaction boundaries, and migration behavior.
 
-The prerequisite artifact is available at commit
-`9d7abd7a1ca83a64914cae6465e8ee4cf160132f`, but it records G3 as blocked
-before design. The machine-readable [G4 readiness record](g4-readiness.json)
-pins that evidence and inventories the implementation evidence that remains
-blocked.
+G3 now supplies a proposed exact contract and structural fixtures. Its required
+independent reviews remain pending, but that pending release disposition does
+not prevent G4 development against the versioned proposal. The machine-readable
+[G4 readiness record](g4-readiness.json) inventories the implementation
+evidence that G4 itself still must produce.
 
 ## Dependency Finding
 
 <!-- prettier-ignore -->
 | Gate | Required input | Local evidence | Finding |
 | --- | --- | --- | --- |
-| G3 / `scidsg/hushline#2368` | Accepted combined protocol design with reviewed schema, wire contract, lifecycle, and migration decisions | Commit `9d7abd7a1ca83a64914cae6465e8ee4cf160132f`; [ADR-0002](adr-0002-complete-protocol-design-readiness.md) and [readiness record](g3-readiness.json) | **Unsatisfied:** G3 is blocked by pending G1 approvals and the G2 no-go; every required design deliverable and both independent reviews remain pending |
+| G3 / `scidsg/hushline#2368` | Accepted combined protocol design with reviewed schema, wire contract, lifecycle, and migration decisions | [ADR-0002](adr-0002-complete-protocol-design-readiness.md), [protocol design](protocol-design.md), [fixtures](g3-wire-fixtures.json), and [review record](g3-readiness.json) | **Development input available; release acceptance pending:** the exact proposal and fixtures exist, while both independent reviews remain pending |
 
 A merged prerequisite artifact or issue sequence is not evidence that its
-decision gate passed. G4 cannot derive a production schema from the issue's
-field categories without deciding the protocol semantics reserved for G3.
+decision gate passed. G4 must derive its implementation from the versioned G3
+contract and cannot treat the pending human disposition as release acceptance.
 
 ## Decision
 
-G4 is blocked before implementation. Do not add conversation columns, device
-or archive-copy tables, migrations, lifecycle behavior, or message endpoints
-until G3 supplies an accepted, exact contract. In particular, do not:
+G4 remains incomplete. Development may implement conversation columns, device
+and archive-copy tables, migrations, lifecycle behavior, and message endpoints
+against the exact versioned G3 proposal; production use still requires the G3
+review disposition and G4 evidence. In particular, do not:
 
 - label existing classical ciphertext or the current version-2 application
   envelope as post-quantum;
