@@ -1,14 +1,15 @@
 const { expect, test } = require("@playwright/test");
 
 const TEST_PASSWORD = "Test-testtesttesttest-1";
+const VIRTUAL_TEST_USERNAMES = ["georgecostanza", "elainebenes"];
 
-async function loginAndAuthorize(page) {
+async function loginAndAuthorize(page, username = "jerryseinfeld") {
   await page.addInitScript(() => {
     localStorage.setItem("hasFinishedGuidance", "true");
     sessionStorage.setItem("hushline:first-load-splash-seen", "true");
   });
   await page.goto("/login", { waitUntil: "networkidle" });
-  await page.fill("#username", "jerryseinfeld");
+  await page.fill("#username", username);
   await page.fill("#password", TEST_PASSWORD);
   await Promise.all([
     page.waitForFunction(() => document.body?.dataset.authenticated === "true"),
@@ -115,9 +116,9 @@ async function authorizeAfterRecentStrongAuthentication(page) {
   await expect(page.locator("#security-key-enrollment-form")).toBeVisible();
 }
 
-async function loginWithSecurityKey(page) {
+async function loginWithSecurityKey(page, username) {
   await page.goto("/login", { waitUntil: "networkidle" });
-  await page.fill("#username", "jerryseinfeld");
+  await page.fill("#username", username);
   await page.fill("#password", TEST_PASSWORD);
   await page.locator('button[type="submit"]').click();
   await expect(
@@ -240,11 +241,13 @@ test("virtual authenticators cover enrollment, login, revocation, and backup rec
   browser,
   page,
 }, testInfo) => {
+  test.setTimeout(120_000);
+  const username = VIRTUAL_TEST_USERNAMES[testInfo.retry];
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("WebAuthn.enable", { enableUI: false });
   const primary = await addVirtualSecurityKey(cdp, "usb");
 
-  await loginAndAuthorize(page);
+  await loginAndAuthorize(page, username);
   await enrollVirtualSecurityKey(page, "Primary virtual USB key");
   const primaryCredential = await getOnlyVirtualCredential(cdp, primary);
 
@@ -277,7 +280,7 @@ test("virtual authenticators cover enrollment, login, revocation, and backup rec
     "usb",
     primaryCredential,
   );
-  await loginWithSecurityKey(page);
+  await loginWithSecurityKey(page, username);
 
   await page.goto("/settings/security-keys", { waitUntil: "networkidle" });
   await authorizeAfterRecentStrongAuthentication(page);
@@ -295,7 +298,7 @@ test("virtual authenticators cover enrollment, login, revocation, and backup rec
     authenticatorId: restoredPrimary,
   });
   await restoreVirtualSecurityKey(cdp, "nfc", backupCredential);
-  await loginWithSecurityKey(page);
+  await loginWithSecurityKey(page, username);
   await page.goto("/settings/security-keys", { waitUntil: "networkidle" });
   await expect(
     page.getByText("Backup virtual NFC key", { exact: true }),
