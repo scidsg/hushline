@@ -45,6 +45,7 @@ from hushline.model.public_record_listing import (
     get_public_record_listing,
     get_public_record_listings,
 )
+from hushline.model.recovery_code import RecoveryCode, RecoveryCodeBatch
 from hushline.model.securedrop_directory_listing import (
     SecureDropDirectoryListing,
     get_securedrop_directory_listing,

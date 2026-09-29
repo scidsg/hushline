@@ -1,4 +1,5 @@
 import time
+from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 from typing import Any, Mapping
 
@@ -20,12 +21,30 @@ from werkzeug.wrappers.response import Response
 from wtforms.validators import ValidationError
 
 from hushline.auth import (
+    RECOVERY_CODES_PENDING_ACK_SESSION_KEY,
+    STRONG_AUTHENTICATION_SESSION_KEY,
     WEBAUTHN_ENROLLMENT_AUTHORIZATION_SESSION_KEY,
+    WEBAUTHN_PASSWORD_CONFIRMATION_SESSION_KEY,
+    WEBAUTHN_SESSION_BINDING_KEY,
     authentication_required,
+    record_strong_authentication,
+    rotate_user_session_id,
 )
 from hushline.db import db
-from hushline.model import User, WebAuthnCredential
-from hushline.settings.forms import SecurityKeyAuthorizationForm
+from hushline.model import (
+    AuthenticationLog,
+    RecoveryCode,
+    RecoveryCodeBatch,
+    User,
+    WebAuthnCredential,
+)
+from hushline.recovery_codes import acknowledge_recovery_codes, generate_recovery_codes
+from hushline.settings.forms import (
+    RecoveryCodeAcknowledgementForm,
+    RecoveryCodeGenerationForm,
+    SecurityKeyAuthorizationForm,
+    SecurityKeyRemovalForm,
+)
 
 ENROLLMENT_AUTHORIZATION_TTL_SECONDS = 300
 
@@ -55,6 +74,87 @@ def _clear_enrollment_authorization() -> None:
     session.pop(WEBAUTHN_ENROLLMENT_AUTHORIZATION_SESSION_KEY, None)
 
 
+def _set_password_confirmation(user: User) -> None:
+    session[WEBAUTHN_PASSWORD_CONFIRMATION_SESSION_KEY] = {
+        "confirmed_at": int(time.time()),
+        "session_id": user.session_id,
+        "user_id": user.id,
+    }
+
+
+def _clear_password_confirmation() -> None:
+    session.pop(WEBAUTHN_PASSWORD_CONFIRMATION_SESSION_KEY, None)
+
+
+def _has_recent_password_confirmation(user: User) -> bool:
+    confirmation = session.get(WEBAUTHN_PASSWORD_CONFIRMATION_SESSION_KEY)
+    if not isinstance(confirmation, Mapping):
+        return False
+    confirmed_at = confirmation.get("confirmed_at")
+    if not isinstance(confirmed_at, int) or isinstance(confirmed_at, bool):
+        return False
+    return (
+        confirmation.get("user_id") == user.id
+        and confirmation.get("session_id") == user.session_id
+        and 0 <= int(time.time()) - confirmed_at <= ENROLLMENT_AUTHORIZATION_TTL_SECONDS
+    )
+
+
+def _has_recent_strong_authentication(user: User) -> bool:
+    authentication = session.get(STRONG_AUTHENTICATION_SESSION_KEY)
+    if not isinstance(authentication, Mapping):
+        return False
+    authenticated_at = authentication.get("authenticated_at")
+    if not isinstance(authenticated_at, int) or isinstance(authenticated_at, bool):
+        return False
+    return (
+        authentication.get("user_id") == user.id
+        and authentication.get("session_id") == user.session_id
+        and 0 <= int(time.time()) - authenticated_at <= ENROLLMENT_AUTHORIZATION_TTL_SECONDS
+    )
+
+
+def _verify_totp_reauthentication(user: User, code: str) -> bool:
+    secret = user.totp_secret
+    if not secret or not code:
+        return False
+    now = datetime.now()
+    failed_count = db.session.scalar(
+        db.select(db.func.count())
+        .select_from(AuthenticationLog)
+        .where(
+            AuthenticationLog.user_id == user.id,
+            AuthenticationLog.successful == db.false(),
+            AuthenticationLog.timestamp > now - timedelta(seconds=30),
+        )
+    )
+    if failed_count is not None and failed_count >= 5:  # noqa: PLR2004
+        return False
+
+    totp = pyotp.TOTP(secret)
+    timecode = totp.timecode(now)
+    last_success = db.session.scalars(
+        db.select(AuthenticationLog)
+        .where(AuthenticationLog.user_id == user.id, AuthenticationLog.successful == db.true())
+        .order_by(AuthenticationLog.timestamp.desc())
+        .limit(1)
+    ).first()
+    valid = bool(
+        not (last_success and last_success.timecode == timecode and last_success.otp_code == code)
+        and totp.verify(code, valid_window=1)
+    )
+    db.session.add(
+        AuthenticationLog(
+            user_id=user.id,
+            successful=valid,
+            otp_code=code if valid else None,
+            timecode=timecode if valid else None,
+        )
+    )
+    db.session.commit()
+    return valid
+
+
 def _has_recent_enrollment_authorization(user: User) -> bool:
     authorization = session.get(WEBAUTHN_ENROLLMENT_AUTHORIZATION_SESSION_KEY)
     if not isinstance(authorization, Mapping):
@@ -66,6 +166,50 @@ def _has_recent_enrollment_authorization(user: User) -> bool:
         authorization.get("user_id") == user.id
         and authorization.get("session_id") == user.session_id
         and 0 <= int(time.time()) - authorized_at <= ENROLLMENT_AUTHORIZATION_TTL_SECONDS
+    )
+
+
+def _usable_recovery_code_count(user: User) -> int:
+    count = db.session.scalar(
+        db.select(db.func.count())
+        .select_from(RecoveryCode)
+        .join(RecoveryCodeBatch)
+        .where(
+            RecoveryCodeBatch.user_id == user.id,
+            RecoveryCodeBatch.acknowledged_at.is_not(None),
+            RecoveryCodeBatch.invalidated_at.is_(None),
+            RecoveryCode.consumed_at.is_(None),
+        )
+    )
+    return int(count or 0)
+
+
+def _render_security_keys(
+    user: User,
+    *,
+    generated_codes: list[str] | None = None,
+) -> str:
+    authorized = _has_recent_enrollment_authorization(user)
+    if not authorized:
+        _clear_enrollment_authorization()
+    password_confirmed = _has_recent_password_confirmation(user)
+    if not password_confirmed:
+        _clear_password_confirmation()
+    credentials = _active_credentials(user)
+    return render_template(
+        "settings/security_keys.html",
+        acknowledgement_form=RecoveryCodeAcknowledgementForm(),
+        authorization_form=SecurityKeyAuthorizationForm(),
+        enrollment_authorized=authorized,
+        credentials=credentials,
+        generated_codes=generated_codes,
+        generation_form=RecoveryCodeGenerationForm(),
+        has_recovery_factor=bool(credentials or user.totp_secret),
+        max_credentials=int(current_app.config["WEBAUTHN_MAX_CREDENTIALS_PER_USER"]),
+        password_confirmed=password_confirmed,
+        recovery_code_count=_usable_recovery_code_count(user),
+        removal_form=SecurityKeyRemovalForm(),
+        user=user,
     )
 
 
@@ -85,7 +229,9 @@ def _credential_name(payload: Mapping[str, Any]) -> str | None:
 
 
 def _json_error(message: str, status: HTTPStatus) -> tuple[Response, int]:
-    return jsonify({"error": message}), status.value
+    response = jsonify({"error": message})
+    response.headers["Cache-Control"] = "no-store"
+    return response, status.value
 
 
 def _validate_json_csrf() -> str | None:
@@ -105,17 +251,7 @@ def register_security_key_routes(bp: Blueprint) -> None:
     @authentication_required
     def security_keys() -> str:
         user = _current_user()
-        authorized = _has_recent_enrollment_authorization(user)
-        if not authorized:
-            _clear_enrollment_authorization()
-        return render_template(
-            "settings/security_keys.html",
-            authorization_form=SecurityKeyAuthorizationForm(),
-            enrollment_authorized=authorized,
-            credentials=_active_credentials(user),
-            max_credentials=int(current_app.config["WEBAUTHN_MAX_CREDENTIALS_PER_USER"]),
-            user=user,
-        )
+        return _render_security_keys(user)
 
     @bp.route("/security-keys/authorize", methods=["POST"])
     @authentication_required
@@ -130,16 +266,218 @@ def register_security_key_routes(bp: Blueprint) -> None:
         if form_is_valid:
             code = form.verification_code.data or ""
             totp_secret = user.totp_secret
-            factor_is_valid = totp_secret is None or pyotp.TOTP(totp_secret).verify(
-                code,
-                valid_window=1,
+            credentials = _active_credentials(user)
+            password_is_valid = user.check_password(form.password.data)
+            recent_strong_authentication = _has_recent_strong_authentication(user)
+            factor_is_valid = bool(
+                password_is_valid
+                and not recent_strong_authentication
+                and totp_secret
+                and code
+                and _verify_totp_reauthentication(user, code)
             )
-            if user.check_password(form.password.data) and factor_is_valid:
+            if password_is_valid and (
+                factor_is_valid or recent_strong_authentication or not (totp_secret or credentials)
+            ):
+                if factor_is_valid:
+                    record_strong_authentication(user=user, method="totp")
                 _authorize_enrollment(user)
+                _clear_password_confirmation()
+                return redirect(url_for(".security_keys"))
+            if password_is_valid and credentials and not code:
+                _set_password_confirmation(user)
+                flash("Use an enrolled security key to finish confirming your identity.")
                 return redirect(url_for(".security_keys"))
 
         _clear_enrollment_authorization()
+        _clear_password_confirmation()
         flash("⛔️ Current password or 2FA code is incorrect.")
+        return redirect(url_for(".security_keys"))
+
+    @bp.post("/security-keys/authorization/options")
+    @authentication_required
+    def security_key_authorization_options() -> tuple[Response, int] | Response:
+        from hushline.webauthn import (
+            WebAuthnCeremonyService,
+            WebAuthnConfigurationError,
+            WebAuthnPurpose,
+            WebAuthnRateLimitError,
+            WebAuthnServiceError,
+            current_webauthn_session_binding,
+        )
+
+        csrf_error = _validate_json_csrf()
+        if csrf_error:
+            return _json_error(csrf_error, HTTPStatus.BAD_REQUEST)
+        user = _current_user()
+        if not _has_recent_password_confirmation(user):
+            _clear_password_confirmation()
+            return _json_error("Confirm your current password again.", HTTPStatus.FORBIDDEN)
+        try:
+            options = WebAuthnCeremonyService.begin_authentication(
+                user=user,
+                session_binding=current_webauthn_session_binding(),
+                purpose=WebAuthnPurpose.RECOVERY,
+            )
+        except WebAuthnRateLimitError:
+            return _json_error(
+                "Too many confirmation attempts. Please wait and try again.",
+                HTTPStatus.TOO_MANY_REQUESTS,
+            )
+        except WebAuthnConfigurationError:
+            return _json_error(
+                "Security key confirmation is temporarily unavailable.",
+                HTTPStatus.SERVICE_UNAVAILABLE,
+            )
+        except WebAuthnServiceError:
+            return _json_error("Confirmation could not be started.", HTTPStatus.BAD_REQUEST)
+        response = jsonify(options)
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @bp.post("/security-keys/authorization/verify")
+    @authentication_required
+    def verify_security_key_authorization() -> tuple[Response, int] | Response:
+        from hushline.webauthn import (
+            WebAuthnCeremonyService,
+            WebAuthnPurpose,
+            WebAuthnServiceError,
+            current_webauthn_session_binding,
+        )
+
+        csrf_error = _validate_json_csrf()
+        if csrf_error:
+            return _json_error(csrf_error, HTTPStatus.BAD_REQUEST)
+        user = _current_user()
+        if not _has_recent_password_confirmation(user):
+            _clear_password_confirmation()
+            return _json_error("Confirm your current password again.", HTTPStatus.FORBIDDEN)
+        payload = _json_payload()
+        credential_response = payload.get("credential") if payload is not None else None
+        if not isinstance(credential_response, Mapping):
+            return _json_error("Security key response is invalid.", HTTPStatus.BAD_REQUEST)
+        try:
+            WebAuthnCeremonyService.finish_authentication(
+                user=user,
+                session_binding=current_webauthn_session_binding(),
+                response=credential_response,
+                purpose=WebAuthnPurpose.RECOVERY,
+            )
+        except WebAuthnServiceError:
+            return _json_error("The security key could not be verified.", HTTPStatus.UNAUTHORIZED)
+
+        _authorize_enrollment(user)
+        record_strong_authentication(user=user, method="security_key")
+        _clear_password_confirmation()
+        session.pop(WEBAUTHN_SESSION_BINDING_KEY, None)
+        response = jsonify({"redirect": url_for(".security_keys")})
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @bp.post("/security-keys/recovery-codes/generate")
+    @authentication_required
+    def generate_security_key_recovery_codes() -> Response | str:
+        user = _current_user()
+        form = RecoveryCodeGenerationForm()
+        if not form.validate_on_submit():
+            abort(HTTPStatus.BAD_REQUEST)
+        if not _has_recent_enrollment_authorization(user):
+            _clear_enrollment_authorization()
+            flash("Confirm your identity again before generating recovery codes.")
+            return redirect(url_for(".security_keys"))
+        if not (_active_credentials(user) or user.totp_secret):
+            _clear_enrollment_authorization()
+            flash("Add a security key or authenticator app before generating recovery codes.")
+            return redirect(url_for(".security_keys"))
+
+        batch, codes = generate_recovery_codes(user)
+        session[RECOVERY_CODES_PENDING_ACK_SESSION_KEY] = {
+            "batch_id": batch.id,
+            "session_id": user.session_id,
+            "user_id": user.id,
+        }
+        _clear_enrollment_authorization()
+        response = current_app.make_response(_render_security_keys(user, generated_codes=codes))
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @bp.post("/security-keys/recovery-codes/acknowledge")
+    @authentication_required
+    def acknowledge_security_key_recovery_codes() -> Response:
+        user = _current_user()
+        form = RecoveryCodeAcknowledgementForm()
+        pending = session.get(RECOVERY_CODES_PENDING_ACK_SESSION_KEY)
+        if not form.validate_on_submit() or not isinstance(pending, Mapping):
+            abort(HTTPStatus.BAD_REQUEST)
+        batch_id = pending.get("batch_id")
+        if (
+            not isinstance(batch_id, int)
+            or isinstance(batch_id, bool)
+            or pending.get("user_id") != user.id
+            or pending.get("session_id") != user.session_id
+            or not acknowledge_recovery_codes(user_id=user.id, batch_id=batch_id)
+        ):
+            db.session.rollback()
+            session.pop(RECOVERY_CODES_PENDING_ACK_SESSION_KEY, None)
+            abort(HTTPStatus.BAD_REQUEST)
+
+        prior_authentication = session.get(STRONG_AUTHENTICATION_SESSION_KEY)
+        method = (
+            prior_authentication.get("method")
+            if isinstance(prior_authentication, Mapping)
+            else "recovery_policy_change"
+        )
+        rotate_user_session_id(user)
+        db.session.commit()
+        session["session_id"] = user.session_id
+        session.pop(RECOVERY_CODES_PENDING_ACK_SESSION_KEY, None)
+        record_strong_authentication(user=user, method=str(method))
+        flash("Recovery codes are ready. Each code can be used once.", "success")
+        return redirect(url_for(".security_keys"))
+
+    @bp.post("/security-keys/remove")
+    @authentication_required
+    def remove_security_key() -> Response:
+        user = _current_user()
+        form = SecurityKeyRemovalForm()
+        if not form.validate_on_submit():
+            abort(HTTPStatus.BAD_REQUEST)
+        if not _has_recent_enrollment_authorization(user):
+            _clear_enrollment_authorization()
+            flash("Confirm your identity again before removing a security key.")
+            return redirect(url_for(".security_keys"))
+        try:
+            credential_id = int(form.credential_id.data)
+        except (TypeError, ValueError):
+            abort(HTTPStatus.BAD_REQUEST)
+        credential = db.session.scalar(
+            db.select(WebAuthnCredential).where(
+                WebAuthnCredential.id == credential_id,
+                WebAuthnCredential.user_id == user.id,
+                WebAuthnCredential.disabled_at.is_(None),
+            )
+        )
+        if credential is None:
+            abort(HTTPStatus.NOT_FOUND)
+        other_credentials = [item for item in _active_credentials(user) if item.id != credential.id]
+        if not (other_credentials or user.totp_secret):
+            flash("Add another security key or authenticator app before removing this key.")
+            return redirect(url_for(".security_keys"))
+
+        credential.disabled_at = datetime.now(UTC)
+        prior_authentication = session.get(STRONG_AUTHENTICATION_SESSION_KEY)
+        method = (
+            prior_authentication.get("method")
+            if isinstance(prior_authentication, Mapping)
+            else "recovery_policy_change"
+        )
+        rotate_user_session_id(user)
+        db.session.commit()
+        session["session_id"] = user.session_id
+        record_strong_authentication(user=user, method=str(method))
+        _clear_enrollment_authorization()
+        session.pop(WEBAUTHN_SESSION_BINDING_KEY, None)
+        flash("Security key removed. Other sessions have been signed out.", "success")
         return redirect(url_for(".security_keys"))
 
     @bp.route("/security-keys/registration/options", methods=["POST"])

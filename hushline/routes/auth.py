@@ -34,6 +34,7 @@ from hushline.auth import (
     clear_auth_session,
     get_session_user,
     pop_post_auth_redirect,
+    record_strong_authentication,
     rotate_user_session_id,
     set_session_user,
     stash_post_auth_redirect_target,
@@ -55,11 +56,13 @@ from hushline.password_hasher import (
     emit_password_rehash_on_auth_telemetry,
     prepare_password_rehash_on_auth,
 )
+from hushline.recovery_codes import consume_recovery_code, has_usable_recovery_codes
 from hushline.routes.common import validate_captcha
 from hushline.routes.forms import (
     LoginForm,
     PasswordResetForm,
     PasswordResetRequestForm,
+    RecoveryCodeLoginForm,
     RegistrationForm,
     TwoFactorForm,
 )
@@ -72,6 +75,7 @@ PASSWORD_RESET_INVALID_LINK_MESSAGE = (
 )
 TOTP_MFA_METHOD = "totp"
 SECURITY_KEY_MFA_METHOD = "security_key"
+RECOVERY_CODE_MFA_METHOD = "recovery_code"
 
 
 class PendingLoginStateError(Exception):
@@ -179,6 +183,8 @@ def _active_mfa_methods(user: User) -> list[str]:
         methods.append(TOTP_MFA_METHOD)
     if any(credential.disabled_at is None for credential in user.webauthn_credentials):
         methods.append(SECURITY_KEY_MFA_METHOD)
+    if has_usable_recovery_codes(user.id):
+        methods.append(RECOVERY_CODE_MFA_METHOD)
     return methods
 
 
@@ -190,7 +196,22 @@ def _pending_mfa_methods(user: User) -> frozenset[str]:
         return frozenset(_active_mfa_methods(user))
     if not isinstance(methods, list) or any(not isinstance(method, str) for method in methods):
         return frozenset()
-    return frozenset(methods).intersection({TOTP_MFA_METHOD, SECURITY_KEY_MFA_METHOD})
+    return frozenset(methods).intersection(
+        {TOTP_MFA_METHOD, SECURITY_KEY_MFA_METHOD, RECOVERY_CODE_MFA_METHOD}
+    )
+
+
+def _mfa_attempt_rate_limited(user_id: int) -> bool:
+    failed_logins = db.session.scalar(
+        db.select(db.func.count())
+        .select_from(AuthenticationLog)
+        .where(
+            AuthenticationLog.user_id == user_id,
+            AuthenticationLog.successful == db.false(),
+            AuthenticationLog.timestamp > datetime.now() - timedelta(seconds=30),
+        )
+    )
+    return failed_logins is not None and failed_logins >= 5  # noqa: PLR2004
 
 
 def _json_csrf_error() -> str | None:
@@ -330,7 +351,9 @@ def _apply_pending_password_rehash(user: User, *, source_hash: str) -> bool:
     return True
 
 
-def _complete_pending_login(user: User, auth_log: AuthenticationLog) -> str:
+def _complete_pending_login(
+    user: User, auth_log: AuthenticationLog, *, authentication_method: str
+) -> str:
     password_rehash_source_hash = user.password_hash
     has_pending_password_rehash = PENDING_PASSWORD_REHASH_SESSION_KEY in session
     username = session.get("username")
@@ -354,6 +377,7 @@ def _complete_pending_login(user: User, auth_log: AuthenticationLog) -> str:
 
     db.session.add(auth_log)
     set_session_user(user=user, username=username, is_authenticated=True)
+    record_strong_authentication(user=user, method=authentication_method)
     session.pop(PENDING_MFA_METHODS_SESSION_KEY, None)
     session.pop(WEBAUTHN_SESSION_BINDING_KEY, None)
     try:
@@ -711,7 +735,10 @@ def register_auth_routes(app: Flask) -> None:
         allow_security_key = SECURITY_KEY_MFA_METHOD in pending_methods and any(
             credential.disabled_at is None for credential in user.webauthn_credentials
         )
-        if not allow_totp and not allow_security_key:
+        allow_recovery_code = (
+            RECOVERY_CODE_MFA_METHOD in pending_methods and has_usable_recovery_codes(user.id)
+        )
+        if not allow_totp and not allow_security_key and not allow_recovery_code:
             clear_auth_session()
             flash("⛔️ No permitted second factor is available. Please log in again.")
             return redirect(url_for("login"))
@@ -724,6 +751,8 @@ def register_auth_routes(app: Flask) -> None:
                 form=form,
                 allow_totp=allow_totp,
                 allow_security_key=allow_security_key,
+                allow_recovery_code=allow_recovery_code,
+                recovery_code_form=RecoveryCodeLoginForm(),
             )
 
         if request.method == "POST" and form.validate():
@@ -755,15 +784,7 @@ def register_auth_routes(app: Flask) -> None:
                 rate_limit = True
 
             # If there were 5 failed logins in the last 30 seconds, don't allow another one
-            failed_logins = db.session.scalar(
-                db.select(
-                    db.func.count(AuthenticationLog.id)
-                    .filter(AuthenticationLog.user_id == user.id)
-                    .filter(AuthenticationLog.successful == db.false())
-                    .filter(AuthenticationLog.timestamp > datetime.now() - timedelta(seconds=30))
-                )
-            )
-            if failed_logins is not None and failed_logins >= 5:  # noqa: PLR2004
+            if _mfa_attempt_rate_limited(user.id):
                 rate_limit = True
 
             if rate_limit:
@@ -775,7 +796,13 @@ def register_auth_routes(app: Flask) -> None:
                     user_id=user.id, successful=True, otp_code=verification_code, timecode=timecode
                 )
                 try:
-                    return redirect(_complete_pending_login(user, auth_log))
+                    return redirect(
+                        _complete_pending_login(
+                            user,
+                            auth_log,
+                            authentication_method=TOTP_MFA_METHOD,
+                        )
+                    )
                 except PendingLoginStateError:
                     flash("⛔️ This login was already completed. Please log in again.")
                     return redirect(url_for("login"))
@@ -788,6 +815,63 @@ def register_auth_routes(app: Flask) -> None:
             return render_mfa(), 401
 
         return render_mfa()
+
+    @app.post("/verify-recovery-code-login")
+    def verify_recovery_code_login() -> Response | str | tuple[Response | str, int]:
+        user = get_session_user()
+        if user is None or session.get("is_authenticated", False):
+            clear_auth_session()
+            return redirect(url_for("login"))
+        if RECOVERY_CODE_MFA_METHOD not in _pending_mfa_methods(user):
+            clear_auth_session()
+            flash("⛔️ Recovery code verification is not permitted for this login.")
+            return redirect(url_for("login"))
+
+        form = RecoveryCodeLoginForm()
+
+        def render_recovery_challenge() -> str:
+            pending_methods = _pending_mfa_methods(user)
+            return render_template(
+                "verify_2fa_login.html",
+                form=TwoFactorForm(),
+                allow_totp=TOTP_MFA_METHOD in pending_methods and bool(user.totp_secret),
+                allow_security_key=SECURITY_KEY_MFA_METHOD in pending_methods
+                and any(credential.disabled_at is None for credential in user.webauthn_credentials),
+                allow_recovery_code=True,
+                recovery_code_form=form,
+            )
+
+        if not form.validate_on_submit():
+            if form.errors.get("csrf_token"):
+                return make_response("Invalid CSRF token.", HTTPStatus.BAD_REQUEST)
+            db.session.add(AuthenticationLog(user_id=user.id, successful=False))
+            db.session.commit()
+            flash("⛔️ Invalid recovery code. Please try again.")
+            form.recovery_code.data = ""
+            return render_recovery_challenge(), HTTPStatus.UNAUTHORIZED.value
+        if _mfa_attempt_rate_limited(user.id):
+            flash("⏲️ Please wait a moment before trying again.")
+            form.recovery_code.data = ""
+            return render_recovery_challenge(), HTTPStatus.TOO_MANY_REQUESTS.value
+
+        if not consume_recovery_code(user_id=user.id, value=form.recovery_code.data):
+            db.session.add(AuthenticationLog(user_id=user.id, successful=False))
+            db.session.commit()
+            flash("⛔️ Invalid recovery code. Please try again.")
+            form.recovery_code.data = ""
+            return render_recovery_challenge(), HTTPStatus.UNAUTHORIZED.value
+
+        try:
+            return redirect(
+                _complete_pending_login(
+                    user,
+                    AuthenticationLog(user_id=user.id, successful=True),
+                    authentication_method=RECOVERY_CODE_MFA_METHOD,
+                )
+            )
+        except PendingLoginStateError:
+            flash("⛔️ This login was already completed. Please log in again.")
+            return redirect(url_for("login"))
 
     @app.post("/verify-security-key-login/options")
     def security_key_login_options() -> Response | tuple[Response, int]:
@@ -883,6 +967,7 @@ def register_auth_routes(app: Flask) -> None:
             redirect_target = _complete_pending_login(
                 user,
                 AuthenticationLog(user_id=user.id, successful=True),
+                authentication_method=SECURITY_KEY_MFA_METHOD,
             )
         except PendingLoginStateError:
             return _json_error("This login is no longer pending.", HTTPStatus.UNAUTHORIZED)

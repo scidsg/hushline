@@ -13,6 +13,7 @@ from flask.testing import FlaskClient
 from pytest_mock import MockFixture
 
 from hushline.auth import (
+    STRONG_AUTHENTICATION_SESSION_KEY,
     WEBAUTHN_ENROLLMENT_AUTHORIZATION_SESSION_KEY,
     WEBAUTHN_SESSION_BINDING_KEY,
 )
@@ -35,6 +36,16 @@ def _authorize(client: FlaskClient, password: str, code: str = "") -> None:
         follow_redirects=False,
     )
     assert response.status_code == 302
+
+
+def _mark_recent_strong_authentication(client: FlaskClient, user: User) -> None:
+    with client.session_transaction() as session:
+        session[STRONG_AUTHENTICATION_SESSION_KEY] = {
+            "authenticated_at": int(time.time()),
+            "method": "security_key",
+            "session_id": user.session_id,
+            "user_id": user.id,
+        }
 
 
 def _credential(user: User, marker: bytes, name: str) -> WebAuthnCredential:
@@ -209,6 +220,7 @@ def test_verification_stores_only_verified_key_and_consumes_authorization(
     credential = _credential(user, b"verified-key", "Office key")
     finish_registration.side_effect = None
     finish_registration.return_value = credential
+    _mark_recent_strong_authentication(client, user)
     _authorize(client, user_password)
     response = client.post(verify_url, json=payload)
     assert response.status_code == 201
@@ -260,6 +272,7 @@ def test_registration_route_verifies_persists_and_rejects_replay(
     assert credential is not None
     assert credential.name == "Office USB key"
 
+    _mark_recent_strong_authentication(client, user)
     _authorize(client, user_password)
     replay = client.post(verify_url, json=payload)
     assert replay.status_code == 400

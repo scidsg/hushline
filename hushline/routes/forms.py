@@ -53,6 +53,13 @@ class TwoFactorForm(FlaskForm):
     )
 
 
+class RecoveryCodeLoginForm(FlaskForm):
+    recovery_code = StringField(
+        "Recovery Code",
+        validators=[DataRequired(), Length(min=32, max=64)],
+    )
+
+
 class RegistrationForm(FlaskForm):
     username = StringField(
         "Username",

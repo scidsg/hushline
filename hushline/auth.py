@@ -1,4 +1,5 @@
 import secrets
+import time
 from functools import wraps
 from hmac import compare_digest
 from typing import Any, Callable
@@ -17,6 +18,9 @@ POST_AUTH_REDIRECT_SESSION_KEY = "post_auth_redirect"
 CHAT_KEY_SESSION_ID_SESSION_KEY = "chat_key_session_id"
 WEBAUTHN_SESSION_BINDING_KEY = "webauthn_session_binding"
 WEBAUTHN_ENROLLMENT_AUTHORIZATION_SESSION_KEY = "webauthn_enrollment_authorization"
+WEBAUTHN_PASSWORD_CONFIRMATION_SESSION_KEY = "webauthn_password_confirmation"  # noqa: S105
+RECOVERY_CODES_PENDING_ACK_SESSION_KEY = "recovery_codes_pending_ack"
+STRONG_AUTHENTICATION_SESSION_KEY = "strong_authentication"
 ASCII_CONTROL_MAX = 31
 ASCII_DELETE = 127
 AUTH_SESSION_KEYS = (
@@ -32,6 +36,9 @@ AUTH_SESSION_KEYS = (
     PENDING_MFA_METHODS_SESSION_KEY,
     WEBAUTHN_SESSION_BINDING_KEY,
     WEBAUTHN_ENROLLMENT_AUTHORIZATION_SESSION_KEY,
+    WEBAUTHN_PASSWORD_CONFIRMATION_SESSION_KEY,
+    RECOVERY_CODES_PENDING_ACK_SESSION_KEY,
+    STRONG_AUTHENTICATION_SESSION_KEY,
 )
 
 
@@ -50,6 +57,15 @@ def rotate_chat_key_session_id() -> str:
     return str(session[CHAT_KEY_SESSION_ID_SESSION_KEY])
 
 
+def record_strong_authentication(*, user: User, method: str) -> None:
+    session[STRONG_AUTHENTICATION_SESSION_KEY] = {
+        "authenticated_at": int(time.time()),
+        "method": method,
+        "session_id": user.session_id,
+        "user_id": user.id,
+    }
+
+
 def set_session_user(*, user: User, username: str, is_authenticated: bool) -> None:
     session.permanent = True
     session["user_id"] = user.id
@@ -60,6 +76,7 @@ def set_session_user(*, user: User, username: str, is_authenticated: bool) -> No
         rotate_chat_key_session_id()
     else:
         session.pop(CHAT_KEY_SESSION_ID_SESSION_KEY, None)
+        session.pop(STRONG_AUTHENTICATION_SESSION_KEY, None)
 
 
 def _is_safe_post_auth_redirect_target(redirect_target: str | None) -> bool:
