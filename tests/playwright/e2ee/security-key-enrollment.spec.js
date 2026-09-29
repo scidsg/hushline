@@ -90,18 +90,11 @@ async function addVirtualSecurityKey(cdp, transport) {
   return authenticatorId;
 }
 
-async function getOnlyVirtualCredential(cdp, authenticatorId) {
-  const { credentials } = await cdp.send("WebAuthn.getCredentials", {
+async function setVirtualSecurityKeyPresence(cdp, authenticatorId, enabled) {
+  await cdp.send("WebAuthn.setAutomaticPresenceSimulation", {
     authenticatorId,
+    enabled,
   });
-  expect(credentials).toHaveLength(1);
-  return credentials[0];
-}
-
-async function restoreVirtualSecurityKey(cdp, transport, credential) {
-  const authenticatorId = await addVirtualSecurityKey(cdp, transport);
-  await cdp.send("WebAuthn.addCredential", { authenticatorId, credential });
-  return authenticatorId;
 }
 
 async function enrollVirtualSecurityKey(page, label) {
@@ -249,16 +242,12 @@ test("virtual authenticators cover enrollment, login, revocation, and backup rec
 
   await loginAndAuthorize(page, username);
   await enrollVirtualSecurityKey(page, "Primary virtual USB key");
-  const primaryCredential = await getOnlyVirtualCredential(cdp, primary);
 
   await page.reload({ waitUntil: "networkidle" });
   await authorizeAfterRecentStrongAuthentication(page);
-  await cdp.send("WebAuthn.removeVirtualAuthenticator", {
-    authenticatorId: primary,
-  });
+  await setVirtualSecurityKeyPresence(cdp, primary, false);
   const backup = await addVirtualSecurityKey(cdp, "nfc");
   await enrollVirtualSecurityKey(page, "Backup virtual NFC key");
-  const backupCredential = await getOnlyVirtualCredential(cdp, backup);
   await page.reload({ waitUntil: "networkidle" });
   await expect(
     page.getByText("Primary virtual USB key", { exact: true }),
@@ -272,14 +261,8 @@ test("virtual authenticators cover enrollment, login, revocation, and backup rec
   });
 
   await page.goto("/logout", { waitUntil: "networkidle" });
-  await cdp.send("WebAuthn.removeVirtualAuthenticator", {
-    authenticatorId: backup,
-  });
-  const restoredPrimary = await restoreVirtualSecurityKey(
-    cdp,
-    "usb",
-    primaryCredential,
-  );
+  await setVirtualSecurityKeyPresence(cdp, backup, false);
+  await setVirtualSecurityKeyPresence(cdp, primary, true);
   await loginWithSecurityKey(page, username);
 
   await page.goto("/settings/security-keys", { waitUntil: "networkidle" });
@@ -295,9 +278,9 @@ test("virtual authenticators cover enrollment, login, revocation, and backup rec
 
   await page.goto("/logout", { waitUntil: "networkidle" });
   await cdp.send("WebAuthn.removeVirtualAuthenticator", {
-    authenticatorId: restoredPrimary,
+    authenticatorId: primary,
   });
-  await restoreVirtualSecurityKey(cdp, "nfc", backupCredential);
+  await setVirtualSecurityKeyPresence(cdp, backup, true);
   await loginWithSecurityKey(page, username);
   await page.goto("/settings/security-keys", { waitUntil: "networkidle" });
   await expect(
