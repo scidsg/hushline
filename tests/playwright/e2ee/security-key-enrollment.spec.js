@@ -1,4 +1,5 @@
 const { expect, test } = require("@playwright/test");
+const { writeFile } = require("node:fs/promises");
 
 const TEST_PASSWORD = "Test-testtesttesttest-1";
 const VIRTUAL_TEST_USERNAMES = ["georgecostanza", "elainebenes"];
@@ -253,9 +254,9 @@ test("virtual authenticators cover enrollment, login, revocation, and backup rec
   await expect(
     page.getByText("Backup virtual NFC key", { exact: true }),
   ).toBeVisible();
-  await testInfo.attach("security-keys-enrolled", {
-    body: await page.screenshot({ fullPage: true }),
-    contentType: "image/png",
+  await page.screenshot({
+    fullPage: true,
+    path: testInfo.outputPath("security-keys-enrolled.png"),
   });
 
   await authorizeAfterRecentStrongAuthentication(page);
@@ -274,9 +275,9 @@ test("virtual authenticators cover enrollment, login, revocation, and backup rec
   await expect(
     page.getByText("Backup virtual NFC key", { exact: true }),
   ).toBeVisible();
-  await testInfo.attach("backup-key-recovery", {
-    body: await page.screenshot({ fullPage: true }),
-    contentType: "image/png",
+  await page.screenshot({
+    fullPage: true,
+    path: testInfo.outputPath("backup-key-recovery.png"),
   });
 
   await authorizeAfterRecentStrongAuthentication(page);
@@ -286,39 +287,37 @@ test("virtual authenticators cover enrollment, login, revocation, and backup rec
   await expect(page.locator("#security-key-empty")).toContainText(
     "No security keys are enrolled",
   );
-  await testInfo.attach("validation-metadata", {
-    body: Buffer.from(
-      JSON.stringify(
-        {
-          schema_version: 1,
-          build_sha: process.env.GITHUB_SHA || null,
-          browser: { name: "chromium", version: browser.version() },
-          rp_id: "localhost",
-          origin: new URL(page.url()).origin,
-          authenticators: [
-            { protocol: "ctap2_1", transport: "usb", kind: "virtual" },
-            { protocol: "ctap2_1", transport: "nfc", kind: "virtual" },
-          ],
-          passed_scenarios: [
-            "primary enrollment",
-            "backup enrollment",
-            "primary login",
-            "primary revocation",
-            "backup recovery login",
-            "factor cleanup",
-          ],
-          excluded_material: [
-            "credential IDs",
-            "private keys",
-            "challenges",
-            "cookies",
-            "CSRF tokens",
-          ],
-        },
-        null,
-        2,
-      ),
+  await writeFile(
+    testInfo.outputPath("validation-metadata.json"),
+    JSON.stringify(
+      {
+        schema_version: 1,
+        build_sha: process.env.GITHUB_SHA || null,
+        browser: { name: "chromium", version: browser.version() },
+        rp_id: "localhost",
+        origin: new URL(page.url()).origin,
+        authenticators: [
+          { protocol: "ctap2_1", transport: "usb", kind: "virtual" },
+          { protocol: "ctap2_1", transport: "nfc", kind: "virtual" },
+        ],
+        passed_scenarios: [
+          "primary enrollment",
+          "backup enrollment",
+          "primary login",
+          "primary revocation",
+          "backup recovery login",
+          "factor cleanup",
+        ],
+        excluded_material: [
+          "credential IDs",
+          "private keys",
+          "challenges",
+          "cookies",
+          "CSRF tokens",
+        ],
+      },
+      null,
+      2,
     ),
-    contentType: "application/json",
-  });
+  );
 });
