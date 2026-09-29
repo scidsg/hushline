@@ -101,6 +101,7 @@ async function enrollVirtualSecurityKey(page, label) {
 }
 
 async function authorizeAfterRecentStrongAuthentication(page) {
+  if (await page.locator("#security-key-enrollment-form").isVisible()) return;
   await page.fill("#password", TEST_PASSWORD);
   await page.getByRole("button", { name: "Continue" }).click();
   await virtualExpect(
