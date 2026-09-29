@@ -1,14 +1,16 @@
 import secrets
 import time
+from datetime import datetime
 from functools import wraps
 from hmac import compare_digest
 from typing import Any, Callable
 from urllib.parse import unquote, urlsplit
 
+import pyotp
 from flask import abort, current_app, flash, redirect, request, session, url_for
 
 from hushline.db import db
-from hushline.model import User
+from hushline.model import AuthenticationLog, User
 
 PENDING_PASSWORD_REHASH_SESSION_KEY = "pending_password_rehash"  # noqa: S105
 PENDING_PASSWORD_REHASH_SOURCE_DIGEST_SESSION_KEY = "pending_password_rehash_source_digest"  # noqa: S105
@@ -64,6 +66,35 @@ def record_strong_authentication(*, user: User, method: str) -> None:
         "session_id": user.session_id,
         "user_id": user.id,
     }
+
+
+def matching_totp_timecode(*, totp: pyotp.TOTP, code: str, now: datetime) -> int | None:
+    """Return the counter that produced a code in the accepted clock-skew window."""
+    current_timecode = totp.timecode(now)
+    matched_timecode = None
+    for offset in range(-1, 2):
+        candidate_timecode = current_timecode + offset
+        if compare_digest(totp.generate_otp(candidate_timecode), code):
+            matched_timecode = candidate_timecode
+    return matched_timecode
+
+
+def totp_code_was_used(*, user_id: int, code: str, timecode: int) -> bool:
+    """Serialize and detect successful use of a TOTP code in its time step."""
+    db.session.scalar(db.select(User.id).where(User.id == user_id).with_for_update())
+    return (
+        db.session.scalar(
+            db.select(AuthenticationLog.id)
+            .where(
+                AuthenticationLog.user_id == user_id,
+                AuthenticationLog.successful.is_(True),
+                AuthenticationLog.otp_code == code,
+                AuthenticationLog.timecode == timecode,
+            )
+            .limit(1)
+        )
+        is not None
+    )
 
 
 def set_session_user(*, user: User, username: str, is_authenticated: bool) -> None:

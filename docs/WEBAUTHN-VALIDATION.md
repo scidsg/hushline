@@ -41,7 +41,7 @@ authoritative. A workflow artifact or unchecked table is not a pass.
 | Session-change bypass                 | `test_auth_session_rotation_invalidates_challenge_binding` and security-key login concurrency tests |
 | Concurrent assertion or revocation    | `test_counter_update_rejects_concurrent_use_but_allows_zero_counters` and removal/revocation tests  |
 | Counter rollback                      | `test_zero_counter_authenticator_is_allowed_and_counter_replay_is_rejected`                         |
-| Factor-change bypass                  | settings security-key and 2FA policy tests                                                          |
+| Factor-change or TOTP-replay bypass   | settings security-key and 2FA policy tests, including mixed-factor replay regressions               |
 | Password-reset or recovery downgrade  | recovery-code and security-key login tests                                                          |
 | CSRF                                  | `test_security_key_json_routes_require_csrf` and login CSRF tests                                   |
 | CSP broadening                        | security-key cases in `tests/test_security_headers.py`                                              |

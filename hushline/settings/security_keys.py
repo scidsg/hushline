@@ -28,8 +28,10 @@ from hushline.auth import (
     WEBAUTHN_PASSWORD_CONFIRMATION_SESSION_KEY,
     WEBAUTHN_SESSION_BINDING_KEY,
     authentication_required,
+    matching_totp_timecode,
     record_strong_authentication,
     rotate_user_session_id,
+    totp_code_was_used,
 )
 from hushline.db import db
 from hushline.model import (
@@ -208,16 +210,10 @@ def _verify_totp_reauthentication(user: User, code: str) -> bool:
         return False
 
     totp = pyotp.TOTP(secret)
-    timecode = totp.timecode(now)
-    last_success = db.session.scalars(
-        db.select(AuthenticationLog)
-        .where(AuthenticationLog.user_id == user.id, AuthenticationLog.successful == db.true())
-        .order_by(AuthenticationLog.timestamp.desc())
-        .limit(1)
-    ).first()
+    timecode = matching_totp_timecode(totp=totp, code=code, now=now)
     valid = bool(
-        not (last_success and last_success.timecode == timecode and last_success.otp_code == code)
-        and totp.verify(code, valid_window=1)
+        timecode is not None
+        and not totp_code_was_used(user_id=user.id, code=code, timecode=timecode)
     )
     db.session.add(
         AuthenticationLog(
@@ -328,9 +324,11 @@ def _validate_json_csrf() -> str | None:
 def register_security_key_routes(bp: Blueprint) -> None:
     @bp.route("/security-keys")
     @authentication_required
-    def security_keys() -> str:
+    def security_keys() -> Response:
         user = _current_user()
-        return _render_security_keys(user)
+        response = current_app.make_response(_render_security_keys(user))
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     @bp.route("/security-keys/authorize", methods=["POST"])
     @authentication_required

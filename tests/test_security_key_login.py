@@ -80,6 +80,7 @@ def test_key_only_password_login_remains_pending_and_only_presents_security_key(
     response = client.get(url_for("verify_2fa_login"))
 
     assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
     assert "Use your security key" in response.text
     assert "Enter your 2FA Code" not in response.text
     assert url_for("security_key_login_options") in response.text

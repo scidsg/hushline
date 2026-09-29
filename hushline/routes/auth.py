@@ -33,11 +33,13 @@ from hushline.auth import (
     authentication_required,
     clear_auth_session,
     get_session_user,
+    matching_totp_timecode,
     pop_post_auth_redirect,
     record_strong_authentication,
     rotate_user_session_id,
     set_session_user,
     stash_post_auth_redirect_target,
+    totp_code_was_used,
 )
 from hushline.chat_key_lifecycle import retire_active_chat_key, validate_chat_key_payload
 from hushline.db import db
@@ -745,15 +747,19 @@ def register_auth_routes(app: Flask) -> None:
 
         form = TwoFactorForm()
 
-        def render_mfa() -> str:
-            return render_template(
-                "verify_2fa_login.html",
-                form=form,
-                allow_totp=allow_totp,
-                allow_security_key=allow_security_key,
-                allow_recovery_code=allow_recovery_code,
-                recovery_code_form=RecoveryCodeLoginForm(),
+        def render_mfa() -> Response:
+            response = make_response(
+                render_template(
+                    "verify_2fa_login.html",
+                    form=form,
+                    allow_totp=allow_totp,
+                    allow_security_key=allow_security_key,
+                    allow_recovery_code=allow_recovery_code,
+                    recovery_code_form=RecoveryCodeLoginForm(),
+                )
             )
+            response.headers["Cache-Control"] = "no-store"
+            return response
 
         if request.method == "POST" and form.validate():
             if not allow_totp or not user.totp_secret:
@@ -761,26 +767,20 @@ def register_auth_routes(app: Flask) -> None:
                 return redirect(url_for("login"))
 
             totp = pyotp.TOTP(user.totp_secret)
-            timecode = totp.timecode(datetime.now())
             verification_code = form.verification_code.data
+            timecode = matching_totp_timecode(
+                totp=totp,
+                code=verification_code,
+                now=datetime.now(),
+            )
 
             rate_limit = False
 
-            # If the most recent successful login was made with the same OTP code, reject this one
-            last_login = db.session.scalars(
-                db.select(AuthenticationLog)
-                .filter_by(user_id=user.id, successful=True)
-                .order_by(AuthenticationLog.timestamp.desc())
-                .limit(1)
-            ).first()
-            if (
-                last_login
-                and last_login.timecode == timecode
-                and last_login.otp_code == verification_code
+            if timecode is not None and totp_code_was_used(
+                user_id=user.id, code=verification_code, timecode=timecode
             ):
-                # If the time interval has incremented, then a repeat TOTP code which passes the
-                # totp.verify(...) check is OK & part of the security model of the TOTP spec.
-                # However, a repeat TOTP code during the same time interval should be disallowed.
+                # Bind replay detection to the counter that generated the code. This also rejects
+                # reuse from the previous counter while it remains inside the accepted skew window.
                 rate_limit = True
 
             # If there were 5 failed logins in the last 30 seconds, don't allow another one
@@ -791,7 +791,7 @@ def register_auth_routes(app: Flask) -> None:
                 flash("⏲️ Please wait a moment before trying again.")
                 return render_mfa(), 429
 
-            if totp.verify(verification_code, valid_window=1):
+            if timecode is not None:
                 auth_log = AuthenticationLog(
                     user_id=user.id, successful=True, otp_code=verification_code, timecode=timecode
                 )
@@ -829,17 +829,23 @@ def register_auth_routes(app: Flask) -> None:
 
         form = RecoveryCodeLoginForm()
 
-        def render_recovery_challenge() -> str:
+        def render_recovery_challenge() -> Response:
             pending_methods = _pending_mfa_methods(user)
-            return render_template(
-                "verify_2fa_login.html",
-                form=TwoFactorForm(),
-                allow_totp=TOTP_MFA_METHOD in pending_methods and bool(user.totp_secret),
-                allow_security_key=SECURITY_KEY_MFA_METHOD in pending_methods
-                and any(credential.disabled_at is None for credential in user.webauthn_credentials),
-                allow_recovery_code=True,
-                recovery_code_form=form,
+            response = make_response(
+                render_template(
+                    "verify_2fa_login.html",
+                    form=TwoFactorForm(),
+                    allow_totp=TOTP_MFA_METHOD in pending_methods and bool(user.totp_secret),
+                    allow_security_key=SECURITY_KEY_MFA_METHOD in pending_methods
+                    and any(
+                        credential.disabled_at is None for credential in user.webauthn_credentials
+                    ),
+                    allow_recovery_code=True,
+                    recovery_code_form=form,
+                )
             )
+            response.headers["Cache-Control"] = "no-store"
+            return response
 
         if not form.validate_on_submit():
             if form.errors.get("csrf_token"):
