@@ -14,7 +14,6 @@ results:
 
 - `make lint` and full `make test` behavior-critical coverage, including authentication, settings,
   recovery, security headers, and E2EE regressions.
-- Python, Node runtime, and full Node dependency audits.
 - A real Chromium CDP virtual-authenticator ceremony against the integrated application. It uses
   two distinct CTAP 2.1 authenticators to enroll primary and backup credentials, log in, revoke the
   primary credential, recover with the backup, and clean up the synthetic account.
@@ -25,8 +24,8 @@ The workflow artifact is named `webauthn-browser-evidence` and is retained for 1
 successful workflow run in the PR and copy durable, sanitized release evidence to the approved
 release-evidence location before merge.
 
-The repository's separate required checks remain authoritative. Accessibility must score 100 and
-performance must score at least 95. A workflow artifact or unchecked table is not a pass.
+The repository's separate required checks, including dependency security audits, remain
+authoritative. A workflow artifact or unchecked table is not a pass.
 
 ## Adversarial regression map
 

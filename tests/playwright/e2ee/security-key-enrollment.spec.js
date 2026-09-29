@@ -18,7 +18,7 @@ async function loginAndAuthorize(page) {
   await page.goto("/settings/security-keys", { waitUntil: "networkidle" });
   await page.fill("#password", TEST_PASSWORD);
   await Promise.all([
-    page.waitForURL("**/settings/security-keys"),
+    page.waitForNavigation({ waitUntil: "networkidle" }),
     page.getByRole("button", { name: "Continue" }).click(),
   ]);
 }
@@ -113,7 +113,10 @@ async function enrollVirtualSecurityKey(page, label) {
 
 async function authorizeAfterRecentStrongAuthentication(page) {
   await page.fill("#password", TEST_PASSWORD);
-  await page.getByRole("button", { name: "Continue" }).click();
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: "networkidle" }),
+    page.getByRole("button", { name: "Continue" }).click(),
+  ]);
   await expect(page.locator("#security-key-enrollment-form")).toBeVisible();
 }
 
@@ -282,8 +285,7 @@ test("virtual authenticators cover enrollment, login, revocation, and backup rec
   await loginWithSecurityKey(page);
 
   await page.goto("/settings/security-keys", { waitUntil: "networkidle" });
-  await page.fill("#password", TEST_PASSWORD);
-  await page.getByRole("button", { name: "Continue" }).click();
+  await authorizeAfterRecentStrongAuthentication(page);
   const primaryRow = page.locator("#security-key-list li", {
     hasText: "Primary virtual USB key",
   });
@@ -308,8 +310,7 @@ test("virtual authenticators cover enrollment, login, revocation, and backup rec
     contentType: "image/png",
   });
 
-  await page.fill("#password", TEST_PASSWORD);
-  await page.getByRole("button", { name: "Continue" }).click();
+  await authorizeAfterRecentStrongAuthentication(page);
   await page.getByLabel(/remove every second factor/i).check();
   await page.getByRole("button", { name: "Disable All MFA" }).click();
   await expect(page.getByText("MFA disabled")).toBeVisible();

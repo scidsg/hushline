@@ -53,18 +53,6 @@ jobs:
       - name: Run full behavior-critical coverage
         run: make test PYTEST_ADDOPTS="--skip-local-only"
 
-  dependency-audits:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-      - name: Audit Python dependencies
-        run: make audit-python
-      - name: Audit Node runtime dependencies
-        run: make audit-node-runtime
-      - name: Audit all Node dependencies
-        run: make audit-node-full
-
   virtual-authenticator:
     runs-on: ubuntu-latest
     timeout-minutes: 30
