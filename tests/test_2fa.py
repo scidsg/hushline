@@ -34,7 +34,10 @@ def test_enable_2fa(client: FlaskClient, user: User, user_password: str) -> None
     # Verify the 2FA code
     verify_2fa_response = client.post(
         url_for("settings.enable_2fa"),
-        data={"verification_code": pyotp.TOTP(totp_secret).now()},
+        data={
+            "password": user_password,
+            "verification_code": pyotp.TOTP(totp_secret).now(),
+        },
         follow_redirects=True,
     )
     assert verify_2fa_response.status_code == 200

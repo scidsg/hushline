@@ -22,27 +22,21 @@
     {{ change_username_form.submit }}
   </form>
 
-  <h4>Two-Factor Authentication</h4>
+  <h4>Multi-Factor Authentication</h4>
   {% if user.totp_secret %}
-    <form
-      method="GET"
-      action="{{ url_for('settings.confirm_disable_2fa') }}"
-      class="formBody"
-    >
-      <button type="submit">Disable 2FA</button>
-    </form>
+    <p>Authenticator app enabled.</p>
   {% else %}
     <form
       method="POST"
       action="{{ url_for('settings.toggle_2fa') }}"
       class="formBody"
     >
-      <button type="submit">Enable 2FA</button>
+      <button type="submit">Add Authenticator App</button>
     </form>
   {% endif %}
 
   <p>
-    <a href="{{ url_for('settings.security_keys') }}">Manage security keys</a>
+    <a href="{{ url_for('settings.security_keys') }}">Manage MFA, security keys, and recovery codes</a>
   </p>
 
   <h4>Change Password</h4>

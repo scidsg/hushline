@@ -3,11 +3,11 @@ from flask import (
     render_template,
     session,
 )
-from sqlalchemy import distinct, func
+from sqlalchemy import distinct, func, or_
 
 from hushline.auth import admin_authentication_required
 from hushline.db import db
-from hushline.model import ChatKey, User
+from hushline.model import ChatKey, User, WebAuthnCredential
 
 
 def _percentage(count: int, total: int) -> float:
@@ -21,8 +21,18 @@ def register_metrics_routes(bp: Blueprint) -> None:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
 
         user_count = db.session.scalar(db.select(func.count(User.id))) or 0
-        two_fa_count = (
-            db.session.scalar(db.select(func.count(User.id)).where(User._totp_secret.is_not(None)))
+        mfa_count = (
+            db.session.scalar(
+                db.select(func.count(User.id)).where(
+                    or_(
+                        User._totp_secret.is_not(None),
+                        db.exists().where(
+                            WebAuthnCredential.user_id == User.id,
+                            WebAuthnCredential.disabled_at.is_(None),
+                        ),
+                    )
+                )
+            )
             or 0
         )
         pgp_key_count = (
@@ -41,10 +51,10 @@ def register_metrics_routes(bp: Blueprint) -> None:
             "settings/metrics.html",
             user=user,
             user_count=user_count,
-            two_fa_count=two_fa_count,
+            mfa_count=mfa_count,
             pgp_key_count=pgp_key_count,
             chat_key_count=chat_key_count,
-            two_fa_percentage=_percentage(two_fa_count, user_count),
+            mfa_percentage=_percentage(mfa_count, user_count),
             pgp_key_percentage=_percentage(pgp_key_count, user_count),
             chat_key_percentage=_percentage(chat_key_count, user_count),
         )

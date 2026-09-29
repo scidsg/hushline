@@ -84,6 +84,18 @@ class ChangeUsernameForm(FlaskForm):
     submit = SubmitField("Change Username", name="update_display_name", widget=Button())
 
 
+class TotpEnrollmentForm(FlaskForm):
+    password = PasswordField(
+        "Current Password",
+        validators=[DataRequired(), Length(max=User.PASSWORD_MAX_LENGTH)],
+    )
+    verification_code = StringField(
+        "2FA Code",
+        validators=[DataRequired(), Length(min=6, max=6)],
+    )
+    submit = SubmitField("Verify and Enable", widget=Button())
+
+
 class SecurityKeyAuthorizationForm(FlaskForm):
     password = PasswordField(
         "Current Password",
@@ -111,6 +123,27 @@ class RecoveryCodeAcknowledgementForm(FlaskForm):
 class SecurityKeyRemovalForm(FlaskForm):
     credential_id = HiddenField(validators=[DataRequired()])
     submit = SubmitField("Remove", widget=Button())
+
+
+class SecurityKeyRenameForm(FlaskForm):
+    credential_id = HiddenField(validators=[DataRequired()])
+    name = StringField(
+        "Key Label",
+        validators=[DataRequired(), Length(max=100)],
+    )
+    submit = SubmitField("Rename", widget=Button())
+
+
+class MfaPolicyChangeForm(FlaskForm):
+    confirm = BooleanField(
+        "I understand that this will remove every second factor and invalidate recovery codes.",
+        validators=[DataRequired()],
+    )
+    submit = SubmitField("Disable All MFA", widget=Button())
+
+
+class TotpRemovalForm(FlaskForm):
+    submit = SubmitField("Remove Authenticator App", widget=Button())
 
 
 class DataExportForm(FlaskForm):

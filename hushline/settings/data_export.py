@@ -22,6 +22,19 @@ from hushline.model import (
 )
 from hushline.settings.forms import DataExportForm
 
+USER_CREDENTIAL_COLUMNS = frozenset({"password_hash", "session_id", "smtp_password", "totp_secret"})
+AUTHENTICATION_CREDENTIAL_COLUMNS = frozenset({"otp_code", "timecode"})
+USER_EXPORT_COLUMNS = tuple(
+    column.name
+    for column in User.__table__.columns  # type: ignore[attr-defined]
+    if column.name not in USER_CREDENTIAL_COLUMNS
+)
+AUTHENTICATION_LOG_EXPORT_COLUMNS = tuple(
+    column.name
+    for column in AuthenticationLog.__table__.columns  # type: ignore[attr-defined]
+    if column.name not in AUTHENTICATION_CREDENTIAL_COLUMNS
+)
+
 
 def _write_csv(
     table_name: str, columns: Iterable[str], rows: list[dict[str, object]]
@@ -112,7 +125,12 @@ def _fetch_rows(user_id: int) -> dict[str, list[dict[str, object]]]:
     auth_log_rows: list[dict[str, object]] = [
         dict(row)
         for row in db.session.execute(
-            db.select(AuthenticationLog.__table__).where(  # type: ignore[attr-defined]
+            db.select(
+                *(
+                    AuthenticationLog.__table__.c[name]  # type: ignore[attr-defined]
+                    for name in AUTHENTICATION_LOG_EXPORT_COLUMNS
+                )
+            ).where(
                 AuthenticationLog.__table__.c.user_id == user_id  # type: ignore[attr-defined]
             )
         )
@@ -123,7 +141,12 @@ def _fetch_rows(user_id: int) -> dict[str, list[dict[str, object]]]:
     user_rows: list[dict[str, object]] = [
         dict(row)
         for row in db.session.execute(
-            db.select(User.__table__).where(  # type: ignore[attr-defined]
+            db.select(
+                *(
+                    User.__table__.c[name]  # type: ignore[attr-defined]
+                    for name in USER_EXPORT_COLUMNS
+                )
+            ).where(
                 User.__table__.c.id == user_id  # type: ignore[attr-defined]
             )
         )
@@ -146,7 +169,7 @@ def _write_csv_bundle(rows: dict[str, list[dict[str, object]]]) -> list[tuple[st
     return [
         _write_csv(
             "users",
-            User.__table__.columns.keys(),  # type: ignore[attr-defined]
+            USER_EXPORT_COLUMNS,
             rows["users"],
         ),
         _write_csv(
@@ -176,7 +199,7 @@ def _write_csv_bundle(rows: dict[str, list[dict[str, object]]]) -> list[tuple[st
         ),
         _write_csv(
             "authentication_logs",
-            AuthenticationLog.__table__.columns.keys(),  # type: ignore[attr-defined]
+            AUTHENTICATION_LOG_EXPORT_COLUMNS,
             rows["authentication_logs"],
         ),
     ]

@@ -393,12 +393,14 @@ class WebAuthnCeremonyService:
         config = cls._rp_config()
         payload = _bounded_payload(response)
         challenge = _response_challenge(payload)
+        db.session.scalar(db.select(User.id).where(User.id == user.id).with_for_update())
         WebAuthnChallengeService.consume(
             challenge=challenge,
             user_id=user.id,
             purpose=WebAuthnPurpose.REGISTRATION,
             session_binding=session_binding,
         )
+        db.session.scalar(db.select(User.id).where(User.id == user.id).with_for_update())
         transports = _registration_transports(payload)
         _advisory_lock("webauthn-account", str(user.id).encode("ascii"))
         active_count = db.session.scalar(
@@ -507,12 +509,17 @@ class WebAuthnCeremonyService:
         config = cls._rp_config()
         payload = _bounded_payload(response)
         challenge = _response_challenge(payload)
+        # Serialize factor revocation and assertion verification. If revocation
+        # wins this lock, even an assertion for an already-issued challenge
+        # fails against the now-disabled credential.
+        db.session.scalar(db.select(User.id).where(User.id == user.id).with_for_update())
         WebAuthnChallengeService.consume(
             challenge=challenge,
             user_id=user.id,
             purpose=purpose,
             session_binding=session_binding,
         )
+        db.session.scalar(db.select(User.id).where(User.id == user.id).with_for_update())
         credential_id = _response_credential_id(payload)
 
         credential = db.session.scalars(

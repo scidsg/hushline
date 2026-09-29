@@ -2,7 +2,7 @@
 {% block title %}Settings{% endblock %}
 
 {% block content %}
-  <h2>Enable Two-Factor Authentication</h2>
+  <h2>Add an Authenticator App</h2>
   <p>
     Scan the QR code with your 2FA app or enter the text code below to enable
     2FA.
@@ -16,8 +16,13 @@
 
   <form method="POST" action="{{ url_for('settings.enable_2fa') }}">
     {{ form.hidden_tag() }}
+    {{ form.password.label }}
+    {{ form.password(autocomplete='current-password') }}
+    {% for error in form.password.errors %}
+      <span class="error">{{ error }}</span>
+    {% endfor %}
     {{ form.verification_code.label }}
-    {{ form.verification_code(size=6) }}
+    {{ form.verification_code(size=6, autocomplete='one-time-code', inputmode='numeric') }}
     {% if form.verification_code.errors %}
       {% for error in form.verification_code.errors %}
         <span style="color: red;">{{ error }}</span>

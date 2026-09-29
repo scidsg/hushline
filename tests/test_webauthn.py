@@ -444,6 +444,39 @@ def test_authentication_fixture_verifies_signature_user_handle_and_counter(
     assert verified.last_used_at is not None
 
 
+def test_revoked_credential_rejects_an_outstanding_challenge(app: Flask, user: User) -> None:
+    _configure(app)
+    challenge, public_key, response = _authentication_fixture()
+    raw_id = response["rawId"]
+    assert isinstance(raw_id, str)
+    credential = WebAuthnCredential(
+        user_id=user.id,
+        credential_id=_decode(raw_id),
+        public_key=public_key,
+        algorithm=-257,
+        sign_count=0,
+        transports=["usb"],
+        device_type="single_device",
+        backed_up=False,
+    )
+    db.session.add(credential)
+    db.session.commit()
+    _store_fixture_challenge(
+        user=user,
+        challenge=challenge,
+        purpose=WebAuthnPurpose.AUTHENTICATION,
+    )
+    credential.disabled_at = datetime.now(UTC)
+    db.session.commit()
+
+    with pytest.raises(WebAuthnVerificationError):
+        WebAuthnCeremonyService.finish_authentication(
+            user=user,
+            session_binding=SESSION_BINDING,
+            response=response,
+        )
+
+
 def test_authentication_rejects_a_credential_owned_by_another_account(
     app: Flask, user: User, user2: User
 ) -> None:

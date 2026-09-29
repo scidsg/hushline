@@ -14,8 +14,30 @@
       {% for credential in credentials %}
         <li>
           <strong>{{ credential.name or 'Security key' }}</strong>
-          <span class="meta">Added {{ credential.created_at.strftime('%Y-%m-%d') }}</span>
+          <span class="meta">
+            Added <time datetime="{{ credential.created_at.isoformat() }}">{{ credential.created_at.strftime('%Y-%m-%d') }}</time>.
+            {% if credential.last_used_at %}
+              Last used <time datetime="{{ credential.last_used_at.isoformat() }}">{{ credential.last_used_at.strftime('%Y-%m-%d %H:%M UTC') }}</time>.
+            {% else %}
+              Never used.
+            {% endif %}
+          </span>
           {% if enrollment_authorized %}
+            <form method="POST" action="{{ url_for('settings.rename_security_key') }}">
+              {{ rename_form.csrf_token(id='rename-key-csrf-' ~ credential.id) }}
+              <input type="hidden" name="credential_id" value="{{ credential.id }}" />
+              <label for="rename-key-{{ credential.id }}">Key Label</label>
+              <input
+                id="rename-key-{{ credential.id }}"
+                name="name"
+                type="text"
+                maxlength="100"
+                required
+                value="{{ credential.name or '' }}"
+                autocomplete="off"
+              />
+              <button type="submit">Rename</button>
+            </form>
             <form method="POST" action="{{ url_for('settings.remove_security_key') }}">
               {{ removal_form.csrf_token(id='remove-key-csrf-' ~ credential.id) }}
               <input type="hidden" name="credential_id" value="{{ credential.id }}" />
@@ -145,6 +167,39 @@
       >
         {{ generation_form.hidden_tag() }}
         <button type="submit">Generate New Recovery Codes</button>
+      </form>
+    {% endif %}
+
+    <h4>Factor Policy</h4>
+    {% if not user.totp_secret %}
+      <p><a href="{{ url_for('settings.enable_2fa') }}">Add an Authenticator App</a></p>
+    {% endif %}
+    {% if user.totp_secret and credentials %}
+      <p>
+        You can remove the authenticator app without disabling MFA. Your enrolled security keys
+        will remain required at login.
+      </p>
+      <form method="POST" action="{{ url_for('settings.remove_totp_factor') }}">
+        {{ totp_removal_form.hidden_tag() }}
+        <button type="submit">Remove Authenticator App</button>
+      </form>
+    {% endif %}
+    {% if has_recovery_factor %}
+      <p role="alert">
+        Disabling MFA removes every authenticator app and security key, invalidates all recovery
+        codes, and leaves your password as the only protection for this account.
+      </p>
+      <form
+        method="POST"
+        action="{{ url_for('settings.disable_mfa') }}"
+        class="formBody"
+      >
+        {{ mfa_policy_form.hidden_tag() }}
+        <div>
+          {{ mfa_policy_form.confirm }}
+          {{ mfa_policy_form.confirm.label }}
+        </div>
+        <button type="submit">Disable All MFA</button>
       </form>
     {% endif %}
   {% endif %}

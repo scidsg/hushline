@@ -164,6 +164,12 @@ def test_webauthn_credential_limit_allows_a_backup_key() -> None:
     cfg = load_config({"WEBAUTHN_MAX_CREDENTIALS_PER_USER": "2"})
     assert cfg["WEBAUTHN_MAX_CREDENTIALS_PER_USER"] == 2
 
+    cfg = load_config({"WEBAUTHN_MAX_REVOKED_CREDENTIALS_PER_USER": "7"})
+    assert cfg["WEBAUTHN_MAX_REVOKED_CREDENTIALS_PER_USER"] == 7
+
+    cfg = load_config({"WEBAUTHN_REVOKED_CREDENTIAL_RETENTION_DAYS": "14"})
+    assert cfg["WEBAUTHN_REVOKED_CREDENTIAL_RETENTION_DAYS"] == 14
+
 
 def test_smtp_notification_reply_to_loads() -> None:
     env = dict(**os.environ)
