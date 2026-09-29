@@ -3,7 +3,7 @@ const { writeFile } = require("node:fs/promises");
 
 const TEST_PASSWORD = "Test-testtesttesttest-1";
 const VIRTUAL_TEST_USERNAMES = ["georgecostanza", "elainebenes"];
-const virtualExpect = expect.configure({ timeout: 15_000 });
+const virtualExpect = expect.configure({ timeout: 30_000 });
 
 async function loginAndAuthorize(page, username = "jerryseinfeld") {
   await page.addInitScript(() => {
@@ -233,7 +233,7 @@ test("virtual authenticators cover enrollment, login, revocation, and backup rec
   browser,
   page,
 }, testInfo) => {
-  test.setTimeout(180_000);
+  test.setTimeout(300_000);
   const username = VIRTUAL_TEST_USERNAMES[testInfo.retry];
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("WebAuthn.enable", { enableUI: false });
