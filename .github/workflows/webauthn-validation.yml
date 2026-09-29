@@ -78,7 +78,7 @@ jobs:
             sleep 2
           done
           docker compose run --rm dev_data
-          docker compose up -d app
+          docker compose up -d --no-deps app
           make runner-wait-for-app
       - name: Run virtual-authenticator ceremonies
         run: npm run playwright:e2e -- security-key-enrollment.spec.js
