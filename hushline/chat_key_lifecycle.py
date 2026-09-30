@@ -13,7 +13,15 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from hushline.db import db
-from hushline.model import ChatKey, User
+from hushline.model import (
+    ChatAccount,
+    ChatArchiveEpoch,
+    ChatDevice,
+    ChatKey,
+    ChatOneTimePrekey,
+    ChatSignedPrekey,
+    User,
+)
 
 CHAT_KEY_STRING_MAX_LENGTH = 200_000
 CHAT_KEY_METADATA_MAX_LENGTH = 20_000
@@ -132,6 +140,46 @@ def canonical_chat_json(value: Any) -> bytes:
 
 def chat_session_binding(session_id: str) -> str:
     return sha256(("hushline:pq-chat-session:" + session_id).encode()).hexdigest()
+
+
+def invalidate_pq_account_after_password_reset(user: User, *, when: datetime) -> None:
+    """Invalidate public device state when the old account root is unavailable."""
+
+    account = db.session.scalars(
+        db.select(ChatAccount).where(ChatAccount.user_id == user.id).with_for_update()
+    ).one_or_none()
+    if account is None:
+        return
+    account.identity_version += 1
+    account.membership_sequence += 1
+    account.identity_public_key = None
+    device_ids = db.select(ChatDevice.id).where(ChatDevice.account_id == account.id)
+    db.session.execute(
+        db.update(ChatDevice)
+        .where(ChatDevice.account_id == account.id, ChatDevice.revoked_at.is_(None))
+        .values(revoked_at=when)
+    )
+    db.session.execute(
+        db.update(ChatSignedPrekey)
+        .where(
+            ChatSignedPrekey.device_id.in_(device_ids),
+            ChatSignedPrekey.retired_at.is_(None),
+        )
+        .values(retired_at=when)
+    )
+    db.session.execute(
+        db.update(ChatOneTimePrekey)
+        .where(
+            ChatOneTimePrekey.device_id.in_(device_ids),
+            ChatOneTimePrekey.consumed_at.is_(None),
+        )
+        .values(expires_at=when)
+    )
+    db.session.execute(
+        db.update(ChatArchiveEpoch)
+        .where(ChatArchiveEpoch.account_id == account.id, ChatArchiveEpoch.retired_at.is_(None))
+        .values(retired_at=when)
+    )
 
 
 def _pq_chat_base64url(value: Any) -> bytes:

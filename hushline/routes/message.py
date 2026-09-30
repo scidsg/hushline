@@ -111,7 +111,6 @@ def _active_pq_devices(account: ChatAccount, now: datetime) -> list[ChatDevice]:
                 ChatDevice.account_id == account.id,
                 ChatDevice.revoked_at.is_(None),
                 ChatDevice.expires_at > now,
-                ChatDevice.membership_sequence == account.membership_sequence,
             )
             .order_by(ChatDevice.public_id.asc())
             .with_for_update()
@@ -161,7 +160,6 @@ def _authorized_pq_sender_device(user: User, payload: Any) -> ChatDevice | None:
             ChatDevice.session_id_hash == chat_session_binding(chat_session_id),
             ChatDevice.revoked_at.is_(None),
             ChatDevice.expires_at > datetime.now(UTC),
-            ChatDevice.membership_sequence == ChatAccount.membership_sequence,
         )
     ).one_or_none()
 
@@ -1221,7 +1219,6 @@ def register_message_routes(app: Flask) -> None:
                 ChatDevice.session_id_hash == chat_session_binding(chat_session_id),
                 ChatDevice.revoked_at.is_(None),
                 ChatDevice.expires_at > datetime.now(UTC),
-                ChatDevice.membership_sequence == account.membership_sequence,
             )
         ).one_or_none()
         if device is None:

@@ -4,6 +4,7 @@
   const sessionStorageKey = "hushline:chat-private-jwk";
   const legacyBrowserStorageKey = "hushline:chat-private-jwk:browser-session";
   const crossTabChannelName = "hushline:chat-key-session";
+  const pqDeviceSessionStorageKey = "hushline:pq-device-session";
   const crossTabRequestTimeoutMs = 750;
   const conversationPollMinIntervalMs = 3000;
   const tabId = window.crypto?.randomUUID
@@ -19,6 +20,11 @@
     status: "empty",
     keyVersion: null,
     lastError: null,
+  };
+  const pqDeviceState = {
+    accountId: null,
+    deviceId: null,
+    status: "unavailable",
   };
 
   function bytesToBase64(bytes) {
@@ -51,6 +57,197 @@
         .join(",")}}`;
     }
     return JSON.stringify(value);
+  }
+
+  function base64UrlToBytes(value) {
+    const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+    return base64ToBytes(base64.padEnd(Math.ceil(base64.length / 4) * 4, "="));
+  }
+
+  function safeBase64UrlToBytes(value) {
+    try {
+      return base64UrlToBytes(value);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function joinBytes(...values) {
+    const length = values.reduce((total, value) => total + value.length, 0);
+    const joined = new Uint8Array(length);
+    let offset = 0;
+    values.forEach((value) => {
+      joined.set(value, offset);
+      offset += value.length;
+    });
+    return joined;
+  }
+
+  async function verifyEd25519Json(publicKey, signature, domain, value) {
+    const verificationKey = await window.crypto.subtle.importKey(
+      "raw",
+      base64UrlToBytes(publicKey),
+      { name: "Ed25519" },
+      false,
+      ["verify"],
+    );
+    return window.crypto.subtle.verify(
+      { name: "Ed25519" },
+      verificationKey,
+      base64UrlToBytes(signature),
+      joinBytes(
+        textEncoder.encode(domain),
+        new Uint8Array([0]),
+        textEncoder.encode(canonicalStringify(value)),
+      ),
+    );
+  }
+
+  async function sha256Hex(value) {
+    const digest = new Uint8Array(
+      await window.crypto.subtle.digest("SHA-256", value),
+    );
+    return Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join(
+      "",
+    );
+  }
+
+  async function verifyPqMembership(
+    accountIdentityPublicKey,
+    device,
+    minimumMembershipSequence = 0,
+    expectedAccountId = null,
+  ) {
+    try {
+      const membership = device?.membership;
+      const expiresAt = Date.parse(membership?.expires_at);
+      const signingKey = base64UrlToBytes(
+        membership?.device_signing_public_key || "",
+      );
+      const protocolIdentity = base64UrlToBytes(
+        membership?.protocol_identity_public_key || "",
+      );
+      if (
+        !membership ||
+        membership.status !== "active" ||
+        membership.capabilities?.length !== 1 ||
+        membership.capabilities[0] !== "HL-PQCHAT-1" ||
+        membership.archive_suites?.length !== 1 ||
+        membership.archive_suites[0] !==
+          "MLKEM768-X25519-HKDF-SHA256-AES256GCM" ||
+        (expectedAccountId && membership.account_id !== expectedAccountId) ||
+        !Number.isInteger(membership.membership_sequence) ||
+        membership.membership_sequence < minimumMembershipSequence ||
+        !Number.isInteger(membership.one_time_prekey_start) ||
+        !Number.isInteger(membership.one_time_prekey_end) ||
+        membership.one_time_prekey_start < 1 ||
+        membership.one_time_prekey_start > membership.one_time_prekey_end ||
+        signingKey.length !== 32 ||
+        protocolIdentity.length !== 33 ||
+        protocolIdentity[0] !== 0x05 ||
+        !Number.isInteger(membership.protocol_registration_id) ||
+        membership.protocol_registration_id < 1 ||
+        membership.protocol_registration_id > 16380 ||
+        !Number.isFinite(expiresAt) ||
+        expiresAt <= Date.now()
+      ) {
+        return false;
+      }
+      const membershipBytes = textEncoder.encode(
+        canonicalStringify(membership),
+      );
+      if ((await sha256Hex(membershipBytes)) !== device.membership_sha256) {
+        return false;
+      }
+      return await verifyEd25519Json(
+        accountIdentityPublicKey,
+        device.membership_signature,
+        "HushLine/HL-PQCHAT-1/device-membership/v1",
+        membership,
+      );
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async function verifyPqPrekeyClaim(
+    claim,
+    minimumMembershipSequence = 0,
+    expectedAccountId = null,
+    expectedAccountIdentityPublicKey = null,
+  ) {
+    const device = claim?.device;
+    if (
+      (expectedAccountIdentityPublicKey &&
+        claim?.account_identity_public_key !==
+          expectedAccountIdentityPublicKey) ||
+      !(await verifyPqMembership(
+        claim?.account_identity_public_key,
+        device,
+        minimumMembershipSequence,
+        expectedAccountId,
+      ))
+    ) {
+      return false;
+    }
+    const membership = device.membership;
+    const verificationKey = membership.device_signing_public_key;
+    const claimExpiresAt = Date.parse(claim?.claim_expires_at);
+    if (!Number.isFinite(claimExpiresAt) || claimExpiresAt <= Date.now()) {
+      return false;
+    }
+    const entries = [
+      ["signed", claim.signed_prekey],
+      ["one-time", claim.one_time_prekey],
+    ];
+    for (const [kind, key] of entries) {
+      const classicalPublicKey = safeBase64UrlToBytes(
+        key?.classical_public_key || "",
+      );
+      const pqPublicKey = safeBase64UrlToBytes(key?.pq_public_key || "");
+      const keyExpiresAt = Date.parse(key?.expires_at);
+      if (
+        !classicalPublicKey ||
+        classicalPublicKey.length !== 33 ||
+        classicalPublicKey[0] !== 0x05 ||
+        !pqPublicKey ||
+        pqPublicKey.length !== 1569 ||
+        pqPublicKey[0] !== 0x08 ||
+        !Number.isInteger(key?.key_id) ||
+        (kind === "signed" &&
+          key.key_id !== membership.signed_prekey_id) ||
+        (kind === "one-time" &&
+          (key.key_id < membership.one_time_prekey_start ||
+            key.key_id > membership.one_time_prekey_end)) ||
+        !Number.isFinite(keyExpiresAt) ||
+        keyExpiresAt <= Date.now()
+      ) {
+        return false;
+      }
+      const unsignedKey = { ...key };
+      delete unsignedKey.device_signature;
+      let verified = false;
+      try {
+        verified = await verifyEd25519Json(
+          verificationKey,
+          key.device_signature,
+          "HushLine/HL-PQCHAT-1/prekey-publication/v1",
+          {
+            device_id: membership.device_id,
+            key: unsignedKey,
+            kind,
+            membership_sequence: membership.membership_sequence,
+            protocol: "HL-PQCHAT-1",
+          },
+        );
+      } catch (error) {
+        return false;
+      }
+      if (!verified) {
+        return false;
+      }
+    }
+    return true;
   }
 
   function normalizePrivateKeyBundle(value) {
@@ -819,6 +1016,114 @@
     );
   }
 
+  async function postPqDeviceJson(path, payload, sourceDocument = document) {
+    const headers = {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    };
+    const csrfToken = csrfTokenFromDocument(sourceDocument);
+    if (csrfToken) {
+      headers["X-CSRFToken"] = csrfToken;
+    }
+    const response = await fetch(new URL(path, window.location.origin), {
+      method: "POST",
+      credentials: "same-origin",
+      headers,
+      body: JSON.stringify(payload || {}),
+    });
+    const body = await response.json();
+    if (!response.ok) {
+      const error = new Error(body?.error || "PQ device enrollment failed.");
+      error.code = body?.error || "INTERNAL_ERROR";
+      throw error;
+    }
+    return body;
+  }
+
+  function announcePqDeviceState(status, accountId = null, deviceId = null) {
+    pqDeviceState.status = status;
+    pqDeviceState.accountId = accountId;
+    pqDeviceState.deviceId = deviceId;
+    document.dispatchEvent(
+      new CustomEvent("hushline:pq-device-state", {
+        detail: { accountId, deviceId, status },
+      }),
+    );
+  }
+
+  async function enrollPqDevice(prepared, sourceDocument = document) {
+    if (!prepared?.enrollment || !prepared?.publication) {
+      throw new Error("PQ device enrollment material is unavailable.");
+    }
+    const enrolled = await postPqDeviceJson(
+      "/api/pq/devices",
+      prepared.enrollment,
+      sourceDocument,
+    );
+    const deviceId = enrolled?.device?.membership?.device_id;
+    const accountId = enrolled?.device?.membership?.account_id;
+    if (!deviceId || !accountId) {
+      throw new Error("PQ device enrollment response is incomplete.");
+    }
+    await postPqDeviceJson(
+      `/api/pq/devices/${encodeURIComponent(deviceId)}/prekeys`,
+      prepared.publication,
+      sourceDocument,
+    );
+    try {
+      window.sessionStorage.setItem(
+        pqDeviceSessionStorageKey,
+        JSON.stringify({
+          accountId,
+          deviceId,
+          sessionId: chatKeySessionId(sourceDocument),
+        }),
+      );
+    } catch (error) {
+      // Keep the enrolled device usable in this document when storage is denied.
+    }
+    announcePqDeviceState("ready", accountId, deviceId);
+    return { accountId, deviceId };
+  }
+
+  async function ensurePqDeviceEnrollment(chatKey, sourceDocument = document) {
+    const provider = window.HushLinePqProtocol;
+    if (!provider?.prepareDeviceEnrollment || !unlockedChatSigningPrivateKey) {
+      announcePqDeviceState("unavailable");
+      return false;
+    }
+    announcePqDeviceState("enrolling");
+    try {
+      const account = await postPqDeviceJson(
+        "/api/pq/account",
+        {},
+        sourceDocument,
+      );
+      const prepared = await provider.prepareDeviceEnrollment({
+        account,
+        canonicalStringify,
+        chatKey,
+        chatKeySessionId: chatKeySessionId(sourceDocument),
+        domains: {
+          membership: "HushLine/HL-PQCHAT-1/device-membership/v1",
+          prekeyPublication: "HushLine/HL-PQCHAT-1/prekey-publication/v1",
+          unlockEnrollment: "HushLine/HL-PQCHAT-1/unlock-enrollment/v1",
+        },
+        signingPrivateKey: unlockedChatSigningPrivateKey,
+      });
+      await enrollPqDevice(prepared, sourceDocument);
+      return true;
+    } catch (error) {
+      try {
+        window.sessionStorage.removeItem(pqDeviceSessionStorageKey);
+      } catch (storageError) {
+        // The recoverable state below remains available without storage.
+      }
+      announcePqDeviceState("recoverable-error");
+      return false;
+    }
+  }
+
   async function provisionChatKey(
     chatKeyUrl,
     password,
@@ -926,7 +1231,7 @@
     sourceDocument = document,
   ) {
     const chatKeyUrl = chatKeyUrlFromCurrentOrigin();
-    const chatKey = await fetchChatKey(chatKeyUrl);
+    let chatKey = await fetchChatKey(chatKeyUrl);
     if (chatKey) {
       const unlocked = await unlockFromPassword(
         chatKey,
@@ -935,7 +1240,7 @@
       );
       if (unlocked && !chatKey.public_signing_key) {
         try {
-          await upgradeChatKeySigningCapability(
+          chatKey = await upgradeChatKeySigningCapability(
             chatKey,
             password,
             chatKeyUrl,
@@ -945,9 +1250,13 @@
           return unlocked;
         }
       }
+      if (unlocked) {
+        await ensurePqDeviceEnrollment(chatKey, sourceDocument);
+      }
       return unlocked;
     }
-    await provisionChatKey(chatKeyUrl, password, sourceDocument);
+    chatKey = await provisionChatKey(chatKeyUrl, password, sourceDocument);
+    await ensurePqDeviceEnrollment(chatKey, sourceDocument);
     return true;
   }
 
@@ -977,6 +1286,12 @@
     state.status = "empty";
     state.keyVersion = null;
     state.lastError = null;
+    try {
+      window.sessionStorage.removeItem(pqDeviceSessionStorageKey);
+    } catch (error) {
+      // Storage denial cannot prevent in-memory key cleanup.
+    }
+    announcePqDeviceState("unavailable");
     if (hadUnlockedKey) {
       updateConversationLockedAfterKeyClear();
     }
@@ -1772,13 +2087,20 @@
     get state() {
       return { ...state };
     },
+    get pqDeviceState() {
+      return { ...pqDeviceState };
+    },
     decryptChatCiphertext,
     encryptForPublicKey,
+    enrollPqDevice,
     ensureChatKeyUnlockedAfterAuth,
+    ensurePqDeviceEnrollment,
     provisionChatKey,
     rewrapForPasswordChange,
     signingPrivateKeyForChatKey,
     unlockFromPassword,
+    verifyPqMembership,
+    verifyPqPrekeyClaim,
   };
 
   document.addEventListener("DOMContentLoaded", function () {
