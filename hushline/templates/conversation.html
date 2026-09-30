@@ -66,6 +66,7 @@
     data-can-compose="{{ 'true' if can_compose else 'false' }}"
     data-conversation-public-id="{{ conversation.public_id }}"
     data-participant-id="{{ participant.id }}"
+    data-protocol-version="{{ conversation.minimum_protocol_version }}"
   >
     <div
       id="conversation-key-locked"
@@ -105,6 +106,9 @@
     <script id="conversationMessageCopies" type="application/json">
       {{ message_copy_payloads | tojson }}
     </script>
+    <script id="conversationParticipantPqAccounts" type="application/json">
+      {{ participant_pq_accounts | tojson }}
+    </script>
 
     <section
       id="conversation-thread"
@@ -122,7 +126,7 @@
           aria-label="{{ 'Your message' if is_own_message else 'Message from ' ~ conversation_name }}"
         >
           <time data-conversation-message-time class="meta"></time>
-          {% if encrypted_copy %}
+          {% if encrypted_copy or conversation_message.protocol_version == 1 %}
             <p class="conversation-message-body">Encrypted message. Waiting for browser chat key.</p>
           {% else %}
             <p class="conversation-message-body unavailable">

@@ -578,3 +578,145 @@ test("logged-in account conversation stays encrypted through browser lifecycle",
     await recipientContext.close();
   }
 });
+
+test("protected delivery retries exact bytes after a lost acknowledgement", async ({
+  browser,
+}) => {
+  test.setTimeout(90000);
+
+  const initialPlaintext = `PQ opening message ${Date.now()}`;
+  const replyPlaintext = `PQ reply message ${Date.now()}`;
+  const senderContext = await browser.newContext();
+  const recipientContext = await browser.newContext();
+  const senderPage = await senderContext.newPage();
+  const recipientPage = await recipientContext.newPage();
+
+  try {
+    await login(recipientPage, "not_newman");
+    await login(senderPage, "artvandelay");
+    await senderPage.goto("/to/not_newman", { waitUntil: "networkidle" });
+    await suppressGuidanceModal(senderPage);
+
+    const protectedConfiguration = await senderPage.evaluate(() =>
+      JSON.parse(
+        document.getElementById("pqInitialDelivery")?.textContent || "null",
+      ),
+    );
+    expect(protectedConfiguration?.endpoint).toContain(
+      "/api/pq/conversations/to/not_newman/messages",
+    );
+
+    const initialRequests = [];
+    await senderPage.route(
+      "**/api/pq/conversations/to/not_newman/messages",
+      async (route) => {
+        initialRequests.push(route.request().postData() || "");
+        if (initialRequests.length === 1) {
+          await route.abort("connectionreset");
+          return;
+        }
+        await route.continue();
+      },
+    );
+
+    await senderPage.fill("#field_0", "PQ contact channel");
+    await senderPage.fill("#field_1", initialPlaintext);
+    await senderPage.fill(
+      "#captcha_answer",
+      captchaAnswer(
+        await senderPage.locator('label[for="captcha_answer"]').innerText(),
+      ),
+    );
+    const failureDialog = senderPage.waitForEvent("dialog");
+    await senderPage.locator("#submitBtn").click();
+    const dialog = await failureDialog;
+    expect(dialog.message()).toContain("Your message was NOT submitted");
+    await dialog.dismiss();
+
+    await expect(senderPage.locator("#field_1")).toHaveValue(initialPlaintext);
+    await expect(senderPage.locator("#submitBtn")).toBeEnabled();
+
+    await Promise.all([
+      senderPage.waitForURL(/\/conversation\/[0-9a-f-]+$/u),
+      senderPage.locator("#submitBtn").click(),
+    ]);
+    expect(initialRequests).toHaveLength(2);
+    expect(initialRequests[1]).toBe(initialRequests[0]);
+    expectNoPlaintext(initialRequests[0], [initialPlaintext]);
+
+    const initialPackage = JSON.parse(initialRequests[0]);
+    expect(initialPackage.manifest).toMatchObject({
+      protocol: "HL-PQCHAT-1",
+      capability_selection: "HL-PQCHAT-1",
+    });
+    expect(
+      initialPackage.copies.filter(
+        (copy) => copy.context.purpose === "archive",
+      ),
+    ).toHaveLength(2);
+    await expectConversationMessage(senderPage, initialPlaintext);
+
+    const conversationUrl = senderPage.url();
+    await recipientPage.goto(conversationUrl, { waitUntil: "networkidle" });
+    await expectConversationMessage(recipientPage, initialPlaintext);
+
+    const replyEndpoint = await recipientPage
+      .locator("#conversation-chat")
+      .evaluate((element) => element.dataset.messageUrl);
+    expect(replyEndpoint).toBeTruthy();
+    const replyRequests = [];
+    let replyCommitStatus = null;
+    await recipientPage.route(`**${replyEndpoint}`, async (route) => {
+      replyRequests.push(route.request().postData() || "");
+      if (replyRequests.length === 1) {
+        const committed = await route.fetch();
+        replyCommitStatus = committed.status();
+        await committed.dispose();
+        await route.abort("connectionreset");
+        return;
+      }
+      await route.continue();
+    });
+
+    await recipientPage.fill("#conversation-compose-body", replyPlaintext);
+    await recipientPage
+      .locator("#conversation-compose-form")
+      .evaluate((form) => {
+        form.dispatchEvent(
+          new Event("submit", { cancelable: true, bubbles: true }),
+        );
+      });
+    await expect(
+      recipientPage.locator("[data-conversation-status]"),
+    ).toHaveText("Reply could not be encrypted.");
+
+    expect(replyCommitStatus).toBe(201);
+    await expect(
+      recipientPage.locator("#conversation-compose-body"),
+    ).toHaveValue(replyPlaintext);
+    await expect(
+      recipientPage.locator("#conversation-compose-submit"),
+    ).toBeEnabled();
+
+    await recipientPage
+      .locator("#conversation-compose-form")
+      .evaluate((form) => {
+        form.dispatchEvent(
+          new Event("submit", { cancelable: true, bubbles: true }),
+        );
+      });
+    await expect(
+      recipientPage.locator("[data-conversation-status]"),
+    ).toHaveText("Reply sent.");
+    expect(replyRequests).toHaveLength(2);
+    expect(replyRequests[1]).toBe(replyRequests[0]);
+    expectNoPlaintext(replyRequests[0], [replyPlaintext]);
+    await expectConversationMessage(recipientPage, replyPlaintext);
+
+    await senderPage.reload({ waitUntil: "networkidle" });
+    await expectConversationMessage(senderPage, replyPlaintext);
+  } finally {
+    await senderContext.close();
+    await recipientContext.close();
+  }
+});

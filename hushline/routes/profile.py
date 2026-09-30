@@ -434,6 +434,16 @@ def register_profile_routes(app: Flask) -> None:
             return "missing_recipient_keys"
         return None
 
+    def _pq_initial_delivery_required(sender: User | None, recipient: User) -> bool:
+        return bool(
+            sender is not None
+            and sender.id != recipient.id
+            and sender.chat_account is not None
+            and recipient.chat_account is not None
+            and sender.chat_account.identity_public_key is not None
+            and recipient.chat_account.identity_public_key is not None
+        )
+
     def _create_initial_conversation(
         *,
         message: Message,
@@ -562,6 +572,20 @@ def register_profile_routes(app: Flask) -> None:
                 if sender is not None and sender.id != uname.user_id
                 else None
             )
+            recipient_pq_account = uname.user.chat_account
+            pq_initial_delivery = (
+                {
+                    "endpoint": url_for("create_pq_conversation_message", username=uname.username),
+                    "recipient_account_id": recipient_pq_account.public_id,
+                    "username": uname.username,
+                }
+                if (
+                    not is_embedded
+                    and recipient_pq_account is not None
+                    and _pq_initial_delivery_required(sender, uname.user)
+                )
+                else None
+            )
             rendered = render_template(
                 "embed_profile.html" if is_embedded else "profile.html",
                 profile_header=profile_header,
@@ -586,6 +610,7 @@ def register_profile_routes(app: Flask) -> None:
                     else None
                 ),
                 sender_chat_key=sender_chat_key,
+                pq_initial_delivery=pq_initial_delivery,
                 recipient_public_key_entries=(
                     notification_recipient_public_key_entries(uname.user)
                     if (
@@ -680,6 +705,12 @@ def register_profile_routes(app: Flask) -> None:
                 return _render_profile(400)
 
             sender = _authenticated_sender()
+            if not is_embedded and _pq_initial_delivery_required(sender, uname.user):
+                flash(
+                    "⛔️ Protected delivery could not start. Your message was not submitted.",
+                    "error",
+                )
+                return _render_profile(409)
             encrypted_conversation_copies = _client_encrypted_conversation_copies(
                 form.encrypted_conversation_copies.data or ""
             )
