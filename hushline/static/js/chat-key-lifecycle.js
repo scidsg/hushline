@@ -18,6 +18,7 @@
   let crossTabSharingBound = false;
   let unlockedChatPrivateKey = null;
   let unlockedChatSigningPrivateKey = null;
+  let unlockedPqAccountRoot = null;
   let pendingLoginPassword = null;
   let conversationSubmitInFlight = false;
   const state = {
@@ -66,6 +67,22 @@
   function base64UrlToBytes(value) {
     const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
     return base64ToBytes(base64.padEnd(Math.ceil(base64.length / 4) * 4, "="));
+  }
+
+  function bytesToBase64Url(value) {
+    return bytesToBase64(value)
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/u, "");
+  }
+
+  function createPqAccountRoot() {
+    const root = window.crypto.getRandomValues(new Uint8Array(32));
+    try {
+      return bytesToBase64Url(root);
+    } finally {
+      root.fill(0);
+    }
   }
 
   function safeBase64UrlToBytes(value) {
@@ -254,12 +271,63 @@
     return true;
   }
 
+  async function verifyPqArchive(
+    account,
+    minimumMembershipSequence = 0,
+    expectedAccountIdentityPublicKey = null,
+  ) {
+    try {
+      const archive = account?.archive;
+      const publicKey = safeBase64UrlToBytes(archive?.public_key || "");
+      if (
+        account?.protocol !== "HL-PQCHAT-1" ||
+        (expectedAccountIdentityPublicKey &&
+          account.identity_public_key !== expectedAccountIdentityPublicKey) ||
+        archive?.suite !== "MLKEM768-X25519-HKDF-SHA256-AES256GCM" ||
+        !Number.isInteger(archive?.epoch) ||
+        archive.epoch < 1 ||
+        !Number.isInteger(account?.membership_sequence) ||
+        account.membership_sequence < minimumMembershipSequence ||
+        !publicKey ||
+        publicKey.length !== 1216 ||
+        !Array.isArray(account.devices) ||
+        account.devices.length === 0
+      ) {
+        return false;
+      }
+      const publicKeySha256 = await sha256Hex(publicKey);
+      for (const device of account.devices) {
+        if (
+          !(await verifyPqMembership(
+            account.identity_public_key,
+            device,
+            0,
+            account.account_id,
+          )) ||
+          device.membership.membership_sequence >
+            account.membership_sequence ||
+          device.membership.archive_epoch !== archive.epoch ||
+          device.membership.archive_public_key_sha256 !== publicKeySha256
+        ) {
+          return false;
+        }
+      }
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
   function normalizePrivateKeyBundle(value) {
     if (value?.ecdh_private_jwk) {
-      return value;
+      return {
+        ...value,
+        pq_account_root: value.pq_account_root || null,
+      };
     }
     return {
       ecdh_private_jwk: value,
+      pq_account_root: null,
       signing_private_jwk: null,
     };
   }
@@ -446,6 +514,13 @@
     unlockedChatSigningPrivateKey = await importSigningPrivateKey(
       privateKeyBundle.signing_private_jwk,
     );
+    const accountRoot = privateKeyBundle.pq_account_root
+      ? safeBase64UrlToBytes(privateKeyBundle.pq_account_root)
+      : null;
+    if (accountRoot && accountRoot.length !== 32) {
+      throw new Error("PQ account root is malformed.");
+    }
+    unlockedPqAccountRoot = privateKeyBundle.pq_account_root || null;
     rememberUnlockedPrivateKeyBundle(privateKeyBundle, chatKey, sourceDocument);
     state.status = "unlocked";
     state.keyVersion = chatKey.key_version;
@@ -704,6 +779,7 @@
         "jwk",
         keyPair.privateKey,
       ),
+      pq_account_root: createPqAccountRoot(),
       signing_private_jwk: signingKeyMaterial.signingPrivateJwk,
     };
     const wrapped = await encryptPrivateKeyBundle(privateKeyBundle, password);
@@ -744,6 +820,12 @@
     let privateKeyBundle = null;
     try {
       privateKeyBundle = await decryptPrivateKeyBundle(chatKey, oldPassword);
+      if (!privateKeyBundle.pq_account_root) {
+        privateKeyBundle = {
+          ...privateKeyBundle,
+          pq_account_root: createPqAccountRoot(),
+        };
+      }
       let publicSigningKey = chatKey.public_signing_key || null;
       if (!publicSigningKey || !privateKeyBundle.signing_private_jwk) {
         const signingKeyMaterial = await createSigningKeyMaterial();
@@ -1096,7 +1178,8 @@
     if (
       !provider?.prepareDeviceEnrollment ||
       !browserState?.create ||
-      !unlockedChatSigningPrivateKey
+      !unlockedChatSigningPrivateKey ||
+      !unlockedPqAccountRoot
     ) {
       announcePqDeviceState("unavailable");
       return false;
@@ -1110,6 +1193,7 @@
       );
       const prepared = await provider.prepareDeviceEnrollment({
         account,
+        accountRoot: unlockedPqAccountRoot,
         browserState,
         canonicalStringify,
         chatKey,
@@ -1178,17 +1262,31 @@
     chatKeyUrl,
     sourceDocument = document,
   ) {
-    if (!chatKey || chatKey.public_signing_key) {
+    if (!chatKey) {
       return chatKey;
     }
 
     let privateKeyBundle = null;
     try {
       privateKeyBundle = await decryptPrivateKeyBundle(chatKey, password);
-      const signingKeyMaterial = await createSigningKeyMaterial();
+      const needsSigningKey =
+        !chatKey.public_signing_key ||
+        !privateKeyBundle.signing_private_jwk;
+      const needsAccountRoot = !privateKeyBundle.pq_account_root;
+      if (!needsSigningKey && !needsAccountRoot) {
+        return chatKey;
+      }
+      const signingKeyMaterial = needsSigningKey
+        ? await createSigningKeyMaterial()
+        : null;
       const upgradedPrivateKeyBundle = {
         ...privateKeyBundle,
-        signing_private_jwk: signingKeyMaterial.signingPrivateJwk,
+        pq_account_root:
+          privateKeyBundle.pq_account_root ||
+          createPqAccountRoot(),
+        signing_private_jwk:
+          signingKeyMaterial?.signingPrivateJwk ||
+          privateKeyBundle.signing_private_jwk,
       };
       const wrapped = await encryptPrivateKeyBundle(
         upgradedPrivateKeyBundle,
@@ -1209,15 +1307,15 @@
         headers,
         body: JSON.stringify({
           public_key: chatKey.public_key,
-          public_signing_key: JSON.stringify(
-            signingKeyMaterial.publicSigningJwk,
-          ),
+          public_signing_key: signingKeyMaterial
+            ? JSON.stringify(signingKeyMaterial.publicSigningJwk)
+            : chatKey.public_signing_key,
           recovery_state: "available",
           ...wrapped,
         }),
       });
       if (!response.ok) {
-        throw new Error("Chat key signing upgrade failed.");
+        throw new Error("Chat key capability upgrade failed.");
       }
 
       const responsePayload = await response.json();
@@ -1248,7 +1346,7 @@
         password,
         sourceDocument,
       );
-      if (unlocked && !chatKey.public_signing_key) {
+      if (unlocked) {
         try {
           chatKey = await upgradeChatKeySigningCapability(
             chatKey,
@@ -1284,16 +1382,57 @@
     }
   }
 
+  async function callPqArchiveWithUnlockedRoot(
+    operation,
+    args,
+    options = {},
+  ) {
+    if (!unlockedPqAccountRoot) {
+      const error = new Error("PQ archive key is locked.");
+      error.code = "AUTHENTICATION_FAILED";
+      throw error;
+    }
+    const client =
+      options.client || window.HushLinePqProtocol?.createWorkerClient?.();
+    if (!client || typeof client[operation] !== "function") {
+      const error = new Error("PQ archive capability is unavailable.");
+      error.code = "CAPABILITY_UNAVAILABLE";
+      throw error;
+    }
+    try {
+      return await client[operation]({
+        ...args,
+        accountRoot: unlockedPqAccountRoot,
+      });
+    } finally {
+      if (!options.client) client.close();
+    }
+  }
+
+  function createPqArchiveEpoch(args, options) {
+    return callPqArchiveWithUnlockedRoot(
+      "createArchiveEpoch",
+      args,
+      options,
+    );
+  }
+
+  function openPqArchive(args, options) {
+    return callPqArchiveWithUnlockedRoot("archiveOpen", args, options);
+  }
+
   function clearChatKeyMaterial() {
     void window.HushLinePqBrowserState?.clearAll?.();
     const hadUnlockedKey = Boolean(
       unlockedChatPrivateKey ||
         unlockedChatSigningPrivateKey ||
+        unlockedPqAccountRoot ||
         state.status === "unlocked",
     );
     forgetUnlockedPrivateJwk();
     unlockedChatPrivateKey = null;
     unlockedChatSigningPrivateKey = null;
+    unlockedPqAccountRoot = null;
     state.status = "empty";
     state.keyVersion = null;
     state.lastError = null;
@@ -2094,6 +2233,7 @@
 
   window.HushLineChatKeys = {
     clear: clearChatKeyMaterial,
+    createPqArchiveEpoch,
     fetchChatKey,
     get state() {
       return { ...state };
@@ -2106,11 +2246,13 @@
     enrollPqDevice,
     ensureChatKeyUnlockedAfterAuth,
     ensurePqDeviceEnrollment,
+    openPqArchive,
     provisionChatKey,
     rewrapForPasswordChange,
     signingPrivateKeyForChatKey,
     unlockFromPassword,
     verifyPqMembership,
+    verifyPqArchive,
     verifyPqPrekeyClaim,
   };
 

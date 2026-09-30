@@ -538,6 +538,54 @@ def test_protected_message_read_returns_only_authenticated_accounts_copies(
     assert denied.status_code == 404
 
 
+def test_deletion_removes_unreferenced_retired_archive_key_but_keeps_current(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    thread = _conversation(user, user2)
+    sender_account, sender_device, signing_key, recipient_account, recipient_device = (
+        _protected_state(user, user2)
+    )
+    package = _protected_package(
+        thread.public_id,
+        sender_account,
+        sender_device,
+        signing_key,
+        recipient_account,
+        recipient_device,
+    )
+    _authenticate(client, user, "sender-session")
+    created = client.post(
+        url_for("append_conversation_message", public_id=thread.public_id), json=package
+    )
+    assert created.status_code == 201
+
+    old_epoch = sender_account.archive_epochs[0]
+    old_epoch_id = old_epoch.id
+    old_epoch.retired_at = datetime.now(UTC)
+    current_epoch = ChatArchiveEpoch(
+        account=sender_account,
+        epoch=old_epoch.epoch + 1,
+        public_key=_b64url(b"n" * 1216),
+        encrypted_private_key=_b64url(b"z" * 64),
+    )
+    db.session.add(current_epoch)
+    db.session.commit()
+
+    deleted = client.post(url_for("delete_conversation", public_id=thread.public_id))
+
+    assert deleted.status_code == 302
+    assert db.session.get(ChatArchiveEpoch, old_epoch_id) is None
+    assert db.session.get(ChatArchiveEpoch, current_epoch.id) is not None
+    assert (
+        db.session.scalar(
+            db.select(db.func.count())
+            .select_from(ChatArchiveEpoch)
+            .where(ChatArchiveEpoch.account_id == recipient_account.id)
+        )
+        == 1
+    )
+
+
 def test_initial_protected_endpoint_creates_one_conversation(
     app: Flask, client: FlaskClient, user: User, user2: User
 ) -> None:

@@ -105,6 +105,8 @@ def _enroll(  # noqa: PLR0913
     unlock_key: ec.EllipticCurvePrivateKey | None = None,
     signed_prekey_id: int = 101,
     one_time_prekey_start: int = 1,
+    archive_epoch: int = 1,
+    archive_public_key: bytes = b"a" * 1216,
     expected_status: int = 201,
 ) -> dict[str, Any]:
     _authenticate(client, user, chat_session_id)
@@ -127,11 +129,10 @@ def _enroll(  # noqa: PLR0913
     bootstrap = client.post(url_for("pq_account_bootstrap"))
     assert bootstrap.status_code == 200
     account_state = bootstrap.get_json()
-    archive_public_key = b"a" * 1216
     now = datetime.now(UTC).replace(microsecond=0)
     membership = {
         "account_id": account_state["account_id"],
-        "archive_epoch": 1,
+        "archive_epoch": archive_epoch,
         "archive_public_key_sha256": hashlib.sha256(archive_public_key).hexdigest(),
         "archive_suites": [PQ_CHAT_ARCHIVE_SUITE],
         "capabilities": [PQ_CHAT_PROTOCOL],
@@ -156,8 +157,8 @@ def _enroll(  # noqa: PLR0913
     payload = {
         "account_identity_public_key": account_public_key,
         "archive": {
-            "encrypted_private_key": _b64url(b"encrypted-archive-key"),
-            "epoch": 1,
+            "encrypted_private_key": _b64url(f"encrypted-archive-key-{archive_epoch}".encode()),
+            "epoch": archive_epoch,
             "public_key": _b64url(archive_public_key),
         },
         "membership": membership,
@@ -286,6 +287,11 @@ def test_enrollment_requires_unlock_and_account_signatures(client: FlaskClient, 
     assert "'unsafe-eval'" not in listing.headers["Content-Security-Policy"]
     body = listing.get_json()
     assert body["membership_sequence"] == 1
+    assert body["archive"] == {
+        "epoch": 1,
+        "public_key": enrollment["payload"]["archive"]["public_key"],
+        "suite": PQ_CHAT_ARCHIVE_SUITE,
+    }
     assert body["devices"] == [
         {
             "membership": enrollment["membership"],
@@ -298,6 +304,74 @@ def test_enrollment_requires_unlock_and_account_signatures(client: FlaskClient, 
     assert "ip_address" not in listing.text
     assert "fingerprint" not in listing.text
     assert "label" not in listing.text
+    assert "encrypted_private_key" not in listing.text
+
+    bootstrap = client.post(url_for("pq_account_bootstrap"))
+    assert bootstrap.status_code == 200
+    assert bootstrap.get_json()["archive_epochs"] == [
+        {
+            "encrypted_private_key": enrollment["payload"]["archive"]["encrypted_private_key"],
+            "epoch": 1,
+            "public_key": enrollment["payload"]["archive"]["public_key"],
+            "retired_at": None,
+            "suite": PQ_CHAT_ARCHIVE_SUITE,
+        }
+    ]
+
+
+def test_archive_epoch_rotation_retains_wrapped_history_keys_and_publishes_only_current(
+    client: FlaskClient, user: User
+) -> None:
+    first = _enroll(client, user, chat_session_id="archive-first")
+    second = _enroll(
+        client,
+        user,
+        chat_session_id="archive-second",
+        account_key=first["account_key"],
+        unlock_key=first["unlock_key"],
+        archive_epoch=2,
+        archive_public_key=b"b" * 1216,
+    )
+
+    epochs = list(db.session.scalars(db.select(ChatArchiveEpoch).order_by(ChatArchiveEpoch.epoch)))
+    assert [epoch.epoch for epoch in epochs] == [1, 2]
+    assert epochs[0].retired_at is not None
+    assert epochs[1].retired_at is None
+
+    listing = client.get(
+        url_for("pq_account_devices", account_id=first["account_id"]),
+        headers={"X-Hushline-Device-ID": second["device_id"]},
+    )
+    assert listing.status_code == 200
+    assert [device["membership"]["device_id"] for device in listing.get_json()["devices"]] == [
+        second["device_id"]
+    ]
+    assert listing.get_json()["archive"] == {
+        "epoch": 2,
+        "public_key": second["payload"]["archive"]["public_key"],
+        "suite": PQ_CHAT_ARCHIVE_SUITE,
+    }
+    assert "encrypted_private_key" not in listing.text
+
+    _authenticate(client, user, first["session_id"])
+    stale = client.get(
+        url_for("pq_account_devices", account_id=first["account_id"]),
+        headers={"X-Hushline-Device-ID": first["device_id"]},
+    )
+    assert stale.status_code == 409
+    assert stale.get_json() == {"error": "STALE_MEMBERSHIP"}
+
+    _authenticate(client, user, second["session_id"])
+
+    bootstrap = client.post(url_for("pq_account_bootstrap"))
+    archive_epochs = bootstrap.get_json()["archive_epochs"]
+    assert [epoch["epoch"] for epoch in archive_epochs] == [1, 2]
+    assert archive_epochs[0]["retired_at"] is not None
+    assert archive_epochs[1]["retired_at"] is None
+    assert [epoch["encrypted_private_key"] for epoch in archive_epochs] == [
+        first["payload"]["archive"]["encrypted_private_key"],
+        second["payload"]["archive"]["encrypted_private_key"],
+    ]
 
 
 def test_enrollment_rejects_forgery_and_replays_identical_request(

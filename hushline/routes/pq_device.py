@@ -368,6 +368,20 @@ def _membership_response(device: ChatDevice) -> dict[str, Any]:
     }
 
 
+def _archive_epoch_response(epoch: ChatArchiveEpoch) -> dict[str, Any]:
+    return {
+        "encrypted_private_key": epoch.encrypted_private_key,
+        "epoch": epoch.epoch,
+        "public_key": epoch.public_key,
+        "retired_at": (
+            _as_utc(epoch.retired_at).isoformat().replace("+00:00", "Z")
+            if epoch.retired_at is not None
+            else None
+        ),
+        "suite": PQ_CHAT_ARCHIVE_SUITE,
+    }
+
+
 def _prekey_response(claim: ChatPrekeyClaim, signed_prekey: ChatSignedPrekey) -> dict[str, Any]:
     prekey = claim.prekey
     return {
@@ -453,7 +467,13 @@ def _validate_membership(
     return membership, expires_at
 
 
-def _validate_archive(payload: Any, account: ChatAccount, membership: dict[str, Any]) -> None:
+def _validate_archive(
+    payload: Any,
+    account: ChatAccount,
+    membership: dict[str, Any],
+    *,
+    now: datetime,
+) -> None:
     current_epoch = db.session.scalars(
         db.select(ChatArchiveEpoch).where(
             ChatArchiveEpoch.account_id == account.id,
@@ -461,7 +481,7 @@ def _validate_archive(payload: Any, account: ChatAccount, membership: dict[str, 
         )
     ).one_or_none()
     archive = payload.get("archive") if isinstance(payload, dict) else None
-    if current_epoch is not None:
+    if current_epoch is not None and archive is None:
         if (
             membership["archive_epoch"] != current_epoch.epoch
             or hashlib.sha256(_b64url(current_epoch.public_key)).hexdigest()
@@ -480,6 +500,18 @@ def _validate_archive(payload: Any, account: ChatAccount, membership: dict[str, 
             ChatArchiveEpoch.account_id == account.id
         )
     )
+    if current_epoch is not None and (
+        archive["epoch"] == current_epoch.epoch
+        and archive["public_key"] == current_epoch.public_key
+        and archive["encrypted_private_key"] == current_epoch.encrypted_private_key
+    ):
+        if (
+            membership["archive_epoch"] != current_epoch.epoch
+            or hashlib.sha256(_b64url(current_epoch.public_key)).hexdigest()
+            != membership["archive_public_key_sha256"]
+        ):
+            raise PqDeviceError("STALE_MEMBERSHIP", 409)
+        return
     expected_epoch = (latest_epoch or 0) + 1
     if archive["epoch"] != expected_epoch or membership["archive_epoch"] != expected_epoch:
         raise PqDeviceError("STALE_MEMBERSHIP", 409)
@@ -494,6 +526,36 @@ def _validate_archive(payload: Any, account: ChatAccount, membership: dict[str, 
     ):
         raise PqDeviceError("MALFORMED_WIRE")
     _b64url(encrypted_private_key)
+    if current_epoch is not None:
+        current_epoch.retired_at = now
+        prior_device_ids = list(
+            db.session.scalars(
+                db.select(ChatDevice.id).where(
+                    ChatDevice.account_id == account.id,
+                    ChatDevice.revoked_at.is_(None),
+                )
+            )
+        )
+        db.session.execute(
+            db.update(ChatDevice).where(ChatDevice.id.in_(prior_device_ids)).values(revoked_at=now)
+        )
+        db.session.execute(
+            db.update(ChatSignedPrekey)
+            .where(
+                ChatSignedPrekey.device_id.in_(prior_device_ids),
+                ChatSignedPrekey.retired_at.is_(None),
+            )
+            .values(retired_at=now)
+        )
+        db.session.execute(
+            db.update(ChatOneTimePrekey)
+            .where(
+                ChatOneTimePrekey.device_id.in_(prior_device_ids),
+                ChatOneTimePrekey.consumed_at.is_(None),
+            )
+            .values(expires_at=now)
+        )
+        db.session.flush()
     account.archive_epochs.append(
         ChatArchiveEpoch(
             epoch=expected_epoch,
@@ -604,6 +666,12 @@ def register_pq_device_routes(app: Flask) -> None:
                 jsonify(
                     {
                         "account_id": account.public_id,
+                        "archive_epochs": [
+                            _archive_epoch_response(epoch)
+                            for epoch in sorted(
+                                account.archive_epochs, key=lambda value: value.epoch
+                            )
+                        ],
                         "identity_public_key": account.identity_public_key,
                         "identity_version": account.identity_version,
                         "membership_sequence": account.membership_sequence,
@@ -690,7 +758,7 @@ def register_pq_device_routes(app: Flask) -> None:
                     raise PqDeviceError("STATE_CONFLICT", 409)
                 db.session.commit()
                 return jsonify({"device": _membership_response(device)}), 200
-            _validate_archive(payload, account, membership)
+            _validate_archive(payload, account, membership, now=now)
             _consume_rate_limit(user, "device_create")
             _cleanup_prekeys(now)
             _prune_unreferenced_stale_devices(account, now)
@@ -1212,10 +1280,23 @@ def register_pq_device_routes(app: Flask) -> None:
             )
             if not devices:
                 raise PqDeviceError("CAPABILITY_UNAVAILABLE", 409)
+            archive_epoch = db.session.scalars(
+                db.select(ChatArchiveEpoch).where(
+                    ChatArchiveEpoch.account_id == account.id,
+                    ChatArchiveEpoch.retired_at.is_(None),
+                )
+            ).one_or_none()
+            if archive_epoch is None:
+                raise PqDeviceError("CAPABILITY_UNAVAILABLE", 409)
             return (
                 jsonify(
                     {
                         "account_id": account.public_id,
+                        "archive": {
+                            "epoch": archive_epoch.epoch,
+                            "public_key": archive_epoch.public_key,
+                            "suite": PQ_CHAT_ARCHIVE_SUITE,
+                        },
                         "devices": [_membership_response(device) for device in devices],
                         "identity_public_key": account.identity_public_key,
                         "identity_version": account.identity_version,
