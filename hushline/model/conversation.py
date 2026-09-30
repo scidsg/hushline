@@ -1,8 +1,8 @@
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from sqlalchemy import Index, UniqueConstraint, text
+from sqlalchemy import CheckConstraint, Index, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from hushline.db import db
@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from flask_sqlalchemy.model import Model
     from sqlalchemy import Select
 
+    from hushline.model.chat_key import ChatArchiveEpoch, ChatDevice
     from hushline.model.message import Message
     from hushline.model.user import User
 else:
@@ -19,6 +20,10 @@ else:
 
 class Conversation(Model):
     __tablename__ = "conversations"
+    __table_args__ = (
+        CheckConstraint("minimum_protocol_version >= 0", name="minimum_protocol_version"),
+        CheckConstraint("version >= 0", name="version"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
     public_id: Mapped[str] = mapped_column(
@@ -30,6 +35,12 @@ class Conversation(Model):
     )
     created_at: Mapped[datetime] = mapped_column(
         db.DateTime(timezone=True), server_default=text("NOW()"), nullable=False
+    )
+    minimum_protocol_version: Mapped[int] = mapped_column(
+        nullable=False, default=0, server_default=text("0")
+    )
+    version: Mapped[int] = mapped_column(
+        db.BigInteger, nullable=False, default=0, server_default=text("0")
     )
 
     participants: Mapped[list["ConversationParticipant"]] = relationship(
@@ -47,6 +58,9 @@ class Conversation(Model):
         back_populates="conversation",
         uselist=False,
     )
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
     @classmethod
     def for_user_id(cls, user_id: int) -> "Select[tuple[Conversation]]":
@@ -112,10 +126,19 @@ class ConversationParticipant(Model):
         passive_deletes=True,
     )
 
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
 
 class ConversationMessage(Model):
     __tablename__ = "conversation_messages"
     __table_args__ = (
+        UniqueConstraint("conversation_id", "conversation_version"),
+        CheckConstraint("protocol_version >= 0", name="protocol_version"),
+        CheckConstraint(
+            "conversation_version IS NULL OR conversation_version > 0",
+            name="conversation_version",
+        ),
         Index(
             "ix_conversation_messages_conversation_id_created_at",
             "conversation_id",
@@ -124,6 +147,9 @@ class ConversationMessage(Model):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
+    public_id: Mapped[str] = mapped_column(
+        db.String(36), unique=True, index=True, nullable=False, default=lambda: str(uuid4())
+    )
     conversation_id: Mapped[int] = mapped_column(
         db.ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False, index=True
     )
@@ -135,6 +161,14 @@ class ConversationMessage(Model):
     created_at: Mapped[datetime] = mapped_column(
         db.DateTime(timezone=True), server_default=text("NOW()"), nullable=False
     )
+    protocol_version: Mapped[int] = mapped_column(
+        nullable=False, default=0, server_default=text("0")
+    )
+    conversation_version: Mapped[int | None] = mapped_column(db.BigInteger)
+    idempotency_key: Mapped[str | None] = mapped_column(db.String(64), unique=True, index=True)
+    request_sha256: Mapped[str | None] = mapped_column(db.String(64))
+    manifest: Mapped[dict[str, object] | None] = mapped_column(db.JSON)
+    manifest_signature: Mapped[str | None] = mapped_column(db.Text)
 
     conversation: Mapped["Conversation"] = relationship(back_populates="messages")
     sender_participant: Mapped["ConversationParticipant"] = relationship(
@@ -146,6 +180,19 @@ class ConversationMessage(Model):
         cascade="all, delete-orphan",
         order_by="ConversationMessageCopy.id.asc()",
     )
+    transport_copies: Mapped[list["ConversationMessageTransportCopy"]] = relationship(
+        back_populates="message",
+        cascade="all, delete-orphan",
+        order_by="ConversationMessageTransportCopy.id.asc()",
+    )
+    archive_copies: Mapped[list["ConversationMessageArchiveCopy"]] = relationship(
+        back_populates="message",
+        cascade="all, delete-orphan",
+        order_by="ConversationMessageArchiveCopy.id.asc()",
+    )
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
 
 class ConversationMessageCopy(Model):
@@ -174,3 +221,76 @@ class ConversationMessageCopy(Model):
     recipient_participant: Mapped["ConversationParticipant"] = relationship(
         back_populates="encrypted_copies"
     )
+
+
+class ConversationMessageTransportCopy(Model):
+    __tablename__ = "conversation_message_transport_copies"
+    __table_args__ = (
+        UniqueConstraint("conversation_message_id", "recipient_device_id"),
+        Index(
+            "ix_conversation_transport_copies_participant_message",
+            "recipient_participant_id",
+            "conversation_message_id",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
+    conversation_message_id: Mapped[int] = mapped_column(
+        db.ForeignKey("conversation_messages.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    recipient_participant_id: Mapped[int] = mapped_column(
+        db.ForeignKey("conversation_participants.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    recipient_device_id: Mapped[int] = mapped_column(
+        db.ForeignKey("chat_devices.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    key_version: Mapped[int] = mapped_column(db.BigInteger, nullable=False)
+    context: Mapped[dict[str, object]] = mapped_column(db.JSON, nullable=False)
+    context_sha256: Mapped[str] = mapped_column(db.String(64), nullable=False)
+    ciphertext_sha256: Mapped[str] = mapped_column(db.String(64), nullable=False)
+    ciphertext: Mapped[str] = mapped_column(db.Text, nullable=False)
+
+    message: Mapped["ConversationMessage"] = relationship(back_populates="transport_copies")
+    recipient_participant: Mapped["ConversationParticipant"] = relationship()
+    recipient_device: Mapped["ChatDevice"] = relationship()
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+
+class ConversationMessageArchiveCopy(Model):
+    __tablename__ = "conversation_message_archive_copies"
+    __table_args__ = (
+        UniqueConstraint("conversation_message_id", "recipient_participant_id"),
+        Index(
+            "ix_conversation_archive_copies_participant_message",
+            "recipient_participant_id",
+            "conversation_message_id",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
+    conversation_message_id: Mapped[int] = mapped_column(
+        db.ForeignKey("conversation_messages.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    recipient_participant_id: Mapped[int] = mapped_column(
+        db.ForeignKey("conversation_participants.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    archive_epoch_id: Mapped[int] = mapped_column(
+        db.ForeignKey("chat_archive_epochs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    context: Mapped[dict[str, object]] = mapped_column(db.JSON, nullable=False)
+    context_sha256: Mapped[str] = mapped_column(db.String(64), nullable=False)
+    ciphertext_sha256: Mapped[str] = mapped_column(db.String(64), nullable=False)
+    ciphertext: Mapped[str] = mapped_column(db.Text, nullable=False)
+
+    message: Mapped["ConversationMessage"] = relationship(back_populates="archive_copies")
+    recipient_participant: Mapped["ConversationParticipant"] = relationship()
+    archive_epoch: Mapped["ChatArchiveEpoch"] = relationship()
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)

@@ -150,6 +150,73 @@ def test_double_upgrade(revision: str, app: Flask) -> None:
     command.upgrade(cfg, revision)
 
 
+def test_versioned_message_storage_refuses_destructive_downgrade(app: Flask) -> None:
+    cfg = typing.cast(alembic.config.Config, migrate.get_config())
+    command.upgrade(cfg, "c7e4a9d2f601")
+    db.session.execute(
+        text(
+            """
+            INSERT INTO users (id, is_admin, is_cautious, is_suspended, password_hash, session_id)
+            VALUES (9910, false, false, false, '$scrypt$', 'session-9910')
+            """
+        )
+    )
+    db.session.execute(
+        text(
+            """
+            INSERT INTO conversations (id, public_id, minimum_protocol_version, version)
+            VALUES (9910, '99999999-9999-4999-8999-999999999910', 1, 1)
+            """
+        )
+    )
+    db.session.execute(
+        text(
+            """
+            INSERT INTO conversation_participants (
+                id, conversation_id, user_id, has_usable_public_key
+            )
+            VALUES (9910, 9910, 9910, true)
+            """
+        )
+    )
+    db.session.execute(
+        text(
+            """
+            INSERT INTO conversation_messages (
+                id,
+                public_id,
+                conversation_id,
+                sender_participant_id,
+                protocol_version,
+                conversation_version
+            )
+            VALUES (
+                9910,
+                '99999999-9999-4999-8999-999999999911',
+                9910,
+                9910,
+                1,
+                1
+            )
+            """
+        )
+    )
+    db.session.commit()
+    db.session.close()
+
+    with pytest.raises(RuntimeError, match="retain an HL-PQCHAT-1-capable reader"):
+        command.downgrade(cfg, "-1")
+
+    db.session.rollback()
+    assert (
+        db.session.scalar(
+            text("SELECT protocol_version FROM conversation_messages WHERE id = 9910")
+        )
+        == 1
+    )
+    assert db.session.scalar(text("SELECT version_num FROM alembic_version")) == "c7e4a9d2f601"
+
+
 @pytest.mark.parametrize(
     ("table_name", "column_name"),
     crypto.ENCRYPTED_FIELD_ENVELOPE_READY_COLUMNS,

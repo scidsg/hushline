@@ -1,11 +1,13 @@
 import base64
 import binascii
 import hashlib
+import hmac
 import json
 import re
 import smtplib
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from uuid import UUID
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
@@ -24,11 +26,20 @@ from flask import (
     url_for,
 )
 from flask_wtf.csrf import validate_csrf
+from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from werkzeug.wrappers.response import Response
 from wtforms.validators import ValidationError
 
-from hushline.auth import authentication_required
-from hushline.chat_key_lifecycle import chat_key_fingerprint
+from hushline.auth import CHAT_KEY_SESSION_ID_SESSION_KEY, authentication_required
+from hushline.chat_key_lifecycle import (
+    PQ_CHAT_PROTOCOL_VERSION,
+    PqChatPackageError,
+    ValidatedPqChatPackage,
+    chat_key_fingerprint,
+    chat_session_binding,
+    validate_pq_chat_package,
+)
 from hushline.crypto import encrypt_message
 from hushline.db import db
 from hushline.forms import (
@@ -39,12 +50,18 @@ from hushline.forms import (
     UpdateMessageStatusForm,
 )
 from hushline.model import (
+    ChatAccount,
+    ChatArchiveEpoch,
+    ChatDevice,
     ChatRateLimitAttempt,
     Conversation,
     ConversationMessage,
+    ConversationMessageArchiveCopy,
     ConversationMessageCopy,
+    ConversationMessageTransportCopy,
     ConversationParticipant,
     FieldValue,
+    InitialConversationNonce,
     Message,
     User,
     Username,
@@ -57,6 +74,7 @@ from hushline.routes.common import (
 
 _CHAT_CIPHERTEXT_MAX_LENGTH = 200_000
 _CHAT_CIPHERTEXT_CONTEXT_VERSION = 2
+_CONVERSATION_PARTICIPANT_COUNT = 2
 _P256_COORDINATE_LENGTH_BYTES = 32
 _P256_RAW_SIGNATURE_LENGTH_BYTES = 64
 _CHAT_ONLY_MESSAGE_PLACEHOLDER = "Stored in encrypted conversation."
@@ -78,6 +96,307 @@ _ARMORED_PGP_MESSAGE_PATTERN = re.compile(
     r"(?:[!-~]+: .*\r?\n)*\r?\n?[\s\S]*\r?\n"
     r"-----END PGP MESSAGE-----\s*$"
 )
+
+
+def _pq_chat_error(code: str) -> tuple[Response, int]:
+    status = 409 if code in {"STALE_MEMBERSHIP", "STATE_CONFLICT"} else 400
+    return jsonify({"error": code}), status
+
+
+def _active_pq_devices(account: ChatAccount, now: datetime) -> list[ChatDevice]:
+    return list(
+        db.session.scalars(
+            db.select(ChatDevice)
+            .where(
+                ChatDevice.account_id == account.id,
+                ChatDevice.revoked_at.is_(None),
+                ChatDevice.expires_at > now,
+                ChatDevice.membership_sequence == account.membership_sequence,
+            )
+            .order_by(ChatDevice.public_id.asc())
+            .with_for_update()
+        )
+    )
+
+
+def _current_pq_archive_epoch(account: ChatAccount) -> ChatArchiveEpoch | None:
+    epochs = list(
+        db.session.scalars(
+            db.select(ChatArchiveEpoch)
+            .where(
+                ChatArchiveEpoch.account_id == account.id,
+                ChatArchiveEpoch.retired_at.is_(None),
+            )
+            .order_by(ChatArchiveEpoch.epoch.desc())
+            .with_for_update()
+        )
+    )
+    return epochs[0] if len(epochs) == 1 else None
+
+
+def _pq_chat_account_for_user(user_id: int) -> ChatAccount | None:
+    return db.session.scalars(
+        db.select(ChatAccount).where(ChatAccount.user_id == user_id)
+    ).one_or_none()
+
+
+def _authorized_pq_sender_device(user: User, payload: Any) -> ChatDevice | None:
+    if not isinstance(payload, dict) or not isinstance(payload.get("manifest"), dict):
+        return None
+    manifest = payload["manifest"]
+    sender_account_id = manifest.get("sender_account_id")
+    sender_device_id = manifest.get("sender_device_id")
+    chat_session_id = session.get(CHAT_KEY_SESSION_ID_SESSION_KEY)
+    if not all(isinstance(value, str) and value for value in (sender_account_id, sender_device_id)):
+        return None
+    if not isinstance(chat_session_id, str) or not chat_session_id:
+        return None
+    return db.session.scalars(
+        db.select(ChatDevice)
+        .join(ChatAccount)
+        .where(
+            ChatAccount.user_id == user.id,
+            ChatAccount.public_id == sender_account_id,
+            ChatDevice.public_id == sender_device_id,
+            ChatDevice.session_id_hash == chat_session_binding(chat_session_id),
+            ChatDevice.revoked_at.is_(None),
+            ChatDevice.expires_at > datetime.now(UTC),
+            ChatDevice.membership_sequence == ChatAccount.membership_sequence,
+        )
+    ).one_or_none()
+
+
+def _validate_pq_copy_inventory(
+    package: ValidatedPqChatPackage,
+    *,
+    thread: Conversation,
+    sender_participant: ConversationParticipant,
+    sender_device: ChatDevice,
+) -> tuple[
+    dict[str, ConversationParticipant],
+    dict[str, ChatDevice],
+    dict[str, ChatArchiveEpoch],
+]:
+    active_participants = _conversation_active_participants(thread)
+    if len(active_participants) != _CONVERSATION_PARTICIPANT_COUNT:
+        raise PqChatPackageError("STATE_CONFLICT")
+
+    participant_by_account_id: dict[str, ConversationParticipant] = {}
+    account_by_public_id: dict[str, ChatAccount] = {}
+    devices_by_public_id: dict[str, ChatDevice] = {}
+    epochs_by_account_id: dict[str, ChatArchiveEpoch] = {}
+    expected_inventory: set[tuple[str, str, str]] = set()
+    now = datetime.now(UTC)
+    participant_by_user_id = {
+        participant.user_id: participant for participant in active_participants
+    }
+    accounts = list(
+        db.session.scalars(
+            db.select(ChatAccount)
+            .where(ChatAccount.user_id.in_(list(participant_by_user_id)))
+            .order_by(ChatAccount.public_id.asc())
+            .with_for_update()
+        )
+    )
+    if len(accounts) != len(active_participants):
+        raise PqChatPackageError("STALE_MEMBERSHIP")
+    for account in accounts:
+        if account.membership_sequence <= 0:
+            raise PqChatPackageError("STALE_MEMBERSHIP")
+        participant = participant_by_user_id[account.user_id]
+        participant_by_account_id[account.public_id] = participant
+        account_by_public_id[account.public_id] = account
+        epoch = _current_pq_archive_epoch(account)
+        if epoch is None:
+            raise PqChatPackageError("STATE_CONFLICT")
+        epochs_by_account_id[account.public_id] = epoch
+        expected_inventory.add(
+            ("archive", account.public_id, "00000000-0000-0000-0000-000000000000")
+        )
+        active_devices = _active_pq_devices(account, now)
+        if not active_devices:
+            raise PqChatPackageError("STALE_MEMBERSHIP")
+        for device in active_devices:
+            devices_by_public_id[device.public_id] = device
+            if device.id != sender_device.id:
+                expected_inventory.add(("transport", account.public_id, device.public_id))
+
+    manifest = package.manifest
+    if (
+        manifest["conversation_id"] != thread.public_id
+        or manifest["sender_account_id"] != sender_device.account.public_id
+        or manifest["sender_device_id"] != sender_device.public_id
+        or manifest["sender_membership_sha256"] != sender_device.membership_sha256
+        or sender_participant.user_id != sender_device.account.user_id
+    ):
+        raise PqChatPackageError("AUTHENTICATION_FAILED")
+
+    actual_inventory = {
+        (
+            copy.context["purpose"],
+            copy.context["account_recipient_id"],
+            copy.context["device_recipient_id"],
+        )
+        for copy in package.copies
+    }
+    if actual_inventory != expected_inventory:
+        raise PqChatPackageError("STATE_CONFLICT")
+
+    for copy in package.copies:
+        context = copy.context
+        account = account_by_public_id.get(context["account_recipient_id"])
+        if account is None:
+            raise PqChatPackageError("AUTHENTICATION_FAILED")
+        if (
+            context["sender_membership_sequence"] != sender_device.membership_sequence
+            or context["recipient_membership_sequence"] != account.membership_sequence
+        ):
+            raise PqChatPackageError("STALE_MEMBERSHIP")
+        if context["purpose"] == "transport":
+            recipient_device = devices_by_public_id.get(context["device_recipient_id"])
+            if (
+                recipient_device is None
+                or recipient_device.account_id != account.id
+                or context["key_version"] != recipient_device.key_version
+            ):
+                raise PqChatPackageError("STALE_MEMBERSHIP")
+        else:
+            epoch = epochs_by_account_id[account.public_id]
+            if context["archive_epoch"] != epoch.epoch or context["key_version"] != epoch.epoch:
+                raise PqChatPackageError("STALE_MEMBERSHIP")
+    return participant_by_account_id, devices_by_public_id, epochs_by_account_id
+
+
+def _pq_idempotent_response(
+    package: ValidatedPqChatPackage, *, conversation_id: int
+) -> tuple[Response, int] | None:
+    existing = db.session.scalars(
+        db.select(ConversationMessage).where(
+            or_(
+                ConversationMessage.public_id == package.manifest["message_id"],
+                ConversationMessage.idempotency_key == package.idempotency_key,
+            )
+        )
+    ).first()
+    if existing is None:
+        return None
+    if (
+        existing.conversation_id != conversation_id
+        or existing.public_id != package.manifest["message_id"]
+        or existing.idempotency_key != package.idempotency_key
+        or existing.request_sha256 != package.request_sha256
+    ):
+        raise PqChatPackageError("STATE_CONFLICT")
+    return (
+        jsonify(
+            {
+                "message_id": existing.public_id,
+                "conversation_version": existing.conversation_version,
+                "idempotent": True,
+            }
+        ),
+        200,
+    )
+
+
+def _commit_pq_chat_message(
+    *,
+    thread: Conversation,
+    participant: ConversationParticipant,
+    user: User,
+    payload: Any,
+) -> tuple[Response, int]:
+    if thread.minimum_protocol_version > PQ_CHAT_PROTOCOL_VERSION:
+        return _pq_chat_error("SUITE_MISMATCH")
+    sender_device = _authorized_pq_sender_device(user, payload)
+    if sender_device is None:
+        return _pq_chat_error("AUTHENTICATION_FAILED")
+    try:
+        package = validate_pq_chat_package(
+            payload, sender_signing_public_key=sender_device.signing_public_key
+        )
+        prior_response = _pq_idempotent_response(package, conversation_id=thread.id)
+        if prior_response is not None:
+            return prior_response
+        participants, devices, epochs = _validate_pq_copy_inventory(
+            package,
+            thread=thread,
+            sender_participant=participant,
+            sender_device=sender_device,
+        )
+        if _consume_conversation_message_rate_limit(
+            thread=thread, participant=participant, user=user
+        ):
+            return jsonify({"error": "RATE_LIMITED"}), 429
+
+        thread.minimum_protocol_version = max(
+            thread.minimum_protocol_version, PQ_CHAT_PROTOCOL_VERSION
+        )
+        thread.version += 1
+        message = ConversationMessage(
+            public_id=package.manifest["message_id"],
+            protocol_version=PQ_CHAT_PROTOCOL_VERSION,
+            conversation_version=thread.version,
+            idempotency_key=package.idempotency_key,
+            request_sha256=package.request_sha256,
+            manifest=package.manifest,
+            manifest_signature=package.signature,
+        )
+        message.conversation = thread
+        message.sender_participant = participant
+        for copy in package.copies:
+            context = copy.context
+            recipient = participants[context["account_recipient_id"]]
+            if context["purpose"] == "transport":
+                message.transport_copies.append(
+                    ConversationMessageTransportCopy(
+                        recipient_participant=recipient,
+                        recipient_device=devices[context["device_recipient_id"]],
+                        key_version=context["key_version"],
+                        context=context,
+                        context_sha256=copy.context_sha256,
+                        ciphertext_sha256=copy.ciphertext_sha256,
+                        ciphertext=copy.ciphertext,
+                    )
+                )
+            else:
+                message.archive_copies.append(
+                    ConversationMessageArchiveCopy(
+                        recipient_participant=recipient,
+                        archive_epoch=epochs[context["account_recipient_id"]],
+                        context=context,
+                        context_sha256=copy.context_sha256,
+                        ciphertext_sha256=copy.ciphertext_sha256,
+                        ciphertext=copy.ciphertext,
+                    )
+                )
+        db.session.add(message)
+        _mark_conversation_participant_active(participant)
+        db.session.commit()
+    except PqChatPackageError as error:
+        db.session.rollback()
+        return _pq_chat_error(error.code)
+    except IntegrityError:
+        db.session.rollback()
+        try:
+            replay = _pq_idempotent_response(package, conversation_id=thread.id)
+        except PqChatPackageError as error:
+            return _pq_chat_error(error.code)
+        if replay is not None:
+            return replay
+        return _pq_chat_error("STATE_CONFLICT")
+
+    _notify_conversation_participants(thread, participant)
+    return (
+        jsonify(
+            {
+                "message_id": message.public_id,
+                "conversation_version": message.conversation_version,
+                "idempotent": False,
+            }
+        ),
+        201,
+    )
 
 
 def _conversation_latest_message(thread: Conversation) -> ConversationMessage | None:
@@ -746,6 +1065,223 @@ def register_message_routes(app: Flask) -> None:
             delete_conversation_form=delete_conversation_form,
         )
 
+    @app.route("/api/pq/conversations/to/<username>/messages", methods=["POST"])
+    @authentication_required
+    def create_pq_conversation_message(username: str) -> tuple[Response, int]:
+        user = db.session.get(User, session["user_id"])
+        recipient_username = db.session.scalars(
+            db.select(Username).where(db.func.lower(Username._username) == username.lower())
+        ).one_or_none()
+        if user is None or recipient_username is None or recipient_username.user_id == user.id:
+            abort(404)
+
+        csrf_error = _validate_json_csrf()
+        if csrf_error:
+            return jsonify({"error": csrf_error}), 400
+        payload: Any = request.get_json(silent=True)
+        manifest = payload.get("manifest") if isinstance(payload, dict) else None
+        conversation_id = manifest.get("conversation_id") if isinstance(manifest, dict) else None
+        if not isinstance(manifest, dict) or not isinstance(conversation_id, str):
+            return _pq_chat_error("MALFORMED_WIRE")
+        try:
+            if str(UUID(conversation_id)) != conversation_id:
+                return _pq_chat_error("MALFORMED_WIRE")
+        except ValueError:
+            return _pq_chat_error("MALFORMED_WIRE")
+        if recipient_username.user.is_suspended:
+            abort(404)
+
+        owner_guard_nonce = request.headers.get("X-Hushline-Owner-Guard-Nonce", "")
+        owner_guard_signature = request.headers.get("X-Hushline-Owner-Guard-Signature", "")
+        expected_owner_guard_signature = hmac.new(
+            key=(current_app.secret_key or "").encode("utf-8"),
+            msg=(
+                f"{recipient_username.username}:{recipient_username.user_id}:"
+                f"{owner_guard_nonce}"
+            ).encode(),
+            digestmod=hashlib.sha256,
+        ).hexdigest()
+        captcha_answer = request.headers.get("X-Hushline-Captcha-Answer", "")
+        if (
+            not owner_guard_nonce
+            or not owner_guard_signature
+            or not hmac.compare_digest(owner_guard_signature, expected_owner_guard_signature)
+            or not captcha_answer
+            or not hmac.compare_digest(captcha_answer, str(session.get("math_answer", "")))
+        ):
+            return _pq_chat_error("AUTHENTICATION_FAILED")
+
+        thread = db.session.scalars(
+            Conversation.for_user_id(user.id)
+            .where(Conversation.public_id == conversation_id)
+            .with_for_update()
+        ).one_or_none()
+        existing_thread = thread is not None
+        if thread is None:
+            thread = Conversation(public_id=conversation_id)
+            sender_participant = ConversationParticipant(
+                user=user,
+                has_usable_public_key=True,
+            )
+            recipient_participant = ConversationParticipant(
+                user=recipient_username.user,
+                has_usable_public_key=True,
+            )
+            thread.participants.extend([sender_participant, recipient_participant])
+            initial_message = Message(username_id=recipient_username.id)
+            initial_message.conversation = thread
+            db.session.add(initial_message)
+            for field_definition in recipient_username.message_fields:
+                if field_definition.enabled:
+                    db.session.add(
+                        FieldValue(
+                            field_definition,
+                            initial_message,
+                            _CHAT_ONLY_MESSAGE_PLACEHOLDER,
+                            False,
+                        )
+                    )
+            db.session.add(
+                InitialConversationNonce(
+                    nonce_hash=hashlib.sha256(
+                        f"hushline:initial-conversation:{owner_guard_nonce}".encode()
+                    ).hexdigest(),
+                    sender_user_id=user.id,
+                    recipient_user_id=recipient_username.user_id,
+                    consumed_at=datetime.now(UTC),
+                )
+            )
+            db.session.add(thread)
+            try:
+                db.session.flush()
+            except IntegrityError:
+                db.session.rollback()
+                thread = db.session.scalars(
+                    Conversation.for_user_id(user.id)
+                    .where(Conversation.public_id == conversation_id)
+                    .with_for_update()
+                ).one_or_none()
+                if thread is None:
+                    return _pq_chat_error("STATE_CONFLICT")
+                existing_thread = True
+
+        if existing_thread:
+            existing_message_id = db.session.scalar(
+                db.select(ConversationMessage.id).where(
+                    ConversationMessage.conversation_id == thread.id,
+                    ConversationMessage.public_id == manifest.get("message_id"),
+                )
+            )
+            if existing_message_id is None:
+                db.session.rollback()
+                return _pq_chat_error("STATE_CONFLICT")
+
+        participant = thread.participant_for_user_id(user.id)
+        participant_user_ids = {item.user_id for item in _conversation_active_participants(thread)}
+        if (
+            participant is None
+            or participant_user_ids != {user.id, recipient_username.user_id}
+            or thread.minimum_protocol_version not in {0, PQ_CHAT_PROTOCOL_VERSION}
+        ):
+            db.session.rollback()
+            return _pq_chat_error("STATE_CONFLICT")
+        return _commit_pq_chat_message(
+            thread=thread,
+            participant=participant,
+            user=user,
+            payload=payload,
+        )
+
+    @app.route("/conversation/<public_id>/messages/<message_public_id>")
+    @authentication_required
+    def pq_conversation_message(public_id: str, message_public_id: str) -> tuple[Response, int]:
+        user = db.session.get(User, session["user_id"])
+        if user is None:
+            abort(404)
+        thread = db.session.scalars(
+            Conversation.for_user_id(user.id).where(Conversation.public_id == public_id)
+        ).one_or_none()
+        if thread is None:
+            abort(404)
+        participant = thread.participant_for_user_id(user.id)
+        account = _pq_chat_account_for_user(user.id)
+        chat_session_id = session.get(CHAT_KEY_SESSION_ID_SESSION_KEY)
+        device_id = request.headers.get("X-Hushline-Device-ID") or request.args.get("device_id")
+        if (
+            participant is None
+            or account is None
+            or not isinstance(chat_session_id, str)
+            or not isinstance(device_id, str)
+        ):
+            abort(404)
+        device = db.session.scalars(
+            db.select(ChatDevice).where(
+                ChatDevice.account_id == account.id,
+                ChatDevice.public_id == device_id,
+                ChatDevice.session_id_hash == chat_session_binding(chat_session_id),
+                ChatDevice.revoked_at.is_(None),
+                ChatDevice.expires_at > datetime.now(UTC),
+                ChatDevice.membership_sequence == account.membership_sequence,
+            )
+        ).one_or_none()
+        if device is None:
+            abort(404)
+        message = db.session.scalars(
+            db.select(ConversationMessage).where(
+                ConversationMessage.conversation_id == thread.id,
+                ConversationMessage.public_id == message_public_id,
+                ConversationMessage.protocol_version == PQ_CHAT_PROTOCOL_VERSION,
+            )
+        ).one_or_none()
+        if message is None or message.manifest is None or message.manifest_signature is None:
+            abort(404)
+
+        authorized: dict[tuple[str, str, str], dict[str, Any]] = {}
+        for copy in message.archive_copies:
+            if copy.recipient_participant_id == participant.id:
+                context = copy.context
+                key = (
+                    "archive",
+                    context["account_recipient_id"],
+                    context["device_recipient_id"],
+                )
+                authorized[key] = {
+                    "context": context,
+                    "ciphertext": copy.ciphertext,
+                }
+        for copy in message.transport_copies:
+            if copy.recipient_device_id == device.id:
+                context = copy.context
+                key = (
+                    "transport",
+                    context["account_recipient_id"],
+                    context["device_recipient_id"],
+                )
+                authorized[key] = {
+                    "context": context,
+                    "ciphertext": copy.ciphertext,
+                }
+        ordered_copies = []
+        for manifest_copy in message.manifest["copies"]:
+            key = (
+                manifest_copy["purpose"],
+                manifest_copy["account_recipient_id"],
+                manifest_copy["device_recipient_id"],
+            )
+            if key in authorized:
+                ordered_copies.append(authorized[key])
+        return (
+            jsonify(
+                {
+                    "manifest": message.manifest,
+                    "signature": message.manifest_signature,
+                    "copies": ordered_copies,
+                    "conversation_version": message.conversation_version,
+                }
+            ),
+            200,
+        )
+
     @app.route("/conversation/<public_id>/presence", methods=["POST"])
     @authentication_required
     def conversation_presence(public_id: str) -> tuple[Response, int]:
@@ -796,9 +1332,40 @@ def register_message_routes(app: Flask) -> None:
         if not isinstance(payload, dict):
             return jsonify({"error": "Invalid encrypted message payload."}), 400
 
+        if set(payload) == {"manifest", "signature", "copies"}:
+            thread = db.session.scalars(
+                Conversation.for_user_id(user.id)
+                .where(Conversation.public_id == public_id)
+                .with_for_update()
+            ).one_or_none()
+            if thread is None:
+                abort(404)
+            participant = thread.participant_for_user_id(user.id)
+            if participant is None:
+                abort(404)
+            return _commit_pq_chat_message(
+                thread=thread,
+                participant=participant,
+                user=user,
+                payload=payload,
+            )
+
         encrypted_copies = payload.get("encrypted_copies")
         if not isinstance(encrypted_copies, dict):
             return jsonify({"error": "Invalid encrypted message payload."}), 400
+
+        thread = db.session.scalars(
+            Conversation.for_user_id(user.id)
+            .where(Conversation.public_id == public_id)
+            .with_for_update()
+        ).one_or_none()
+        if thread is None:
+            abort(404)
+        participant = thread.participant_for_user_id(user.id)
+        if participant is None:
+            abort(404)
+        if thread.minimum_protocol_version >= PQ_CHAT_PROTOCOL_VERSION:
+            return jsonify({"error": "Conversation requires protected messages."}), 409
 
         reply_capable_participant_ids = _conversation_reply_capable_participant_ids(thread)
         active_participants = _conversation_active_participants(thread)
@@ -842,7 +1409,8 @@ def register_message_routes(app: Flask) -> None:
                 429,
             )
 
-        conversation_message = ConversationMessage()
+        thread.version += 1
+        conversation_message = ConversationMessage(conversation_version=thread.version)
         conversation_message.conversation = thread
         conversation_message.sender_participant = participant
         db.session.add(conversation_message)
@@ -907,6 +1475,28 @@ def register_message_routes(app: Flask) -> None:
         db.session.execute(
             db.delete(ConversationMessageCopy).where(
                 ConversationMessageCopy.conversation_message_id.in_(participant_message_ids)
+            ),
+            execution_options={"synchronize_session": False},
+        )
+        db.session.execute(
+            db.delete(ConversationMessageTransportCopy).where(
+                or_(
+                    ConversationMessageTransportCopy.conversation_message_id.in_(
+                        participant_message_ids
+                    ),
+                    ConversationMessageTransportCopy.recipient_participant_id == participant.id,
+                )
+            ),
+            execution_options={"synchronize_session": False},
+        )
+        db.session.execute(
+            db.delete(ConversationMessageArchiveCopy).where(
+                or_(
+                    ConversationMessageArchiveCopy.conversation_message_id.in_(
+                        participant_message_ids
+                    ),
+                    ConversationMessageArchiveCopy.recipient_participant_id == participant.id,
+                )
             ),
             execution_options={"synchronize_session": False},
         )

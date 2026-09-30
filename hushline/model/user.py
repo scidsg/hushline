@@ -27,7 +27,7 @@ from hushline.password_hasher import hash_password, verify_password
 if TYPE_CHECKING:
     from flask_sqlalchemy.model import Model
 
-    from hushline.model.chat_key import ChatKey
+    from hushline.model.chat_key import ChatAccount, ChatKey
     from hushline.model.conversation import ConversationParticipant
     from hushline.model.message import Message
     from hushline.model.notification_recipient import NotificationRecipient
@@ -102,6 +102,12 @@ class User(Model):
         cascade="all, delete-orphan",
         order_by="ChatKey.key_version.desc(), ChatKey.id.desc()",
         passive_deletes=True,
+    )
+    chat_account: Mapped["ChatAccount | None"] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        uselist=False,
     )
     messages: Mapped[list["Message"]] = relationship(
         secondary="usernames",
