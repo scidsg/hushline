@@ -99,6 +99,8 @@
     }
 
     return Object.freeze({
+      archiveOpen: (args) => call("archiveOpen", args),
+      archiveSeal: (args) => call("archiveSeal", args),
       beginSession: (args) => call("beginSession", args),
       close() {
         if (closed) return;
@@ -106,6 +108,7 @@
         rejectAll("STATE_CONFLICT");
         worker.terminate();
       },
+      createArchiveEpoch: (args) => call("createArchiveEpoch", args),
       createDevice: (args) => call("createDevice", args),
       ratchetDecrypt: (args) => call("ratchetDecrypt", args),
       ratchetEncrypt: (args) => call("ratchetEncrypt", args),

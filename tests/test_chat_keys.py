@@ -603,9 +603,13 @@ def test_chat_key_lifecycle_js_exposes_unlock_rewrap_and_cleanup() -> None:
     assert '"/api/pq/account"' in lifecycle_source
     assert "hushline:pq-device-state" in lifecycle_source
     assert "verifyPqMembership" in lifecycle_source
+    assert "verifyPqArchive" in lifecycle_source
     assert "verifyPqPrekeyClaim" in lifecycle_source
     assert "provisionChatKey" in lifecycle_source
     assert "createChatKeyPayload" in lifecycle_source
+    assert "createPqArchiveEpoch" in lifecycle_source
+    assert "openPqArchive" in lifecycle_source
+    assert "pq_account_root" in lifecycle_source
     assert "pendingLoginPassword" in lifecycle_source
     assert "form[action$='/verify-2fa-login']" in lifecycle_source
     assert "rewrapForPasswordChange" in lifecycle_source

@@ -133,6 +133,18 @@ def _current_pq_archive_epoch(account: ChatAccount) -> ChatArchiveEpoch | None:
     return epochs[0] if len(epochs) == 1 else None
 
 
+def _delete_unreferenced_retired_archive_epochs() -> None:
+    db.session.execute(
+        db.delete(ChatArchiveEpoch).where(
+            ChatArchiveEpoch.retired_at.is_not(None),
+            ~db.exists().where(
+                ConversationMessageArchiveCopy.archive_epoch_id == ChatArchiveEpoch.id
+            ),
+        ),
+        execution_options={"synchronize_session": False},
+    )
+
+
 def _pq_chat_account_for_user(user_id: int) -> ChatAccount | None:
     return db.session.scalars(
         db.select(ChatAccount).where(ChatAccount.user_id == user_id)
@@ -1505,6 +1517,7 @@ def register_message_routes(app: Flask) -> None:
         )
 
         db.session.flush()
+        _delete_unreferenced_retired_archive_epochs()
         if not any(
             thread_participant.deleted_at is None for thread_participant in locked_participants
         ):

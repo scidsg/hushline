@@ -17,9 +17,16 @@ import init, {
   message_type_signal,
   processPreKeyBundle,
 } from "@getmaapp/signal-wasm";
+import nacl from "../../node_modules/openpgp/dist/lightweight/nacl-fast.mjs";
+import { ml_kem768 } from "../../node_modules/openpgp/dist/lightweight/noble_post_quantum.mjs";
+import {
+  q as sha3_256,
+  w as shake256,
+} from "../../node_modules/openpgp/dist/lightweight/sha512.mjs";
 
 const PROTOCOL = "HL-PQCHAT-1";
 const SUITE = "SIGNAL-PQXDH3-KYBER1024-SPQR1";
+const ARCHIVE_SUITE = "MLKEM768-X25519-HKDF-SHA256-AES256GCM";
 const STATE_VERSION = 1;
 const TRANSPORT_FRAME_VERSION = 1;
 const MAX_CIPHERTEXT_BYTES = 200000;
@@ -27,6 +34,20 @@ const MAX_KEY_ID = 0xffffffff;
 const MAX_PLAINTEXT_BYTES = 50000;
 const MAX_PREKEYS = 100;
 const MAX_OBSERVED_EPOCHS = 2;
+const ARCHIVE_PUBLIC_BYTES = 1216;
+const ARCHIVE_PRIVATE_BYTES = 32;
+const ARCHIVE_ENCAPSULATION_BYTES = 1120;
+const MLKEM_PUBLIC_BYTES = 1184;
+const MLKEM_CIPHERTEXT_BYTES = 1088;
+const ARCHIVE_TAG_BYTES = 16;
+const MAX_ARCHIVE_CIPHERTEXT_BYTES =
+  ARCHIVE_ENCAPSULATION_BYTES + ARCHIVE_TAG_BYTES + MAX_PLAINTEXT_BYTES;
+const ARCHIVE_WRAP_LABEL = "HushLine/HL-PQCHAT-1/archive-private-key-wrap/v1";
+const ARCHIVE_SEAL_LABEL = "HushLine/HL-PQCHAT-1/archive-seal/v1";
+const XWING_LABEL = new Uint8Array([0x5c, 0x2e, 0x2f, 0x2f, 0x5e, 0x5c]);
+const HPKE_SUITE_ID = new Uint8Array([
+  0x48, 0x50, 0x4b, 0x45, 0x64, 0x7a, 0x00, 0x01, 0x00, 0x02,
+]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const CONTEXT_FIELDS = [
   "account_recipient_id",
@@ -102,6 +123,549 @@ function base64UrlToBytes(value) {
   } catch (error) {
     if (error instanceof ProtocolError) throw error;
     fail("MALFORMED_WIRE");
+  }
+}
+
+function concatBytes(...values) {
+  const length = values.reduce((total, value) => total + value.length, 0);
+  const result = new Uint8Array(length);
+  let offset = 0;
+  for (const value of values) {
+    result.set(value, offset);
+    offset += value.length;
+  }
+  return result;
+}
+
+function integerBytes(value, length) {
+  requireInteger(value, 0, 2 ** (8 * length) - 1);
+  const bytes = new Uint8Array(length);
+  for (let offset = length - 1; offset >= 0; offset -= 1) {
+    bytes[offset] = value & 0xff;
+    value = Math.floor(value / 256);
+  }
+  return bytes;
+}
+
+function randomBytes(length) {
+  return crypto.getRandomValues(new Uint8Array(length));
+}
+
+function requireBytes(value, length) {
+  if (typeof value !== "string" || !/^[A-Za-z0-9_-]+$/u.test(value)) {
+    fail("MALFORMED_WIRE");
+  }
+  const bytes = base64UrlToBytes(value);
+  if (bytes.length !== length || bytesToBase64Url(bytes) !== value) {
+    fail("MALFORMED_WIRE");
+  }
+  return bytes;
+}
+
+async function sha256Bytes(value) {
+  return new Uint8Array(await crypto.subtle.digest("SHA-256", value));
+}
+
+async function hmacSha256(key, value) {
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    key,
+    { hash: "SHA-256", name: "HMAC" },
+    false,
+    ["sign"],
+  );
+  return new Uint8Array(await crypto.subtle.sign("HMAC", cryptoKey, value));
+}
+
+async function hkdfExtract(salt, inputKeyMaterial) {
+  return hmacSha256(salt.length ? salt : new Uint8Array(32), inputKeyMaterial);
+}
+
+async function hkdfExpand(pseudorandomKey, info, length) {
+  if (length > 255 * 32) fail("MALFORMED_WIRE");
+  const output = new Uint8Array(length);
+  let previous = new Uint8Array();
+  let offset = 0;
+  for (let counter = 1; offset < length; counter += 1) {
+    previous = await hmacSha256(
+      pseudorandomKey,
+      concatBytes(previous, info, new Uint8Array([counter])),
+    );
+    const available = Math.min(previous.length, length - offset);
+    output.set(previous.subarray(0, available), offset);
+    offset += available;
+  }
+  previous.fill(0);
+  return output;
+}
+
+async function labeledExtract(salt, label, inputKeyMaterial) {
+  return hkdfExtract(
+    salt,
+    concatBytes(
+      encoder.encode("HPKE-v1"),
+      HPKE_SUITE_ID,
+      encoder.encode(label),
+      inputKeyMaterial,
+    ),
+  );
+}
+
+async function labeledExpand(pseudorandomKey, label, info, length) {
+  return hkdfExpand(
+    pseudorandomKey,
+    concatBytes(
+      integerBytes(length, 2),
+      encoder.encode("HPKE-v1"),
+      HPKE_SUITE_ID,
+      encoder.encode(label),
+      info,
+    ),
+    length,
+  );
+}
+
+async function hpkeKeySchedule(sharedSecret, info) {
+  const empty = new Uint8Array();
+  const pskIdHash = await labeledExtract(empty, "psk_id_hash", empty);
+  const infoHash = await labeledExtract(empty, "info_hash", info);
+  const context = concatBytes(new Uint8Array([0]), pskIdHash, infoHash);
+  const secret = await labeledExtract(sharedSecret, "secret", empty);
+  let key;
+  try {
+    key = await labeledExpand(secret, "key", context, 32);
+    return {
+      key,
+      nonce: await labeledExpand(secret, "base_nonce", context, 12),
+    };
+  } catch (error) {
+    key?.fill(0);
+    throw error;
+  } finally {
+    secret.fill(0);
+  }
+}
+
+function assertArchiveContext(context) {
+  if (
+    !context ||
+    typeof context !== "object" ||
+    JSON.stringify(Object.keys(context).sort()) !==
+      JSON.stringify([...CONTEXT_FIELDS].sort())
+  ) {
+    fail("MALFORMED_WIRE");
+  }
+  if (context.protocol !== PROTOCOL || context.suite !== ARCHIVE_SUITE) {
+    fail("SUITE_MISMATCH");
+  }
+  if (
+    context.purpose !== "archive" ||
+    context.capability_selection !== PROTOCOL ||
+    JSON.stringify(context.capability_offer) !== JSON.stringify([PROTOCOL]) ||
+    context.device_recipient_id !== "00000000-0000-0000-0000-000000000000"
+  ) {
+    fail("AUTHENTICATION_FAILED");
+  }
+  for (const field of [
+    "account_recipient_id",
+    "conversation_id",
+    "device_recipient_id",
+    "message_id",
+    "sender_account_id",
+    "sender_device_id",
+  ]) {
+    requireText(context[field]);
+    if (!UUID.test(context[field])) fail("MALFORMED_WIRE");
+  }
+  for (const field of [
+    "archive_epoch",
+    "key_version",
+    "recipient_membership_sequence",
+    "sender_membership_sequence",
+  ]) {
+    requireInteger(context[field], 1);
+  }
+  if (context.key_version !== context.archive_epoch) {
+    fail("STALE_MEMBERSHIP");
+  }
+  return canonicalStringify(context);
+}
+
+function archiveContext(value) {
+  return encoder.encode(assertArchiveContext(value));
+}
+
+function expandArchivePrivateKey(seed) {
+  if (!(seed instanceof Uint8Array) || seed.length !== ARCHIVE_PRIVATE_BYTES) {
+    fail("MALFORMED_WIRE");
+  }
+  const expanded = shake256(seed, { dkLen: 96 });
+  const pq = ml_kem768.keygen(expanded.subarray(0, 64));
+  return {
+    expanded,
+    pq,
+    traditionalPrivateKey: expanded.subarray(64, 96),
+  };
+}
+
+function deriveArchivePublicKey(seed) {
+  const privateKey = expandArchivePrivateKey(seed);
+  try {
+    return concatBytes(
+      privateKey.pq.publicKey,
+      nacl.scalarMult.base(privateKey.traditionalPrivateKey),
+    );
+  } finally {
+    privateKey.expanded.fill(0);
+    privateKey.pq.secretKey.fill(0);
+  }
+}
+
+function assertNonzeroSharedSecret(value) {
+  if (value.every((byte) => byte === 0)) fail("AUTHENTICATION_FAILED");
+}
+
+function archiveEncapsulate(publicKey) {
+  if (publicKey.length !== ARCHIVE_PUBLIC_BYTES) fail("MALFORMED_WIRE");
+  const pqPublicKey = publicKey.subarray(0, MLKEM_PUBLIC_BYTES);
+  const traditionalPublicKey = publicKey.subarray(MLKEM_PUBLIC_BYTES);
+  const ephemeralPrivateKey = randomBytes(32);
+  let pq;
+  let traditionalSharedSecret;
+  try {
+    pq = ml_kem768.encapsulate(pqPublicKey);
+    const traditionalCiphertext = nacl.scalarMult.base(ephemeralPrivateKey);
+    traditionalSharedSecret = nacl.scalarMult(
+      ephemeralPrivateKey,
+      traditionalPublicKey,
+    );
+    assertNonzeroSharedSecret(traditionalSharedSecret);
+    return {
+      encapsulation: concatBytes(pq.cipherText, traditionalCiphertext),
+      sharedSecret: sha3_256(
+        concatBytes(
+          pq.sharedSecret,
+          traditionalSharedSecret,
+          traditionalCiphertext,
+          traditionalPublicKey,
+          XWING_LABEL,
+        ),
+      ),
+    };
+  } finally {
+    ephemeralPrivateKey.fill(0);
+    pq?.sharedSecret.fill(0);
+    traditionalSharedSecret?.fill(0);
+  }
+}
+
+function archiveDecapsulate(seed, encapsulation) {
+  if (encapsulation.length !== ARCHIVE_ENCAPSULATION_BYTES) {
+    fail("MALFORMED_WIRE");
+  }
+  const privateKey = expandArchivePrivateKey(seed);
+  let pqSharedSecret;
+  let traditionalSharedSecret;
+  try {
+    const traditionalPublicKey = nacl.scalarMult.base(
+      privateKey.traditionalPrivateKey,
+    );
+    const traditionalCiphertext = encapsulation.subarray(
+      MLKEM_CIPHERTEXT_BYTES,
+    );
+    pqSharedSecret = ml_kem768.decapsulate(
+      encapsulation.subarray(0, MLKEM_CIPHERTEXT_BYTES),
+      privateKey.pq.secretKey,
+    );
+    traditionalSharedSecret = nacl.scalarMult(
+      privateKey.traditionalPrivateKey,
+      traditionalCiphertext,
+    );
+    assertNonzeroSharedSecret(traditionalSharedSecret);
+    return sha3_256(
+      concatBytes(
+        pqSharedSecret,
+        traditionalSharedSecret,
+        traditionalCiphertext,
+        traditionalPublicKey,
+        XWING_LABEL,
+      ),
+    );
+  } finally {
+    privateKey.expanded.fill(0);
+    privateKey.pq.secretKey.fill(0);
+    pqSharedSecret?.fill(0);
+    traditionalSharedSecret?.fill(0);
+  }
+}
+
+async function archiveWrapKey(accountRoot, accountId) {
+  const salt = await sha256Bytes(encoder.encode(accountId));
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    accountRoot,
+    "HKDF",
+    false,
+    ["deriveKey"],
+  );
+  return crypto.subtle.deriveKey(
+    {
+      name: "HKDF",
+      hash: "SHA-256",
+      salt,
+      info: encoder.encode(ARCHIVE_WRAP_LABEL),
+    },
+    keyMaterial,
+    { length: 256, name: "AES-GCM" },
+    false,
+    ["encrypt", "decrypt"],
+  );
+}
+
+function archiveWrapContext(accountId, epoch, publicKeySha256) {
+  return {
+    account_id: accountId,
+    archive_epoch: epoch,
+    protocol: PROTOCOL,
+    public_key_sha256: publicKeySha256,
+    purpose: "archive-private-key",
+    suite: ARCHIVE_SUITE,
+    v: 1,
+  };
+}
+
+async function wrapArchivePrivateKey({ accountId, accountRoot, epoch, seed }) {
+  const publicKey = deriveArchivePublicKey(seed);
+  const context = archiveWrapContext(
+    accountId,
+    epoch,
+    await sha256Hex(publicKey),
+  );
+  const nonce = randomBytes(12);
+  const wrappingKey = await archiveWrapKey(accountRoot, accountId);
+  const ciphertext = new Uint8Array(
+    await crypto.subtle.encrypt(
+      {
+        additionalData: encoder.encode(canonicalStringify(context)),
+        iv: nonce,
+        name: "AES-GCM",
+      },
+      wrappingKey,
+      seed,
+    ),
+  );
+  return {
+    encryptedPrivateKey: bytesToBase64Url(
+      encoder.encode(
+        canonicalStringify({
+          ciphertext: bytesToBase64Url(ciphertext),
+          context,
+          nonce: bytesToBase64Url(nonce),
+          v: 1,
+        }),
+      ),
+    ),
+    publicKey,
+  };
+}
+
+async function unwrapArchivePrivateKey({
+  accountId,
+  accountRoot,
+  encryptedPrivateKey,
+  epoch,
+  publicKey,
+}) {
+  let envelope;
+  try {
+    envelope = JSON.parse(
+      decoder.decode(base64UrlToBytes(encryptedPrivateKey)),
+    );
+  } catch (error) {
+    fail("MALFORMED_WIRE");
+  }
+  const expectedContext = archiveWrapContext(
+    accountId,
+    epoch,
+    await sha256Hex(publicKey),
+  );
+  if (
+    !hasExactFields(envelope, ["ciphertext", "context", "nonce", "v"]) ||
+    envelope.v !== 1 ||
+    canonicalStringify(envelope.context) !== canonicalStringify(expectedContext)
+  ) {
+    fail("AUTHENTICATION_FAILED");
+  }
+  try {
+    const wrappingKey = await archiveWrapKey(accountRoot, accountId);
+    const seed = new Uint8Array(
+      await crypto.subtle.decrypt(
+        {
+          additionalData: encoder.encode(canonicalStringify(expectedContext)),
+          iv: requireBytes(envelope.nonce, 12),
+          name: "AES-GCM",
+        },
+        wrappingKey,
+        base64UrlToBytes(envelope.ciphertext),
+      ),
+    );
+    if (
+      seed.length !== ARCHIVE_PRIVATE_BYTES ||
+      bytesToBase64Url(deriveArchivePublicKey(seed)) !==
+        bytesToBase64Url(publicKey)
+    ) {
+      seed.fill(0);
+      fail("AUTHENTICATION_FAILED");
+    }
+    return seed;
+  } catch (error) {
+    if (error instanceof ProtocolError) throw error;
+    fail("AUTHENTICATION_FAILED");
+  }
+}
+
+async function createArchiveEpoch(args) {
+  const accountId = requireText(args?.accountId);
+  if (!UUID.test(accountId)) fail("MALFORMED_WIRE");
+  const epoch = requireInteger(args?.epoch, 1);
+  const accountRoot = requireBytes(args?.accountRoot, 32);
+  const seed = randomBytes(ARCHIVE_PRIVATE_BYTES);
+  try {
+    const wrapped = await wrapArchivePrivateKey({
+      accountId,
+      accountRoot,
+      epoch,
+      seed,
+    });
+    return {
+      encryptedPrivateKey: wrapped.encryptedPrivateKey,
+      epoch,
+      publicKey: bytesToBase64Url(wrapped.publicKey),
+      suite: ARCHIVE_SUITE,
+    };
+  } finally {
+    accountRoot.fill(0);
+    seed.fill(0);
+  }
+}
+
+async function archiveSeal(args) {
+  const context = archiveContext(args?.context);
+  const plaintext = requireText(args?.plaintext);
+  const plaintextBytes = encoder.encode(plaintext);
+  if (plaintextBytes.length > MAX_PLAINTEXT_BYTES) fail("MALFORMED_WIRE");
+  const publicKey = requireBytes(args?.publicKey, ARCHIVE_PUBLIC_BYTES);
+  let kem;
+  try {
+    kem = archiveEncapsulate(publicKey);
+  } catch (error) {
+    if (error instanceof ProtocolError) throw error;
+    fail("AUTHENTICATION_FAILED");
+  }
+  let schedule;
+  try {
+    const info = concatBytes(
+      encoder.encode(ARCHIVE_SEAL_LABEL),
+      new Uint8Array([0]),
+      await sha256Bytes(context),
+    );
+    schedule = await hpkeKeySchedule(kem.sharedSecret, info);
+    const key = await crypto.subtle.importKey(
+      "raw",
+      schedule.key,
+      "AES-GCM",
+      false,
+      ["encrypt"],
+    );
+    const ciphertext = new Uint8Array(
+      await crypto.subtle.encrypt(
+        { additionalData: context, iv: schedule.nonce, name: "AES-GCM" },
+        key,
+        plaintextBytes,
+      ),
+    );
+    return bytesToBase64Url(concatBytes(kem.encapsulation, ciphertext));
+  } finally {
+    kem.sharedSecret.fill(0);
+    schedule?.key.fill(0);
+    schedule?.nonce.fill(0);
+  }
+}
+
+async function archiveOpen(args) {
+  const context = archiveContext(args?.context);
+  if (
+    typeof args?.ciphertext !== "string" ||
+    args.ciphertext.length >
+      Math.ceil((MAX_ARCHIVE_CIPHERTEXT_BYTES * 4) / 3) ||
+    !/^[A-Za-z0-9_-]+$/u.test(args.ciphertext)
+  ) {
+    fail("MALFORMED_WIRE");
+  }
+  const stored = base64UrlToBytes(args?.ciphertext);
+  if (
+    bytesToBase64Url(stored) !== args.ciphertext ||
+    stored.length < ARCHIVE_ENCAPSULATION_BYTES + ARCHIVE_TAG_BYTES ||
+    stored.length > MAX_ARCHIVE_CIPHERTEXT_BYTES
+  ) {
+    fail("MALFORMED_WIRE");
+  }
+  const accountId = requireText(args?.accountId);
+  const epoch = requireInteger(args?.epoch, 1);
+  if (
+    !UUID.test(accountId) ||
+    args.context.account_recipient_id !== accountId ||
+    args.context.archive_epoch !== epoch
+  ) {
+    fail("AUTHENTICATION_FAILED");
+  }
+  const publicKey = requireBytes(args?.publicKey, ARCHIVE_PUBLIC_BYTES);
+  const accountRoot = requireBytes(args?.accountRoot, 32);
+  let seed;
+  try {
+    seed = await unwrapArchivePrivateKey({
+      accountId,
+      accountRoot,
+      encryptedPrivateKey: args?.encryptedPrivateKey,
+      epoch,
+      publicKey,
+    });
+    const sharedSecret = archiveDecapsulate(
+      seed,
+      stored.subarray(0, ARCHIVE_ENCAPSULATION_BYTES),
+    );
+    let schedule;
+    try {
+      const info = concatBytes(
+        encoder.encode(ARCHIVE_SEAL_LABEL),
+        new Uint8Array([0]),
+        await sha256Bytes(context),
+      );
+      schedule = await hpkeKeySchedule(sharedSecret, info);
+      const key = await crypto.subtle.importKey(
+        "raw",
+        schedule.key,
+        "AES-GCM",
+        false,
+        ["decrypt"],
+      );
+      const plaintext = await crypto.subtle.decrypt(
+        { additionalData: context, iv: schedule.nonce, name: "AES-GCM" },
+        key,
+        stored.subarray(ARCHIVE_ENCAPSULATION_BYTES),
+      );
+      return decoder.decode(plaintext);
+    } finally {
+      sharedSecret.fill(0);
+      schedule?.key.fill(0);
+      schedule?.nonce.fill(0);
+    }
+  } catch (error) {
+    if (error instanceof ProtocolError) throw error;
+    fail("AUTHENTICATION_FAILED");
+  } finally {
+    accountRoot.fill(0);
+    seed?.fill(0);
   }
 }
 
@@ -764,6 +1328,9 @@ async function ratchetDecrypt(args) {
 
 async function dispatch(operation, args) {
   await ensureInitialized();
+  if (operation === "createArchiveEpoch") return createArchiveEpoch(args);
+  if (operation === "archiveSeal") return archiveSeal(args);
+  if (operation === "archiveOpen") return archiveOpen(args);
   if (operation === "createDevice") return createDevice(args);
   if (operation === "beginSession") return beginSession(args);
   if (operation === "ratchetEncrypt") return ratchetEncrypt(args);

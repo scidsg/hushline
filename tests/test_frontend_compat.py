@@ -195,8 +195,10 @@ def test_chat_key_lifecycle_upgrades_legacy_keys_with_signing_material() -> None
             "privateKeyBundle = await decryptPrivateKeyBundle(chatKey, password);" in lifecycle_js
         )
         assert "public_key: chatKey.public_key" in lifecycle_js
-        assert "signing_private_jwk: signingKeyMaterial.signingPrivateJwk" in lifecycle_js
-        assert "if (unlocked && !chatKey.public_signing_key)" in lifecycle_js
+        assert "signingKeyMaterial?.signingPrivateJwk" in lifecycle_js
+        assert "const needsSigningKey =" in lifecycle_js
+        assert "const needsAccountRoot = !privateKeyBundle.pq_account_root;" in lifecycle_js
+        assert "if (unlocked)" in lifecycle_js
         assert (
             "chatKey = await upgradeChatKeySigningCapability(\n"
             "            chatKey,\n"
@@ -208,6 +210,7 @@ def test_chat_key_lifecycle_upgrades_legacy_keys_with_signing_material() -> None
         assert "return unlocked;" in lifecycle_js
         assert "catch (error) {\n          return unlocked;" in lifecycle_js
         assert "if (!publicSigningKey || !privateKeyBundle.signing_private_jwk)" in lifecycle_js
+        assert "pq_account_root: createPqAccountRoot()" in lifecycle_js
 
 
 def test_settings_chat_key_provisioning_uses_shared_lifecycle_provisioner() -> None:

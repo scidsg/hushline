@@ -371,6 +371,224 @@ test("invalid classical or PQ contribution fails without fallback", async ({
   expect(result).toEqual({ classicalRejected: true, pqRejected: true });
 });
 
+test("hybrid archive copies unlock in a fresh browser and reject substitution", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const creator = window.HushLinePqProtocol.createWorkerClient();
+    const freshBrowser = window.HushLinePqProtocol.createWorkerClient();
+    const senderAccount = "33333333-3333-4333-8333-333333333333";
+    const recipientAccount = "55555555-5555-4555-8555-555555555555";
+    const senderRootBytes = crypto.getRandomValues(new Uint8Array(32));
+    const recipientRootBytes = crypto.getRandomValues(new Uint8Array(32));
+    const encode = (bytes) =>
+      btoa(String.fromCharCode(...bytes))
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/u, "");
+    const decode = (value) => {
+      const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+      return Uint8Array.from(
+        atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, "=")),
+        (character) => character.charCodeAt(0),
+      );
+    };
+    const mutate = (value) => {
+      const bytes = decode(value);
+      bytes[bytes.length - 1] ^= 1;
+      return encode(bytes);
+    };
+    const senderRoot = encode(senderRootBytes);
+    const recipientRoot = encode(recipientRootBytes);
+    senderRootBytes.fill(0);
+    recipientRootBytes.fill(0);
+    const senderEpoch = await creator.createArchiveEpoch({
+      accountId: senderAccount,
+      accountRoot: senderRoot,
+      epoch: 7,
+    });
+    const recipientEpoch = await creator.createArchiveEpoch({
+      accountId: recipientAccount,
+      accountRoot: recipientRoot,
+      epoch: 11,
+    });
+    const baseContext = {
+      capability_offer: ["HL-PQCHAT-1"],
+      capability_selection: "HL-PQCHAT-1",
+      conversation_id: "22222222-2222-4222-8222-222222222222",
+      device_recipient_id: "00000000-0000-0000-0000-000000000000",
+      message_id: "11111111-1111-4111-8111-111111111111",
+      protocol: "HL-PQCHAT-1",
+      purpose: "archive",
+      sender_account_id: senderAccount,
+      sender_device_id: "44444444-4444-4444-8444-444444444444",
+      sender_membership_sequence: 12,
+      suite: "MLKEM768-X25519-HKDF-SHA256-AES256GCM",
+    };
+    const senderContext = {
+      ...baseContext,
+      account_recipient_id: senderAccount,
+      archive_epoch: 7,
+      key_version: 7,
+      recipient_membership_sequence: 12,
+    };
+    const recipientContext = {
+      ...baseContext,
+      account_recipient_id: recipientAccount,
+      archive_epoch: 11,
+      key_version: 11,
+      recipient_membership_sequence: 18,
+    };
+    const plaintext = "offline unread synthetic disclosure";
+    const senderCiphertext = await creator.archiveSeal({
+      context: senderContext,
+      plaintext,
+      publicKey: senderEpoch.publicKey,
+    });
+    const recipientCiphertext = await creator.archiveSeal({
+      context: recipientContext,
+      plaintext,
+      publicKey: recipientEpoch.publicKey,
+    });
+    const open = (accountId, accountRoot, epoch, context, ciphertext) =>
+      freshBrowser.archiveOpen({
+        accountId,
+        accountRoot,
+        ciphertext,
+        context,
+        encryptedPrivateKey: epoch.encryptedPrivateKey,
+        epoch: epoch.epoch,
+        publicKey: epoch.publicKey,
+      });
+    const rejected = async (operation) => {
+      try {
+        await operation();
+        return false;
+      } catch (error) {
+        return error.code === "AUTHENTICATION_FAILED";
+      }
+    };
+    const senderPlaintext = await open(
+      senderAccount,
+      senderRoot,
+      senderEpoch,
+      senderContext,
+      senderCiphertext,
+    );
+    const recipientPlaintext = await open(
+      recipientAccount,
+      recipientRoot,
+      recipientEpoch,
+      recipientContext,
+      recipientCiphertext,
+    );
+    const wrongPasswordRejected = await rejected(() =>
+      open(
+        senderAccount,
+        encode(crypto.getRandomValues(new Uint8Array(32))),
+        senderEpoch,
+        senderContext,
+        senderCiphertext,
+      ),
+    );
+    const ciphertextRejected = await rejected(() =>
+      open(
+        senderAccount,
+        senderRoot,
+        senderEpoch,
+        senderContext,
+        mutate(senderCiphertext),
+      ),
+    );
+    const contextRejected = await rejected(() =>
+      open(
+        senderAccount,
+        senderRoot,
+        senderEpoch,
+        {
+          ...senderContext,
+          conversation_id: "99999999-9999-4999-8999-999999999999",
+        },
+        senderCiphertext,
+      ),
+    );
+    const keySubstitutionRejected = await rejected(() =>
+      freshBrowser.archiveOpen({
+        accountId: senderAccount,
+        accountRoot: senderRoot,
+        ciphertext: senderCiphertext,
+        context: senderContext,
+        encryptedPrivateKey: recipientEpoch.encryptedPrivateKey,
+        epoch: senderEpoch.epoch,
+        publicKey: recipientEpoch.publicKey,
+      }),
+    );
+    const nextEpoch = await creator.createArchiveEpoch({
+      accountId: senderAccount,
+      accountRoot: senderRoot,
+      epoch: 8,
+    });
+    const nextContext = {
+      ...senderContext,
+      archive_epoch: 8,
+      key_version: 8,
+      message_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    };
+    const nextCiphertext = await creator.archiveSeal({
+      context: nextContext,
+      plaintext: "new epoch disclosure",
+      publicKey: nextEpoch.publicKey,
+    });
+    const oldAfterRotation = await open(
+      senderAccount,
+      senderRoot,
+      senderEpoch,
+      senderContext,
+      senderCiphertext,
+    );
+    const newAfterRotation = await open(
+      senderAccount,
+      senderRoot,
+      nextEpoch,
+      nextContext,
+      nextCiphertext,
+    );
+    creator.close();
+    freshBrowser.close();
+    return {
+      ciphertextRejected,
+      contextRejected,
+      independentCopies: senderCiphertext !== recipientCiphertext,
+      keySubstitutionRejected,
+      newAfterRotation,
+      noProtocolSecrets: [senderEpoch, recipientEpoch, nextEpoch].every(
+        (epoch) =>
+          !JSON.stringify(epoch).match(/identity|prekey|ratchet|session/iu),
+      ),
+      oldAfterRotation,
+      recipientPlaintext,
+      senderCiphertextBytes: decode(senderCiphertext).length,
+      senderPlaintext,
+      wrongPasswordRejected,
+    };
+  });
+
+  expect(result).toEqual({
+    ciphertextRejected: true,
+    contextRejected: true,
+    independentCopies: true,
+    keySubstitutionRejected: true,
+    newAfterRotation: "new epoch disclosure",
+    noProtocolSecrets: true,
+    oldAfterRotation: "offline unread synthetic disclosure",
+    recipientPlaintext: "offline unread synthetic disclosure",
+    senderCiphertextBytes: 1171,
+    senderPlaintext: "offline unread synthetic disclosure",
+    wrongPasswordRejected: true,
+  });
+});
+
 test("protocol state advances only with the encrypted browser transaction", async ({
   page,
 }) => {
