@@ -63,9 +63,15 @@ def _participant_has_available_copies(
     participant: ConversationParticipant,
 ) -> bool:
     return all(
-        any(
-            encrypted_copy.recipient_participant_id == participant.id
-            for encrypted_copy in message.encrypted_copies
+        (
+            any(
+                encrypted_copy.recipient_participant_id == participant.id
+                for encrypted_copy in message.encrypted_copies
+            )
+            or any(
+                archive_copy.recipient_participant_id == participant.id
+                for archive_copy in message.archive_copies
+            )
         )
         for message in conversation.messages
     )

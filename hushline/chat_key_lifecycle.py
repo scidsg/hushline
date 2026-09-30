@@ -1,9 +1,16 @@
 import base64
 import binascii
+import hmac
 import json
+import re
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
 from typing import Any
+from uuid import UUID
+
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from hushline.db import db
 from hushline.model import ChatKey, User
@@ -28,6 +35,313 @@ CHAT_KEY_FORBIDDEN_SECRET_FIELDS = {
     "unlock_key",
     "wrapping_key",
 }
+
+PQ_CHAT_PROTOCOL = "HL-PQCHAT-1"
+PQ_CHAT_PROTOCOL_VERSION = 1
+PQ_CHAT_TRANSPORT_SUITE = "SIGNAL-PQXDH3-KYBER1024-SPQR1"
+PQ_CHAT_ARCHIVE_SUITE = "MLKEM768-X25519-HKDF-SHA256-AES256GCM"
+PQ_CHAT_ARCHIVE_MIN_BYTES = 1136
+PQ_CHAT_CIPHERTEXT_MAX_BYTES = 200_000
+PQ_CHAT_MIN_COPIES = 2
+PQ_CHAT_MAX_COPIES = 202
+PQ_CHAT_MANIFEST_MAX_BYTES = 100_000
+PQ_CHAT_REQUEST_MAX_BYTES = 55_000_000
+PQ_CHAT_ZERO_DEVICE_ID = "00000000-0000-0000-0000-000000000000"
+PQ_CHAT_SIGNATURE_DOMAIN = b"HushLine/HL-PQCHAT-1/manifest-signature/v1"
+_ED25519_PUBLIC_KEY_BYTES = 32
+_ED25519_SIGNATURE_BYTES = 64
+_PQ_CHAT_HEX_256 = re.compile(r"^[0-9a-f]{64}$")
+_PQ_CHAT_CONTEXT_FIELDS = {
+    "account_recipient_id",
+    "archive_epoch",
+    "capability_offer",
+    "capability_selection",
+    "conversation_id",
+    "device_recipient_id",
+    "key_version",
+    "message_id",
+    "protocol",
+    "purpose",
+    "recipient_membership_sequence",
+    "sender_account_id",
+    "sender_device_id",
+    "sender_membership_sequence",
+    "suite",
+}
+_PQ_CHAT_MANIFEST_FIELDS = {
+    "capability_offer",
+    "capability_selection",
+    "conversation_id",
+    "copies",
+    "created_at",
+    "message_id",
+    "protocol",
+    "sender_account_id",
+    "sender_device_id",
+    "sender_membership_sha256",
+}
+_PQ_CHAT_MANIFEST_COPY_FIELDS = {
+    "account_recipient_id",
+    "archive_epoch",
+    "ciphertext_length",
+    "ciphertext_sha256",
+    "context_sha256",
+    "device_recipient_id",
+    "key_version",
+    "purpose",
+}
+
+
+class PqChatPackageError(ValueError):
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
+
+
+@dataclass(frozen=True)
+class ValidatedPqChatCopy:
+    context: dict[str, Any]
+    ciphertext: str
+    ciphertext_bytes: bytes
+    context_sha256: str
+    ciphertext_sha256: str
+
+
+@dataclass(frozen=True)
+class ValidatedPqChatPackage:
+    manifest: dict[str, Any]
+    signature: str
+    signature_bytes: bytes
+    copies: tuple[ValidatedPqChatCopy, ...]
+    idempotency_key: str
+    request_sha256: str
+
+
+def canonical_chat_json(value: Any) -> bytes:
+    try:
+        return json.dumps(
+            value,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        ).encode("utf-8")
+    except (TypeError, ValueError) as error:
+        raise PqChatPackageError("MALFORMED_WIRE") from error
+
+
+def chat_session_binding(session_id: str) -> str:
+    return sha256(("hushline:pq-chat-session:" + session_id).encode()).hexdigest()
+
+
+def _pq_chat_base64url(value: Any) -> bytes:
+    if not isinstance(value, str) or not value or "=" in value:
+        raise PqChatPackageError("MALFORMED_WIRE")
+    try:
+        decoded = base64.b64decode(value + "=" * (-len(value) % 4), altchars=b"-_", validate=True)
+    except (binascii.Error, ValueError) as error:
+        raise PqChatPackageError("MALFORMED_WIRE") from error
+    if base64.urlsafe_b64encode(decoded).decode("ascii").rstrip("=") != value:
+        raise PqChatPackageError("MALFORMED_WIRE")
+    return decoded
+
+
+def _pq_chat_uuid(value: Any) -> str:
+    if not isinstance(value, str):
+        raise PqChatPackageError("MALFORMED_WIRE")
+    try:
+        parsed = UUID(value)
+    except (ValueError, AttributeError) as error:
+        raise PqChatPackageError("MALFORMED_WIRE") from error
+    if str(parsed) != value:
+        raise PqChatPackageError("MALFORMED_WIRE")
+    return value
+
+
+def _pq_chat_uint(value: Any) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0 or value > 2**53 - 1:
+        raise PqChatPackageError("MALFORMED_WIRE")
+    return value
+
+
+def _validate_pq_chat_context(context: Any) -> dict[str, Any]:
+    if not isinstance(context, dict) or set(context) != _PQ_CHAT_CONTEXT_FIELDS:
+        raise PqChatPackageError("MALFORMED_WIRE")
+    for field in (
+        "account_recipient_id",
+        "conversation_id",
+        "device_recipient_id",
+        "message_id",
+        "sender_account_id",
+        "sender_device_id",
+    ):
+        _pq_chat_uuid(context[field])
+    for field in (
+        "archive_epoch",
+        "key_version",
+        "recipient_membership_sequence",
+        "sender_membership_sequence",
+    ):
+        _pq_chat_uint(context[field])
+    if (
+        context["protocol"] != PQ_CHAT_PROTOCOL
+        or context["capability_offer"] != [PQ_CHAT_PROTOCOL]
+        or context["capability_selection"] != PQ_CHAT_PROTOCOL
+    ):
+        raise PqChatPackageError("SUITE_MISMATCH")
+    purpose = context["purpose"]
+    if purpose == "archive":
+        if (
+            context["suite"] != PQ_CHAT_ARCHIVE_SUITE
+            or context["device_recipient_id"] != PQ_CHAT_ZERO_DEVICE_ID
+            or context["archive_epoch"] == 0
+        ):
+            raise PqChatPackageError("SUITE_MISMATCH")
+    elif purpose == "transport":
+        if (
+            context["suite"] != PQ_CHAT_TRANSPORT_SUITE
+            or context["device_recipient_id"] == PQ_CHAT_ZERO_DEVICE_ID
+            or context["archive_epoch"] != 0
+        ):
+            raise PqChatPackageError("SUITE_MISMATCH")
+    else:
+        raise PqChatPackageError("SUITE_MISMATCH")
+    return context
+
+
+def _validate_pq_chat_created_at(value: Any) -> None:
+    if not isinstance(value, str) or not value.endswith("Z") or "." in value:
+        raise PqChatPackageError("MALFORMED_WIRE")
+    try:
+        parsed = datetime.fromisoformat(value.removesuffix("Z") + "+00:00")
+    except ValueError as error:
+        raise PqChatPackageError("MALFORMED_WIRE") from error
+    if parsed.tzinfo is None or parsed.utcoffset() != UTC.utcoffset(parsed):
+        raise PqChatPackageError("MALFORMED_WIRE")
+
+
+def validate_pq_chat_package(
+    payload: Any, *, sender_signing_public_key: str
+) -> ValidatedPqChatPackage:
+    if not isinstance(payload, dict) or set(payload) != {"manifest", "signature", "copies"}:
+        raise PqChatPackageError("MALFORMED_WIRE")
+    request_bytes = canonical_chat_json(payload)
+    if len(request_bytes) > PQ_CHAT_REQUEST_MAX_BYTES:
+        raise PqChatPackageError("MALFORMED_WIRE")
+
+    manifest = payload["manifest"]
+    request_copies = payload["copies"]
+    if not isinstance(manifest, dict) or set(manifest) != _PQ_CHAT_MANIFEST_FIELDS:
+        raise PqChatPackageError("MALFORMED_WIRE")
+    if (
+        not isinstance(request_copies, list)
+        or not PQ_CHAT_MIN_COPIES <= len(request_copies) <= PQ_CHAT_MAX_COPIES
+    ):
+        raise PqChatPackageError("STATE_CONFLICT")
+    manifest_copies = manifest["copies"]
+    if not isinstance(manifest_copies, list) or len(manifest_copies) != len(request_copies):
+        raise PqChatPackageError("STATE_CONFLICT")
+    if (
+        manifest["protocol"] != PQ_CHAT_PROTOCOL
+        or manifest["capability_offer"] != [PQ_CHAT_PROTOCOL]
+        or manifest["capability_selection"] != PQ_CHAT_PROTOCOL
+    ):
+        raise PqChatPackageError("SUITE_MISMATCH")
+    for field in ("conversation_id", "message_id", "sender_account_id", "sender_device_id"):
+        _pq_chat_uuid(manifest[field])
+    if not isinstance(manifest["sender_membership_sha256"], str) or not _PQ_CHAT_HEX_256.fullmatch(
+        manifest["sender_membership_sha256"]
+    ):
+        raise PqChatPackageError("MALFORMED_WIRE")
+    _validate_pq_chat_created_at(manifest["created_at"])
+
+    manifest_bytes = canonical_chat_json(manifest)
+    if len(manifest_bytes) > PQ_CHAT_MANIFEST_MAX_BYTES:
+        raise PqChatPackageError("MALFORMED_WIRE")
+    signature = payload["signature"]
+    signature_bytes = _pq_chat_base64url(signature)
+    if len(signature_bytes) != _ED25519_SIGNATURE_BYTES:
+        raise PqChatPackageError("MALFORMED_WIRE")
+    public_key_bytes = _pq_chat_base64url(sender_signing_public_key)
+    if len(public_key_bytes) != _ED25519_PUBLIC_KEY_BYTES:
+        raise PqChatPackageError("MALFORMED_WIRE")
+    try:
+        Ed25519PublicKey.from_public_bytes(public_key_bytes).verify(
+            signature_bytes,
+            PQ_CHAT_SIGNATURE_DOMAIN + b"\x00" + manifest_bytes,
+        )
+    except (InvalidSignature, ValueError) as error:
+        raise PqChatPackageError("AUTHENTICATION_FAILED") from error
+
+    validated_copies: list[ValidatedPqChatCopy] = []
+    copy_order: list[tuple[str, str, str]] = []
+    for manifest_copy, request_copy in zip(manifest_copies, request_copies, strict=True):
+        if (
+            not isinstance(manifest_copy, dict)
+            or set(manifest_copy) != _PQ_CHAT_MANIFEST_COPY_FIELDS
+        ):
+            raise PqChatPackageError("MALFORMED_WIRE")
+        if not isinstance(request_copy, dict) or set(request_copy) != {"context", "ciphertext"}:
+            raise PqChatPackageError("MALFORMED_WIRE")
+        context = _validate_pq_chat_context(request_copy["context"])
+        ciphertext = request_copy["ciphertext"]
+        ciphertext_bytes = _pq_chat_base64url(ciphertext)
+        if not ciphertext_bytes or len(ciphertext_bytes) > PQ_CHAT_CIPHERTEXT_MAX_BYTES:
+            raise PqChatPackageError("MALFORMED_WIRE")
+        if context["purpose"] == "archive" and len(ciphertext_bytes) < PQ_CHAT_ARCHIVE_MIN_BYTES:
+            raise PqChatPackageError("MALFORMED_WIRE")
+        context_hash = sha256(canonical_chat_json(context)).hexdigest()
+        ciphertext_hash = sha256(ciphertext_bytes).hexdigest()
+        expected = {
+            "account_recipient_id": context["account_recipient_id"],
+            "archive_epoch": context["archive_epoch"],
+            "ciphertext_length": len(ciphertext_bytes),
+            "ciphertext_sha256": ciphertext_hash,
+            "context_sha256": context_hash,
+            "device_recipient_id": context["device_recipient_id"],
+            "key_version": context["key_version"],
+            "purpose": context["purpose"],
+        }
+        if not hmac.compare_digest(
+            canonical_chat_json(manifest_copy), canonical_chat_json(expected)
+        ):
+            raise PqChatPackageError("AUTHENTICATION_FAILED")
+        if any(
+            context[field] != manifest[field]
+            for field in (
+                "capability_offer",
+                "capability_selection",
+                "conversation_id",
+                "message_id",
+                "protocol",
+                "sender_account_id",
+                "sender_device_id",
+            )
+        ):
+            raise PqChatPackageError("AUTHENTICATION_FAILED")
+        copy_order.append(
+            (context["purpose"], context["account_recipient_id"], context["device_recipient_id"])
+        )
+        validated_copies.append(
+            ValidatedPqChatCopy(
+                context=context,
+                ciphertext=ciphertext,
+                ciphertext_bytes=ciphertext_bytes,
+                context_sha256=context_hash,
+                ciphertext_sha256=ciphertext_hash,
+            )
+        )
+    if copy_order != sorted(copy_order) or len(set(copy_order)) != len(copy_order):
+        raise PqChatPackageError("STATE_CONFLICT")
+
+    return ValidatedPqChatPackage(
+        manifest=manifest,
+        signature=signature,
+        signature_bytes=signature_bytes,
+        copies=tuple(validated_copies),
+        idempotency_key=sha256(manifest_bytes + signature_bytes).hexdigest(),
+        request_sha256=sha256(request_bytes).hexdigest(),
+    )
 
 
 def normalized_payload_key(value: str) -> str:
