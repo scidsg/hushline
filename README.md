@@ -5,6 +5,7 @@
 Hosted service: <https://tips.hushline.app>  
 Start here: <https://hushline.app/library/docs/getting-started/start-here/>
 
+[![WebAuthn Integrated Validation](https://github.com/scidsg/hushline/actions/workflows/webauthn-validation.yml/badge.svg)](https://github.com/scidsg/hushline/actions/workflows/webauthn-validation.yml)
 [![Accessibility](https://github.com/scidsg/hushline/actions/workflows/lighthouse.yml/badge.svg)](https://github.com/scidsg/hushline/actions/workflows/lighthouse.yml)
 [![Performance](https://github.com/scidsg/hushline/actions/workflows/lighthouse-performance.yml/badge.svg)](https://github.com/scidsg/hushline/actions/workflows/lighthouse-performance.yml)
 [![Run Linter and Tests](https://github.com/scidsg/hushline/actions/workflows/tests.yml/badge.svg)](https://github.com/scidsg/hushline/actions/workflows/tests.yml)
