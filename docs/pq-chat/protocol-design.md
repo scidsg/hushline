@@ -22,8 +22,8 @@ new protocol version and new fixtures.
 | --- | --- |
 | Online session | Signal PQXDH revision 3 and Triple Ratchet/SPQR v1 as implemented by `@getmaapp/signal-wasm` 0.6.6, source `0a5e3cb8bf282efb3521d7cdac5476caf3fb1acd`, wrapping `signalapp/libsignal` 0.101.0 at `b056faa6dd02961cff24064c54c089c52e1a0753` |
 | Online PQ KEM | Round-3 Kyber1024, libsignal key type `0x08`; it is deliberately not labelled FIPS 203 ML-KEM |
-| Archive KEM | X-Wing from RFC 9794: ML-KEM-768 plus X25519, 1216-byte public key, 1120-byte encapsulation, and 32-byte shared secret |
-| Archive sealing | HPKE base mode from RFC 9180 instantiated with X-Wing as the KEM, fixed private-use KEM ID `0xFF01`, HKDF-SHA-256 (`0x0001`) and AES-256-GCM (`0x0002`). `0xFF01` is used only in HPKE's internal suite identifier; the wire suite name is `XWING-HKDF-SHA256-AES256GCM`, and the numeric ID is neither serialized nor negotiated. |
+| Archive KEM | `MLKEM768-X25519` from `draft-irtf-cfrg-concrete-hybrid-kems-04` as profiled by `draft-ietf-hpke-pq-05`: ML-KEM-768 plus X25519, 1216-byte public key, 1120-byte encapsulation, 32-byte private key, and 32-byte shared secret |
+| Archive sealing | HPKE base mode from `draft-ietf-hpke-hpke-03` and `draft-ietf-hpke-pq-05`, KEM ID `0x647a`, HKDF-SHA-256 (`0x0001`), and AES-256-GCM (`0x0002`). The wire suite name is `MLKEM768-X25519-HKDF-SHA256-AES256GCM`; the numeric identifiers are fixed inputs to HPKE's suite derivation and are not negotiated from message data. |
 | Password root | Argon2id from RFC 9106's second recommended option, version 19, 64 MiB memory, 3 iterations, parallelism 4, 16-byte random salt, 32-byte output |
 | Root and purpose derivation | HKDF-SHA-256 from RFC 5869 |
 | Local/root wrapping | AES-256-GCM with a fresh 96-bit nonce and the canonical context as additional authenticated data |
@@ -31,20 +31,23 @@ new protocol version and new fixtures.
 | Signatures | Ed25519 for account/device membership and message manifests; this is classical authentication and must not be described as PQ authentication |
 | Canonical form | RFC 8785 JSON Canonicalization Scheme (JCS), UTF-8, with all identifiers represented as lowercase canonical UUID strings and binary values represented as unpadded base64url |
 
-X-Wing supplies the reviewed classical/PQ KEM combiner. HPKE supplies the KEM,
-KDF, and AEAD composition. Hush Line does not concatenate independent shared
-secrets or define a new combiner. The X-Wing HPKE instantiation is nevertheless
-a Hush Line application profile and must be reviewed as part of this combined
-system before production use.
+The concrete-hybrid-KEM draft supplies the analyzed classical/PQ KEM combiner,
+and the PQ-HPKE draft defines its HPKE mapping and assigned code point. HPKE
+supplies the KEM/KDF/AEAD composition. Hush Line does not concatenate
+independent shared secrets, assign a private KEM identifier, or define a new
+combiner. These are works in progress, so the exact pinned revisions and this
+combined application profile require independent review before production use.
 
-The archive public key is an X-Wing public key for one account archive epoch.
-An archive copy is an HPKE `SealBase` operation over the complete message
-plaintext. `info` is the ASCII label `HushLine/HL-PQCHAT-1/archive-seal/v1`
-followed by a zero byte and the 32-byte SHA-256 digest of the copy context. The
-JCS copy-context bytes are HPKE additional authenticated data. The stored value
-is the 1120-byte X-Wing encapsulation followed by the HPKE ciphertext. Parsing
-must use the fixed encapsulation length; it must not accept an algorithm or
-length supplied by the record itself.
+The archive public key is an `MLKEM768-X25519` public key for one account
+archive epoch. An archive copy is an HPKE `SealBase` operation over the complete
+message plaintext. `info` is the ASCII label
+`HushLine/HL-PQCHAT-1/archive-seal/v1` followed by a zero byte and the 32-byte
+SHA-256 digest of the copy context. The JCS copy-context bytes are HPKE
+additional authenticated data. The stored value is the 1120-byte hybrid-KEM
+encapsulation followed by the HPKE ciphertext, including its 16-byte GCM tag.
+Parsing must use the fixed encapsulation length and reject stored values shorter
+than 1136 bytes; it must not accept an algorithm or length supplied by the
+record itself.
 
 ## Library boundary
 
@@ -89,7 +92,7 @@ record containing:
 - device signing and protocol identity public keys;
 - supported protocol and archive suite names;
 - signed-prekey and one-time-prekey ranges; and
-- current account archive epoch and X-Wing public key digest.
+- current account archive epoch and `MLKEM768-X25519` public key digest.
 
 Membership sequence numbers increase for enrollment, renewal, revocation, and
 archive-epoch changes. Membership expires after 30 days and is renewed during
@@ -153,9 +156,9 @@ created.
 
 ## Archive epochs and copy inventory
 
-An account archive epoch is an X-Wing keypair plus an unsigned 64-bit monotonic
-epoch number. A new epoch is created every 90 days, on password reset, on
-account-identity rotation, or when archive-key compromise is suspected. New
+An account archive epoch is an `MLKEM768-X25519` keypair plus an unsigned 64-bit
+monotonic epoch number. A new epoch is created every 90 days, on password reset,
+on account-identity rotation, or when archive-key compromise is suspected. New
 writes use only the highest active epoch. Old private keys remain wrapped only
 while authorized retained copies in that epoch exist; deletion of the last copy
 makes the wrapped private key eligible for deletion after the existing backup
@@ -179,8 +182,8 @@ The active-device inventory is fixed by the same membership snapshot used for
 encryption and validated by the server transaction. A device enrolled after
 commit recovers history through its account archive; it does not create a late
 ratchet copy. The sender and recipient archive ciphertexts must differ because
-their X-Wing keys and copy contexts differ. Offline queues and retries retain
-the exact applicable device transport bytes; they do not create another
+their hybrid archive keys and copy contexts differ. Offline queues and retries
+retain the exact applicable device transport bytes; they do not create another
 content encryption. Database replicas and backups retain exact already-hybrid
 ciphertext bytes. Notifications contain only generic activity metadata.
 Exports retain their existing scope and do not silently add plaintext chat.
@@ -212,7 +215,7 @@ The immutable copy context contains:
   "sender_account_id": "uuid",
   "sender_device_id": "uuid",
   "sender_membership_sequence": 12,
-  "suite": "SIGNAL-PQXDH3-KYBER1024-SPQR1|XWING-HKDF-SHA256-AES256GCM"
+  "suite": "SIGNAL-PQXDH3-KYBER1024-SPQR1|MLKEM768-X25519-HKDF-SHA256-AES256GCM"
 }
 ```
 
@@ -327,6 +330,7 @@ capability fails closed with no extra everyday prompt.
 | No complete classical/PQ prekey pair | Reject initial send as `PREKEY_DEPLETED`; no classical setup |
 | Suite/version/capability mismatch | Reject the whole operation; do not negotiate downward |
 | Missing, extra, duplicate, mixed-suite, or wrong-recipient copy | Reject the whole package and consume no prekey |
+| Archive copy shorter than its 1120-byte encapsulation plus 16-byte tag | Reject as `MALFORMED_WIRE` before decapsulation |
 | Context, ciphertext, transport-byte, archive-hash, or signature mismatch | Reject before plaintext release and retain no advanced state |
 | Replay or reordered package | Use protocol skipped-key bounds for legitimate reordering; reject a consumed message/prekey without state advance |
 | Local quota/storage failure before send | Publish nothing and retain old ratchet state |
@@ -349,7 +353,7 @@ password --Argon2id--> password wrap key --AES-GCM unwrap--> account root
 
 recipient signed membership --> verified PQXDH/SPQR + archive public keys
 plaintext --> ratchet encrypt -----------------------------> transport copies
-         `-> X-Wing HPKE SealBase per participant epoch ---> archive copies
+         `-> hybrid HPKE SealBase per participant epoch ---> archive copies
 all exact ciphertext hashes + contexts --> signed manifest --> atomic commit
 ```
 
@@ -381,7 +385,7 @@ never server-readable: plaintext, account root, archive private keys,
 ## Independent review disposition
 
 The cryptographic engineer and independent design reviewer fields remain empty
-in `g3-readiness.json`. Review must cover the combined ratchet, X-Wing HPKE
+in `g3-readiness.json`. Review must cover the combined ratchet, hybrid HPKE
 profile, signed context, root hierarchy, transaction protocol, migrations, and
 claim limits at one exact revision. Blocking findings must be resolved and the
 fixtures regenerated before this specification can be marked accepted or used
@@ -389,8 +393,9 @@ by production-dependent cryptographic implementation.
 
 ## Primary references
 
-- [RFC 9794: X-Wing hybrid KEM](https://www.rfc-editor.org/rfc/rfc9794.html)
-- [RFC 9180: Hybrid Public Key Encryption](https://www.rfc-editor.org/rfc/rfc9180.html)
+- [`draft-ietf-hpke-pq-05`: Post-Quantum and Hybrid Algorithms for HPKE](https://datatracker.ietf.org/doc/html/draft-ietf-hpke-pq-05)
+- [`draft-irtf-cfrg-concrete-hybrid-kems-04`: Concrete Hybrid PQ/T KEMs](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-concrete-hybrid-kems-04)
+- [`draft-ietf-hpke-hpke-03`: Hybrid Public Key Encryption](https://datatracker.ietf.org/doc/html/draft-ietf-hpke-hpke-03)
 - [RFC 9106: Argon2](https://www.rfc-editor.org/rfc/rfc9106.html)
 - [RFC 8785: JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785.html)
 - [Signal PQXDH revision 3](https://signal.org/docs/specifications/pqxdh/)

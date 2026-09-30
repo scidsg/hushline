@@ -29,8 +29,8 @@ implementation and independent-review subject:
 - online delivery is pinned to the G2 Signal PQXDH revision 3, round-3
   Kyber1024, and SPQR v1 candidate without calling Kyber FIPS 203 ML-KEM;
 - retained history is independently sealed for each participant archive epoch
-  with RFC 9794 X-Wing in an RFC 9180 HPKE base-mode profile using
-  HKDF-SHA-256 and AES-256-GCM;
+  with the `MLKEM768-X25519` construction from the pinned concrete-hybrid-KEM
+  and PQ-HPKE drafts, in HPKE base mode using HKDF-SHA-256 and AES-256-GCM;
 - RFC 8785 JCS contexts bind message, conversation, sender, account/device
   recipients, purpose, key/version/epoch, membership freshness, capabilities,
   suite, exact transport bytes, and archive ciphertext hashes;
@@ -45,22 +45,21 @@ implementation and independent-review subject:
 
 The [wire fixtures](g3-wire-fixtures.json) pin canonical bytes, hashes, copy
 order, idempotency input, and required mutation failures. Their ciphertext is
-explicitly opaque synthetic framing data. It is not a fabricated X-Wing,
+explicitly opaque synthetic framing data. It is not a fabricated hybrid-KEM,
 Signal, HPKE, or signature known-answer vector.
 
 ## Archive choice
 
-X-Wing is selected because its standardized construction supplies the
-classical/PQ combiner instead of asking Hush Line to invent one. HPKE supplies
-the KEM/KDF/AEAD composition and X-Wing seals a separate sender and recipient
-archive copy. No classical duplicate, server escrow, root-derived archive
-keypair, old ratchet snapshot, plaintext retry, or partial-copy commit is
-permitted.
+`MLKEM768-X25519` is selected because the pinned IETF drafts supply its
+analyzed classical/PQ combiner, HPKE mapping, and test vectors instead of asking
+Hush Line to invent them. HPKE seals a separate sender and recipient archive
+copy. No classical duplicate, server escrow, root-derived archive keypair, old
+ratchet snapshot, plaintext retry, or partial-copy commit is permitted.
 
-The exact X-Wing-as-HPKE application profile still requires combined-system
-cryptographic review. A fixed HPKE private-use KEM ID is confined to the HPKE
-suite derivation; the wire carries a textual suite name and never negotiates an
-unassigned IANA number.
+The exact pinned draft revisions and combined application profile still require
+cryptographic review. The drafts define HPKE KEM ID `0x647a`; it is fixed in the
+suite derivation rather than accepted from wire data. The wire carries the
+textual suite name and does not negotiate an algorithm identifier.
 
 ## Review and release disposition
 

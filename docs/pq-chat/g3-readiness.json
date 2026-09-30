@@ -48,7 +48,7 @@
   "suite": {
     "protocol": "HL-PQCHAT-1",
     "transport": "Signal PQXDH revision 3; round-3 Kyber1024 type 0x08; SPQR v1; libsignal 0.101.0 at b056faa6dd02961cff24064c54c089c52e1a0753",
-    "archive": "RFC 9794 X-Wing with RFC 9180 HPKE base mode, private-use KEM ID 0xFF01, HKDF-SHA-256, AES-256-GCM",
+    "archive": "draft-irtf-cfrg-concrete-hybrid-kems-04 MLKEM768-X25519 with draft-ietf-hpke-pq-05 and draft-ietf-hpke-hpke-03 HPKE base mode, KEM ID 0x647a, HKDF-SHA-256, AES-256-GCM",
     "password_root": "RFC 9106 Argon2id v19 second recommended option; m=65536 KiB, t=3, p=4, salt=16 bytes, output=32 bytes",
     "canonicalization": "RFC 8785 JCS UTF-8",
     "authentication": "Ed25519 classical signatures"

@@ -60,12 +60,13 @@ def test_g3_pins_transport_archive_password_and_canonical_suites() -> None:
     }
     assert "round-3 Kyber1024 type 0x08" in suite["transport"]
     assert "libsignal 0.101.0" in suite["transport"]
-    assert "RFC 9794 X-Wing" in suite["archive"]
-    assert "RFC 9180 HPKE base mode" in suite["archive"]
-    assert "private-use KEM ID 0xFF01" in suite["archive"]
+    assert "draft-irtf-cfrg-concrete-hybrid-kems-04 MLKEM768-X25519" in (suite["archive"])
+    assert "draft-ietf-hpke-pq-05" in suite["archive"]
+    assert "draft-ietf-hpke-hpke-03 HPKE base mode" in suite["archive"]
+    assert "KEM ID 0x647a" in suite["archive"]
     assert "m=65536 KiB, t=3, p=4" in suite["password_root"]
     assert suite["canonicalization"] == "RFC 8785 JCS UTF-8"
-    assert "Hush Line does not concatenate independent shared\nsecrets" in spec
+    assert "Hush Line does not concatenate\nindependent shared secrets" in spec
     assert "not labelled FIPS 203 ML-KEM" in spec
 
 
@@ -114,6 +115,14 @@ def test_g3_wire_fixture_pins_jcs_bytes_hashes_and_complete_copy_inventory() -> 
     copies = {item["id"]: item for item in fixture["copies"]}
 
     assert fixture["fixture_status"] == ("structural-only-not-a-cryptographic-known-answer-vector")
+    assert fixture["suite"] == {
+        "protocol": "HL-PQCHAT-1",
+        "transport": "SIGNAL-PQXDH3-KYBER1024-SPQR1",
+        "archive": "MLKEM768-X25519-HKDF-SHA256-AES256GCM",
+        "archive_kem_id": "0x647a",
+        "archive_kdf_id": "0x0001",
+        "archive_aead_id": "0x0002",
+    }
     assert set(contexts) == {
         "archive-sender",
         "archive-recipient",
@@ -127,6 +136,11 @@ def test_g3_wire_fixture_pins_jcs_bytes_hashes_and_complete_copy_inventory() -> 
     )
     assert contexts["archive-sender"]["value"]["recipient_membership_sequence"] == 12
     assert contexts["archive-recipient"]["value"]["recipient_membership_sequence"] == 18
+    assert fixture["archive_framing"] == {
+        "encapsulation_length": 1120,
+        "minimum_ciphertext_length": 1136,
+        "aead_tag_length": 16,
+    }
 
     for fixture_id, context in contexts.items():
         canonical = _jcs(context["value"])
@@ -136,6 +150,8 @@ def test_g3_wire_fixture_pins_jcs_bytes_hashes_and_complete_copy_inventory() -> 
         assert hashlib.sha256(canonical).hexdigest() == context["sha256"]
         assert len(ciphertext) == copies[fixture_id]["ciphertext_length"]
         assert hashlib.sha256(ciphertext).hexdigest() == copies[fixture_id]["ciphertext_sha256"]
+        if context["value"]["purpose"] == "archive":
+            assert len(ciphertext) >= fixture["archive_framing"]["minimum_ciphertext_length"]
 
     manifest_copies = fixture["manifest"]["value"]["copies"]
     assert [item["purpose"] for item in manifest_copies] == [
@@ -192,6 +208,7 @@ def test_g3_fixture_covers_tamper_downgrade_freshness_and_retry_failures() -> No
     assert mutations == {
         "ciphertext-bit-flip": "AUTHENTICATION_FAILED",
         "archive-purpose-to-transport": "AUTHENTICATION_FAILED",
+        "short-archive-ciphertext": "MALFORMED_WIRE",
         "recipient-substitution": "AUTHENTICATION_FAILED",
         "missing-archive-copy": "STATE_CONFLICT",
         "duplicate-copy": "STATE_CONFLICT",
