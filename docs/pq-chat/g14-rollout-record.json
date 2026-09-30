@@ -42,7 +42,7 @@
     {
       "gate": "G3",
       "issue": "scidsg/hushline#2398",
-      "observed_result": "blocked-prerequisites",
+      "observed_result": "proposed-for-independent-review",
       "satisfied": false,
       "evidence": "g3-readiness.json"
     },

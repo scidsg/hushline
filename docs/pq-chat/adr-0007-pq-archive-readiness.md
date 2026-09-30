@@ -22,9 +22,9 @@ Those behaviors depend on G4's accepted storage/API implementation and G6's
 accepted transactional browser-state implementation. The prerequisite
 artifacts are available on this branch, but both record blocked decisions. The
 archive construction itself was reserved for G3, whose artifact records that
-no design was selected or reviewed. The machine-readable
-[G8 readiness record](g8-readiness.json) pins those findings and inventories
-the implementation and review evidence that cannot safely be produced yet.
+the selected design had not yet been independently reviewed or accepted. The
+machine-readable [G8 readiness record](g8-readiness.json) pins those findings
+and inventories the implementation and review evidence G8 itself must produce.
 
 ## Dependency Finding
 
@@ -33,13 +33,12 @@ the implementation and review evidence that cannot safely be produced yet.
 | --- | --- | --- | --- |
 | G4 / `scidsg/hushline#2369` | Accepted versioned storage and APIs for authenticated account-archive copies, complete-copy transactions, authorization, retention, deletion, and migration | Commit `febe75caa6e7ad9ee1b1bedf786b0720f7767ad2`; [ADR-0003](adr-0003-server-storage-api-readiness.md) and [readiness record](g4-readiness.json) | **Unsatisfied:** G4 is blocked before implementation and records archive epochs/copies, authenticated envelopes, transaction boundaries, authorization, retention, and deletion as unspecified |
 | G6 / `scidsg/hushline#2371` | Accepted encrypted browser state and atomic send/receive boundaries coupling protocol state, ciphertext, replay state, and the required archive result | Commit `fe312ab3bef6ded364c115ec29b8c2c8f2dce60f`; [ADR-0005](adr-0005-transactional-browser-state-readiness.md) and [readiness record](g6-readiness.json) | **Unsatisfied:** G6 is blocked before implementation and records wrapping, archive transitions, fresh-browser recovery, durable retries, and failure behavior as unspecified |
-| G3 / `scidsg/hushline#2368` archive design | Accepted archive key hierarchy, hybrid construction, wrapping context, copy inventory, epoch lifecycle, recovery behavior, and compromise limits | Commit `9d7abd7a1ca83a64914cae6465e8ee4cf160132f`; [ADR-0002](adr-0002-complete-protocol-design-readiness.md) and [readiness record](g3-readiness.json) | **Unsatisfied:** G3 is blocked before design and explicitly produced no reviewed archive construction or complete-copy contract |
+| G3 / `scidsg/hushline#2368` archive design | Accepted archive key hierarchy, hybrid construction, wrapping context, copy inventory, epoch lifecycle, recovery behavior, and compromise limits | [ADR-0002](adr-0002-complete-protocol-design-readiness.md), [protocol design](protocol-design.md), [fixtures](g3-wire-fixtures.json), and [review record](g3-readiness.json) | **Unsatisfied for release:** the complete proposal exists, but its combined construction and complete-copy contract still require independent review and acceptance |
 
 A merged readiness artifact, issue ordering, or existing classical history flow
-is not proof that these gates passed. G8 cannot derive cryptographic algorithms,
-key sizes, KDF inputs, canonical envelope bytes, epoch rules, or copy
-cardinality from the outcome statement without deciding the design reserved
-for G3 and its human reviewers.
+is not proof that these gates passed. G8 must implement the exact G3 algorithms,
+key sizes, KDF inputs, canonical envelope bytes, epoch rules, and copy
+cardinality without treating pending review as production acceptance.
 
 ## Decision
 

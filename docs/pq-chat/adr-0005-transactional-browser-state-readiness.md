@@ -16,32 +16,32 @@ advance a session. Quota denial, storage loss, stale restores, crashes, reload,
 logout, and fresh-browser enrollment must fail safely without adding an
 everyday unlock step.
 
-Those behaviors depend on G3's accepted protocol, state-transition, archive,
-device-state, transaction, wrapping, and recovery contracts. The prerequisite
-artifact is available at commit
-`9d7abd7a1ca83a64914cae6465e8ee4cf160132f`, but it records G3 as blocked
-before design. The machine-readable
-[G6 readiness record](g6-readiness.json) pins that result and inventories the
-implementation and review evidence that cannot safely be produced yet.
+Those behaviors depend on G3's protocol, state-transition, archive,
+device-state, transaction, wrapping, and recovery contracts. G3 now supplies a
+proposed exact contract and structural fixtures. Its required independent
+reviews remain pending, but that pending release disposition does not prevent
+G6 development against the versioned proposal. The machine-readable
+[G6 readiness record](g6-readiness.json) inventories the implementation and
+review evidence that G6 itself still must produce.
 
 ## Dependency Finding
 
 <!-- prettier-ignore -->
 | Gate | Required input | Local evidence | Finding |
 | --- | --- | --- | --- |
-| G3 / `scidsg/hushline#2368` | Accepted combined protocol design with reviewed state transitions, archive, device state, transaction boundaries, wrapping, lifecycle, and recovery behavior | Commit `9d7abd7a1ca83a64914cae6465e8ee4cf160132f`; [ADR-0002](adr-0002-complete-protocol-design-readiness.md) and [readiness record](g3-readiness.json) | **Unsatisfied:** G3 is blocked by pending G1 approvals and the G2 no-go; its protocol, state transaction, archive, device-state, wrapping, and recovery deliverables remain pending |
+| G3 / `scidsg/hushline#2368` | Accepted combined protocol design with reviewed state transitions, archive, device state, transaction boundaries, wrapping, lifecycle, and recovery behavior | [ADR-0002](adr-0002-complete-protocol-design-readiness.md), [protocol design](protocol-design.md), [fixtures](g3-wire-fixtures.json), and [review record](g3-readiness.json) | **Development input available; release acceptance pending:** the exact state and recovery proposal exists, while both independent reviews remain pending |
 
 A merged readiness artifact or issue sequence is not proof that its decision
-gate passed. G6 cannot choose what state may be persisted, derive storage
-wrapping keys, or define valid send and receive transitions around an
-unselected protocol and absent state/recovery contract.
+gate passed. G6 must implement the specified state allowlist, wrapping labels,
+and send/receive transitions without treating pending review as acceptance.
 
 ## Decision
 
-G6 is blocked before implementation. Do not add an IndexedDB/session adapter,
-ratchet persistence, an outbox, receive-state transitions, cross-tab locks, or
-storage recovery behavior until G3 supplies its accepted exact contract. In
-particular, do not:
+G6 remains incomplete. Development may add the IndexedDB/session adapter,
+ratchet persistence, outbox, receive-state transitions, cross-tab locks, and
+storage recovery behavior against the exact versioned G3 proposal; production
+use still requires the G3 review disposition and G6 evidence. In particular,
+do not:
 
 - persist plaintext private/session state, persist unlocked secrets beyond the
   current authorized browser session, or create a server-readable session

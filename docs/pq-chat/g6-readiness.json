@@ -11,13 +11,13 @@
     "issue": "scidsg/hushline#2368",
     "artifact_commit": "9d7abd7a1ca83a64914cae6465e8ee4cf160132f",
     "required_result": "approved",
-    "observed_result": "blocked-prerequisites",
+    "observed_result": "proposed-for-independent-review",
     "satisfied": false,
     "evidence": [
       "adr-0002-complete-protocol-design-readiness.md",
       "g3-readiness.json"
     ],
-    "blocker": "G3 produced no accepted protocol, state-transition, archive, device-state, transaction, wrapping, lifecycle, or recovery contract."
+    "blocker": "G3 now supplies proposed state-transition, archive, device-state, transaction, wrapping, lifecycle, and recovery contracts, but the required independent reviews and acceptance remain pending."
   },
   "production_surfaces": [
     {

@@ -39,13 +39,13 @@
     "issue": "scidsg/hushline#2368",
     "artifact_commit": "9d7abd7a1ca83a64914cae6465e8ee4cf160132f",
     "required_result": "approved",
-    "observed_result": "blocked-prerequisites",
+    "observed_result": "proposed-for-independent-review",
     "satisfied": false,
     "evidence": [
       "adr-0002-complete-protocol-design-readiness.md",
       "g3-readiness.json"
     ],
-    "blocker": "G3 produced no accepted archive key hierarchy, hybrid construction, wrapping context, copy inventory, epoch lifecycle, recovery contract, or compromise analysis."
+    "blocker": "G3 now supplies a proposed archive key hierarchy, hybrid construction, wrapping context, copy inventory, epoch lifecycle, recovery contract, and compromise analysis, but the required independent reviews and acceptance remain pending."
   },
   "production_surfaces": [
     {

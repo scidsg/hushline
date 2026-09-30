@@ -13,11 +13,12 @@ The PQ chat discovery work is split into independently reviewable gates:
   [isolated synthetic browser prototype](../../prototypes/pq-ratchet/README.md)
   supplies an executable harness but no unexecuted result or missing human
   disposition is treated as evidence.
-- **G3:** the [complete-design readiness ADR](adr-0002-complete-protocol-design-readiness.md)
-  and [machine-readable readiness record](g3-readiness.json) preserve the
-  prerequisite blocker for `scidsg/hushline#2398` (which replaces delivery
-  scope from `scidsg/hushline#2368`) and inventory every deferred design and
-  review artifact.
+- **G3:** the [complete-design ADR](adr-0002-complete-protocol-design-readiness.md),
+  [implementable protocol](protocol-design.md), [wire fixtures](g3-wire-fixtures.json),
+  and [machine-readable review record](g3-readiness.json) provide the combined
+  development contract for `scidsg/hushline#2398` (which replaces delivery
+  scope from `scidsg/hushline#2368`). Independent cryptographic review and the
+  recorded G1/G2 release evidence remain pending.
 - **G4:** the [server-storage readiness ADR](adr-0003-server-storage-api-readiness.md)
   and [machine-readable readiness record](g4-readiness.json) preserve G3 as a
   hard prerequisite for `scidsg/hushline#2369` and inventory the schema, API,
@@ -87,38 +88,43 @@ Missing real-browser, reference-peer, reproducibility, vulnerability, and
 ownership evidence is recorded as missing rather than inferred from harness
 code or upstream claims.
 
-G3 is **blocked before design** at the exact G1 and G2 revisions merged for
-`scidsg/hushline#2396` and `scidsg/hushline#2397`: G1 remains pending human
-approval, while G2 records a no-go and an unexecuted prototype rather than a
-passing protocol candidate or reviewed suite. No combined protocol, archive,
-device-state, wire, or migration design is selected, and all reviewer
-dispositions remain pending.
+G3 is **proposed for independent cryptographic review**. `HL-PQCHAT-1` now pins
+the transport and archive suites, authenticated context, account/device/prekey
+lifecycle, password-root and browser storage hierarchy, archive epochs,
+complete-copy inventory, atomic state transitions, migration/rollback rules,
+failure behavior, data-flow diagrams, and executable structural wire fixtures.
+The fixtures do not claim fabricated cryptographic vectors. G1 acceptance, G2
+execution/reference-peer evidence, and both named G3 human reviews remain
+release gates rather than blockers to dependent development.
 
-G4 is **blocked before implementation** because G3 produced no reviewed schema
-or protocol contract. Production conversation models, migrations, lifecycle
-code, and message routes remain unchanged; in particular, no unreviewed
-classical fallback or incomplete device/archive-copy write path is introduced.
+G4's checked-in readiness packet remains **incomplete before implementation**,
+but G3 now supplies its development contract. G4 may implement against that
+versioned proposal while keeping review as a release gate. Production
+conversation models, migrations, lifecycle code, and message routes remain
+unchanged in the current packet.
 
 G5 is **blocked before implementation** because G4 produced no accepted device
 storage, authorization, authenticated-envelope, or transaction contract. No
 device or prekey records, endpoints, browser enrollment flow, or PQ chat claim
 is added; existing E2EE behavior remains unchanged.
 
-G6 is **blocked before implementation** because G3 produced no accepted
-protocol, state-transition, archive, device-state, or recovery contract. No
-ratchet state, IndexedDB adapter, durable outbox, cross-tab lock, or PQ chat
-claim is added; existing E2EE behavior remains unchanged.
+G6's checked-in readiness packet remains **incomplete before implementation**,
+but G3 now supplies its state-transition, archive, device-state, and recovery
+development contract. G6 may implement against that versioned proposal while
+keeping review as a release gate. The current packet adds no ratchet state,
+IndexedDB adapter, durable outbox, cross-tab lock, or PQ chat claim.
 
 G7 is **blocked before implementation** because G5 and G6 are both blocked and
 G2 still records a no-go for every reviewed browser protocol candidate. No
 protocol dependency, worker/adapter, handshake, ratchet integration, CSP
 change, or PQ chat claim is added; existing E2EE behavior remains unchanged.
 
-G8 is **blocked before implementation** because G4 and G6 are both blocked and
-G3 produced no accepted archive construction, key hierarchy, wrapping context,
-copy inventory, epoch lifecycle, or recovery contract. No archive key, copy,
-schema, browser recovery path, export change, or PQ chat claim is added;
-existing E2EE behavior remains unchanged.
+G8's checked-in readiness packet remains **incomplete before implementation**
+because G4 and G6 have not produced their code and evidence. G3 now supplies
+the archive construction, hierarchy, context, inventory, epoch, and recovery
+development contract while independent review remains a release gate. The
+current packet adds no archive key, copy, schema, recovery path, or export
+change.
 
 G9 is **blocked before implementation** because G7 and G8 are both blocked and
 there is no accepted protocol output, archive-copy construction, signed
