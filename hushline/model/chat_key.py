@@ -126,6 +126,163 @@ class ChatDevice(Model):
     revoked_at: Mapped[datetime | None] = mapped_column(db.DateTime(timezone=True))
 
     account: Mapped["ChatAccount"] = relationship(back_populates="devices")
+    signed_prekeys: Mapped[list["ChatSignedPrekey"]] = relationship(
+        back_populates="device", cascade="all, delete-orphan", passive_deletes=True
+    )
+    one_time_prekeys: Mapped[list["ChatOneTimePrekey"]] = relationship(
+        back_populates="device",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        foreign_keys="ChatOneTimePrekey.device_id",
+    )
+    prekey_claims: Mapped[list["ChatPrekeyClaim"]] = relationship(
+        foreign_keys="ChatPrekeyClaim.claimed_by_device_id",
+        back_populates="claimed_by_device",
+    )
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+
+class ChatSignedPrekey(Model):
+    """A device-authenticated classical/PQ signed-prekey pair."""
+
+    __tablename__ = "chat_signed_prekeys"
+    __table_args__ = (
+        UniqueConstraint("device_id", "key_id"),
+        Index("ix_chat_signed_prekeys_device_active", "device_id", "retired_at", "expires_at"),
+        CheckConstraint("key_id > 0", name="key_id"),
+        CheckConstraint("membership_sequence > 0", name="membership_sequence"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
+    device_id: Mapped[int] = mapped_column(
+        db.ForeignKey("chat_devices.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    key_id: Mapped[int] = mapped_column(db.BigInteger, nullable=False)
+    membership_sequence: Mapped[int] = mapped_column(db.BigInteger, nullable=False)
+    classical_public_key: Mapped[str] = mapped_column(db.Text, nullable=False)
+    classical_signature: Mapped[str] = mapped_column(db.Text, nullable=False)
+    pq_public_key: Mapped[str] = mapped_column(db.Text, nullable=False)
+    pq_signature: Mapped[str] = mapped_column(db.Text, nullable=False)
+    publication_sha256: Mapped[str] = mapped_column(db.String(64), nullable=False)
+    publication_signature: Mapped[str] = mapped_column(db.Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        db.DateTime(timezone=True), server_default=text("NOW()"), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(db.DateTime(timezone=True), nullable=False)
+    retired_at: Mapped[datetime | None] = mapped_column(db.DateTime(timezone=True))
+
+    device: Mapped["ChatDevice"] = relationship(back_populates="signed_prekeys")
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+
+class ChatOneTimePrekey(Model):
+    """An atomic classical/PQ one-time prekey pair and its bounded tombstone."""
+
+    __tablename__ = "chat_one_time_prekeys"
+    __table_args__ = (
+        UniqueConstraint("device_id", "key_id"),
+        Index(
+            "ix_chat_one_time_prekeys_claimable",
+            "device_id",
+            "consumed_at",
+            "expires_at",
+        ),
+        Index("ix_chat_one_time_prekeys_tombstone", "tombstone_expires_at"),
+        CheckConstraint("key_id > 0", name="key_id"),
+        CheckConstraint("membership_sequence > 0", name="membership_sequence"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
+    device_id: Mapped[int] = mapped_column(
+        db.ForeignKey("chat_devices.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    public_id: Mapped[str] = mapped_column(
+        db.String(36), nullable=False, unique=True, default=lambda: str(uuid4())
+    )
+    key_id: Mapped[int] = mapped_column(db.BigInteger, nullable=False)
+    membership_sequence: Mapped[int] = mapped_column(db.BigInteger, nullable=False)
+    classical_public_key: Mapped[str] = mapped_column(db.Text, nullable=False)
+    pq_public_key: Mapped[str] = mapped_column(db.Text, nullable=False)
+    pq_signature: Mapped[str] = mapped_column(db.Text, nullable=False)
+    publication_signature: Mapped[str] = mapped_column(db.Text, nullable=False)
+    published_at: Mapped[datetime] = mapped_column(
+        db.DateTime(timezone=True), server_default=text("NOW()"), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(db.DateTime(timezone=True), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(db.DateTime(timezone=True))
+    tombstone_expires_at: Mapped[datetime | None] = mapped_column(db.DateTime(timezone=True))
+
+    device: Mapped["ChatDevice"] = relationship(
+        back_populates="one_time_prekeys", foreign_keys=[device_id]
+    )
+    claims: Mapped[list["ChatPrekeyClaim"]] = relationship(
+        back_populates="prekey", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+
+class ChatPrekeyClaim(Model):
+    """A replay-stable reservation and bounded consumption tombstone."""
+
+    __tablename__ = "chat_prekey_claims"
+    __table_args__ = (
+        Index("ix_chat_prekey_claims_prekey_active", "prekey_id", "reservation_expires_at"),
+        Index("ix_chat_prekey_claims_tombstone", "tombstone_expires_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
+    claim_id: Mapped[str] = mapped_column(db.String(36), nullable=False, unique=True)
+    prekey_id: Mapped[int] = mapped_column(
+        db.ForeignKey("chat_one_time_prekeys.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    claimed_by_device_id: Mapped[int | None] = mapped_column(
+        db.ForeignKey("chat_devices.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        db.DateTime(timezone=True), server_default=text("NOW()"), nullable=False
+    )
+    reservation_expires_at: Mapped[datetime] = mapped_column(
+        db.DateTime(timezone=True), nullable=False
+    )
+    consumed_at: Mapped[datetime | None] = mapped_column(db.DateTime(timezone=True))
+    tombstone_expires_at: Mapped[datetime] = mapped_column(
+        db.DateTime(timezone=True), nullable=False
+    )
+
+    prekey: Mapped["ChatOneTimePrekey"] = relationship(back_populates="claims")
+    claimed_by_device: Mapped["ChatDevice | None"] = relationship(
+        foreign_keys=[claimed_by_device_id], back_populates="prekey_claims"
+    )
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+
+class ChatPqRateLimitAttempt(Model):
+    """A privacy-minimized rate-limit event for PQ device operations."""
+
+    __tablename__ = "chat_pq_rate_limit_attempts"
+    __table_args__ = (
+        Index("ix_chat_pq_rate_limit_user_action_created", "user_id", "action", "created_at"),
+        Index("ix_chat_pq_rate_limit_created", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, nullable=False, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    action: Mapped[str] = mapped_column(db.String(32), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        db.DateTime(timezone=True), server_default=text("NOW()"), nullable=False
+    )
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)

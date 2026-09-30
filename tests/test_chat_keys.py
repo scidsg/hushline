@@ -591,6 +591,12 @@ def test_chat_key_lifecycle_js_exposes_unlock_rewrap_and_cleanup() -> None:
     assert "window.HushLineChatKeys" in lifecycle_js
     assert "unlockFromPassword" in lifecycle_source
     assert "ensureChatKeyUnlockedAfterAuth" in lifecycle_source
+    assert "ensurePqDeviceEnrollment" in lifecycle_source
+    assert "HushLinePqProtocol" in lifecycle_source
+    assert '"/api/pq/account"' in lifecycle_source
+    assert "hushline:pq-device-state" in lifecycle_source
+    assert "verifyPqMembership" in lifecycle_source
+    assert "verifyPqPrekeyClaim" in lifecycle_source
     assert "provisionChatKey" in lifecycle_source
     assert "createChatKeyPayload" in lifecycle_source
     assert "pendingLoginPassword" in lifecycle_source

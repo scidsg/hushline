@@ -22,6 +22,7 @@ from hushline.routes.inbox import register_inbox_routes
 from hushline.routes.index import register_index_routes
 from hushline.routes.message import register_message_routes
 from hushline.routes.onboarding import register_onboarding_routes
+from hushline.routes.pq_device import register_pq_device_routes
 from hushline.routes.profile import register_profile_routes
 from hushline.routes.vision import register_vision_routes
 
@@ -34,6 +35,7 @@ def init_app(app: Flask) -> None:
     register_index_routes(app)
     register_inbox_routes(app)
     register_profile_routes(app)
+    register_pq_device_routes(app)
     register_message_routes(app)
     register_onboarding_routes(app)
     register_directory_routes(app)

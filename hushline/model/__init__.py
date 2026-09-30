@@ -2,7 +2,16 @@
 
 from hushline.model.admin_broadcast import AdminBroadcast, AdminBroadcastRecipient
 from hushline.model.authentication_log import AuthenticationLog
-from hushline.model.chat_key import ChatAccount, ChatArchiveEpoch, ChatDevice, ChatKey
+from hushline.model.chat_key import (
+    ChatAccount,
+    ChatArchiveEpoch,
+    ChatDevice,
+    ChatKey,
+    ChatOneTimePrekey,
+    ChatPqRateLimitAttempt,
+    ChatPrekeyClaim,
+    ChatSignedPrekey,
+)
 from hushline.model.chat_rate_limit_attempt import ChatRateLimitAttempt
 from hushline.model.conversation import (
     Conversation,
