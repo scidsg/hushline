@@ -180,6 +180,8 @@ def test_settings_encryption_explains_automatic_chat_key_creation(client: FlaskC
     assert "Create Chat Key" not in response.text
     assert 'name="chat_key_password"' not in response.text
     assert url_for("static", filename="js/pq-browser-state.js") in response.text
+    assert url_for("static", filename="js/pq-protocol.js") in response.text
+    assert url_for("static", filename="js/pq-protocol-worker.js") in response.text
     assert url_for("static", filename="js/chat-key-lifecycle.js") in response.text
 
 
