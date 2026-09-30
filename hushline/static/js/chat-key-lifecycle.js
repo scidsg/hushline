@@ -1092,7 +1092,12 @@
 
   async function ensurePqDeviceEnrollment(chatKey, sourceDocument = document) {
     const provider = window.HushLinePqProtocol;
-    if (!provider?.prepareDeviceEnrollment || !unlockedChatSigningPrivateKey) {
+    const browserState = window.HushLinePqBrowserState;
+    if (
+      !provider?.prepareDeviceEnrollment ||
+      !browserState?.create ||
+      !unlockedChatSigningPrivateKey
+    ) {
       announcePqDeviceState("unavailable");
       return false;
     }
@@ -1105,6 +1110,7 @@
       );
       const prepared = await provider.prepareDeviceEnrollment({
         account,
+        browserState,
         canonicalStringify,
         chatKey,
         chatKeySessionId: chatKeySessionId(sourceDocument),
@@ -1279,6 +1285,7 @@
   }
 
   function clearChatKeyMaterial() {
+    void window.HushLinePqBrowserState?.clearAll?.();
     const hadUnlockedKey = Boolean(
       unlockedChatPrivateKey ||
         unlockedChatSigningPrivateKey ||

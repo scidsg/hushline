@@ -62,8 +62,8 @@
     },
     {
       "gate": "G6",
-      "issue": "scidsg/hushline#2371",
-      "observed_result": "blocked-prerequisite",
+      "issue": "scidsg/hushline#2401",
+      "observed_result": "implemented-awaiting-integration-review",
       "satisfied": false,
       "evidence": "g6-readiness.json"
     },

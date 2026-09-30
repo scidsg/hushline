@@ -155,6 +155,7 @@
       href="{{ url_for('static', filename='css/style.css') }}"
     />
     <script src="{{ url_for('static', filename='no-js.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/pq-browser-state.js') }}"></script>
     {% block scripts %}{% endblock %}
     <script defer src="{{ url_for('static', filename='js/chat-key-lifecycle.js') }}"></script>
     <script defer src="{{ url_for('static', filename='js/time-shadows.js') }}"></script>

@@ -66,6 +66,7 @@ def test_csp_form_action_omits_stripe_redirect_hosts_when_premium_disabled(
 def test_csp_script_src_elem_disallows_inline_scripts(client: FlaskClient) -> None:
     response = client.get(url_for("directory"), follow_redirects=True)
     assert response.status_code == 200
+    assert url_for("static", filename="js/pq-browser-state.js") in response.text
     directives = _csp_directives(response.headers)
     assert directives["script-src"] == "'self'"
     assert directives["script-src-elem"] == "'self'"

@@ -113,3 +113,17 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Test compiled PQC browser encryption under CSP
         run: npm run playwright:e2ee -- pqc.spec.js
+
+  pq-browser-state:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - name: Test encrypted transactional browser state
+        run: npm run playwright:pq-state

@@ -21,6 +21,7 @@ modules = [
   "onboarding",
   "premium",
   "premium-waiting",
+  "pq-browser-state",
   "service-worker",
   "settings-fields",
   "settings-location",

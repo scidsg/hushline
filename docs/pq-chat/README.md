@@ -108,20 +108,24 @@ storage, authorization, authenticated-envelope, or transaction contract. No
 device or prekey records, endpoints, browser enrollment flow, or PQ chat claim
 is added; existing E2EE behavior remains unchanged.
 
-G6's checked-in readiness packet remains **incomplete before implementation**,
-but G3 now supplies its state-transition, archive, device-state, and recovery
-development contract. G6 may implement against that versioned proposal while
-keeping review as a release gate. The current packet adds no ratchet state,
-IndexedDB adapter, durable outbox, cross-tab lock, or PQ chat claim.
+G6 is **implemented for integration with independent review pending**. The
+browser adapter provides encrypted device-scoped IndexedDB records, fenced
+cross-context ownership, atomic pending-send/outbox and receive/replay
+transactions, exact-byte retry, durable outgoing deduplication, bounded state,
+and fail-closed cleanup and recovery behavior. It does not independently
+enable a PQ writer or make a PQ chat product claim; protocol-worker integration
+and release evidence remain pending.
 
-G7 is **blocked before implementation** because G5 and G6 are both blocked and
-G2 still records a no-go for every reviewed browser protocol candidate. No
-protocol dependency, worker/adapter, handshake, ratchet integration, CSP
-change, or PQ chat claim is added; existing E2EE behavior remains unchanged.
+G7 is **blocked before implementation** because G5 remains blocked, G6 awaits
+integration review, and G2 still records a no-go for every reviewed browser
+protocol candidate. No protocol dependency, worker/adapter, handshake, ratchet
+integration, CSP change, or PQ chat claim is added; existing E2EE behavior
+remains unchanged.
 
 G8's checked-in readiness packet remains **incomplete before implementation**
-because G4 and G6 have not produced their code and evidence. G3 now supplies
-the archive construction, hierarchy, context, inventory, epoch, and recovery
+because G4 and the G6 archive-worker integration have not produced their full
+evidence. G3 now supplies the archive construction, hierarchy, context,
+inventory, epoch, and recovery
 development contract while independent review remains a release gate. The
 current packet adds no archive key, copy, schema, recovery path, or export
 change.
