@@ -5,7 +5,7 @@ from flask.testing import FlaskClient
 from pytest_mock import MockFixture
 
 from hushline.db import db
-from hushline.model import User
+from hushline.model import User, WebAuthnCredential
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -24,7 +24,7 @@ def test_toggle_2fa_redirects_to_disable_when_already_configured(
 
     response = client.post(url_for("settings.toggle_2fa"), follow_redirects=False)
     assert response.status_code == 302
-    assert response.headers["Location"].endswith(url_for("settings.disable_2fa"))
+    assert response.headers["Location"].endswith(url_for("settings.confirm_disable_2fa"))
 
 
 def test_toggle_2fa_redirects_to_login_without_user_id(client: FlaskClient) -> None:
@@ -39,15 +39,17 @@ def test_toggle_2fa_redirects_to_login_without_user_id(client: FlaskClient) -> N
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-def test_disable_2fa_clears_secret(client: FlaskClient, user: User) -> None:
+def test_disable_2fa_requires_strong_factor_policy_confirmation(
+    client: FlaskClient, user: User
+) -> None:
     user.totp_secret = pyotp.random_base32()
     db.session.commit()
 
     response = client.post(url_for("settings.disable_2fa"), follow_redirects=False)
     assert response.status_code == 302
-    assert response.headers["Location"].endswith(url_for("settings.auth"))
+    assert response.headers["Location"].endswith(url_for("settings.security_keys"))
     db.session.refresh(user)
-    assert user.totp_secret is None
+    assert user.totp_secret is not None
 
 
 def test_disable_2fa_redirects_to_login_without_user_id(client: FlaskClient) -> None:
@@ -65,7 +67,33 @@ def test_disable_2fa_redirects_to_login_without_user_id(client: FlaskClient) -> 
 def test_confirm_disable_2fa_page_loads(client: FlaskClient) -> None:
     response = client.get(url_for("settings.confirm_disable_2fa"), follow_redirects=True)
     assert response.status_code == 200
-    assert "Are you sure" in response.text
+    assert "requires your current password and an enrolled second factor" in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_enable_totp_requires_existing_security_key_reauthentication(
+    client: FlaskClient, user: User
+) -> None:
+    db.session.add(
+        WebAuthnCredential(
+            user_id=user.id,
+            credential_id=b"existing-key-before-totp",
+            public_key=b"existing-key-public-key",
+            algorithm=-7,
+            sign_count=0,
+            transports=[],
+            device_type="single_device",
+            backed_up=False,
+            name="Existing key",
+        )
+    )
+    db.session.commit()
+    response = client.get(url_for("settings.enable_2fa"), follow_redirects=False)
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("settings.security_keys"))
+    db.session.refresh(user)
+    assert user.totp_secret is None
 
 
 @pytest.mark.usefixtures("_authenticated_user")

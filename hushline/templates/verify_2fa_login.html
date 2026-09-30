@@ -1,19 +1,78 @@
 {% extends "base.html" %}
-{% block title %}Enter 2FA Code{% endblock %}
+{% block title %}
+  {% if allow_totp %}Enter 2FA Code{% elif allow_security_key %}Use Security Key{% else %}Use Recovery Code{% endif %}
+{% endblock %}
+
+{% block scripts %}
+  {% if allow_security_key %}
+    <script defer src="{{ url_for('static', filename='js/security-key-login.js') }}"></script>
+  {% endif %}
+{% endblock %}
 
 {% block content %}
-  <h2>Enter your 2FA Code</h2>
-  <p>🔑 Enter the six-digit code from your authenticator app.</p>
-  <form method="POST" action="{{ url_for('verify_2fa_login') }}">
-    {{ form.hidden_tag() }}
-    <div>
-      {{ form.verification_code.label }}
-      {{ form.verification_code(size=6) }}
-      {% if form.verification_code.errors %}
-        <div class="error">{{ form.verification_code.errors[0] }}</div>
-      {% endif %}
+  {% if allow_totp %}
+    <h2>Enter your 2FA Code</h2>
+    <p>🔑 Enter the six-digit code from your authenticator app.</p>
+    <form method="POST" action="{{ url_for('verify_2fa_login') }}">
+      {{ form.hidden_tag() }}
+      <div>
+        {{ form.verification_code.label }}
+        {{ form.verification_code(size=6) }}
+        {% if form.verification_code.errors %}
+          <div class="error">{{ form.verification_code.errors[0] }}</div>
+        {% endif %}
+      </div>
+      <button type="submit">Verify</button>
+    </form>
+  {% endif %}
+
+  {% if allow_security_key %}
+    {% if allow_totp %}
+      <h3>Or use a security key</h3>
+    {% else %}
+      <h2>Use your security key</h2>
+    {% endif %}
+    <p>Insert or tap your security key, then follow your browser's instructions.</p>
+    <div
+      id="security-key-login"
+      data-options-url="{{ url_for('security_key_login_options') }}"
+      data-verify-url="{{ url_for('verify_security_key_login') }}"
+    >
+      <button type="button" id="security-key-login-button">Verify Security Key</button>
+      <p
+        id="security-key-login-status"
+        class="meta"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      ></p>
     </div>
-    <button type="submit">Verify</button>
-    <p><a href="{{ url_for('logout') }}">Cancel</a></p>
-  </form>
+  {% endif %}
+
+  {% if allow_recovery_code %}
+    <h3>Use a recovery code</h3>
+    <p>Each recovery code works once. Using one does not recover encrypted message history.</p>
+    <form method="POST" action="{{ url_for('verify_recovery_code_login') }}">
+      {{ recovery_code_form.hidden_tag() }}
+      <div>
+        {{ recovery_code_form.recovery_code.label }}
+        {{ recovery_code_form.recovery_code(autocomplete='one-time-code', spellcheck='false') }}
+        {% if recovery_code_form.recovery_code.errors %}
+          <div class="error">{{ recovery_code_form.recovery_code.errors[0] }}</div>
+        {% endif %}
+      </div>
+      <button type="submit">Verify Recovery Code</button>
+    </form>
+  {% endif %}
+
+  <details>
+    <summary>Lost access to all authentication factors?</summary>
+    <p>
+      Try a separately stored backup security key, an authenticator app you deliberately
+      enrolled, or an unused recovery code. Hush Line support and administrators cannot bypass
+      these factors or recover encrypted message history.
+    </p>
+  </details>
+
+  <p><a href="{{ url_for('login') }}">Cancel</a></p>
 {% endblock %}

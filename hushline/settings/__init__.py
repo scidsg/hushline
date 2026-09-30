@@ -50,6 +50,7 @@ from hushline.settings.profile import register_profile_routes
 from hushline.settings.proton import register_proton_routes
 from hushline.settings.registration import register_registration_routes
 from hushline.settings.replies import register_replies_routes
+from hushline.settings.security_keys import register_security_key_routes
 from hushline.settings.twofa import register_2fa_routes
 
 
@@ -74,5 +75,6 @@ def create_blueprint() -> Blueprint:
     register_proton_routes(bp)
     register_replies_routes(bp)
     register_registration_routes(bp)
+    register_security_key_routes(bp)
 
     return bp

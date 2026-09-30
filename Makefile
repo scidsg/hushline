@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 
 ifndef IS_DOCKER
-CMD := docker compose run --rm app
+CMD := docker compose run --build --rm app
 else
 CMD :=
 endif

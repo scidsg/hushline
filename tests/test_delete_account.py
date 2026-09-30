@@ -15,6 +15,7 @@ from hushline.model import (
     StripeSubscriptionStatusEnum,
     Tier,
     User,
+    WebAuthnCredential,
 )
 from hushline.user_deletion import (
     _invoice_id_from_stripe_event_data,
@@ -222,6 +223,18 @@ def test_redaction_preserves_unprocessed_stripe_events(user: User) -> None:
 @pytest.mark.usefixtures("_authenticated_user")
 def test_delete_account(client: FlaskClient, user: User) -> None:
     user.email = "primary@example.com"
+    credential = WebAuthnCredential(
+        user_id=user.id,
+        credential_id=b"deleted-account-key",
+        public_key=b"deleted-account-public-key",
+        algorithm=-7,
+        sign_count=0,
+        transports=[],
+        device_type="single_device",
+        backed_up=False,
+        name="Deleted account key",
+    )
+    db.session.add(credential)
     db.session.commit()
 
     # Make sure the user is there
@@ -235,6 +248,7 @@ def test_delete_account(client: FlaskClient, user: User) -> None:
     # Make sure the user is deleted
     user_count = db.session.query(User).filter_by(id=user.id).count()
     assert user_count == 0
+    assert db.session.get(WebAuthnCredential, credential.id) is None
 
 
 @pytest.mark.usefixtures("_authenticated_user")

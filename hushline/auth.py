@@ -1,18 +1,28 @@
 import secrets
+import time
+from datetime import datetime
 from functools import wraps
 from hmac import compare_digest
 from typing import Any, Callable
 from urllib.parse import unquote, urlsplit
 
+import pyotp
 from flask import abort, current_app, flash, redirect, request, session, url_for
 
 from hushline.db import db
-from hushline.model import User
+from hushline.model import AuthenticationLog, User
 
 PENDING_PASSWORD_REHASH_SESSION_KEY = "pending_password_rehash"  # noqa: S105
 PENDING_PASSWORD_REHASH_SOURCE_DIGEST_SESSION_KEY = "pending_password_rehash_source_digest"  # noqa: S105
+PENDING_LOGIN_CHAT_KEY_SESSION_KEY = "pending_login_chat_key_payload"
+PENDING_MFA_METHODS_SESSION_KEY = "pending_mfa_methods"
 POST_AUTH_REDIRECT_SESSION_KEY = "post_auth_redirect"
 CHAT_KEY_SESSION_ID_SESSION_KEY = "chat_key_session_id"
+WEBAUTHN_SESSION_BINDING_KEY = "webauthn_session_binding"
+WEBAUTHN_ENROLLMENT_AUTHORIZATION_SESSION_KEY = "webauthn_enrollment_authorization"
+WEBAUTHN_PASSWORD_CONFIRMATION_SESSION_KEY = "webauthn_password_confirmation"  # noqa: S105
+RECOVERY_CODES_PENDING_ACK_SESSION_KEY = "recovery_codes_pending_ack"
+STRONG_AUTHENTICATION_SESSION_KEY = "strong_authentication"
 ASCII_CONTROL_MAX = 31
 ASCII_DELETE = 127
 AUTH_SESSION_KEYS = (
@@ -24,6 +34,13 @@ AUTH_SESSION_KEYS = (
     POST_AUTH_REDIRECT_SESSION_KEY,
     PENDING_PASSWORD_REHASH_SESSION_KEY,
     PENDING_PASSWORD_REHASH_SOURCE_DIGEST_SESSION_KEY,
+    PENDING_LOGIN_CHAT_KEY_SESSION_KEY,
+    PENDING_MFA_METHODS_SESSION_KEY,
+    WEBAUTHN_SESSION_BINDING_KEY,
+    WEBAUTHN_ENROLLMENT_AUTHORIZATION_SESSION_KEY,
+    WEBAUTHN_PASSWORD_CONFIRMATION_SESSION_KEY,
+    RECOVERY_CODES_PENDING_ACK_SESSION_KEY,
+    STRONG_AUTHENTICATION_SESSION_KEY,
 )
 
 
@@ -42,6 +59,44 @@ def rotate_chat_key_session_id() -> str:
     return str(session[CHAT_KEY_SESSION_ID_SESSION_KEY])
 
 
+def record_strong_authentication(*, user: User, method: str) -> None:
+    session[STRONG_AUTHENTICATION_SESSION_KEY] = {
+        "authenticated_at": int(time.time()),
+        "method": method,
+        "session_id": user.session_id,
+        "user_id": user.id,
+    }
+
+
+def matching_totp_timecode(*, totp: pyotp.TOTP, code: str, now: datetime) -> int | None:
+    """Return the counter that produced a code in the accepted clock-skew window."""
+    current_timecode = totp.timecode(now)
+    matched_timecode = None
+    for offset in range(-1, 2):
+        candidate_timecode = current_timecode + offset
+        if compare_digest(totp.generate_otp(candidate_timecode), code):
+            matched_timecode = candidate_timecode
+    return matched_timecode
+
+
+def totp_code_was_used(*, user_id: int, code: str, timecode: int) -> bool:
+    """Serialize and detect successful use of a TOTP code in its time step."""
+    db.session.scalar(db.select(User.id).where(User.id == user_id).with_for_update())
+    return (
+        db.session.scalar(
+            db.select(AuthenticationLog.id)
+            .where(
+                AuthenticationLog.user_id == user_id,
+                AuthenticationLog.successful.is_(True),
+                AuthenticationLog.otp_code == code,
+                AuthenticationLog.timecode == timecode,
+            )
+            .limit(1)
+        )
+        is not None
+    )
+
+
 def set_session_user(*, user: User, username: str, is_authenticated: bool) -> None:
     session.permanent = True
     session["user_id"] = user.id
@@ -52,6 +107,7 @@ def set_session_user(*, user: User, username: str, is_authenticated: bool) -> No
         rotate_chat_key_session_id()
     else:
         session.pop(CHAT_KEY_SESSION_ID_SESSION_KEY, None)
+        session.pop(STRONG_AUTHENTICATION_SESSION_KEY, None)
 
 
 def _is_safe_post_auth_redirect_target(redirect_target: str | None) -> bool:

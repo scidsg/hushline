@@ -25,3 +25,9 @@ Set one of these in deployed environments:
 - `SERVER_NAME=your-public-hostname`
 
 `PUBLIC_BASE_URL` is preferred for user-visible or third-party callback URLs because it pins both scheme and host. If neither value is set, production requests that need canonical external URLs will now fail closed instead of deriving the host from request headers.
+
+WebAuthn ceremonies require both `WEBAUTHN_RP_ID` and `WEBAUTHN_ORIGIN`. The RP ID is a hostname without a scheme or port; the origin is an exact origin such as `https://tips.example.org`. They are validated together and are never inferred from `Host`, `Forwarded`, or other proxy-controlled request headers. `WEBAUTHN_RP_NAME` defaults to `Hush Line`. Changing the RP ID or origin makes credentials enrolled under the old trust scope unusable. A clearnet origin and an onion origin are separate scopes and require separate deployment configuration and enrollment.
+
+New enrollment is denied by default. `WEBAUTHN_ENROLLMENT_ENABLED=true` enables the enrollment code path only for the population in `WEBAUTHN_ENROLLMENT_USER_IDS`: use comma-separated positive database user IDs for a reviewed cohort or `*` only for an approved all-user rollout. Missing or empty population configuration enables nobody. Setting `WEBAUTHN_ENROLLMENT_ENABLED=false` is the kill switch; it does not disable login, recovery, or management for already-enrolled credentials. Never put usernames, email addresses, credential IDs, or key material in the population value.
+
+See the [security-key rollout runbook](WEBAUTHN-ROLLOUT.md) before enabling enrollment and the [WebAuthn verifier and privacy review](WEBAUTHN-SECURITY.md) for dependency, attestation, and authenticator-identity limitations.

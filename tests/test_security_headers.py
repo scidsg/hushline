@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -6,6 +7,7 @@ from flask.testing import FlaskClient
 from werkzeug.datastructures import Headers
 
 from hushline import PERMISSIONS_POLICY
+from hushline.config import WEBAUTHN_ENROLLMENT_ENABLED
 from hushline.db import db
 from hushline.model import (
     Conversation,
@@ -13,6 +15,7 @@ from hushline.model import (
     OrganizationSetting,
     StripeSubscriptionStatusEnum,
     User,
+    WebAuthnCredential,
 )
 
 
@@ -141,6 +144,58 @@ def test_settings_profile_keeps_frame_restrictions(client: FlaskClient) -> None:
     assert "https://cdn.jsdelivr.net" not in csp
     assert "'wasm-unsafe-eval'" not in csp
     assert response.headers["X-Frame-Options"] == "DENY"
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_security_key_settings_keeps_csp_enforced(app: Flask, client: FlaskClient) -> None:
+    enabled_response = client.get(url_for("settings.security_keys"))
+    app.config[WEBAUTHN_ENROLLMENT_ENABLED] = False
+    paused_response = client.get(url_for("settings.security_keys"))
+
+    assert "New security key enrollment is currently paused" in paused_response.text
+    for response in (enabled_response, paused_response):
+        assert response.status_code == 200
+        directives = _csp_directives(response.headers)
+        assert directives["script-src"] == "'self'"
+        assert directives["script-src-elem"] == "'self'"
+        assert directives["connect-src"] == "'self' data:"
+        assert "'unsafe-inline'" not in directives["script-src"]
+        assert "https://" not in directives["script-src"]
+
+
+def test_security_key_login_keeps_csp_enforced(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    login_page = client.get(url_for("login"))
+    db.session.add(
+        WebAuthnCredential(
+            user_id=user.id,
+            credential_id=b"csp-login-key",
+            public_key=b"public-key",
+            algorithm=-7,
+            sign_count=0,
+            transports=["usb"],
+            device_type="single_device",
+            backed_up=False,
+            created_at=datetime.now(UTC),
+        )
+    )
+    db.session.commit()
+    client.post(
+        url_for("login"),
+        data={"username": user.primary_username.username, "password": user_password},
+    )
+
+    response = client.get(url_for("verify_2fa_login"))
+
+    for response in (login_page, response):
+        assert response.status_code == 200
+        assert url_for("static", filename="js/security-key-login.js") in response.text
+        directives = _csp_directives(response.headers)
+        assert directives["script-src"] == "'self'"
+        assert directives["script-src-elem"] == "'self'"
+        assert directives["connect-src"] == "'self' data:"
+        assert "'unsafe-inline'" not in directives["script-src"]
 
 
 @pytest.mark.usefixtures("_authenticated_admin")

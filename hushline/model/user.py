@@ -32,7 +32,9 @@ if TYPE_CHECKING:
     from hushline.model.message import Message
     from hushline.model.notification_recipient import NotificationRecipient
     from hushline.model.password_reset_token import PasswordResetToken
+    from hushline.model.recovery_code import RecoveryCodeBatch
     from hushline.model.username import Username
+    from hushline.model.webauthn import WebAuthnChallenge, WebAuthnCredential, WebAuthnUserHandle
 else:
     Model = db.Model
 
@@ -91,6 +93,25 @@ class User(Model):
         back_populates="user",
         cascade="all, delete-orphan",
         order_by="PasswordResetToken.id.desc()",
+    )
+    recovery_code_batches: Mapped[list["RecoveryCodeBatch"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        order_by="RecoveryCodeBatch.id.desc()",
+    )
+    webauthn_user_handle: Mapped["WebAuthnUserHandle | None"] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+    webauthn_credentials: Mapped[list["WebAuthnCredential"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        order_by="WebAuthnCredential.id.asc()",
+    )
+    webauthn_challenges: Mapped[list["WebAuthnChallenge"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
     )
     conversation_participants: Mapped[list["ConversationParticipant"]] = relationship(
         back_populates="user",

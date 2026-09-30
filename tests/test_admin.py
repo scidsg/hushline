@@ -21,6 +21,7 @@ from hushline.model import (
     Tier,
     User,
     Username,
+    WebAuthnCredential,
 )
 
 
@@ -114,18 +115,31 @@ def test_metrics_settings_shows_admin_highlights(
 ) -> None:
     admin_user.totp_secret = "123456"
     user.pgp_key = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nkey\n-----END PGP PUBLIC KEY BLOCK-----"
-    db.session.add(
-        ChatKey(
-            user_id=user.id,
-            key_version=1,
-            public_key="public-chat-key",
-            public_signing_key="public-signing-key",
-            encrypted_private_key="wrapped-private-chat-key",
-            kdf_algorithm="PBKDF2-SHA-256",
-            kdf_params={"iterations": 310000, "hash": "SHA-256"},
-            kdf_salt="salt",
-            wrapping_algorithm="AES-GCM",
-        )
+    db.session.add_all(
+        [
+            ChatKey(
+                user_id=user.id,
+                key_version=1,
+                public_key="public-chat-key",
+                public_signing_key="public-signing-key",
+                encrypted_private_key="wrapped-private-chat-key",
+                kdf_algorithm="PBKDF2-SHA-256",
+                kdf_params={"iterations": 310000, "hash": "SHA-256"},
+                kdf_salt="salt",
+                wrapping_algorithm="AES-GCM",
+            ),
+            WebAuthnCredential(
+                user_id=user.id,
+                credential_id=b"metrics-security-key",
+                public_key=b"metrics-public-key",
+                algorithm=-7,
+                sign_count=0,
+                transports=[],
+                device_type="single_device",
+                backed_up=False,
+                name="Metrics key",
+            ),
+        ]
     )
     db.session.commit()
 
@@ -140,9 +154,13 @@ def test_metrics_settings_shows_admin_highlights(
     assert highlights is not None
     metrics_text = " ".join(highlights.get_text(" ", strip=True).split())
     assert "Users 2" in metrics_text
-    assert "2FA Enabled 1 50.0%" in metrics_text
+    assert "MFA Enabled 2 100.0%" in metrics_text
     assert "PGP Enabled 1 50.0%" in metrics_text
     assert "Chat Keys Created 1 50.0%" in metrics_text
+    assert "Security Key Users 1 50.0%" in metrics_text
+    assert "Active Security Keys 1" in metrics_text
+    assert "Metrics key" not in response.text
+    assert "metrics-security-key" not in response.text
 
 
 def _create_admin_list_user(username: str, display_name: str | None = None) -> User:

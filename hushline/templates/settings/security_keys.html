@@ -1,0 +1,222 @@
+{% extends "settings/base.html" %}
+
+{% block settings_content %}
+  <h3>Security Keys</h3>
+  <p>
+    Add USB or NFC security keys to protect your account. Register at least two
+    keys, keep the backup in a separate safe place, and do not rely on a single
+    key for recovery.
+  </p>
+  {% if not enrollment_enabled %}
+    <p class="meta" role="status">
+      New security key enrollment is currently paused. Enrolled keys continue to work for
+      login and account recovery.
+    </p>
+  {% endif %}
+
+  <h4>Enrolled Keys</h4>
+  {% if credentials %}
+    <ul id="security-key-list">
+      {% for credential in credentials %}
+        <li>
+          <strong>{{ credential.name or 'Security key' }}</strong>
+          <span class="meta">
+            Added <time datetime="{{ credential.created_at.isoformat() }}">{{ credential.created_at.strftime('%Y-%m-%d') }}</time>.
+            {% if credential.last_used_at %}
+              Last used <time datetime="{{ credential.last_used_at.isoformat() }}">{{ credential.last_used_at.strftime('%Y-%m-%d %H:%M UTC') }}</time>.
+            {% else %}
+              Never used.
+            {% endif %}
+          </span>
+          {% if enrollment_authorized %}
+            <form method="POST" action="{{ url_for('settings.rename_security_key') }}">
+              {{ rename_form.csrf_token(id='rename-key-csrf-' ~ credential.id) }}
+              <input type="hidden" name="credential_id" value="{{ credential.id }}" />
+              <label for="rename-key-{{ credential.id }}">Key Label</label>
+              <input
+                id="rename-key-{{ credential.id }}"
+                name="name"
+                type="text"
+                maxlength="100"
+                required
+                value="{{ credential.name or '' }}"
+                autocomplete="off"
+              />
+              <button type="submit">Rename</button>
+            </form>
+            <form method="POST" action="{{ url_for('settings.remove_security_key') }}">
+              {{ removal_form.csrf_token(id='remove-key-csrf-' ~ credential.id) }}
+              <input type="hidden" name="credential_id" value="{{ credential.id }}" />
+              <button type="submit">Remove</button>
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p id="security-key-empty" class="meta">No security keys are enrolled.</p>
+  {% endif %}
+
+  {% if credentials|length >= max_credentials %}
+    <p class="error" role="alert">
+      You have reached the limit of {{ max_credentials }} security keys.
+    </p>
+  {% endif %}
+
+  {% if generated_codes %}
+    <h4>Save Your Recovery Codes</h4>
+    <p role="alert">
+      These codes are shown only once. Save them somewhere separate from your security keys.
+      Previously generated codes no longer work.
+    </p>
+    <ol id="recovery-code-list">
+      {% for code in generated_codes %}<li><code>{{ code }}</code></li>{% endfor %}
+    </ol>
+    <form
+      method="POST"
+      action="{{ url_for('settings.acknowledge_security_key_recovery_codes') }}"
+      class="formBody"
+    >
+      {{ acknowledgement_form.hidden_tag() }}
+      <div>
+        {{ acknowledgement_form.saved_codes }}
+        {{ acknowledgement_form.saved_codes.label }}
+      </div>
+      {{ acknowledgement_form.submit }}
+    </form>
+  {% elif not enrollment_authorized %}
+    <h4>Confirm Your Identity</h4>
+    <p class="meta">
+      Enter your current password{% if user.totp_secret %} and an authenticator code{% endif %}
+      before adding a key or changing recovery codes. Confirmation expires after five minutes.
+    </p>
+    {% if password_confirmed %}
+      <div
+        id="security-key-login"
+        data-context="settings"
+        data-options-url="{{ url_for('settings.security_key_authorization_options') }}"
+        data-verify-url="{{ url_for('settings.verify_security_key_authorization') }}"
+      >
+        <button type="button" id="security-key-login-button">Confirm With Security Key</button>
+        <p
+          id="security-key-login-status"
+          class="meta"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        ></p>
+      </div>
+    {% else %}
+      <form
+        method="POST"
+        action="{{ url_for('settings.authorize_security_key') }}"
+        class="formBody"
+        id="security-key-authorization-form"
+      >
+        {{ authorization_form.hidden_tag() }}
+        {{ authorization_form.password.label }}
+        {{ authorization_form.password(autocomplete='current-password') }}
+        {% if user.totp_secret %}
+          {{ authorization_form.verification_code.label }}
+          {{ authorization_form.verification_code(autocomplete='one-time-code', inputmode='numeric') }}
+          {% if credentials %}
+            <p class="meta">Leave the code blank to confirm with a security key instead.</p>
+          {% endif %}
+        {% endif %}
+        {{ authorization_form.submit }}
+      </form>
+    {% endif %}
+  {% else %}
+    {% if enrollment_enabled and credentials|length < max_credentials %}
+      <h4>Add a Security Key</h4>
+      <form
+        class="formBody"
+        id="security-key-enrollment-form"
+        data-options-url="{{ url_for('settings.security_key_registration_options') }}"
+        data-verify-url="{{ url_for('settings.verify_security_key_registration') }}"
+      >
+        <label for="security-key-name">Key Label</label>
+        <input
+          id="security-key-name"
+          name="name"
+          type="text"
+          maxlength="100"
+          required
+          autocomplete="off"
+          aria-describedby="security-key-name-help"
+        />
+        <p id="security-key-name-help" class="meta">
+          Use a label you will recognize, such as “Office USB key” or “Backup NFC key.”
+        </p>
+        <button type="submit" id="security-key-enroll-button">Add Security Key</button>
+      </form>
+      <p
+        id="security-key-status"
+        class="meta"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      ></p>
+    {% endif %}
+
+    {% if has_recovery_factor %}
+      <h4>Recovery Codes</h4>
+      <p>
+        {{ recovery_code_count }} unused recovery codes remain. Generating a new set immediately
+        invalidates every previous code. Recovery codes restore account access only; they do not
+        recover encrypted message history.
+      </p>
+      <form
+        method="POST"
+        action="{{ url_for('settings.generate_security_key_recovery_codes') }}"
+        class="formBody"
+      >
+        {{ generation_form.hidden_tag() }}
+        <button type="submit">Generate New Recovery Codes</button>
+      </form>
+    {% endif %}
+
+    <h4>Factor Policy</h4>
+    {% if not user.totp_secret %}
+      <p><a href="{{ url_for('settings.enable_2fa') }}">Add an Authenticator App</a></p>
+    {% endif %}
+    {% if user.totp_secret and credentials %}
+      <p>
+        You can remove the authenticator app without disabling MFA. Your enrolled security keys
+        will remain required at login.
+      </p>
+      <form method="POST" action="{{ url_for('settings.remove_totp_factor') }}">
+        {{ totp_removal_form.hidden_tag() }}
+        <button type="submit">Remove Authenticator App</button>
+      </form>
+    {% endif %}
+    {% if has_recovery_factor %}
+      <p role="alert">
+        Disabling MFA removes every authenticator app and security key, invalidates all recovery
+        codes, and leaves your password as the only protection for this account.
+      </p>
+      <form
+        method="POST"
+        action="{{ url_for('settings.disable_mfa') }}"
+        class="formBody"
+      >
+        {{ mfa_policy_form.hidden_tag() }}
+        <div>
+          {{ mfa_policy_form.confirm }}
+          {{ mfa_policy_form.confirm.label }}
+        </div>
+        <button type="submit">Disable All MFA</button>
+      </form>
+    {% endif %}
+  {% endif %}
+
+  <p><a href="{{ url_for('settings.auth') }}">Back to authentication settings</a></p>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script defer src="{{ url_for('static', filename='js/security-keys.js') }}"></script>
+  {% if password_confirmed %}
+    <script defer src="{{ url_for('static', filename='js/security-key-login.js') }}"></script>
+  {% endif %}
+{% endblock %}
