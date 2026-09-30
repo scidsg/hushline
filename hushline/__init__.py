@@ -98,6 +98,8 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
         connect_sources = ["'self'", "data:"]
         child_sources = ["'none'"]
         frame_sources = ["'none'"]
+        if endpoint == "static" and request.path.endswith("/static/js/pq-protocol-worker.js"):
+            script_sources.append("'wasm-unsafe-eval'")
         if endpoint in JSDELIVR_SCRIPT_ENDPOINTS:
             script_sources.append("https://cdn.jsdelivr.net")
             script_element_sources.append("https://cdn.jsdelivr.net")

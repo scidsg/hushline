@@ -22,6 +22,8 @@ modules = [
   "premium",
   "premium-waiting",
   "pq-browser-state",
+  "pq-protocol",
+  "pq-protocol-worker",
   "service-worker",
   "settings-fields",
   "settings-location",
@@ -50,6 +52,9 @@ module.exports = (env) => {
       path: path.resolve(__dirname, 'hushline', 'static', 'js'),
       filename: '[name].js',
     },
+    experiments: {
+      asyncWebAssembly: true,
+    },
     plugins: [
       new MiniCssExtractPlugin({
         filename: "../css/[name].css",
@@ -63,6 +68,13 @@ module.exports = (env) => {
     },
     module: {
       rules: [
+        {
+          test: /\.wasm$/,
+          type: 'asset/resource',
+          generator: {
+            filename: '[name][ext]',
+          },
+        },
         {
           test: /\.s[ca]ss$/,
           use: [

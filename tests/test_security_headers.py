@@ -75,6 +75,16 @@ def test_csp_script_src_elem_disallows_inline_scripts(client: FlaskClient) -> No
     )
 
 
+def test_pq_protocol_worker_gets_only_required_wasm_csp(client: FlaskClient) -> None:
+    response = client.get(url_for("static", filename="js/pq-protocol-worker.js"))
+
+    directives = _csp_directives(response.headers)
+    assert directives["script-src"] == "'self' 'wasm-unsafe-eval'"
+    assert directives["script-src-elem"] == "'self'"
+    assert directives["worker-src"] == "'self' blob:"
+    assert "'unsafe-eval'" not in response.headers["Content-Security-Policy"]
+
+
 def test_custom_splash_logo_keeps_csp_enforced(client: FlaskClient) -> None:
     OrganizationSetting.upsert(
         OrganizationSetting.BRAND_SPLASH_LOGO, OrganizationSetting.BRAND_SPLASH_LOGO_VALUE
