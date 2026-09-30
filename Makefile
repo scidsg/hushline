@@ -6,7 +6,7 @@ else
 CMD :=
 endif
 PRETTIER_STATIC_JS_TARGETS := ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js
-PRETTIER_TARGETS := ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./package.json ./playwright.e2ee.config.js ./playwright.staging.config.js ./prototypes/pq-ratchet ./tests/playwright $(PRETTIER_STATIC_JS_TARGETS)
+PRETTIER_TARGETS := ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./package.json ./playwright.e2ee.config.js ./playwright.pq-state.config.js ./playwright.staging.config.js ./prototypes/pq-ratchet ./tests/playwright $(PRETTIER_STATIC_JS_TARGETS)
 PRETTIER_FLAGS := --ignore-path /dev/null
 RUNNER_APP_URL ?= http://localhost:8080
 RUNNER_APP_WAIT_ATTEMPTS ?= 30
@@ -334,6 +334,10 @@ playwright-visual: runner-wait-for-app ## Run Playwright visual regression check
 .PHONY: playwright-e2ee
 playwright-e2ee: runner-wait-for-app ## Run browser E2EE submission checks against the local app
 	npx playwright test --config=playwright.e2ee.config.js
+
+.PHONY: playwright-pq-state
+playwright-pq-state: ## Run encrypted PQ browser-state checks in all supported engines
+	npm run playwright:pq-state
 
 .PHONY: playwright-visual-update
 playwright-visual-update: runner-wait-for-app ## Update Playwright visual regression baselines

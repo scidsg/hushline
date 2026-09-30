@@ -19,16 +19,16 @@
     },
     {
       "gate": "G6",
-      "issue": "scidsg/hushline#2371",
-      "artifact_commit": "fe312ab3bef6ded364c115ec29b8c2c8f2dce60f",
+      "issue": "scidsg/hushline#2401",
+      "artifact_commit": null,
       "required_result": "approved",
-      "observed_result": "blocked-prerequisite",
+      "observed_result": "implemented-awaiting-integration-review",
       "satisfied": false,
       "evidence": [
         "adr-0005-transactional-browser-state-readiness.md",
         "g6-readiness.json"
       ],
-      "blocker": "G6 produced no accepted encrypted state format, atomic transition, outbox, replay, cross-context serialization, bounds, or recovery implementation."
+      "blocker": "G6 now supplies an implementation, but the protocol-worker integration, measured browser evidence, and independent acceptance remain pending."
     }
   ],
   "protocol_candidate": {

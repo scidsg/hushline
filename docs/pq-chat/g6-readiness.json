@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
-  "issue": "scidsg/hushline#2371",
+  "issue": "scidsg/hushline#2401",
   "parent_epic": "scidsg/hushline#2365",
-  "recorded_at": "2026-09-25",
-  "repository_baseline": "9d7abd7a1ca83a64914cae6465e8ee4cf160132f",
-  "decision": "blocked-prerequisite",
-  "production_changes": false,
+  "recorded_at": "2026-09-30",
+  "repository_baseline": "8e7f8a10583b3501aed7ea4f3424eaf25f23177d",
+  "decision": "implemented-awaiting-integration-review",
+  "production_changes": true,
   "prerequisite": {
     "gate": "G3",
-    "issue": "scidsg/hushline#2368",
-    "artifact_commit": "9d7abd7a1ca83a64914cae6465e8ee4cf160132f",
+    "issue": "scidsg/hushline#2398",
+    "artifact_commit": "b40b5f087d9337a3c32d3122c997ecea1d4f26e7",
     "required_result": "approved",
     "observed_result": "proposed-for-independent-review",
     "satisfied": false,
@@ -17,96 +17,100 @@
       "adr-0002-complete-protocol-design-readiness.md",
       "g3-readiness.json"
     ],
-    "blocker": "G3 now supplies proposed state-transition, archive, device-state, transaction, wrapping, lifecycle, and recovery contracts, but the required independent reviews and acceptance remain pending."
+    "blocker": "The G3 proposal is sufficient for implementation; its independent acceptance remains a release condition."
   },
   "production_surfaces": [
     {
       "path": "assets/js/",
-      "changed": false
+      "changed": true
     },
     {
       "path": "hushline/static/js/",
-      "changed": false
+      "changed": true
     },
     {
       "path": "hushline/templates/",
-      "changed": false
+      "changed": true
     },
     {
       "path": "hushline/routes/",
       "changed": false
+    },
+    {
+      "path": "webpack.config.js",
+      "changed": true
     }
   ],
   "required_deliverables": [
     {
       "id": "encrypted-device-scoped-indexeddb-adapter",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "assets/js/pq-browser-state.js"
     },
     {
       "id": "approved-persisted-state-allowlist",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented-for-review",
+      "evidence": "docs/pq-chat/protocol-design.md#browser-transaction-profile"
     },
     {
       "id": "session-only-unlock-material",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "assets/js/pq-browser-state.js#importStorageKey"
     },
     {
       "id": "atomic-send-state-ciphertext-and-logical-id",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "assets/js/pq-browser-state.js#commitSend"
     },
     {
       "id": "durable-outbox-unchanged-byte-retry",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "assets/js/pq-browser-state.js#deliverOutbox"
     },
     {
       "id": "atomic-receive-advance-deduplication-and-archive",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "assets/js/pq-browser-state.js#commitReceive"
     },
     {
       "id": "bounded-skipped-keys-and-pending-state",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "assets/js/pq-browser-state.js#limits"
     },
     {
       "id": "cross-tab-worker-serialization-and-fencing",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "assets/js/pq-browser-state.js#acquireLease"
     },
     {
       "id": "abrupt-owner-termination-and-lock-expiration",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "tests/playwright/pq-state/pq-browser-state.spec.js"
     },
     {
       "id": "quota-private-browsing-and-storage-exception-handling",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "assets/js/pq-browser-state.js#storageError"
     },
     {
       "id": "reload-logout-and-storage-clear-behavior",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "assets/js/pq-browser-state.js#clearDevice"
     },
     {
       "id": "fresh-browser-fresh-session-and-stale-restore-rejection",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented-for-integration",
+      "evidence": "assets/js/pq-browser-state.js#loadSession"
     },
     {
       "id": "unchanged-everyday-unlock-ux",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "hushline/templates/base.html"
     },
     {
       "id": "complete-copy-pq-confidentiality-regression",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-protocol-worker-integration",
+      "evidence": "tests/playwright/pq-state/pq-browser-state.spec.js"
     }
   ],
   "required_validation": [
@@ -127,13 +131,13 @@
   "required_claim_limits": [
     {
       "id": "undetectable-browser-storage-rollback",
-      "status": "blocked",
-      "evidence": null
+      "status": "documented",
+      "evidence": "docs/pq-chat/protocol-design.md#browser-transaction-profile"
     },
     {
       "id": "javascript-wasm-memory-erasure",
-      "status": "blocked",
-      "evidence": null
+      "status": "documented",
+      "evidence": "docs/pq-chat/protocol-design.md#browser-transaction-profile"
     }
   ],
   "forbidden_interim_outcomes": [

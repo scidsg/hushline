@@ -31,7 +31,7 @@ the implementation and review evidence that cannot safely be produced yet.
 | Gate | Required input | Local evidence | Finding |
 | --- | --- | --- | --- |
 | G5 / `scidsg/hushline#2370` | Accepted authenticated device membership and bounded, atomic prekey lifecycle | Commit `f9ba0777a5a4029a1c95bac3e5fed6c7199b9229`; [ADR-0004](adr-0004-device-prekey-readiness.md) and [readiness record](g5-readiness.json) | **Unsatisfied:** G5 is blocked before implementation; authenticated membership, prekey formats, atomic claim, freshness, and lifecycle rules remain unspecified |
-| G6 / `scidsg/hushline#2371` | Accepted encrypted transactional ratchet storage, send/receive boundaries, outbox, replay state, and cross-context serialization | Commit `fe312ab3bef6ded364c115ec29b8c2c8f2dce60f`; [ADR-0005](adr-0005-transactional-browser-state-readiness.md) and [readiness record](g6-readiness.json) | **Unsatisfied:** G6 is blocked before implementation; persisted state, valid transitions, retry, replay, recovery, and ownership rules remain unspecified |
+| G6 / `scidsg/hushline#2401` | Accepted encrypted transactional ratchet storage, send/receive boundaries, outbox, replay state, and cross-context serialization | [ADR-0005](adr-0005-transactional-browser-state-readiness.md), [readiness record](g6-readiness.json), adapter, and browser suite | **Implemented for integration; release acceptance pending:** concrete storage, transition, retry, replay, recovery, fencing, and bounds contracts are available for the protocol worker |
 | G2 / `scidsg/hushline#2367` | Exact approved browser library, suite, serialization, source/artifact pin, reference interoperability, and observed continuous-PQ epochs | Commit `f84fb98e86286f3183f4c1f7e9f714549f10f9e2`; [ADR-0001](adr-0001-browser-protocol-candidate.md) and [evidence record](g2-evidence.json) | **Unsatisfied:** G2 is no-go at the reviewed revisions and explicitly forbids selecting or integrating a candidate |
 
 A merged artifact, dependency order, package claim, successful handshake, or
@@ -76,11 +76,11 @@ conversation and E2EE behavior remain unchanged.
 | Exact protocol dependency | Approved library, suite, serialization, exact package/source/dependency revisions, integrity hashes, reproducible self-hosted build, SBOM, license, vulnerability disposition, and maintenance ownership | Blocked; G2 is no-go and no candidate is approved |
 | Worker and narrow adapter | Self-hosted worker/WASM assets under the approved CSP; narrow typed operations for initialization, prekey establishment, encrypt/decrypt, state import/export, and non-secret status; no protocol reimplementation | Blocked; protocol API and state format are unselected |
 | Authenticated context and negotiation | Canonical bindings for application, account, conversation, participant, device, capability, version, suite, session, prekey, transcript, epoch, and direction, with downgrade and cross-context rejection | Blocked; G3/G5 authentication and wire contracts are unspecified |
-| Offline establishment and replacement | Atomic claimed-prekey consumption, offline recipient establishment, both contribution checks, transcript authentication, idempotent failure handling, and authenticated session replacement/reset | Blocked; G5 prekey and G6 transaction/recovery contracts are unavailable |
+| Offline establishment and replacement | Atomic claimed-prekey consumption, offline recipient establishment, both contribution checks, transcript authentication, idempotent failure handling, and authenticated session replacement/reset | Blocked; G5 prekey integration is unavailable and the implemented G6 contract awaits worker integration/review |
 | Continuous PQ traffic | Bidirectional traffic with instrumented non-secret proof of repeated actual post-handshake PQ epoch completion, bounded skipped/out-of-order delivery, replay rejection, and library-defined ratchet behavior | Blocked; candidate evidence and valid transition/bounds contracts are unavailable |
 | Complete-copy integration | Atomic integration with sender, recipient, offline/history, and every other required content copy; any missing or invalid hybrid result fails the whole write closed | Blocked; G3/G4 copy and transaction contracts are unavailable |
 | Truthful application status | State derived from verified negotiated capability and completed current refresh behavior; handshake-only, disabled, failed, stale, or unobserved refresh can never be labelled compliant | Blocked; exact protocol state and approved product terminology are unavailable |
-| Bounded failure behavior | Reviewed bounds and deterministic outcomes for malformed input, missing capabilities/prekeys, contribution failure, skipped messages, pending epochs, retries, replacement, corruption, storage denial, and worker termination | Blocked; G5/G6 bounds and recovery semantics are unavailable |
+| Bounded failure behavior | Reviewed bounds and deterministic outcomes for malformed input, missing capabilities/prekeys, contribution failure, skipped messages, pending epochs, retries, replacement, corruption, storage denial, and worker termination | Partially implemented by G6; protocol-worker bounds, integration evidence, and review remain pending |
 | Privacy, CSP, and performance | No secret/plaintext/private-state telemetry, UI-thread responsiveness budgets, worker isolation and termination behavior, unchanged CSP or approved minimal expansion, and unchanged everyday UX | Blocked pending exact assets and real-browser implementation |
 
 ## Required Validation After Unblocking
@@ -120,7 +120,7 @@ pending until they are actually supplied.
 1. Obtain the pending G1 approvals and replace the G2 no-go with a passing
    exact-candidate decision containing its required build, interoperability,
    epoch, browser, CSP, vulnerability, and ownership evidence.
-2. Accept G3 and G4, then implement and accept G5 and G6 on
+2. Accept G3 and G4, then complete G5 and integrate and accept G6 on
    `codex/epic-2365`; a readiness-only merge does not satisfy either gate.
 3. Update `g7-readiness.json` to pin the accepted prerequisite commits and
    transcribe the exact suite, serialization, context, identifiers, state

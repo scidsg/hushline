@@ -299,6 +299,55 @@ Cross-tab access uses one lease per account/device with fencing tokens. A stale
 lease holder cannot commit after a newer token. BroadcastChannel is only a
 wakeup mechanism, never key transport.
 
+### Browser transaction profile
+
+The version-1 browser adapter is `assets/js/pq-browser-state.js`. Its IndexedDB
+database contains only authenticated AES-256-GCM envelopes and non-secret
+coordination metadata. Envelope additional data binds the database format,
+account/device partition, record type, revision, random record tag, and the
+authenticated-session binding under which the record was written. The random
+device-storage key is supplied as a non-extractable `CryptoKey`; the adapter
+does not persist that key or place key material in `localStorage`.
+
+One account/device lease serializes state changes. Every acquisition increases
+a durable fencing token, renewals retain that token, and release/logout retain
+the counter so an expired owner can never become current again by token reuse.
+Lease duration is 15 seconds by default. BroadcastChannel messages contain
+only an outbox wakeup or cleanup signal and the public account/device
+partition; they never contain keys or encrypted-record contents.
+
+A send transaction leaves the current state unchanged and atomically stores an
+encrypted pending next state plus the exact request bytes, stable logical
+message ID, protocol idempotency key, and before/after state digests. Network
+ambiguity leaves that record intact, and reload recovery enumerates encrypted
+outbox records without a separate plaintext draft index. Only an authenticated
+acknowledgement whose message identity and conversation version match the
+durable operation atomically promotes the pending state and removes the outbox
+record. A receive transaction atomically promotes state with its archive
+result, receipt, and replay marker; a duplicate returns the stored receipt
+without another state advance. A session with a pending send rejects receive
+advancement rather than forking the ratchet.
+
+Version 1 permits at most 32 durable outbox records per device, 2,000 skipped
+keys and 32 pending transitions per ratchet state, 100,000 outgoing
+deduplication markers, and 100,000 replay receipts per device. It does not
+evict live send or replay markers: reaching a bound fails closed and requires
+an authenticated session/device rotation. Logout notifies same-origin tabs and
+workers, removes all encrypted records for the account/device partition, and
+increments the fence before dropping the in-memory key. Storage denial,
+corruption, missing state, known stale revisions, and quota exhaustion disable
+the transition; they never select an in-memory send path or a classical
+writer.
+
+The adapter can reject a snapshot below a revision already known by the
+caller, but browser storage can be rolled back together with its local
+high-water mark without detection. JavaScript engines, browser processes,
+swap, extensions, and crash capture can also retain copies after references
+are cleared. Cleanup is therefore best effort and is not secure-erasure or
+general rollback-detection evidence. A browser without the device partition
+must enroll a fresh device/session; mutable ratchet state is never imported as
+fresh-device recovery material.
+
 ## Capability, migration, and rollback
 
 The server advertises authenticated membership capabilities, but the sender

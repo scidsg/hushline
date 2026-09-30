@@ -179,6 +179,7 @@ def test_settings_encryption_explains_automatic_chat_key_creation(client: FlaskC
     assert 'id="chat-key-password"' not in response.text
     assert "Create Chat Key" not in response.text
     assert 'name="chat_key_password"' not in response.text
+    assert url_for("static", filename="js/pq-browser-state.js") in response.text
     assert url_for("static", filename="js/chat-key-lifecycle.js") in response.text
 
 
@@ -589,10 +590,14 @@ def test_chat_key_lifecycle_js_exposes_unlock_rewrap_and_cleanup() -> None:
     lifecycle_source = (ROOT / "assets/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
 
     assert "window.HushLineChatKeys" in lifecycle_js
+    assert "HushLinePqBrowserState?.clearAll?.()" in lifecycle_js
     assert "unlockFromPassword" in lifecycle_source
     assert "ensureChatKeyUnlockedAfterAuth" in lifecycle_source
     assert "ensurePqDeviceEnrollment" in lifecycle_source
     assert "HushLinePqProtocol" in lifecycle_source
+    assert "HushLinePqBrowserState?.clearAll?.()" in lifecycle_source
+    assert "browserState?.create" in lifecycle_source
+    assert "browserState," in lifecycle_source
     assert '"/api/pq/account"' in lifecycle_source
     assert "hushline:pq-device-state" in lifecycle_source
     assert "verifyPqMembership" in lifecycle_source
