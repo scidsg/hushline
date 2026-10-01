@@ -19,6 +19,7 @@ from hushline.chat_key_lifecycle import (
     PQ_CHAT_PROTOCOL,
     canonical_chat_json,
     invalidate_pq_account_after_password_reset,
+    retire_active_chat_key,
 )
 from hushline.db import db
 from hushline.model import (
@@ -36,6 +37,7 @@ from hushline.routes.pq_device import (
     MEMBERSHIP_SIGNATURE_DOMAIN,
     PREKEY_SIGNATURE_DOMAIN,
     REVOCATION_SIGNATURE_DOMAIN,
+    UNLOCK_REVOCATION_SIGNATURE_DOMAIN,
     UNLOCK_SIGNATURE_DOMAIN,
 )
 
@@ -79,7 +81,7 @@ def _add_unlock_key(user: User) -> ec.EllipticCurvePrivateKey:
     }
     user.chat_keys.append(
         ChatKey(
-            key_version=1,
+            key_version=(max((chat_key.key_version for chat_key in user.chat_keys), default=0) + 1),
             public_key='{"crv":"P-256","kty":"EC","x":"x","y":"y"}',
             public_signing_key=json.dumps(public_jwk),
             encrypted_private_key="wrapped",
@@ -139,7 +141,7 @@ def _enroll(  # noqa: PLR0913
         "device_id": resolved_device_id,
         "device_signing_public_key": device_public_key,
         "expires_at": _timestamp(now + timedelta(days=30)),
-        "identity_version": 1,
+        "identity_version": max(1, account_state["identity_version"]),
         "issued_at": _timestamp(now),
         "membership_sequence": account_state["membership_sequence"] + 1,
         "one_time_prekey_end": one_time_prekey_start + 99,
@@ -272,6 +274,52 @@ def _claim(
     )
 
 
+def _revocation_payload(
+    client: FlaskClient,
+    user: User,
+    enrollment: dict[str, Any],
+    *,
+    archive_public_key: bytes = b"b" * 1216,
+) -> dict[str, Any]:
+    _authenticate(client, user, enrollment["session_id"])
+    account = client.post(url_for("pq_account_bootstrap")).get_json()
+    archive_epoch = max(epoch["epoch"] for epoch in account["archive_epochs"]) + 1
+    archive = {
+        "encrypted_private_key": _b64url(f"encrypted-archive-key-{archive_epoch}".encode()),
+        "epoch": archive_epoch,
+        "public_key": _b64url(archive_public_key),
+    }
+    now = datetime.now(UTC).replace(microsecond=0)
+    revocation = {
+        "account_id": enrollment["account_id"],
+        "archive_epoch": archive_epoch,
+        "archive_public_key_sha256": hashlib.sha256(archive_public_key).hexdigest(),
+        "device_id": enrollment["device_id"],
+        "membership_sequence": account["membership_sequence"] + 1,
+        "revoked_at": _timestamp(now),
+        "status": "revoked",
+    }
+    return {
+        "archive": archive,
+        "revocation": revocation,
+        "signature": _sign_ed25519(
+            enrollment["account_key"], REVOCATION_SIGNATURE_DOMAIN, revocation
+        ),
+        "unlock_signature": _sign_p256(
+            enrollment["unlock_key"],
+            UNLOCK_REVOCATION_SIGNATURE_DOMAIN,
+            {"archive": archive, "revocation": revocation},
+        ),
+    }
+
+
+def _revoke(client: FlaskClient, user: User, enrollment: dict[str, Any]) -> Any:
+    return client.post(
+        url_for("pq_revoke_device", device_id=enrollment["device_id"]),
+        json=_revocation_payload(client, user, enrollment),
+    )
+
+
 def test_enrollment_requires_unlock_and_account_signatures(client: FlaskClient, user: User) -> None:
     enrollment = _enroll(client, user, chat_session_id="enrollment-session")
 
@@ -372,6 +420,133 @@ def test_archive_epoch_rotation_retains_wrapped_history_keys_and_publishes_only_
         first["payload"]["archive"]["encrypted_private_key"],
         second["payload"]["archive"]["encrypted_private_key"],
     ]
+
+
+def test_device_revocation_rotates_archive_and_reenrollment_uses_only_new_epoch(
+    client: FlaskClient, user: User
+) -> None:
+    prior_user_session_id = user.session_id
+    first = _enroll(client, user, chat_session_id="revocation-first")
+    assert _publish(client, user, first).status_code == 201
+    second = _enroll(
+        client,
+        user,
+        chat_session_id="revocation-second",
+        account_key=first["account_key"],
+        unlock_key=first["unlock_key"],
+    )
+    assert _publish(client, user, second).status_code == 201
+
+    revoked = _revoke(
+        client,
+        user,
+        first | {"session_id": second["session_id"]},
+    )
+
+    assert revoked.status_code == 200
+    assert revoked.get_json() == {
+        "archive_epoch": 2,
+        "device_id": first["device_id"],
+        "requires_device_reenrollment": True,
+        "requires_login": True,
+        "revoked": True,
+    }
+    account = db.session.scalars(
+        db.select(ChatAccount).where(ChatAccount.public_id == first["account_id"])
+    ).one()
+    assert account.membership_sequence == 3
+    assert all(device.revoked_at is not None for device in account.devices)
+    assert all(
+        device.account_identity_public_key == first["payload"]["account_identity_public_key"]
+        for device in account.devices
+    )
+    assert all(epoch.retired_at is not None for epoch in account.archive_epochs if epoch.epoch == 1)
+    assert [epoch.epoch for epoch in account.archive_epochs if epoch.retired_at is None] == [2]
+    assert user.session_id != prior_user_session_id
+    stale_session = client.post(url_for("pq_account_bootstrap"))
+    assert stale_session.status_code == 302
+    assert stale_session.headers["Location"].endswith(url_for("login"))
+
+    replacement = _enroll(
+        client,
+        user,
+        chat_session_id="revocation-replacement",
+        account_key=first["account_key"],
+        unlock_key=first["unlock_key"],
+        archive_epoch=2,
+        archive_public_key=b"b" * 1216,
+    )
+    assert replacement["membership"]["membership_sequence"] == 4
+    listing = client.get(
+        url_for("pq_account_devices", account_id=first["account_id"]),
+        headers={"X-Hushline-Device-ID": replacement["device_id"]},
+    )
+    assert listing.status_code == 200
+    assert listing.get_json()["archive"]["epoch"] == 2
+    assert [device["membership"]["device_id"] for device in listing.get_json()["devices"]] == [
+        replacement["device_id"]
+    ]
+
+
+def test_revocation_rejects_archive_substitution_without_changing_state(
+    client: FlaskClient, user: User
+) -> None:
+    enrollment = _enroll(client, user, chat_session_id="revocation-substitution")
+    payload = _revocation_payload(client, user, enrollment)
+    payload["archive"]["public_key"] = _b64url(b"x" * 1216)
+
+    response = client.post(
+        url_for("pq_revoke_device", device_id=enrollment["device_id"]),
+        json=payload,
+    )
+
+    assert response.status_code == 403
+    assert response.get_json() == {"error": "AUTHENTICATION_FAILED"}
+    account = db.session.scalars(
+        db.select(ChatAccount).where(ChatAccount.public_id == enrollment["account_id"])
+    ).one()
+    assert account.membership_sequence == 1
+    assert account.devices[0].revoked_at is None
+    assert [epoch.epoch for epoch in account.archive_epochs] == [1]
+
+
+def test_revocation_requires_a_new_archive_epoch(client: FlaskClient, user: User) -> None:
+    prior_user_session_id = user.session_id
+    enrollment = _enroll(client, user, chat_session_id="revocation-current-epoch")
+    payload = _revocation_payload(client, user, enrollment)
+    account = db.session.scalars(
+        db.select(ChatAccount).where(ChatAccount.public_id == enrollment["account_id"])
+    ).one()
+    current_epoch = account.archive_epochs[0]
+    payload["archive"] = {
+        "encrypted_private_key": current_epoch.encrypted_private_key,
+        "epoch": current_epoch.epoch,
+        "public_key": current_epoch.public_key,
+    }
+    payload["revocation"]["archive_epoch"] = current_epoch.epoch
+    payload["revocation"]["archive_public_key_sha256"] = hashlib.sha256(b"a" * 1216).hexdigest()
+    payload["signature"] = _sign_ed25519(
+        enrollment["account_key"],
+        REVOCATION_SIGNATURE_DOMAIN,
+        payload["revocation"],
+    )
+    payload["unlock_signature"] = _sign_p256(
+        enrollment["unlock_key"],
+        UNLOCK_REVOCATION_SIGNATURE_DOMAIN,
+        {"archive": payload["archive"], "revocation": payload["revocation"]},
+    )
+
+    response = client.post(
+        url_for("pq_revoke_device", device_id=enrollment["device_id"]),
+        json=payload,
+    )
+
+    assert response.status_code == 409
+    assert response.get_json() == {"error": "STALE_MEMBERSHIP"}
+    db.session.refresh(account)
+    assert account.membership_sequence == 1
+    assert account.devices[0].revoked_at is None
+    assert user.session_id == prior_user_session_id
 
 
 def test_enrollment_rejects_forgery_and_replays_identical_request(
@@ -668,27 +843,13 @@ def test_expired_and_revoked_device_supply_is_never_claimed(
     assert claim.status_code == 201
     assert claim.get_json()["one_time_prekey"]["key_id"] == 2
 
-    _authenticate(client, user2, target["session_id"])
-    now = datetime.now(UTC).replace(microsecond=0)
-    revocation = {
-        "account_id": target["account_id"],
-        "device_id": target["device_id"],
-        "membership_sequence": target["membership"]["membership_sequence"] + 1,
-        "revoked_at": _timestamp(now),
-        "status": "revoked",
-    }
-    revoked = client.post(
-        url_for("pq_revoke_device", device_id=target["device_id"]),
-        json={
-            "revocation": revocation,
-            "signature": _sign_ed25519(
-                target["account_key"], REVOCATION_SIGNATURE_DOMAIN, revocation
-            ),
-        },
-    )
+    revoked = _revoke(client, user2, target)
     denied = _claim(client, user, claimant, target, str(uuid4()))
 
     assert revoked.status_code == 200
+    assert revoked.get_json()["archive_epoch"] == 2
+    assert revoked.get_json()["requires_device_reenrollment"] is True
+    assert revoked.get_json()["requires_login"] is True
     assert denied.status_code == 409
     assert denied.get_json() == {"error": "STALE_MEMBERSHIP"}
 
@@ -706,18 +867,7 @@ def test_revocation_race_never_leaves_a_consumable_claim(
         device_id=target["device_id"],
     )
     revoke_endpoint = url_for("pq_revoke_device", device_id=target["device_id"])
-    now = datetime.now(UTC).replace(microsecond=0)
-    revocation = {
-        "account_id": target["account_id"],
-        "device_id": target["device_id"],
-        "membership_sequence": 2,
-        "revoked_at": _timestamp(now),
-        "status": "revoked",
-    }
-    revocation_payload = {
-        "revocation": revocation,
-        "signature": _sign_ed25519(target["account_key"], REVOCATION_SIGNATURE_DOMAIN, revocation),
-    }
+    revocation_payload = _revocation_payload(client, user2, target)
     claimant_auth = (
         user.id,
         str(user.session_id),
@@ -827,6 +977,7 @@ def test_password_reset_invalidates_identity_devices_prekeys_and_archive(
     assert _publish(client, user, enrollment).status_code == 201
     reset_at = datetime.now(UTC)
 
+    retire_active_chat_key(user, recovery_state="password_reset_locked", when=reset_at)
     invalidate_pq_account_after_password_reset(user, when=reset_at)
     db.session.commit()
 
@@ -840,5 +991,24 @@ def test_password_reset_invalidates_identity_devices_prekeys_and_archive(
     assert account.identity_version == 2
     assert account.membership_sequence == 2
     assert device.revoked_at is not None
+    assert (
+        device.account_identity_public_key == enrollment["payload"]["account_identity_public_key"]
+    )
     assert prekey.expires_at == reset_at
     assert epoch.retired_at == reset_at
+
+    replacement = _enroll(
+        client,
+        user,
+        chat_session_id="reset-replacement",
+        archive_epoch=2,
+        archive_public_key=b"b" * 1216,
+    )
+    assert replacement["membership"]["identity_version"] == 2
+    assert replacement["membership"]["membership_sequence"] == 3
+    assert replacement["payload"]["archive"]["epoch"] == 2
+    db.session.refresh(account)
+    assert account.identity_public_key != enrollment["payload"]["account_identity_public_key"]
+    assert [archive.epoch for archive in account.archive_epochs if archive.retired_at is None] == [
+        2
+    ]

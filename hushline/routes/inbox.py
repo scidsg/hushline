@@ -105,8 +105,10 @@ def _inbox_conversation_summary(
     for thread_participant in conversation.participants:
         if thread_participant.user_id == user.id:
             continue
-        username = thread_participant.user.primary_username
-        other_participant_names.append(f"@{username.username}")
+        if thread_participant.user is None:
+            other_participant_names.append("Deleted participant")
+        else:
+            other_participant_names.append(f"@{thread_participant.user.primary_username.username}")
 
     return InboxConversation(
         conversation=conversation,

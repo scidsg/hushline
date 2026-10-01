@@ -100,6 +100,7 @@ def _account_state(  # noqa: PLR0913
         membership_sha256=hashlib.sha256(device_id.encode()).hexdigest(),
         signing_public_key=_b64url(signing_public_key),
         protocol_identity_public_key=_b64url(b"p" * 32),
+        account_identity_public_key=account.identity_public_key,
         membership={"device_id": device_id},
         membership_signature=_b64url(b"m" * 64),
         expires_at=datetime.now(UTC) + timedelta(days=30),
@@ -279,12 +280,30 @@ def test_protected_reply_commits_complete_copy_set_and_replay_is_idempotent(
     response = client.post(
         url_for("append_conversation_message", public_id=thread.public_id), json=package
     )
+    sender_device.revoked_at = datetime.now(UTC)
+    sender_account.membership_sequence += 1
+    db.session.commit()
+    _authenticate(client, user, "replacement-session")
     replay = client.post(
         url_for("append_conversation_message", public_id=thread.public_id), json=package
+    )
+    stale_new_package = _protected_package(
+        thread.public_id,
+        sender_account,
+        sender_device,
+        signing_key,
+        recipient_account,
+        recipient_device,
+    )
+    stale_new_send = client.post(
+        url_for("append_conversation_message", public_id=thread.public_id),
+        json=stale_new_package,
     )
 
     assert response.status_code == 201
     assert replay.status_code == 200
+    assert stale_new_send.status_code == 409
+    assert stale_new_send.get_json() == {"error": "STALE_MEMBERSHIP"}
     assert replay.get_json()["message_id"] == response.get_json()["message_id"]
     db.session.refresh(thread)
     assert thread.minimum_protocol_version == 1
@@ -561,6 +580,10 @@ def test_protected_message_read_returns_only_authenticated_accounts_copies(
         url_for("append_conversation_message", public_id=thread.public_id), json=package
     )
     message_id = created.get_json()["message_id"]
+    sender_identity_at_send = sender_device.account_identity_public_key
+    sender_account.identity_public_key = None
+    sender_device.revoked_at = datetime.now(UTC)
+    db.session.commit()
 
     _authenticate(client, user2, "recipient-session")
     response = client.get(
@@ -574,6 +597,14 @@ def test_protected_message_read_returns_only_authenticated_accounts_copies(
 
     assert response.status_code == 200
     returned_copies = response.get_json()["copies"]
+    assert response.get_json()["sender"] == {
+        "account_identity_public_key": sender_identity_at_send,
+        "device": {
+            "membership": sender_device.membership,
+            "membership_sha256": sender_device.membership_sha256,
+            "membership_signature": sender_device.membership_signature,
+        },
+    }
     assert {copy["context"]["purpose"] for copy in returned_copies} == {
         "archive",
         "transport",
@@ -641,6 +672,74 @@ def test_deletion_removes_unreferenced_retired_archive_key_but_keeps_current(
         )
         == 1
     )
+
+
+def test_account_deletion_removes_own_pq_state_without_corrupting_recipient_history(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    thread = _conversation(user, user2)
+    sender_account, sender_device, signing_key, recipient_account, recipient_device = (
+        _protected_state(user, user2)
+    )
+    package = _protected_package(
+        thread.public_id,
+        sender_account,
+        sender_device,
+        signing_key,
+        recipient_account,
+        recipient_device,
+    )
+    _authenticate(client, user, "sender-session")
+    created = client.post(
+        url_for("append_conversation_message", public_id=thread.public_id), json=package
+    )
+    assert created.status_code == 201
+    message_id = created.get_json()["message_id"]
+    sender_user_id = user.id
+    sender_account_id = sender_account.id
+    sender_device_id = sender_device.id
+    thread_id = thread.id
+
+    deleted = client.post(url_for("settings.delete_account"))
+
+    assert deleted.status_code == 302
+    assert db.session.get(User, sender_user_id) is None
+    sender_participant = db.session.scalars(
+        db.select(ConversationParticipant).where(
+            ConversationParticipant.conversation_id == thread.id,
+            ConversationParticipant.user_id.is_(None),
+        )
+    ).one()
+    assert db.session.get(ChatAccount, sender_account_id) is None
+    assert db.session.get(ChatDevice, sender_device_id) is None
+    assert sender_participant.deleted_at is not None
+    assert (
+        db.session.scalar(
+            db.select(db.func.count())
+            .select_from(ChatArchiveEpoch)
+            .where(ChatArchiveEpoch.account_id == sender_account_id)
+        )
+        == 0
+    )
+    message = db.session.scalars(
+        db.select(ConversationMessage).where(ConversationMessage.public_id == message_id)
+    ).one()
+    assert message.archive_copies == []
+    assert message.transport_copies == []
+
+    _authenticate(client, user2, "recipient-session")
+    inbox = client.get(url_for("inbox", type="conversations"))
+    assert inbox.status_code == 200
+    assert "Deleted participant" in inbox.text
+    retained = client.get(url_for("conversation", public_id=thread.public_id))
+    assert retained.status_code == 200
+    assert "Deleted participant" in retained.text
+    assert "This message was deleted." in retained.text
+    assert message_id not in retained.text
+
+    final_deletion = client.post(url_for("settings.delete_account"))
+    assert final_deletion.status_code == 302
+    assert db.session.get(Conversation, thread_id) is None
 
 
 def test_initial_protected_endpoint_creates_one_conversation(

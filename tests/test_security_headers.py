@@ -154,6 +154,23 @@ def test_settings_profile_keeps_frame_restrictions(client: FlaskClient) -> None:
     assert response.headers["X-Frame-Options"] == "DENY"
 
 
+@pytest.mark.usefixtures("_authenticated_user")
+def test_settings_auth_device_controls_keep_csp_enforced(client: FlaskClient, app: Flask) -> None:
+    response = client.get(url_for("settings.auth"))
+    assert response.status_code == 200
+
+    csp = response.headers["Content-Security-Policy"]
+    directives = _csp_directives(response.headers)
+    form_action = "'self'"
+    if app.config.get("STRIPE_SECRET_KEY"):
+        form_action += " https://checkout.stripe.com https://billing.stripe.com"
+    assert directives["script-src"] == "'self'"
+    assert directives["script-src-elem"] == "'self'"
+    assert directives["form-action"] == form_action
+    assert "'unsafe-eval'" not in csp
+    assert "'wasm-unsafe-eval'" not in csp
+
+
 @pytest.mark.usefixtures("_authenticated_admin")
 def test_settings_branding_keeps_csp_enforced(client: FlaskClient) -> None:
     response = client.get(url_for("settings.branding"))

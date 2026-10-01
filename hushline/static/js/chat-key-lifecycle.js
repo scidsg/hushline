@@ -23,6 +23,7 @@
   let unlockedPqAccountIdentityPublicKey = null;
   let pendingLoginPassword = null;
   let conversationSubmitInFlight = false;
+  let sessionLockTimer = null;
   const state = {
     status: "empty",
     keyVersion: null,
@@ -182,6 +183,7 @@
     device,
     minimumMembershipSequence = 0,
     expectedAccountId = null,
+    allowExpired = false,
   ) {
     try {
       const membership = device?.membership;
@@ -214,7 +216,7 @@
         membership.protocol_registration_id < 1 ||
         membership.protocol_registration_id > 16380 ||
         !Number.isFinite(expiresAt) ||
-        expiresAt <= Date.now()
+        (!allowExpired && expiresAt <= Date.now())
       ) {
         return false;
       }
@@ -647,10 +649,15 @@
       if (
         message.v !== 1 ||
         message.source_tab_id === tabId ||
-        message.session_id !== chatKeySessionId() ||
-        message.type !== "request-unlocked-chat-key" ||
-        !message.request_id
+        message.session_id !== chatKeySessionId()
       ) {
+        return;
+      }
+      if (message.type === "lock-chat-key") {
+        clearChatKeyMaterial({ broadcast: false });
+        return;
+      }
+      if (message.type !== "request-unlocked-chat-key" || !message.request_id) {
         return;
       }
 
@@ -1148,6 +1155,7 @@
         Accept: "application/json",
       },
     });
+    lockIfAuthenticationEnded(response);
     if (!response.ok) {
       throw new Error("Chat key lookup failed.");
     }
@@ -1182,6 +1190,7 @@
       headers,
       body: JSON.stringify(payload || {}),
     });
+    lockIfAuthenticationEnded(response);
     const body = await response.json();
     if (!response.ok) {
       const error = new Error(body?.error || "PQ device enrollment failed.");
@@ -1195,7 +1204,7 @@
     return date.toISOString().replace(/\.\d{3}Z$/u, "Z");
   }
 
-  async function signUnlockEnrollment(value) {
+  async function signUnlockValue(value, domain) {
     if (!unlockedChatSigningPrivateKey) {
       throw new Error("PQ device enrollment requires an unlocked chat key.");
     }
@@ -1204,9 +1213,7 @@
         { hash: "SHA-256", name: "ECDSA" },
         unlockedChatSigningPrivateKey,
         joinBytes(
-          textEncoder.encode(
-            "HushLine/HL-PQCHAT-1/unlock-enrollment/v1",
-          ),
+          textEncoder.encode(domain),
           new Uint8Array([0]),
           textEncoder.encode(canonicalStringify(value)),
         ),
@@ -1254,8 +1261,13 @@
         .sort((left, right) => right.epoch - left.epoch)[0];
       let enrollmentArchive = null;
       if (!archive) {
+        const nextArchiveEpoch =
+          Math.max(
+            0,
+            ...(account.archive_epochs || []).map((value) => value.epoch),
+          ) + 1;
         archive = await createPqArchiveEpoch(
-          { accountId: account.account_id, epoch: 1 },
+          { accountId: account.account_id, epoch: nextArchiveEpoch },
           { client },
         );
         enrollmentArchive = {
@@ -1356,7 +1368,10 @@
           archive: enrollmentArchive,
           membership,
           membership_signature: membershipSignature,
-          unlock_signature: await signUnlockEnrollment(unlockValue),
+          unlock_signature: await signUnlockValue(
+            unlockValue,
+            "HushLine/HL-PQCHAT-1/unlock-enrollment/v1",
+          ),
         },
         protocolState: created.state,
         publication: {
@@ -1534,6 +1549,7 @@
       headers,
       body: JSON.stringify(created.payload),
     });
+    lockIfAuthenticationEnded(response);
     if (!response.ok) {
       throw new Error("Chat key creation failed.");
     }
@@ -1617,6 +1633,7 @@
           ...wrapped,
         }),
       });
+      lockIfAuthenticationEnded(response);
       if (!response.ok) {
         throw new Error("Chat key capability upgrade failed.");
       }
@@ -1724,6 +1741,73 @@
     return callPqArchiveWithUnlockedRoot("archiveOpen", args, options);
   }
 
+  async function revokePqDevice(deviceId, sourceDocument = document) {
+    const chatKey = await fetchChatKey(chatKeyUrlFromCurrentOrigin());
+    if (!chatKey || !(await restoreUnlockedChatKey(chatKey))) {
+      throw new Error("The chat key is locked.");
+    }
+    let currentDevice = restorePqDeviceState(sourceDocument);
+    if (!currentDevice) {
+      if (!(await ensurePqDeviceEnrollment(chatKey, sourceDocument))) {
+        throw new Error("PQ device enrollment failed.");
+      }
+      currentDevice = restorePqDeviceState(sourceDocument);
+    }
+    if (!currentDevice || !unlockedPqAccountIdentityPrivateKey) {
+      throw new Error("PQ device revocation capability is unavailable.");
+    }
+
+    const account = await postPqDeviceJson(
+      "/api/pq/account",
+      {},
+      sourceDocument,
+    );
+    const nextEpoch =
+      Math.max(0, ...(account.archive_epochs || []).map((value) => value.epoch)) +
+      1;
+    const rotated = await createPqArchiveEpoch({
+      accountId: account.account_id,
+      epoch: nextEpoch,
+    });
+    const archive = {
+      encrypted_private_key: rotated.encryptedPrivateKey,
+      epoch: rotated.epoch,
+      public_key: rotated.publicKey,
+    };
+    const revocation = {
+      account_id: account.account_id,
+      archive_epoch: archive.epoch,
+      archive_public_key_sha256: await sha256Hex(
+        base64UrlToBytes(archive.public_key),
+      ),
+      device_id: deviceId,
+      membership_sequence: account.membership_sequence + 1,
+      revoked_at: pqTimestamp(new Date()),
+      status: "revoked",
+    };
+    const payload = {
+      archive,
+      revocation,
+      signature: await signEd25519Json(
+        unlockedPqAccountIdentityPrivateKey,
+        "HushLine/HL-PQCHAT-1/device-revocation/v1",
+        revocation,
+      ),
+      unlock_signature: await signUnlockValue(
+        { archive, revocation },
+        "HushLine/HL-PQCHAT-1/unlock-revocation/v1",
+      ),
+    };
+    const result = await postPqDeviceJson(
+      `/api/pq/devices/${encodeURIComponent(deviceId)}/revoke`,
+      payload,
+      sourceDocument,
+    );
+
+    clearChatKeyMaterial();
+    return { ...result, reenrolled: false };
+  }
+
   async function pqJson(path, { body, deviceId, method = "GET" } = {}) {
     const headers = { Accept: "application/json" };
     if (body !== undefined) {
@@ -1739,6 +1823,7 @@
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
+    lockIfAuthenticationEnded(response);
     let payload = null;
     try {
       payload = await response.json();
@@ -1753,12 +1838,26 @@
     return payload;
   }
 
-  async function ensurePqDeliveryDevice() {
+  async function ensurePqDeliveryDevice({ verifyCurrent = false } = {}) {
     const chatKey = await fetchChatKey(chatKeyUrlFromCurrentOrigin());
     if (!chatKey || !(await restoreUnlockedChatKey(chatKey))) {
       throw new Error("The chat key is locked.");
     }
     let device = restorePqDeviceState();
+    if (device && verifyCurrent) {
+      try {
+        await pqJson(
+          `/api/pq/accounts/${encodeURIComponent(device.accountId)}/devices`,
+          { deviceId: device.deviceId },
+        );
+      } catch (error) {
+        if (error?.code !== "STALE_MEMBERSHIP") {
+          throw error;
+        }
+        await clearPqDeviceMaterial();
+        device = null;
+      }
+    }
     if (!device) {
       if (!(await ensurePqDeviceEnrollment(chatKey))) {
         throw new Error("PQ device enrollment failed.");
@@ -1904,6 +2003,7 @@
           },
           body: exactRequestBytes,
         });
+        lockIfAuthenticationEnded(response);
         const result = await response.json();
         if (!response.ok) {
           const sendError = new Error(result?.error || "PQ delivery failed.");
@@ -1939,6 +2039,7 @@
     const lease = await adapter.acquireLease(tabId);
     const client = window.HushLinePqProtocol.createWorkerClient();
     const sessionId = `conversation:${conversationId}`;
+    let staleMembership = false;
     try {
       const pending = (await adapter.listOutbox()).find(
         (item) => item.sessionId === sessionId,
@@ -2127,15 +2228,62 @@
         extraHeaders,
       );
       return response;
+    } catch (error) {
+      if (error?.code !== "STALE_MEMBERSHIP") {
+        throw error;
+      }
+      staleMembership = true;
     } finally {
       client.close();
       await adapter.releaseLease(lease);
       adapter.lock();
     }
+    if (staleMembership) {
+      await clearPqDeviceMaterial();
+      const recoveryChatKey = await fetchChatKey(chatKeyUrlFromCurrentOrigin());
+      if (
+        !recoveryChatKey ||
+        !(await restoreUnlockedChatKey(recoveryChatKey)) ||
+        !(await ensurePqDeviceEnrollment(recoveryChatKey))
+      ) {
+        throw new Error("PQ device re-establishment failed.");
+      }
+      return sendPqMessage({
+        accountIds,
+        conversationId,
+        endpoint,
+        extraHeaders,
+        plaintext,
+      });
+    }
+    throw new Error("PQ delivery did not complete.");
   }
 
-  function clearChatKeyMaterial() {
-    void window.HushLinePqBrowserState?.clearAll?.();
+  async function clearPqDeviceMaterial() {
+    let clearing;
+    try {
+      clearing = window.HushLinePqBrowserState?.clearAll?.();
+    } catch (error) {
+      // Continue locking even when browser storage cannot be opened.
+    }
+    try {
+      window.sessionStorage.removeItem(pqDeviceSessionStorageKey);
+    } catch (error) {
+      // Storage denial cannot prevent in-memory key cleanup.
+    }
+    announcePqDeviceState("unavailable");
+    try {
+      await clearing;
+    } catch (error) {
+      // Removing the wrapped session key still locks inaccessible stored state.
+    }
+  }
+
+  function clearChatKeyMaterial({ broadcast = true } = {}) {
+    if (broadcast) {
+      postChatKeyBroadcast({ type: "lock-chat-key" });
+    }
+    void clearPqDeviceMaterial();
     const hadUnlockedKey = Boolean(
       unlockedChatPrivateKey ||
         unlockedChatSigningPrivateKey ||
@@ -2153,15 +2301,23 @@
     state.status = "empty";
     state.keyVersion = null;
     state.lastError = null;
-    try {
-      window.sessionStorage.removeItem(pqDeviceSessionStorageKey);
-    } catch (error) {
-      // Storage denial cannot prevent in-memory key cleanup.
-    }
-    announcePqDeviceState("unavailable");
     if (hadUnlockedKey) {
       updateConversationLockedAfterKeyClear();
     }
+  }
+
+  function lockIfAuthenticationEnded(response) {
+    if (!response?.redirected) {
+      return false;
+    }
+    const path = new URL(response.url, window.location.origin).pathname;
+    if (path !== "/login" && path !== "/verify-2fa-login") {
+      return false;
+    }
+    clearChatKeyMaterial();
+    const error = new Error("Authenticated session ended.");
+    error.code = "AUTHENTICATION_FAILED";
+    throw error;
   }
 
   function replaceDocument(responseText, responseUrl) {
@@ -2295,27 +2451,26 @@
 
   async function pqConversationDecryptionContext() {
     const root = document.getElementById("conversation-chat");
-    const device = await ensurePqDeliveryDevice();
+    const device = await ensurePqDeliveryDevice({ verifyCurrent: true });
     const participantAccounts = jsonFromScript(
       "conversationParticipantPqAccounts",
       [],
     );
-    if (!root?.dataset.conversationPublicId || participantAccounts.length !== 2) {
+    const ownParticipantAccount = participantAccounts.find(
+      (account) => account.account_id === device.accountId,
+    );
+    if (!root?.dataset.conversationPublicId || !ownParticipantAccount) {
       throw new Error("Protected conversation metadata is unavailable.");
     }
-    const [accountStates, ownAccount] = await Promise.all([
-      Promise.all(
-        participantAccounts.map((account) =>
-          pqJson(
-            `/api/pq/accounts/${encodeURIComponent(account.account_id)}/devices`,
-            { deviceId: device.deviceId },
-          ),
-        ),
+    const [ownAccountState, ownAccount] = await Promise.all([
+      pqJson(
+        `/api/pq/accounts/${encodeURIComponent(ownParticipantAccount.account_id)}/devices`,
+        { deviceId: device.deviceId },
       ),
       pqJson("/api/pq/account", { body: {}, method: "POST" }),
     ]);
     return {
-      accountStates,
+      accountStates: [ownAccountState],
       conversationId: root.dataset.conversationPublicId,
       device,
       ownAccount,
@@ -2331,12 +2486,24 @@
     const senderAccount = accountStates.find(
       (account) => account.account_id === delivery.manifest?.sender_account_id,
     );
-    const senderDevice = senderAccount?.devices.find(
+    const activeSenderDevice = senderAccount?.devices.find(
       (candidate) =>
-        candidate.membership.device_id === delivery.manifest?.sender_device_id,
+        candidate.membership.device_id ===
+        delivery.manifest?.sender_device_id,
     );
+    const senderDevice = activeSenderDevice || delivery.sender?.device;
+    const senderIdentityPublicKey = activeSenderDevice
+      ? senderAccount?.identity_public_key
+      : delivery.sender?.account_identity_public_key;
     if (
       !senderDevice ||
+      !(await verifyPqMembership(
+        senderIdentityPublicKey,
+        senderDevice,
+        0,
+        delivery.manifest.sender_account_id,
+        true,
+      )) ||
       senderDevice.membership_sha256 !==
         delivery.manifest.sender_membership_sha256 ||
       !(await verifyEd25519Json(
@@ -2482,6 +2649,7 @@
         "X-Hushline-Conversation-Refresh": "true",
       },
     });
+    lockIfAuthenticationEnded(response);
     if (!response.ok) {
       return false;
     }
@@ -2701,6 +2869,7 @@
           encrypted_copies: encryptedCopies,
         }),
       });
+      lockIfAuthenticationEnded(response);
       if (!response.ok) {
         setConversationStatus("Reply could not be saved.");
         return;
@@ -2756,7 +2925,7 @@
     }
 
     try {
-      await fetch(root.dataset.presenceUrl, {
+      const response = await fetch(root.dataset.presenceUrl, {
         method: "POST",
         credentials: "same-origin",
         headers: {
@@ -2764,6 +2933,7 @@
           "X-CSRFToken": conversationCsrfToken() || "",
         },
       });
+      lockIfAuthenticationEnded(response);
     } catch (error) {
       return;
     }
@@ -3043,6 +3213,52 @@
     }
   }
 
+  function bindPqDeviceRevocation() {
+    document
+      .querySelectorAll("[data-pq-revoke-device-id]")
+      .forEach((button) => {
+        if (button.dataset.bound === "true") {
+          return;
+        }
+        button.dataset.bound = "true";
+        button.addEventListener("click", async () => {
+          if (
+            !window.confirm(
+              "Revoke this browser and rotate protection for future messages? Previously copied messages and keys cannot be retracted.",
+            )
+          ) {
+            return;
+          }
+          const status = document.getElementById("pq-device-revocation-status");
+          const buttons = Array.from(
+            document.querySelectorAll("[data-pq-revoke-device-id]"),
+          );
+          buttons.forEach((candidate) => {
+            candidate.disabled = true;
+          });
+          if (status) {
+            status.textContent = "Revoking browser and rotating future keys...";
+          }
+          try {
+            await revokePqDevice(button.dataset.pqRevokeDeviceId);
+            if (status) {
+              status.textContent =
+                "Browser revoked and future keys rotated. Account sessions were signed out; log in again to re-establish protected chat.";
+            }
+          } catch (error) {
+            if (status) {
+              status.textContent =
+                "The browser could not be revoked. Refresh the page before trying again.";
+            }
+          } finally {
+            buttons.forEach((candidate) => {
+              candidate.disabled = false;
+            });
+          }
+        });
+      });
+  }
+
   function bindChatKeyCleanupTriggers() {
     if (document.documentElement.dataset.chatKeyCleanupBound === "true") {
       return;
@@ -3064,7 +3280,27 @@
     });
   }
 
+  function scheduleAuthenticatedSessionLock() {
+    if (sessionLockTimer !== null) {
+      window.clearTimeout(sessionLockTimer);
+      sessionLockTimer = null;
+    }
+    const maxAgeMs = Number.parseInt(
+      document.body?.dataset.authSessionMaxAgeMs || "",
+      10,
+    );
+    if (
+      document.body?.dataset.authenticated !== "true" ||
+      !Number.isFinite(maxAgeMs) ||
+      maxAgeMs <= 0
+    ) {
+      return;
+    }
+    sessionLockTimer = window.setTimeout(clearChatKeyMaterial, maxAgeMs);
+  }
+
   function bindPage() {
+    scheduleAuthenticatedSessionLock();
     if (document.body?.dataset.authenticated !== "true") {
       clearChatKeyMaterial();
       crossTabSharingBound = false;
@@ -3080,6 +3316,7 @@
     document
       .getElementById("change-password-form")
       ?.addEventListener("submit", handlePasswordChangeSubmit);
+    bindPqDeviceRevocation();
     document
       .querySelector("form[action*='password-reset']")
       ?.addEventListener("submit", clearChatKeyMaterial);
@@ -3104,6 +3341,7 @@
     ensurePqDeviceEnrollment,
     openPqArchive,
     provisionChatKey,
+    revokePqDevice,
     rewrapForPasswordChange,
     sendPqMessage,
     signingPrivateKeyForChatKey,

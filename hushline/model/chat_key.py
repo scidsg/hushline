@@ -117,6 +117,7 @@ class ChatDevice(Model):
     membership_sha256: Mapped[str] = mapped_column(db.String(64), nullable=False)
     signing_public_key: Mapped[str] = mapped_column(db.Text, nullable=False)
     protocol_identity_public_key: Mapped[str] = mapped_column(db.Text, nullable=False)
+    account_identity_public_key: Mapped[str | None] = mapped_column(db.Text)
     membership: Mapped[dict[str, Any]] = mapped_column(db.JSON, nullable=False)
     membership_signature: Mapped[str] = mapped_column(db.Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(

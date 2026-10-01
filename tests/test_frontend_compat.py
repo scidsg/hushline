@@ -323,6 +323,44 @@ def test_chat_key_lifecycle_restores_unlocked_key_for_authenticated_tab_session(
     assert "function bindChatKeyCleanupTriggers()" in js
 
 
+def test_pq_lifecycle_rotates_future_archive_access_and_locks_on_session_end() -> None:
+    js = (ROOT / "assets/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
+    static_js = (ROOT / "hushline/static/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
+    template = (ROOT / "hushline/templates/settings/auth.html").read_text(encoding="utf-8")
+    global_js = (ROOT / "assets/js/global.js").read_text(encoding="utf-8")
+
+    for lifecycle_js in (js, static_js):
+        assert "async function revokePqDevice(" in lifecycle_js
+        assert '"HushLine/HL-PQCHAT-1/device-revocation/v1"' in lifecycle_js
+        assert '"HushLine/HL-PQCHAT-1/unlock-revocation/v1"' in lifecycle_js
+        assert "const nextEpoch =" in lifecycle_js
+        assert "clearPqDeviceMaterial();" in lifecycle_js
+        assert "ensurePqDeviceEnrollment(chatKey, sourceDocument)" in lifecycle_js
+        assert 'if (error?.code !== "STALE_MEMBERSHIP")' in lifecycle_js
+        assert "let staleMembership = false;" in lifecycle_js
+        assert "await clearPqDeviceMaterial();" in lifecycle_js
+        assert "device = null;" in lifecycle_js
+        assert "ensurePqDeliveryDevice({ verifyCurrent: true })" in lifecycle_js
+        assert "const activeSenderDevice =" in lifecycle_js
+        assert "delivery.sender?.account_identity_public_key" in lifecycle_js
+        assert "function lockIfAuthenticationEnded(response)" in lifecycle_js
+        assert 'postChatKeyBroadcast({ type: "lock-chat-key" });' in lifecycle_js
+        assert "clearChatKeyMaterial({ broadcast: false });" in lifecycle_js
+        assert "function scheduleAuthenticatedSessionLock()" in lifecycle_js
+        assert "window.setTimeout(clearChatKeyMaterial, maxAgeMs)" in lifecycle_js
+        assert 'path !== "/login" && path !== "/verify-2fa-login"' in lifecycle_js
+        assert "clearChatKeyMaterial();" in lifecycle_js
+        assert "bindPqDeviceRevocation();" in lifecycle_js
+    assert 'data-pq-revoke-device-id="{{ device.public_id }}"' in template
+    assert 'id="pq-device-revocation-status"' in template
+    assert "cannot retract messages or keys already copied" in template
+    assert "password reset creates a new root but locks old protected history" in template
+    assert "window.HushLineChatKeys?.clear?.();" in global_js
+    assert global_js.index("window.HushLineChatKeys?.clear?.();") < global_js.index(
+        'document.querySelector(\n          "#guidance-exit-button-link",'
+    )
+
+
 def test_conversation_does_not_prompt_for_password_after_login() -> None:
     js = (ROOT / "assets/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
     template = (ROOT / "hushline/templates/conversation.html").read_text(encoding="utf-8")

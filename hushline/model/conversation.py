@@ -89,8 +89,8 @@ class ConversationParticipant(Model):
     conversation_id: Mapped[int] = mapped_column(
         db.ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    user_id: Mapped[int] = mapped_column(
-        db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    user_id: Mapped[int | None] = mapped_column(
+        db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     created_at: Mapped[datetime] = mapped_column(
         db.DateTime(timezone=True), server_default=text("NOW()"), nullable=False
@@ -110,7 +110,7 @@ class ConversationParticipant(Model):
     )
 
     conversation: Mapped["Conversation"] = relationship(back_populates="participants")
-    user: Mapped["User"] = relationship(back_populates="conversation_participants")
+    user: Mapped["User | None"] = relationship(back_populates="conversation_participants")
     sent_messages: Mapped[list["ConversationMessage"]] = relationship(
         back_populates="sender_participant",
         passive_deletes=True,

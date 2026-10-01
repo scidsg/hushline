@@ -70,6 +70,33 @@
     ></p>
     {{ change_password_form.submit }}
   </form>
+
+  {% if pq_devices %}
+    <h4>Protected Chat Browsers</h4>
+    <p class="meta">
+      Revoke a browser you no longer trust. This rotates archive protection for future messages
+      and signs out account sessions, but cannot retract messages or keys already copied.
+      Log in again to re-establish protected chat. If an unlocked account secret may have been
+      copied, password reset creates a new root but locks old protected history.
+    </p>
+    <ul id="pq-device-list">
+      {% for device in pq_devices %}
+        <li>
+          Browser {{ device.public_id[:8] }}
+          {% if device.session_id_hash == current_chat_session_hash %}(this session){% endif %}
+          — enrolled {{ device.created_at.strftime("%Y-%m-%d") }}
+          <button
+            type="button"
+            class="btn-danger"
+            data-pq-revoke-device-id="{{ device.public_id }}"
+          >
+            Revoke browser {{ device.public_id[:8] }}
+          </button>
+        </li>
+      {% endfor %}
+    </ul>
+    <p id="pq-device-revocation-status" class="meta" role="status" aria-live="polite"></p>
+  {% endif %}
 {% endblock %}
 
 {% block scripts %}
