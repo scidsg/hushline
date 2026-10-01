@@ -97,8 +97,8 @@
     },
     {
       "gate": "G11",
-      "issue": "scidsg/hushline#2376",
-      "observed_result": "blocked-prerequisites",
+      "issue": "scidsg/hushline#2406",
+      "observed_result": "implemented-pending-validation-review",
       "satisfied": false,
       "evidence": "g11-readiness.json"
     },

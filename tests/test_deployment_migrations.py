@@ -67,3 +67,16 @@ def test_prod_start_script_supports_disabling_startup_migrations() -> None:
 
     assert 'if [ "${RUN_STARTUP_MIGRATIONS:-true}" = "true" ]; then' in script
     assert 'echo "> Skipping startup migrations"' in script
+
+
+def test_compose_deployments_expose_pq_migration_controls() -> None:
+    for compose_name in (
+        "docker-compose.yaml",
+        "docker-compose.personal-server.yaml",
+        "docker-compose.staging.yaml",
+        "docker-compose.stripe.yaml",
+    ):
+        app = _service_blocks(ROOT / compose_name)["app"]
+        assert 'PQ_CHAT_AUTO_MIGRATION_ENABLED:-false}"' in app
+        assert 'PQ_CHAT_MIGRATION_ROLLOUT_PERCENT:-0}"' in app
+        assert 'PQ_CHAT_PROTECTED_WRITES_PAUSED:-false}"' in app

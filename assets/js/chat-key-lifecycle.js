@@ -1983,32 +1983,39 @@
     endpoint,
     extraHeaders,
   ) {
-    return adapter.deliverOutbox({
-      lease,
-      sessionId,
-      logicalMessageId,
-      transmit: async (exactRequestBytes) => {
-        const response = await fetch(endpoint, {
-          method: "POST",
-          credentials: "same-origin",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrfTokenFromDocument(),
-            ...(extraHeaders || {}),
-          },
-          body: exactRequestBytes,
-        });
-        lockIfAuthenticationEnded(response);
-        const result = await response.json();
-        if (!response.ok) {
-          const sendError = new Error(result?.error || "PQ delivery failed.");
-          sendError.code = result?.error || "INTERNAL_ERROR";
-          throw sendError;
-        }
-        return result;
-      },
-    });
+    try {
+      return await adapter.deliverOutbox({
+        lease,
+        sessionId,
+        logicalMessageId,
+        transmit: async (exactRequestBytes) => {
+          const response = await fetch(endpoint, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+              "X-CSRFToken": csrfTokenFromDocument(),
+              ...(extraHeaders || {}),
+            },
+            body: exactRequestBytes,
+          });
+          lockIfAuthenticationEnded(response);
+          const result = await response.json();
+          if (!response.ok) {
+            const sendError = new Error(result?.error || "PQ delivery failed.");
+            sendError.code = result?.error || "INTERNAL_ERROR";
+            throw sendError;
+          }
+          return result;
+        },
+      });
+    } catch (error) {
+      if (error && typeof error === "object") {
+        error.pendingProtectedSend = true;
+      }
+      throw error;
+    }
   }
 
   async function sendPqMessage({
@@ -2419,6 +2426,47 @@
     return `${conversationMessageIds(sourceDocument).join(",")}:${copies}`;
   }
 
+  function syncConversationPolicy(nextDocument) {
+    const root = document.getElementById("conversation-chat");
+    const nextRoot = nextDocument.getElementById("conversation-chat");
+    if (!root || !nextRoot) {
+      return;
+    }
+    for (const key of [
+      "canCompose",
+      "protectedWritesPaused",
+      "protocolTargetVersion",
+      "protocolVersion",
+    ]) {
+      root.dataset[key] = nextRoot.dataset[key] || "";
+    }
+    for (const id of [
+      "conversationParticipantPqAccounts",
+      "conversationParticipantPublicKeys",
+      "conversationParticipantSigningPublicKeys",
+    ]) {
+      const currentMetadata = document.getElementById(id);
+      const nextMetadata = nextDocument.getElementById(id);
+      if (currentMetadata && nextMetadata) {
+        currentMetadata.textContent = nextMetadata.textContent;
+      }
+    }
+    const protectionStatus = document.querySelector(
+      "[data-conversation-protection-status]",
+    );
+    const nextProtectionStatus = nextDocument.querySelector(
+      "[data-conversation-protection-status]",
+    );
+    if (protectionStatus && nextProtectionStatus) {
+      protectionStatus.textContent = nextProtectionStatus.textContent;
+    }
+    if (!conversationSubmitInFlight) {
+      setConversationComposeEnabled(
+        state.status === "unlocked" && root.dataset.canCompose === "true",
+      );
+    }
+  }
+
   function conversationMessageSenderIdFromPayload(encryptedPayload) {
     if (!encryptedPayload || typeof encryptedPayload !== "string") {
       return null;
@@ -2660,6 +2708,8 @@
       return false;
     }
 
+    syncConversationPolicy(nextDocument);
+
     if (
       !force &&
       conversationMessagesSignature(nextDocument) ===
@@ -2779,6 +2829,18 @@
     }
   }
 
+  function setConversationProtectedRetryPending(pending) {
+    const body = document.getElementById("conversation-compose-body");
+    const submit = document.getElementById("conversation-compose-submit");
+    if (body) {
+      body.readOnly = pending;
+      body.setAttribute("aria-readonly", pending ? "true" : "false");
+    }
+    if (submit) {
+      submit.value = pending ? "Retry" : "Send";
+    }
+  }
+
   function resizeConversationComposer() {
     const body = document.getElementById("conversation-compose-body");
     if (!body) {
@@ -2787,6 +2849,19 @@
 
     body.style.height = "auto";
     body.style.height = `${body.scrollHeight}px`;
+  }
+
+  function conversationSendFailureStatus(error) {
+    if (error?.code === "UPDATE_REQUIRED" || error?.code === "SUITE_MISMATCH") {
+      return "Update needed to send a protected message. Your draft has been kept.";
+    }
+    if (error?.code === "PROTECTED_WRITES_PAUSED") {
+      return "Protected sending is temporarily paused. Your draft has been kept for retry.";
+    }
+    if (error?.code === "MIGRATION_NOT_ENABLED") {
+      return "Post-quantum migration is not available for this conversation yet. Your draft has been kept.";
+    }
+    return "Reply could not be sent. Your draft has been kept for retry.";
   }
 
   async function handleConversationSubmit(event) {
@@ -2813,7 +2888,9 @@
     setConversationComposeEnabled(false);
     setConversationStatus("Encrypting reply...");
     try {
-      if (root.dataset.protocolVersion === "1") {
+      const targetProtocolVersion =
+        root.dataset.protocolTargetVersion || root.dataset.protocolVersion;
+      if (targetProtocolVersion === "1") {
         const participantAccounts = jsonFromScript(
           "conversationParticipantPqAccounts",
           [],
@@ -2822,7 +2899,8 @@
           throw new Error("Protected participant state is unavailable.");
         }
         const timestamp = new Date().toISOString();
-        await sendPqMessage({
+        const retryingDisplayedDraft = body.readOnly;
+        const result = await sendPqMessage({
           accountIds: participantAccounts.map((account) => account.account_id),
           conversationId: root.dataset.conversationPublicId || "",
           endpoint: root.dataset.messageUrl,
@@ -2831,9 +2909,16 @@
             created_at: timestamp,
           }),
         });
+        setConversationProtectedRetryPending(false);
+        await refreshConversationMessages({ force: true, scroll: true });
+        if (result?.retried && !retryingDisplayedDraft) {
+          setConversationStatus(
+            "A pending protected reply was sent. Your current draft was not sent and has been kept.",
+          );
+          return;
+        }
         body.value = "";
         resizeConversationComposer();
-        await refreshConversationMessages({ force: true, scroll: true });
         setConversationStatus("Reply sent.");
         return;
       }
@@ -2867,15 +2952,25 @@
       });
       lockIfAuthenticationEnded(response);
       if (!response.ok) {
-        setConversationStatus("Reply could not be saved.");
-        return;
+        let result = null;
+        try {
+          result = await response.json();
+        } catch (error) {
+          // The stable state below does not expose a remote response body.
+        }
+        const sendError = new Error(result?.message || "Reply could not be saved.");
+        sendError.code = result?.error || "INTERNAL_ERROR";
+        throw sendError;
       }
       body.value = "";
       resizeConversationComposer();
       await refreshConversationMessages({ force: true, scroll: true });
       setConversationStatus("Reply sent.");
     } catch (error) {
-      setConversationStatus("Reply could not be encrypted.");
+      if (error?.pendingProtectedSend) {
+        setConversationProtectedRetryPending(true);
+      }
+      setConversationStatus(conversationSendFailureStatus(error));
     } finally {
       conversationSubmitInFlight = false;
       setConversationComposeEnabled(root.dataset.canCompose === "true");

@@ -33,12 +33,19 @@ from wtforms.validators import ValidationError
 
 from hushline.auth import CHAT_KEY_SESSION_ID_SESSION_KEY, authentication_required
 from hushline.chat_key_lifecycle import (
+    PQ_CHAT_ARCHIVE_SUITE,
+    PQ_CHAT_PROTOCOL,
     PQ_CHAT_PROTOCOL_VERSION,
     PqChatPackageError,
     ValidatedPqChatPackage,
     chat_key_fingerprint,
     chat_session_binding,
     validate_pq_chat_package,
+)
+from hushline.config import (
+    PQ_CHAT_AUTO_MIGRATION_ENABLED,
+    PQ_CHAT_MIGRATION_ROLLOUT_PERCENT,
+    PQ_CHAT_PROTECTED_WRITES_PAUSED,
 )
 from hushline.crypto import encrypt_message
 from hushline.db import db
@@ -89,6 +96,7 @@ _CONVERSATION_MESSAGE_RATE_LIMIT_CONVERSATION_MAX = 30
 _CONVERSATION_MESSAGE_RATE_LIMIT_USER_WINDOW_SECONDS = 3600
 _CONVERSATION_MESSAGE_RATE_LIMIT_USER_MAX = 200
 _CONVERSATION_MESSAGE_RATE_LIMIT_LOCK_NAMESPACE = "hushline:chat-message-rate-limit"
+_PQ_CHAT_MIGRATION_ROLLOUT_MAX_PERCENT = 100
 _CONVERSATION_NOTIFICATION_BODY = (
     "You have new Hush Line conversation activity. "
     "Log in and unlock your Hush Line chat key to read it."
@@ -101,8 +109,92 @@ _ARMORED_PGP_MESSAGE_PATTERN = re.compile(
 
 
 def _pq_chat_error(code: str) -> tuple[Response, int]:
-    status = 409 if code in {"STALE_MEMBERSHIP", "STATE_CONFLICT"} else 400
+    if code == "PROTECTED_WRITES_PAUSED":
+        status = 503
+    elif code in {
+        "MIGRATION_NOT_ENABLED",
+        "STALE_MEMBERSHIP",
+        "STATE_CONFLICT",
+        "SUITE_MISMATCH",
+        "UPDATE_REQUIRED",
+    }:
+        status = 409
+    else:
+        status = 400
     return jsonify({"error": code}), status
+
+
+def _pq_device_has_authenticated_capability(
+    device: ChatDevice, account: ChatAccount, now: datetime
+) -> bool:
+    membership = device.membership
+    return bool(
+        device.revoked_at is None
+        and _as_utc(device.expires_at) > now
+        and isinstance(membership, dict)
+        and membership.get("account_id") == account.public_id
+        and membership.get("membership_sequence") == device.membership_sequence
+        and membership.get("status") == "active"
+        and membership.get("capabilities") == [PQ_CHAT_PROTOCOL]
+        and membership.get("archive_suites") == [PQ_CHAT_ARCHIVE_SUITE]
+    )
+
+
+def _conversation_has_authenticated_pq_capabilities(thread: Conversation) -> bool:
+    participants = _conversation_active_participants(thread)
+    if len(participants) != _CONVERSATION_PARTICIPANT_COUNT:
+        return False
+    now = datetime.now(UTC)
+    for participant in participants:
+        account = participant.user.chat_account if participant.user else None
+        if (
+            account is None
+            or account.identity_public_key is None
+            or account.membership_sequence <= 0
+        ):
+            return False
+        current_archives = [epoch for epoch in account.archive_epochs if epoch.retired_at is None]
+        if len(current_archives) != 1:
+            return False
+        if not any(
+            _pq_device_has_authenticated_capability(device, account, now)
+            for device in account.devices
+        ):
+            return False
+    return True
+
+
+def _conversation_is_in_pq_rollout(thread: Conversation) -> bool:
+    try:
+        percent = int(current_app.config.get(PQ_CHAT_MIGRATION_ROLLOUT_PERCENT, 0))
+    except (TypeError, ValueError):
+        percent = 0
+    percent = min(_PQ_CHAT_MIGRATION_ROLLOUT_MAX_PERCENT, max(0, percent))
+    if percent in {0, _PQ_CHAT_MIGRATION_ROLLOUT_MAX_PERCENT}:
+        return percent == _PQ_CHAT_MIGRATION_ROLLOUT_MAX_PERCENT
+    bucket = (
+        int.from_bytes(hashlib.sha256(thread.public_id.encode()).digest()[:8], "big")
+        % _PQ_CHAT_MIGRATION_ROLLOUT_MAX_PERCENT
+    )
+    return bucket < percent
+
+
+def _pq_chat_auto_upgrade_allowed(thread: Conversation) -> bool:
+    return bool(
+        current_app.config.get(PQ_CHAT_AUTO_MIGRATION_ENABLED, False)
+        and _conversation_is_in_pq_rollout(thread)
+        and _conversation_has_authenticated_pq_capabilities(thread)
+    )
+
+
+def _pq_chat_target_protocol_version(thread: Conversation) -> int:
+    if thread.minimum_protocol_version >= PQ_CHAT_PROTOCOL_VERSION:
+        return thread.minimum_protocol_version
+    return PQ_CHAT_PROTOCOL_VERSION if _pq_chat_auto_upgrade_allowed(thread) else 0
+
+
+def _pq_chat_protected_writes_paused() -> bool:
+    return bool(current_app.config.get(PQ_CHAT_PROTECTED_WRITES_PAUSED, False))
 
 
 def _active_pq_devices(account: ChatAccount, now: datetime) -> list[ChatDevice]:
@@ -220,7 +312,10 @@ def _validate_pq_copy_inventory(
             ("archive", account.public_id, "00000000-0000-0000-0000-000000000000")
         )
         active_devices = _active_pq_devices(account, now)
-        if not active_devices:
+        if not active_devices or any(
+            not _pq_device_has_authenticated_capability(device, account, now)
+            for device in active_devices
+        ):
             raise PqChatPackageError("STALE_MEMBERSHIP")
         for device in active_devices:
             devices_by_public_id[device.public_id] = device
@@ -357,6 +452,7 @@ def _commit_pq_chat_message(
     participant: ConversationParticipant,
     user: User,
     payload: Any,
+    allow_initial_activation: bool = False,
 ) -> tuple[Response, int]:
     if thread.minimum_protocol_version > PQ_CHAT_PROTOCOL_VERSION:
         return _pq_chat_error("SUITE_MISMATCH")
@@ -370,6 +466,14 @@ def _commit_pq_chat_message(
         prior_response = _pq_idempotent_response(package, conversation_id=thread.id)
         if prior_response is not None:
             return prior_response
+        if (
+            thread.minimum_protocol_version < PQ_CHAT_PROTOCOL_VERSION
+            and not allow_initial_activation
+            and not _pq_chat_auto_upgrade_allowed(thread)
+        ):
+            raise PqChatPackageError("MIGRATION_NOT_ENABLED")
+        if _pq_chat_protected_writes_paused():
+            raise PqChatPackageError("PROTECTED_WRITES_PAUSED")
         now = datetime.now(UTC)
         chat_session_id = session.get(CHAT_KEY_SESSION_ID_SESSION_KEY)
         sender_expires_at = (
@@ -1074,6 +1178,7 @@ def register_message_routes(app: Flask) -> None:
                 {
                     "message_id": conversation_message.id,
                     "encrypted_payload": copy.encrypted_payload if copy else None,
+                    "protocol_version": conversation_message.protocol_version,
                     "pq_message_id": (
                         conversation_message.public_id
                         if (
@@ -1143,11 +1248,27 @@ def register_message_routes(app: Flask) -> None:
             )
         active_participants = _conversation_active_participants(thread)
         reply_capable_participant_ids = _conversation_reply_capable_participant_ids(thread)
-        can_compose = (
+        can_compose_with_keys = (
             len(active_participants) == len(thread.participants)
             and len(participant_public_keys) == len(thread.participants)
             and len(reply_capable_participant_ids) == len(thread.participants)
             and _participant_can_sign_replies(participant)
+        )
+        target_protocol_version = _pq_chat_target_protocol_version(thread)
+        protected_capabilities_available = _conversation_has_authenticated_pq_capabilities(thread)
+        protected_writes_paused = (
+            target_protocol_version >= PQ_CHAT_PROTOCOL_VERSION
+            and _pq_chat_protected_writes_paused()
+        )
+        client_protocol_supported = target_protocol_version <= PQ_CHAT_PROTOCOL_VERSION
+        can_compose = (
+            can_compose_with_keys
+            and client_protocol_supported
+            and not protected_writes_paused
+            and (
+                target_protocol_version < PQ_CHAT_PROTOCOL_VERSION
+                or protected_capabilities_available
+            )
         )
         conversation_message_form = ConversationMessageForm()
         delete_conversation_form = DeleteConversationForm()
@@ -1162,6 +1283,12 @@ def register_message_routes(app: Flask) -> None:
             participant_signing_public_keys=participant_signing_public_keys,
             participant_pq_accounts=participant_pq_accounts,
             can_compose=can_compose,
+            can_compose_with_keys=can_compose_with_keys,
+            client_protocol_supported=client_protocol_supported,
+            protected_capabilities_available=protected_capabilities_available,
+            protected_writes_paused=protected_writes_paused,
+            pq_chat_protocol_version=PQ_CHAT_PROTOCOL_VERSION,
+            target_protocol_version=target_protocol_version,
             conversation_name=conversation_name or "Conversation",
             conversation_username=conversation_username,
             conversation_presence_interval_ms=_conversation_presence_heartbeat_ms(),
@@ -1294,6 +1421,7 @@ def register_message_routes(app: Flask) -> None:
             participant=participant,
             user=user,
             payload=payload,
+            allow_initial_activation=True,
         )
 
     @app.route("/conversation/<public_id>/messages/<message_public_id>")
@@ -1463,6 +1591,7 @@ def register_message_routes(app: Flask) -> None:
                 Conversation.for_user_id(user.id)
                 .where(Conversation.public_id == public_id)
                 .with_for_update()
+                .execution_options(populate_existing=True)
             ).one_or_none()
             if thread is None:
                 abort(404)
@@ -1484,6 +1613,7 @@ def register_message_routes(app: Flask) -> None:
             Conversation.for_user_id(user.id)
             .where(Conversation.public_id == public_id)
             .with_for_update()
+            .execution_options(populate_existing=True)
         ).one_or_none()
         if thread is None:
             abort(404)
@@ -1491,7 +1621,15 @@ def register_message_routes(app: Flask) -> None:
         if participant is None:
             abort(404)
         if thread.minimum_protocol_version >= PQ_CHAT_PROTOCOL_VERSION:
-            return jsonify({"error": "Conversation requires protected messages."}), 409
+            return (
+                jsonify(
+                    {
+                        "error": "UPDATE_REQUIRED",
+                        "message": "Update needed to send a protected message.",
+                    }
+                ),
+                409,
+            )
 
         reply_capable_participant_ids = _conversation_reply_capable_participant_ids(thread)
         active_participants = _conversation_active_participants(thread)

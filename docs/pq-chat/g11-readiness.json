@@ -1,37 +1,34 @@
 {
   "schema_version": 1,
-  "issue": "scidsg/hushline#2376",
+  "issue": "scidsg/hushline#2406",
   "parent_epic": "scidsg/hushline#2365",
-  "recorded_at": "2026-09-25",
-  "repository_baseline": "a78b5c361cfbbf70a5678f4eabb8230dab359d90",
-  "decision": "blocked-prerequisites",
-  "production_changes": false,
+  "recorded_at": "2026-09-30",
+  "repository_baseline": "1bf40225f10c7590fd4f12e4547f3e9134b86696",
+  "decision": "implemented-pending-validation-review",
+  "production_changes": true,
   "prerequisites": [
     {
       "gate": "G9",
-      "issue": "scidsg/hushline#2374",
-      "artifact_commit": "4df7845b5d5a494f3314e24e3d8b551d99458878",
-      "required_result": "approved",
-      "observed_result": "blocked-prerequisites",
-      "satisfied": false,
+      "issue": "scidsg/hushline#2404",
+      "artifact_commit": "d5681249d118d7bf1d1416a2bcd9e713d387deaa",
+      "required_result": "implemented",
+      "observed_result": "implemented",
+      "satisfied": true,
       "evidence": [
-        "adr-0008-protected-delivery-readiness.md",
-        "g9-readiness.json"
+        "hushline/routes/message.py",
+        "tests/test_pq_message_storage.py"
       ],
-      "blocker": "G9 produced no accepted protected write, authenticated capability/version input, atomic complete-copy commit, stable retry, or protected-storage acknowledgement implementation."
+      "blocker": null
     },
     {
       "gate": "G10",
-      "issue": "scidsg/hushline#2375",
-      "artifact_commit": "a78b5c361cfbbf70a5678f4eabb8230dab359d90",
-      "required_result": "approved",
-      "observed_result": "blocked-prerequisites",
-      "satisfied": false,
-      "evidence": [
-        "adr-0009-credential-lifecycle-readiness.md",
-        "g10-readiness.json"
-      ],
-      "blocker": "G10 produced no accepted capability/device lifecycle, archive epoch transition, stale-client rejection, or fresh-browser recovery implementation."
+      "issue": "scidsg/hushline#2405",
+      "artifact_commit": "1bf40225f10c7590fd4f12e4547f3e9134b86696",
+      "required_result": "implemented",
+      "observed_result": "implemented",
+      "satisfied": true,
+      "evidence": ["hushline/routes/pq_device.py", "tests/test_pq_devices.py"],
+      "blocker": null
     }
   ],
   "production_surfaces": [
@@ -40,109 +37,109 @@
       "changed": false
     },
     {
-      "path": "hushline/model/message.py",
-      "changed": false
-    },
-    {
       "path": "migrations/versions/",
       "changed": false
     },
     {
       "path": "hushline/routes/message.py",
-      "changed": false
+      "changed": true
     },
     {
       "path": "hushline/templates/conversation.html",
-      "changed": false
+      "changed": true
     },
     {
-      "path": "assets/js/",
-      "changed": false
+      "path": "assets/js/chat-key-lifecycle.js",
+      "changed": true
     },
     {
       "path": "hushline/config.py",
-      "changed": false
+      "changed": true
+    },
+    {
+      "path": "docker-compose*.yaml",
+      "changed": true
     }
   ],
   "required_deliverables": [
     {
       "id": "authenticated-current-capability-and-version-negotiation",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "tests/test_pq_message_storage.py"
     },
     {
       "id": "automatic-eligible-conversation-upgrade-without-extra-step",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "tests/test_pq_message_storage.py"
     },
     {
       "id": "atomic-first-protected-write-and-floor-advance",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "tests/test_pq_message_storage.py"
     },
     {
       "id": "authoritative-monotonic-conversation-minimum-version",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "tests/test_pq_message_storage.py"
     },
     {
       "id": "server-rejects-explicit-missing-stripped-and-stale-below-floor-writes",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "tests/test_pq_message_storage.py"
     },
     {
       "id": "client-rejects-downgrade-before-protected-write",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "tests/test_frontend_compat.py"
     },
     {
       "id": "legacy-and-protected-history-in-one-chronological-timeline",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "tests/test_pq_message_storage.py"
     },
     {
       "id": "authenticated-per-message-version-and-security-truth",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "tests/test_pq_message_storage.py"
     },
     {
       "id": "accessible-conversation-status-and-message-details",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "hushline/templates/conversation.html"
     },
     {
       "id": "classical-authentication-limitation-remains-explicit",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "hushline/templates/conversation.html"
     },
     {
       "id": "old-client-update-needed-state-preserves-draft",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "tests/test_frontend_compat.py"
     },
     {
       "id": "transient-failure-retry-state-preserves-draft-and-operation",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "tests/test_frontend_compat.py"
     },
     {
       "id": "success-only-after-protected-storage-acknowledgement",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "tests/test_frontend_compat.py"
     },
     {
       "id": "feature-disable-and-kill-switch-preserve-floor-and-protected-reads",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "tests/test_pq_message_storage.py"
     },
     {
       "id": "rollback-floor-retains-readers-and-below-floor-write-refusal",
-      "status": "blocked",
-      "evidence": null
+      "status": "implemented",
+      "evidence": "tests/test_pq_message_storage.py"
     },
     {
       "id": "normal-flow-click-prompt-accessibility-and-performance-contract",
-      "status": "blocked",
+      "status": "pending-validation",
       "evidence": null
     }
   ],
@@ -181,7 +178,7 @@
   "forbidden_interim_outcomes": [
     "unauthenticated-or-client-controlled-capability-negotiation",
     "missing-negotiation-treated-as-classical-write-permission",
-    "protected-version-or-eligibility-invented-before-prerequisite-approval",
+    "protected-version-or-eligibility-without-implemented-protocol-inputs",
     "conversation-floor-advance-without-complete-protected-write",
     "protected-write-visible-without-conversation-floor-advance",
     "conversation-version-decrease-clear-or-bypass",
