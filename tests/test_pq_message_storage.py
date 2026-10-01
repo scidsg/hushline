@@ -4,7 +4,7 @@ import hmac
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4, uuid5
 
 import pytest
 from cryptography.hazmat.primitives import serialization
@@ -28,6 +28,8 @@ from hushline.model import (
     ChatAccount,
     ChatArchiveEpoch,
     ChatDevice,
+    ChatOneTimePrekey,
+    ChatPrekeyClaim,
     Conversation,
     ConversationMessage,
     ConversationMessageArchiveCopy,
@@ -294,6 +296,61 @@ def test_protected_reply_commits_complete_copy_set_and_replay_is_idempotent(
     assert messages[0].conversation_version == 1
     assert len(messages[0].archive_copies) == 2
     assert len(messages[0].transport_copies) == 1
+
+
+def test_protected_commit_atomically_consumes_reserved_transport_prekey(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    thread = _conversation(user, user2)
+    sender_account, sender_device, signing_key, recipient_account, recipient_device = (
+        _protected_state(user, user2)
+    )
+    message_id = str(uuid4())
+    prekey = ChatOneTimePrekey(
+        device=recipient_device,
+        key_id=1,
+        membership_sequence=recipient_device.membership_sequence,
+        classical_public_key=_b64url(b"\x05" + b"c" * 32),
+        pq_public_key=_b64url(b"\x08" + b"p" * 1568),
+        pq_signature=_b64url(b"s" * 64),
+        publication_signature=_b64url(b"d" * 64),
+        expires_at=datetime.now(UTC) + timedelta(days=1),
+    )
+    claim = ChatPrekeyClaim(
+        claim_id=str(uuid5(UUID(message_id), recipient_device.public_id)),
+        prekey=prekey,
+        claimed_by_device=sender_device,
+        reservation_expires_at=datetime.now(UTC) + timedelta(minutes=5),
+        tombstone_expires_at=datetime.now(UTC) + timedelta(days=1),
+    )
+    db.session.add(claim)
+    db.session.commit()
+    package = _protected_package(
+        thread.public_id,
+        sender_account,
+        sender_device,
+        signing_key,
+        recipient_account,
+        recipient_device,
+        message_id=message_id,
+    )
+    _authenticate(client, user, "sender-session")
+
+    response = client.post(
+        url_for("append_conversation_message", public_id=thread.public_id), json=package
+    )
+    replay = client.post(
+        url_for("append_conversation_message", public_id=thread.public_id), json=package
+    )
+
+    assert response.status_code == 201
+    assert replay.status_code == 200
+    assert replay.get_json()["idempotent"] is True
+    db.session.refresh(claim)
+    db.session.refresh(prekey)
+    assert claim.consumed_at is not None
+    assert prekey.consumed_at is not None
+    assert prekey.tombstone_expires_at == claim.tombstone_expires_at
 
 
 def test_concurrent_protected_replays_commit_one_logical_message(
@@ -620,6 +677,7 @@ def test_initial_protected_endpoint_creates_one_conversation(
     assert len(thread.messages) == 1
     assert thread.minimum_protocol_version == 1
     assert thread.initial_message is not None
+    assert thread.messages[0].encrypted_copies == []
     assert all(
         field_value.value == "Stored in encrypted conversation."
         for field_value in thread.initial_message.field_values

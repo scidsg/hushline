@@ -160,6 +160,31 @@ def test_client_side_encryption_prepares_chat_conversation_copies() -> None:
     assert 'id="senderChatPublicKey"' in embed_template
     assert 'id="recipientChatKey"' in profile_template
     assert 'id="senderChatKey"' in profile_template
+    assert 'id="pqInitialDelivery"' in profile_template
+
+
+def test_pq_delivery_uses_one_durable_package_for_initial_messages_and_replies() -> None:
+    encryption_js = (ROOT / "assets/js/client-side-encryption.js").read_text(encoding="utf-8")
+    lifecycle_js = (ROOT / "assets/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
+    conversation_template = (ROOT / "hushline/templates/conversation.html").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'jsonFromScript("pqInitialDelivery", null)' in encryption_js
+    assert "window.HushLineChatKeys.sendPqMessage" in encryption_js
+    assert "pendingPqConversation(" in encryption_js
+    assert 'root.dataset.protocolVersion === "1"' in lifecycle_js
+    assert "await adapter.commitSend({" in lifecycle_js
+    assert "adapter.deliverOutbox({" in lifecycle_js
+    assert "exactRequestBytes" in lifecycle_js
+    assert "await client.archiveSeal({" in lifecycle_js
+    assert "await client.ratchetEncrypt({" in lifecycle_js
+    assert "HushLine/HL-PQCHAT-1/manifest-signature/v1" in lifecycle_js
+    assert "decryptPqConversationMessage" in lifecycle_js
+    assert 'data-protocol-version="{{ conversation.minimum_protocol_version }}"' in (
+        conversation_template
+    )
+    assert 'id="conversationParticipantPqAccounts"' in conversation_template
 
 
 def test_chat_key_lifecycle_imports_private_key_for_message_decryption() -> None:

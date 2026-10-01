@@ -19,6 +19,8 @@
   let unlockedChatPrivateKey = null;
   let unlockedChatSigningPrivateKey = null;
   let unlockedPqAccountRoot = null;
+  let unlockedPqAccountIdentityPrivateKey = null;
+  let unlockedPqAccountIdentityPublicKey = null;
   let pendingLoginPassword = null;
   let conversationSubmitInFlight = false;
   const state = {
@@ -121,6 +123,48 @@
         new Uint8Array([0]),
         textEncoder.encode(canonicalStringify(value)),
       ),
+    );
+  }
+
+  async function signEd25519Json(privateKey, domain, value) {
+    return bytesToBase64Url(
+      new Uint8Array(
+        await window.crypto.subtle.sign(
+          { name: "Ed25519" },
+          privateKey,
+          joinBytes(
+            textEncoder.encode(domain),
+            new Uint8Array([0]),
+            textEncoder.encode(canonicalStringify(value)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  async function createEd25519KeyMaterial() {
+    const keyPair = await window.crypto.subtle.generateKey(
+      { name: "Ed25519" },
+      true,
+      ["sign", "verify"],
+    );
+    return {
+      privateJwk: await window.crypto.subtle.exportKey("jwk", keyPair.privateKey),
+      publicKey: bytesToBase64Url(
+        new Uint8Array(
+          await window.crypto.subtle.exportKey("raw", keyPair.publicKey),
+        ),
+      ),
+    };
+  }
+
+  function importEd25519PrivateKey(privateJwk) {
+    return window.crypto.subtle.importKey(
+      "jwk",
+      { ...privateJwk, key_ops: ["sign"] },
+      { name: "Ed25519" },
+      false,
+      ["sign"],
     );
   }
 
@@ -323,11 +367,14 @@
       return {
         ...value,
         pq_account_root: value.pq_account_root || null,
+        pq_account_identity_private_jwk:
+          value.pq_account_identity_private_jwk || null,
       };
     }
     return {
       ecdh_private_jwk: value,
       pq_account_root: null,
+      pq_account_identity_private_jwk: null,
       signing_private_jwk: null,
     };
   }
@@ -521,10 +568,19 @@
       throw new Error("PQ account root is malformed.");
     }
     unlockedPqAccountRoot = privateKeyBundle.pq_account_root || null;
+    unlockedPqAccountIdentityPrivateKey = privateKeyBundle
+      .pq_account_identity_private_jwk
+      ? await importEd25519PrivateKey(
+          privateKeyBundle.pq_account_identity_private_jwk,
+        )
+      : null;
+    unlockedPqAccountIdentityPublicKey =
+      privateKeyBundle.pq_account_identity_private_jwk?.x || null;
     rememberUnlockedPrivateKeyBundle(privateKeyBundle, chatKey, sourceDocument);
     state.status = "unlocked";
     state.keyVersion = chatKey.key_version;
     state.lastError = null;
+    restorePqDeviceState(sourceDocument);
     return true;
   }
 
@@ -770,6 +826,7 @@
       ["deriveKey"],
     );
     const signingKeyMaterial = await createSigningKeyMaterial();
+    const pqAccountIdentity = await createEd25519KeyMaterial();
     const publicJwk = await window.crypto.subtle.exportKey(
       "jwk",
       keyPair.publicKey,
@@ -780,6 +837,7 @@
         keyPair.privateKey,
       ),
       pq_account_root: createPqAccountRoot(),
+      pq_account_identity_private_jwk: pqAccountIdentity.privateJwk,
       signing_private_jwk: signingKeyMaterial.signingPrivateJwk,
     };
     const wrapped = await encryptPrivateKeyBundle(privateKeyBundle, password);
@@ -824,6 +882,13 @@
         privateKeyBundle = {
           ...privateKeyBundle,
           pq_account_root: createPqAccountRoot(),
+        };
+      }
+      if (!privateKeyBundle.pq_account_identity_private_jwk) {
+        const identity = await createEd25519KeyMaterial();
+        privateKeyBundle = {
+          ...privateKeyBundle,
+          pq_account_identity_private_jwk: identity.privateJwk,
         };
       }
       let publicSigningKey = chatKey.public_signing_key || null;
@@ -1126,6 +1191,221 @@
     return body;
   }
 
+  function pqTimestamp(date) {
+    return date.toISOString().replace(/\.\d{3}Z$/u, "Z");
+  }
+
+  async function signUnlockEnrollment(value) {
+    if (!unlockedChatSigningPrivateKey) {
+      throw new Error("PQ device enrollment requires an unlocked chat key.");
+    }
+    const signature = new Uint8Array(
+      await window.crypto.subtle.sign(
+        { hash: "SHA-256", name: "ECDSA" },
+        unlockedChatSigningPrivateKey,
+        joinBytes(
+          textEncoder.encode(
+            "HushLine/HL-PQCHAT-1/unlock-enrollment/v1",
+          ),
+          new Uint8Array([0]),
+          textEncoder.encode(canonicalStringify(value)),
+        ),
+      ),
+    );
+    return bytesToBase64Url(signature);
+  }
+
+  async function preparePqDeviceEnrollment(account) {
+    const protocol = window.HushLinePqProtocol;
+    if (
+      !protocol?.createWorkerClient ||
+      !unlockedPqAccountIdentityPrivateKey ||
+      !unlockedPqAccountRoot
+    ) {
+      throw new Error("PQ device enrollment capability is unavailable.");
+    }
+
+    const deviceId = window.crypto.randomUUID();
+    const membershipSequence = account.membership_sequence + 1;
+    const signedPrekeyId = 1;
+    const oneTimePrekeyStart = 1;
+    const prekeyCount = 100;
+    const client = protocol.createWorkerClient();
+    try {
+      const created = await client.createDevice({
+        address: {
+          deviceId: 1,
+          name: `${account.account_id}.${deviceId}`,
+        },
+        prekeyCount,
+        prekeyStart: oneTimePrekeyStart,
+        signedPrekeyId,
+      });
+      const deviceSigning = await createEd25519KeyMaterial();
+      const now = new Date();
+      const membershipExpiresAt = new Date(
+        now.getTime() + 30 * 24 * 60 * 60 * 1000,
+      );
+      const signedPrekeyExpiresAt = new Date(
+        now.getTime() + 7 * 24 * 60 * 60 * 1000,
+      );
+      let archive = [...(account.archive_epochs || [])]
+        .filter((value) => !value.retired_at)
+        .sort((left, right) => right.epoch - left.epoch)[0];
+      let enrollmentArchive = null;
+      if (!archive) {
+        archive = await createPqArchiveEpoch(
+          { accountId: account.account_id, epoch: 1 },
+          { client },
+        );
+        enrollmentArchive = {
+          encrypted_private_key: archive.encryptedPrivateKey,
+          epoch: archive.epoch,
+          public_key: archive.publicKey,
+        };
+        archive = {
+          encrypted_private_key: archive.encryptedPrivateKey,
+          epoch: archive.epoch,
+          public_key: archive.publicKey,
+        };
+      }
+      const membership = {
+        account_id: account.account_id,
+        archive_epoch: archive.epoch,
+        archive_public_key_sha256: await sha256Hex(
+          base64UrlToBytes(archive.public_key),
+        ),
+        archive_suites: ["MLKEM768-X25519-HKDF-SHA256-AES256GCM"],
+        capabilities: ["HL-PQCHAT-1"],
+        device_id: deviceId,
+        device_signing_public_key: deviceSigning.publicKey,
+        expires_at: pqTimestamp(membershipExpiresAt),
+        identity_version: Math.max(1, account.identity_version),
+        issued_at: pqTimestamp(now),
+        membership_sequence: membershipSequence,
+        one_time_prekey_end: oneTimePrekeyStart + prekeyCount - 1,
+        one_time_prekey_start: oneTimePrekeyStart,
+        protocol_identity_public_key: created.publicBundle.identityKey,
+        protocol_registration_id: created.publicBundle.registrationId,
+        signed_prekey_id: signedPrekeyId,
+        status: "active",
+      };
+      const accountIdentityPublicKey = unlockedPqAccountIdentityPublicKey;
+      if (!accountIdentityPublicKey) {
+        throw new Error("PQ account identity is unavailable.");
+      }
+      const membershipSignature = await signEd25519Json(
+        unlockedPqAccountIdentityPrivateKey,
+        "HushLine/HL-PQCHAT-1/device-membership/v1",
+        membership,
+      );
+
+      async function signedPrekey(kind, value) {
+        const proof = {
+          device_id: deviceId,
+          key: value,
+          kind,
+          membership_sequence: membershipSequence,
+          protocol: "HL-PQCHAT-1",
+        };
+        return {
+          ...value,
+          device_signature: await signEd25519Json(
+            await importEd25519PrivateKey(deviceSigning.privateJwk),
+            "HushLine/HL-PQCHAT-1/prekey-publication/v1",
+            proof,
+          ),
+        };
+      }
+
+      const signed = await signedPrekey("signed", {
+        classical_public_key: created.publicBundle.signedPrekey.publicKey,
+        classical_signature: created.publicBundle.signedPrekey.signature,
+        expires_at: pqTimestamp(signedPrekeyExpiresAt),
+        key_id: created.publicBundle.signedPrekey.id,
+        pq_public_key: created.publicBundle.prekeys[0].kyberPrekey.publicKey,
+        pq_signature: created.publicBundle.prekeys[0].kyberPrekey.signature,
+      });
+      const oneTimePrekeys = [];
+      for (const prekey of created.publicBundle.prekeys) {
+        oneTimePrekeys.push(
+          await signedPrekey("one-time", {
+            classical_public_key: prekey.publicKey,
+            expires_at: pqTimestamp(membershipExpiresAt),
+            key_id: prekey.id,
+            pq_public_key: prekey.kyberPrekey.publicKey,
+            pq_signature: prekey.kyberPrekey.signature,
+          }),
+        );
+      }
+      const publication = {
+        device_id: deviceId,
+        membership_sequence: membershipSequence,
+        one_time_prekeys: oneTimePrekeys,
+        protocol: "HL-PQCHAT-1",
+        signed_prekey: signed,
+      };
+      const unlockValue = {
+        account_identity_public_key: accountIdentityPublicKey,
+        membership,
+      };
+      return {
+        deviceSigningPrivateJwk: deviceSigning.privateJwk,
+        enrollment: {
+          account_identity_public_key: accountIdentityPublicKey,
+          archive: enrollmentArchive,
+          membership,
+          membership_signature: membershipSignature,
+          unlock_signature: await signUnlockEnrollment(unlockValue),
+        },
+        protocolState: created.state,
+        publication: {
+          publication,
+          signature: await signEd25519Json(
+            await importEd25519PrivateKey(deviceSigning.privateJwk),
+            "HushLine/HL-PQCHAT-1/prekey-publication/v1",
+            publication,
+          ),
+        },
+      };
+    } finally {
+      client.close();
+    }
+  }
+
+  async function persistPqDeviceState(
+    prepared,
+    accountId,
+    deviceId,
+    sourceDocument,
+  ) {
+    const rawStorageKey = window.crypto.getRandomValues(new Uint8Array(32));
+    const storageKey = await window.HushLinePqBrowserState.importStorageKey(
+      rawStorageKey,
+    );
+    const adapter = await window.HushLinePqBrowserState.create({
+      accountId,
+      deviceId,
+      sessionBinding: chatKeySessionId(sourceDocument),
+      storageKey,
+    });
+    const lease = await adapter.acquireLease(tabId);
+    try {
+      await adapter.initializeSession({
+        lease,
+        sessionId: `device:${deviceId}`,
+        state: prepared.protocolState,
+        stateDigest: await sha256Hex(
+          textEncoder.encode(canonicalStringify(prepared.protocolState)),
+        ),
+      });
+    } finally {
+      await adapter.releaseLease(lease);
+      adapter.lock();
+    }
+    return bytesToBase64Url(rawStorageKey);
+  }
+
   function announcePqDeviceState(status, accountId = null, deviceId = null) {
     pqDeviceState.status = status;
     pqDeviceState.accountId = accountId;
@@ -1135,6 +1415,27 @@
         detail: { accountId, deviceId, status },
       }),
     );
+  }
+
+  function restorePqDeviceState(sourceDocument = document) {
+    try {
+      const stored = JSON.parse(
+        window.sessionStorage.getItem(pqDeviceSessionStorageKey) || "null",
+      );
+      if (
+        stored?.sessionId !== chatKeySessionId(sourceDocument) ||
+        typeof stored.accountId !== "string" ||
+        typeof stored.deviceId !== "string" ||
+        typeof stored.storageKey !== "string" ||
+        !stored.deviceSigningPrivateJwk
+      ) {
+        return null;
+      }
+      announcePqDeviceState("ready", stored.accountId, stored.deviceId);
+      return stored;
+    } catch (error) {
+      return null;
+    }
   }
 
   async function enrollPqDevice(prepared, sourceDocument = document) {
@@ -1156,30 +1457,37 @@
       prepared.publication,
       sourceDocument,
     );
-    try {
-      window.sessionStorage.setItem(
-        pqDeviceSessionStorageKey,
-        JSON.stringify({
-          accountId,
-          deviceId,
-          sessionId: chatKeySessionId(sourceDocument),
-        }),
-      );
-    } catch (error) {
-      // Keep the enrolled device usable in this document when storage is denied.
-    }
+    const storageKey = await persistPqDeviceState(
+      prepared,
+      accountId,
+      deviceId,
+      sourceDocument,
+    );
+    window.sessionStorage.setItem(
+      pqDeviceSessionStorageKey,
+      JSON.stringify({
+        accountId,
+        deviceId,
+        deviceSigningPrivateJwk: prepared.deviceSigningPrivateJwk,
+        sessionId: chatKeySessionId(sourceDocument),
+        storageKey,
+      }),
+    );
     announcePqDeviceState("ready", accountId, deviceId);
     return { accountId, deviceId };
   }
 
   async function ensurePqDeviceEnrollment(chatKey, sourceDocument = document) {
-    const provider = window.HushLinePqProtocol;
+    if (restorePqDeviceState(sourceDocument)) {
+      return true;
+    }
     const browserState = window.HushLinePqBrowserState;
     if (
-      !provider?.prepareDeviceEnrollment ||
+      !window.HushLinePqProtocol?.createWorkerClient ||
       !browserState?.create ||
       !unlockedChatSigningPrivateKey ||
-      !unlockedPqAccountRoot
+      !unlockedPqAccountRoot ||
+      !unlockedPqAccountIdentityPrivateKey
     ) {
       announcePqDeviceState("unavailable");
       return false;
@@ -1191,20 +1499,7 @@
         {},
         sourceDocument,
       );
-      const prepared = await provider.prepareDeviceEnrollment({
-        account,
-        accountRoot: unlockedPqAccountRoot,
-        browserState,
-        canonicalStringify,
-        chatKey,
-        chatKeySessionId: chatKeySessionId(sourceDocument),
-        domains: {
-          membership: "HushLine/HL-PQCHAT-1/device-membership/v1",
-          prekeyPublication: "HushLine/HL-PQCHAT-1/prekey-publication/v1",
-          unlockEnrollment: "HushLine/HL-PQCHAT-1/unlock-enrollment/v1",
-        },
-        signingPrivateKey: unlockedChatSigningPrivateKey,
-      });
+      const prepared = await preparePqDeviceEnrollment(account, chatKey);
       await enrollPqDevice(prepared, sourceDocument);
       return true;
     } catch (error) {
@@ -1273,17 +1568,25 @@
         !chatKey.public_signing_key ||
         !privateKeyBundle.signing_private_jwk;
       const needsAccountRoot = !privateKeyBundle.pq_account_root;
-      if (!needsSigningKey && !needsAccountRoot) {
+      const needsPqAccountIdentity =
+        !privateKeyBundle.pq_account_identity_private_jwk;
+      if (!needsSigningKey && !needsAccountRoot && !needsPqAccountIdentity) {
         return chatKey;
       }
       const signingKeyMaterial = needsSigningKey
         ? await createSigningKeyMaterial()
+        : null;
+      const pqAccountIdentity = needsPqAccountIdentity
+        ? await createEd25519KeyMaterial()
         : null;
       const upgradedPrivateKeyBundle = {
         ...privateKeyBundle,
         pq_account_root:
           privateKeyBundle.pq_account_root ||
           createPqAccountRoot(),
+        pq_account_identity_private_jwk:
+          pqAccountIdentity?.privateJwk ||
+          privateKeyBundle.pq_account_identity_private_jwk,
         signing_private_jwk:
           signingKeyMaterial?.signingPrivateJwk ||
           privateKeyBundle.signing_private_jwk,
@@ -1421,18 +1724,432 @@
     return callPqArchiveWithUnlockedRoot("archiveOpen", args, options);
   }
 
+  async function pqJson(path, { body, deviceId, method = "GET" } = {}) {
+    const headers = { Accept: "application/json" };
+    if (body !== undefined) {
+      headers["Content-Type"] = "application/json";
+      headers["X-CSRFToken"] = csrfTokenFromDocument();
+    }
+    if (deviceId) {
+      headers["X-Hushline-Device-ID"] = deviceId;
+    }
+    const response = await fetch(new URL(path, window.location.origin), {
+      method,
+      credentials: "same-origin",
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch (error) {
+      // The stable error below does not expose a remote response body.
+    }
+    if (!response.ok) {
+      const requestError = new Error(payload?.error || "PQ request failed.");
+      requestError.code = payload?.error || "INTERNAL_ERROR";
+      throw requestError;
+    }
+    return payload;
+  }
+
+  async function ensurePqDeliveryDevice() {
+    const chatKey = await fetchChatKey(chatKeyUrlFromCurrentOrigin());
+    if (!chatKey || !(await restoreUnlockedChatKey(chatKey))) {
+      throw new Error("The chat key is locked.");
+    }
+    let device = restorePqDeviceState();
+    if (!device) {
+      if (!(await ensurePqDeviceEnrollment(chatKey))) {
+        throw new Error("PQ device enrollment failed.");
+      }
+      device = restorePqDeviceState();
+    }
+    if (!device) {
+      throw new Error("PQ device state is unavailable.");
+    }
+    return device;
+  }
+
+  async function openPqDeliveryState(device) {
+    const storageKey = await window.HushLinePqBrowserState.importStorageKey(
+      base64UrlToBytes(device.storageKey),
+    );
+    return window.HushLinePqBrowserState.create({
+      accountId: device.accountId,
+      deviceId: device.deviceId,
+      sessionBinding: chatKeySessionId(),
+      storageKey,
+    });
+  }
+
+  function uuidBytes(value) {
+    const hex = value.replaceAll("-", "");
+    if (!/^[0-9a-f]{32}$/u.test(hex)) {
+      throw new Error("Invalid message identifier.");
+    }
+    return Uint8Array.from(
+      hex.match(/../gu).map((byte) => Number.parseInt(byte, 16)),
+    );
+  }
+
+  function bytesUuid(bytes) {
+    const hex = Array.from(bytes, (byte) =>
+      byte.toString(16).padStart(2, "0"),
+    ).join("");
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+
+  async function prekeyClaimId(messageId, deviceId) {
+    const digest = new Uint8Array(
+      await window.crypto.subtle.digest(
+        "SHA-1",
+        joinBytes(uuidBytes(messageId), textEncoder.encode(deviceId)),
+      ),
+    );
+    const value = digest.slice(0, 16);
+    value[6] = (value[6] & 0x0f) | 0x50;
+    value[8] = (value[8] & 0x3f) | 0x80;
+    return bytesUuid(value);
+  }
+
+  function pqCopyContext({
+    account,
+    conversationId,
+    deviceId,
+    keyVersion,
+    messageId,
+    purpose,
+    senderDevice,
+  }) {
+    return {
+      account_recipient_id: account.account_id,
+      archive_epoch: purpose === "archive" ? account.archive.epoch : 0,
+      capability_offer: ["HL-PQCHAT-1"],
+      capability_selection: "HL-PQCHAT-1",
+      conversation_id: conversationId,
+      device_recipient_id:
+        purpose === "archive"
+          ? "00000000-0000-0000-0000-000000000000"
+          : deviceId,
+      key_version: keyVersion,
+      message_id: messageId,
+      protocol: "HL-PQCHAT-1",
+      purpose,
+      recipient_membership_sequence: account.membership_sequence,
+      sender_account_id: senderDevice.membership.account_id,
+      sender_device_id: senderDevice.membership.device_id,
+      sender_membership_sequence:
+        senderDevice.membership.membership_sequence,
+      suite:
+        purpose === "archive"
+          ? "MLKEM768-X25519-HKDF-SHA256-AES256GCM"
+          : "SIGNAL-PQXDH3-KYBER1024-SPQR1",
+    };
+  }
+
+  function pqCopyOrder(left, right) {
+    return [
+      left.context.purpose,
+      left.context.account_recipient_id,
+      left.context.device_recipient_id,
+    ]
+      .join(":")
+      .localeCompare(
+        [
+          right.context.purpose,
+          right.context.account_recipient_id,
+          right.context.device_recipient_id,
+        ].join(":"),
+      );
+  }
+
+  async function pqManifestCopy(copy) {
+    const ciphertextBytes = base64UrlToBytes(copy.ciphertext);
+    return {
+      account_recipient_id: copy.context.account_recipient_id,
+      archive_epoch: copy.context.archive_epoch,
+      ciphertext_length: ciphertextBytes.length,
+      ciphertext_sha256: await sha256Hex(ciphertextBytes),
+      context_sha256: await sha256Hex(
+        textEncoder.encode(canonicalStringify(copy.context)),
+      ),
+      device_recipient_id: copy.context.device_recipient_id,
+      key_version: copy.context.key_version,
+      purpose: copy.context.purpose,
+    };
+  }
+
+  async function transmitPqOutbox(
+    adapter,
+    lease,
+    sessionId,
+    logicalMessageId,
+    endpoint,
+    extraHeaders,
+  ) {
+    return adapter.deliverOutbox({
+      lease,
+      sessionId,
+      logicalMessageId,
+      transmit: async (exactRequestBytes) => {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfTokenFromDocument(),
+            ...(extraHeaders || {}),
+          },
+          body: exactRequestBytes,
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          const sendError = new Error(result?.error || "PQ delivery failed.");
+          sendError.code = result?.error || "INTERNAL_ERROR";
+          throw sendError;
+        }
+        return result;
+      },
+    });
+  }
+
+  async function sendPqMessage({
+    accountIds,
+    conversationId,
+    endpoint,
+    extraHeaders = {},
+    plaintext,
+  }) {
+    if (
+      !Array.isArray(accountIds) ||
+      ![1, 2].includes(accountIds.length) ||
+      typeof plaintext !== "string" ||
+      !plaintext
+    ) {
+      throw new Error("PQ delivery input is incomplete.");
+    }
+    const device = await ensurePqDeliveryDevice();
+    accountIds = [...new Set([device.accountId, ...accountIds])];
+    if (accountIds.length !== 2) {
+      throw new Error("PQ delivery requires two distinct participant accounts.");
+    }
+    const adapter = await openPqDeliveryState(device);
+    const lease = await adapter.acquireLease(tabId);
+    const client = window.HushLinePqProtocol.createWorkerClient();
+    const sessionId = `conversation:${conversationId}`;
+    try {
+      const pending = (await adapter.listOutbox()).find(
+        (item) => item.sessionId === sessionId,
+      );
+      if (pending) {
+        const response = await transmitPqOutbox(
+          adapter,
+          lease,
+          sessionId,
+          pending.logicalMessageId,
+          endpoint,
+          extraHeaders,
+        );
+        return { ...response, retried: true };
+      }
+
+      const accounts = await Promise.all(
+        [...new Set(accountIds)].sort().map((accountId) =>
+          pqJson(`/api/pq/accounts/${encodeURIComponent(accountId)}/devices`, {
+            deviceId: device.deviceId,
+          }),
+        ),
+      );
+      if (
+        accounts.length !== 2 ||
+        !(await Promise.all(accounts.map((account) => verifyPqArchive(account)))).every(
+          Boolean,
+        )
+      ) {
+        throw new Error("PQ participant membership could not be verified.");
+      }
+      const senderAccount = accounts.find(
+        (account) => account.account_id === device.accountId,
+      );
+      const senderDevice = senderAccount?.devices.find(
+        (candidate) =>
+          candidate.membership.device_id === device.deviceId,
+      );
+      if (!senderAccount || !senderDevice) {
+        throw new Error("PQ sender membership is unavailable.");
+      }
+
+      let current;
+      try {
+        current = await adapter.loadSession(sessionId);
+      } catch (error) {
+        if (error?.code !== "STATE_MISSING") throw error;
+        const initialState = { sessions: {}, v: 1 };
+        await adapter.initializeSession({
+          lease,
+          sessionId,
+          state: initialState,
+          stateDigest: await sha256Hex(
+            textEncoder.encode(canonicalStringify(initialState)),
+          ),
+        });
+        current = await adapter.loadSession(sessionId);
+      }
+      const deviceSeed = await adapter.loadSession(`device:${device.deviceId}`);
+      const nextState = structuredClone(current.state);
+      const messageId = window.crypto.randomUUID();
+      const createdAt = pqTimestamp(new Date());
+      const copies = [];
+
+      for (const account of accounts) {
+        const archiveContext = pqCopyContext({
+          account,
+          conversationId,
+          deviceId: null,
+          keyVersion: account.archive.epoch,
+          messageId,
+          purpose: "archive",
+          senderDevice,
+        });
+        copies.push({
+          context: archiveContext,
+          ciphertext: await client.archiveSeal({
+            context: archiveContext,
+            plaintext,
+            publicKey: account.archive.public_key,
+          }),
+        });
+
+        for (const recipientDevice of account.devices) {
+          const recipientDeviceId = recipientDevice.membership.device_id;
+          if (recipientDeviceId === device.deviceId) continue;
+          let ratchetState = nextState.sessions[recipientDeviceId];
+          if (!ratchetState) {
+            const claimId = await prekeyClaimId(messageId, recipientDeviceId);
+            const claim = await pqJson(
+              `/api/pq/accounts/${encodeURIComponent(account.account_id)}/devices/${encodeURIComponent(recipientDeviceId)}/prekeys/claim`,
+              {
+                body: { claim_id: claimId },
+                deviceId: device.deviceId,
+                method: "POST",
+              },
+            );
+            if (
+              claim?.device?.membership?.device_id !== recipientDeviceId ||
+              claim.device.membership_sha256 !==
+                recipientDevice.membership_sha256
+            ) {
+              throw new Error("PQ prekey claim changed recipient membership.");
+            }
+            const established =
+              await window.HushLinePqProtocol.beginVerifiedSession({
+                client,
+                expectedAccountId: account.account_id,
+                expectedIdentityPublicKey: account.identity_public_key,
+                localState: deviceSeed.state,
+                minimumMembershipSequence:
+                  recipientDevice.membership.membership_sequence,
+                prekeyClaim: claim,
+            });
+            ratchetState = established.state;
+          }
+          const transportContext = pqCopyContext({
+            account,
+            conversationId,
+            deviceId: recipientDeviceId,
+            keyVersion: recipientDevice.membership.signed_prekey_id,
+            messageId,
+            purpose: "transport",
+            senderDevice,
+          });
+          const encrypted = await client.ratchetEncrypt({
+            context: transportContext,
+            plaintext,
+            state: ratchetState,
+          });
+          nextState.sessions[recipientDeviceId] = encrypted.state;
+          copies.push({
+            context: transportContext,
+            ciphertext: encrypted.ciphertext,
+          });
+        }
+      }
+      copies.sort(pqCopyOrder);
+      const manifest = {
+        capability_offer: ["HL-PQCHAT-1"],
+        capability_selection: "HL-PQCHAT-1",
+        conversation_id: conversationId,
+        copies: await Promise.all(copies.map(pqManifestCopy)),
+        created_at: createdAt,
+        message_id: messageId,
+        protocol: "HL-PQCHAT-1",
+        sender_account_id: device.accountId,
+        sender_device_id: device.deviceId,
+        sender_membership_sha256: senderDevice.membership_sha256,
+      };
+      const signingKey = await importEd25519PrivateKey(
+        device.deviceSigningPrivateJwk,
+      );
+      const signature = await signEd25519Json(
+        signingKey,
+        "HushLine/HL-PQCHAT-1/manifest-signature/v1",
+        manifest,
+      );
+      const request = { copies, manifest, signature };
+      const exactRequestBytes = textEncoder.encode(canonicalStringify(request));
+      const idempotencyKey = await sha256Hex(
+        joinBytes(
+          textEncoder.encode(canonicalStringify(manifest)),
+          base64UrlToBytes(signature),
+        ),
+      );
+      await adapter.commitSend({
+        afterStateDigest: await sha256Hex(
+          textEncoder.encode(canonicalStringify(nextState)),
+        ),
+        beforeStateDigest: current.stateDigest,
+        exactRequestBytes,
+        expectedRevision: current.revision,
+        idempotencyKey,
+        lease,
+        logicalMessageId: messageId,
+        nextState,
+        sessionId,
+      });
+      const response = await transmitPqOutbox(
+        adapter,
+        lease,
+        sessionId,
+        messageId,
+        endpoint,
+        extraHeaders,
+      );
+      return response;
+    } finally {
+      client.close();
+      await adapter.releaseLease(lease);
+      adapter.lock();
+    }
+  }
+
   function clearChatKeyMaterial() {
     void window.HushLinePqBrowserState?.clearAll?.();
     const hadUnlockedKey = Boolean(
       unlockedChatPrivateKey ||
         unlockedChatSigningPrivateKey ||
         unlockedPqAccountRoot ||
+        unlockedPqAccountIdentityPrivateKey ||
+        unlockedPqAccountIdentityPublicKey ||
         state.status === "unlocked",
     );
     forgetUnlockedPrivateJwk();
     unlockedChatPrivateKey = null;
     unlockedChatSigningPrivateKey = null;
     unlockedPqAccountRoot = null;
+    unlockedPqAccountIdentityPrivateKey = null;
+    unlockedPqAccountIdentityPublicKey = null;
     state.status = "empty";
     state.keyVersion = null;
     state.lastError = null;
@@ -1576,6 +2293,99 @@
     }
   }
 
+  async function pqConversationDecryptionContext() {
+    const root = document.getElementById("conversation-chat");
+    const device = await ensurePqDeliveryDevice();
+    const participantAccounts = jsonFromScript(
+      "conversationParticipantPqAccounts",
+      [],
+    );
+    if (!root?.dataset.conversationPublicId || participantAccounts.length !== 2) {
+      throw new Error("Protected conversation metadata is unavailable.");
+    }
+    const [accountStates, ownAccount] = await Promise.all([
+      Promise.all(
+        participantAccounts.map((account) =>
+          pqJson(
+            `/api/pq/accounts/${encodeURIComponent(account.account_id)}/devices`,
+            { deviceId: device.deviceId },
+          ),
+        ),
+      ),
+      pqJson("/api/pq/account", { body: {}, method: "POST" }),
+    ]);
+    return {
+      accountStates,
+      conversationId: root.dataset.conversationPublicId,
+      device,
+      ownAccount,
+    };
+  }
+
+  async function decryptPqConversationMessage(messagePublicId, context) {
+    const { accountStates, conversationId, device, ownAccount } = context;
+    const delivery = await pqJson(
+      `/conversation/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messagePublicId)}`,
+      { deviceId: device.deviceId },
+    );
+    const senderAccount = accountStates.find(
+      (account) => account.account_id === delivery.manifest?.sender_account_id,
+    );
+    const senderDevice = senderAccount?.devices.find(
+      (candidate) =>
+        candidate.membership.device_id === delivery.manifest?.sender_device_id,
+    );
+    if (
+      !senderDevice ||
+      senderDevice.membership_sha256 !==
+        delivery.manifest.sender_membership_sha256 ||
+      !(await verifyEd25519Json(
+        senderDevice.membership.device_signing_public_key,
+        delivery.signature,
+        "HushLine/HL-PQCHAT-1/manifest-signature/v1",
+        delivery.manifest,
+      ))
+    ) {
+      throw new Error("Protected message signature is invalid.");
+    }
+    const archiveCopy = delivery.copies.find(
+      (candidate) =>
+        candidate.context?.purpose === "archive" &&
+        candidate.context.account_recipient_id === device.accountId,
+    );
+    const manifestCopy = delivery.manifest.copies.find(
+      (candidate) =>
+        candidate.purpose === "archive" &&
+        candidate.account_recipient_id === device.accountId,
+    );
+    if (
+      !archiveCopy ||
+      !manifestCopy ||
+      manifestCopy.context_sha256 !==
+        (await sha256Hex(
+          textEncoder.encode(canonicalStringify(archiveCopy.context)),
+        )) ||
+      manifestCopy.ciphertext_sha256 !==
+        (await sha256Hex(base64UrlToBytes(archiveCopy.ciphertext)))
+    ) {
+      throw new Error("Protected archive copy is invalid.");
+    }
+    const archiveEpoch = ownAccount.archive_epochs.find(
+      (epoch) => epoch.epoch === archiveCopy.context.archive_epoch,
+    );
+    if (!archiveEpoch) {
+      throw new Error("Protected archive key is unavailable.");
+    }
+    return openPqArchive({
+      accountId: device.accountId,
+      ciphertext: archiveCopy.ciphertext,
+      context: archiveCopy.context,
+      encryptedPrivateKey: archiveEpoch.encrypted_private_key,
+      epoch: archiveEpoch.epoch,
+      publicKey: archiveEpoch.public_key,
+    });
+  }
+
   function participantPublicKeyBySigningFingerprint(fingerprint) {
     if (!fingerprint) {
       return null;
@@ -1713,8 +2523,11 @@
       [],
       sourceDocument,
     );
+    const pqContext = copies.some((copy) => copy.pq_message_id)
+      ? pqConversationDecryptionContext()
+      : null;
     for (const copy of copies) {
-      if (!copy.encrypted_payload) {
+      if (!copy.encrypted_payload && !copy.pq_message_id) {
         continue;
       }
 
@@ -1732,6 +2545,25 @@
       }
 
       try {
+        if (copy.pq_message_id) {
+          const plaintext = await decryptPqConversationMessage(
+            copy.pq_message_id,
+            await pqContext,
+          );
+          const messagePayload =
+            conversationMessagePayloadFromPlaintext(plaintext);
+          messageElement.textContent = messagePayload.content;
+          if (messageTimeElement) {
+            messageTimeElement.setAttribute(
+              "datetime",
+              messagePayload.createdAt || "",
+            );
+            messageTimeElement.textContent = formatConversationMessageTimestamp(
+              messagePayload.createdAt,
+            );
+          }
+          continue;
+        }
         const senderParticipantId = conversationMessageSenderIdFromPayload(
           copy.encrypted_payload,
         );
@@ -1817,6 +2649,30 @@
     setConversationComposeEnabled(false);
     setConversationStatus("Encrypting reply...");
     try {
+      if (root.dataset.protocolVersion === "1") {
+        const participantAccounts = jsonFromScript(
+          "conversationParticipantPqAccounts",
+          [],
+        );
+        if (participantAccounts.length !== 2) {
+          throw new Error("Protected participant state is unavailable.");
+        }
+        const timestamp = new Date().toISOString();
+        await sendPqMessage({
+          accountIds: participantAccounts.map((account) => account.account_id),
+          conversationId: root.dataset.conversationPublicId || "",
+          endpoint: root.dataset.messageUrl,
+          plaintext: JSON.stringify({
+            content: plaintext,
+            created_at: timestamp,
+          }),
+        });
+        body.value = "";
+        resizeConversationComposer();
+        await refreshConversationMessages({ force: true, scroll: true });
+        setConversationStatus("Reply sent.");
+        return;
+      }
       const encryptedCopies = {};
       const timestamp = new Date().toISOString();
       const context = {
@@ -2249,6 +3105,7 @@
     openPqArchive,
     provisionChatKey,
     rewrapForPasswordChange,
+    sendPqMessage,
     signingPrivateKeyForChatKey,
     unlockFromPassword,
     verifyPqMembership,

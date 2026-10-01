@@ -2,6 +2,40 @@ import * as openpgp from "openpgp";
 
 const textEncoder = new TextEncoder();
 const sessionStorageKey = "hushline:chat-private-jwk";
+const pendingPqConversationIds = new Map();
+
+function pendingPqConversation(recipientAccountId) {
+  const storageKey = `hushline:pq-initial-conversation:${recipientAccountId}`;
+  let conversationId = pendingPqConversationIds.get(storageKey) || null;
+  try {
+    conversationId = sessionStorage.getItem(storageKey) || conversationId;
+  } catch (error) {
+    // The in-memory value still preserves retries while this page remains open.
+  }
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(
+      conversationId || "",
+    )
+  ) {
+    conversationId = window.crypto.randomUUID();
+    pendingPqConversationIds.set(storageKey, conversationId);
+    try {
+      sessionStorage.setItem(storageKey, conversationId);
+    } catch (error) {
+      // A retry can still reuse the in-memory identifier in this document.
+    }
+  }
+  return { conversationId, storageKey };
+}
+
+function clearPendingPqConversation(storageKey) {
+  pendingPqConversationIds.delete(storageKey);
+  try {
+    sessionStorage.removeItem(storageKey);
+  } catch (error) {
+    // The acknowledged send must not fail because browser storage is denied.
+  }
+}
 
 function assertClientCryptoSupport() {
   // OpenPGP.js v6 requires secure context + SubtleCrypto + Web Streams + BigInt.
@@ -544,6 +578,40 @@ document.addEventListener("DOMContentLoaded", function () {
           throw new Error("Message appears already encrypted.");
         }
       });
+
+      const pqInitialDelivery = jsonFromScript("pqInitialDelivery", null);
+      if (pqInitialDelivery) {
+        if (typeof window.HushLineChatKeys?.sendPqMessage !== "function") {
+          throw new Error("Protected delivery is unavailable.");
+        }
+        const { conversationId, storageKey } = pendingPqConversation(
+          pqInitialDelivery.recipient_account_id,
+        );
+        const createdAt = new Date().toISOString();
+        const result = await window.HushLineChatKeys.sendPqMessage({
+          accountIds: [pqInitialDelivery.recipient_account_id],
+          conversationId,
+          endpoint: pqInitialDelivery.endpoint,
+          extraHeaders: {
+            "X-Hushline-Captcha-Answer":
+              form.querySelector("[name='captcha_answer']")?.value || "",
+            "X-Hushline-Owner-Guard-Nonce":
+              form.querySelector("[name='owner_guard_nonce']")?.value || "",
+            "X-Hushline-Owner-Guard-Signature":
+              form.querySelector("[name='owner_guard_signature']")?.value || "",
+          },
+          plaintext: JSON.stringify({
+            content: conversationBodyFromFields(messageFields),
+            created_at: createdAt,
+          }),
+        });
+        if (result?.message_id) {
+          clearPendingPqConversation(storageKey);
+          window.location.assign(`/conversation/${conversationId}`);
+          return;
+        }
+        throw new Error("Protected delivery acknowledgement is invalid.");
+      }
 
       const encryptedConversationCopiesEl = document.getElementById(
         "encrypted_conversation_copies",

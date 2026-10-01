@@ -16,6 +16,7 @@ from hushline.chat_key_lifecycle import chat_key_fingerprint
 from hushline.db import db
 from hushline.model import (
     AccountCategory,
+    ChatAccount,
     ChatKey,
     Conversation,
     ConversationMessageCopy,
@@ -449,6 +450,45 @@ def test_logged_in_profile_submit_message_creates_conversation_for_distinct_reci
     _authenticate_as(client, admin_user)
     other_response = client.get(url_for("conversation", public_id=conversation.public_id))
     assert other_response.status_code == 404
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_protected_profile_rejects_classical_fallback(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    _set_pgp_key(user)
+    _set_pgp_key(user2)
+    _add_chat_key(user, '{"kty":"EC","crv":"P-256","x":"sender","y":"key"}')
+    _add_chat_key(user2, '{"kty":"EC","crv":"P-256","x":"recipient","y":"key"}')
+    db.session.add_all(
+        [
+            ChatAccount(user=user, identity_public_key="sender-pq-identity"),
+            ChatAccount(user=user2, identity_public_key="recipient-pq-identity"),
+        ]
+    )
+    db.session.commit()
+    submission_data = get_profile_submission_data(client, user2.primary_username.username)
+
+    response = client.post(
+        url_for("profile", username=user2.primary_username.username),
+        data={
+            "field_0": msg_contact_method,
+            "field_1": msg_content,
+            "encrypted_conversation_copies": json.dumps(
+                _initial_conversation_copies_for(
+                    sender=user,
+                    recipient=user2,
+                    nonce=submission_data["owner_guard_nonce"],
+                )
+            ),
+            **submission_data,
+        },
+    )
+
+    assert response.status_code == 409
+    assert "Protected delivery could not start" in response.text
+    assert db.session.scalars(db.select(Message)).all() == []
+    assert db.session.scalars(db.select(Conversation)).all() == []
 
 
 @pytest.mark.usefixtures("_authenticated_user")

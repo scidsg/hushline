@@ -7,7 +7,7 @@ import re
 import smtplib
 from datetime import UTC, datetime, timedelta
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid5
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
@@ -53,6 +53,8 @@ from hushline.model import (
     ChatAccount,
     ChatArchiveEpoch,
     ChatDevice,
+    ChatOneTimePrekey,
+    ChatPrekeyClaim,
     ChatRateLimitAttempt,
     Conversation,
     ConversationMessage,
@@ -277,6 +279,52 @@ def _validate_pq_copy_inventory(
     return participant_by_account_id, devices_by_public_id, epochs_by_account_id
 
 
+def _consume_reserved_pq_prekeys(
+    package: ValidatedPqChatPackage,
+    *,
+    sender_device: ChatDevice,
+    devices: dict[str, ChatDevice],
+) -> None:
+    """Consume any deterministic first-send reservations in the message transaction."""
+
+    now = datetime.now(UTC)
+
+    def expired(value: datetime) -> bool:
+        return (value if value.tzinfo is not None else value.replace(tzinfo=UTC)) <= now
+
+    message_namespace = UUID(package.manifest["message_id"])
+    for copy in package.copies:
+        context = copy.context
+        if context["purpose"] != "transport":
+            continue
+        recipient_device = devices[context["device_recipient_id"]]
+        claim_id = str(uuid5(message_namespace, recipient_device.public_id))
+        claim = db.session.scalars(
+            db.select(ChatPrekeyClaim)
+            .join(ChatOneTimePrekey)
+            .where(
+                ChatPrekeyClaim.claim_id == claim_id,
+                ChatPrekeyClaim.claimed_by_device_id == sender_device.id,
+                ChatOneTimePrekey.device_id == recipient_device.id,
+            )
+            .with_for_update()
+        ).one_or_none()
+        if claim is None:
+            continue
+        prekey = claim.prekey
+        if (
+            claim.consumed_at is not None
+            or prekey.consumed_at is not None
+            or expired(claim.reservation_expires_at)
+            or expired(prekey.expires_at)
+            or prekey.membership_sequence != recipient_device.membership_sequence
+        ):
+            raise PqChatPackageError("STATE_CONFLICT")
+        claim.consumed_at = now
+        prekey.consumed_at = now
+        prekey.tombstone_expires_at = claim.tombstone_expires_at
+
+
 def _pq_idempotent_response(
     package: ValidatedPqChatPackage, *, conversation_id: int
 ) -> tuple[Response, int] | None:
@@ -334,9 +382,15 @@ def _commit_pq_chat_message(
             sender_participant=participant,
             sender_device=sender_device,
         )
+        _consume_reserved_pq_prekeys(
+            package,
+            sender_device=sender_device,
+            devices=devices,
+        )
         if _consume_conversation_message_rate_limit(
             thread=thread, participant=participant, user=user
         ):
+            db.session.rollback()
             return jsonify({"error": "RATE_LIMITED"}), 429
 
         thread.minimum_protocol_version = max(
@@ -1000,8 +1054,24 @@ def register_message_routes(app: Flask) -> None:
                 {
                     "message_id": conversation_message.id,
                     "encrypted_payload": copy.encrypted_payload if copy else None,
+                    "pq_message_id": (
+                        conversation_message.public_id
+                        if conversation_message.protocol_version == PQ_CHAT_PROTOCOL_VERSION
+                        else None
+                    ),
                 }
             )
+
+        participant_pq_accounts = [
+            {
+                "account_id": account.public_id,
+                "participant_id": thread_participant.id,
+            }
+            for thread_participant in thread.participants
+            if thread_participant.user
+            for account in [thread_participant.user.chat_account]
+            if account is not None and account.identity_public_key is not None
+        ]
 
         participant_public_keys = [
             {
@@ -1067,6 +1137,7 @@ def register_message_routes(app: Flask) -> None:
             message_copy_payloads=message_copy_payloads,
             participant_public_keys=participant_public_keys,
             participant_signing_public_keys=participant_signing_public_keys,
+            participant_pq_accounts=participant_pq_accounts,
             can_compose=can_compose,
             conversation_name=conversation_name or "Conversation",
             conversation_username=conversation_username,

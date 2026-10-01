@@ -599,7 +599,6 @@ def test_chat_key_lifecycle_js_exposes_unlock_rewrap_and_cleanup() -> None:
     assert "HushLinePqProtocol" in lifecycle_source
     assert "HushLinePqBrowserState?.clearAll?.()" in lifecycle_source
     assert "browserState?.create" in lifecycle_source
-    assert "browserState," in lifecycle_source
     assert '"/api/pq/account"' in lifecycle_source
     assert "hushline:pq-device-state" in lifecycle_source
     assert "verifyPqMembership" in lifecycle_source
