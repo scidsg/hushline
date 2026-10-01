@@ -421,6 +421,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       function leaveClicked() {
+        window.HushLineChatKeys?.clear?.();
         const exitButtonLink = document.querySelector(
           "#guidance-exit-button-link",
         );

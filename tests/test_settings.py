@@ -1,6 +1,6 @@
 import json
 from base64 import b64decode
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from unittest.mock import ANY, MagicMock, patch
 from uuid import uuid4
@@ -12,11 +12,16 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 from werkzeug.security import generate_password_hash
 
+from hushline.auth import CHAT_KEY_SESSION_ID_SESSION_KEY
+from hushline.chat_key_lifecycle import chat_session_binding
 from hushline.config import PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT, AliasMode, FieldsMode
 from hushline.db import db
 from hushline.model import (
     AccountCategory,
     AuthenticationLog,
+    ChatAccount,
+    ChatArchiveEpoch,
+    ChatDevice,
     ChatKey,
     FieldDefinition,
     FieldType,
@@ -241,6 +246,52 @@ def test_auth_page_binds_chat_key_rewrap_to_password_form(
     assert rewrap_form.find(id="new_password") is not None
     assert rewrap_form.find(id="rewrapped_chat_key") is not None
     assert rewrap_form.find(id="new_username") is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_auth_page_lists_active_pq_browsers_with_accessible_revocation(
+    client: FlaskClient,
+    user: User,
+) -> None:
+    chat_session_id = "settings-pq-browser-session"
+    with client.session_transaction() as browser_session:
+        browser_session[CHAT_KEY_SESSION_ID_SESSION_KEY] = chat_session_id
+    account = ChatAccount(
+        user=user,
+        identity_version=1,
+        membership_sequence=1,
+        identity_public_key="account-identity",
+    )
+    device_id = str(uuid4())
+    account.devices.append(
+        ChatDevice(
+            public_id=device_id,
+            session_id_hash=chat_session_binding(chat_session_id),
+            membership_sequence=1,
+            key_version=1,
+            membership_sha256="a" * 64,
+            signing_public_key="device-signing-key",
+            protocol_identity_public_key="protocol-identity-key",
+            membership={"device_id": device_id},
+            membership_signature="membership-signature",
+            expires_at=datetime.now(UTC) + timedelta(days=30),
+        )
+    )
+    db.session.add(account)
+    db.session.commit()
+
+    response = client.get(url_for("settings.auth"))
+
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.text, "html.parser")
+    button = soup.find(attrs={"data-pq-revoke-device-id": device_id})
+    assert button is not None
+    assert f"Revoke browser {device_id[:8]}" in button.text
+    assert "(this session)" in response.text
+    status = soup.find(id="pq-device-revocation-status")
+    assert status is not None
+    assert status.get("role") == "status"
+    assert status.get("aria-live") == "polite"
 
 
 @pytest.mark.usefixtures("_authenticated_user")
@@ -524,7 +575,19 @@ def test_change_password_rewraps_active_chat_key(
         kdf_salt="old-salt",
         wrapping_algorithm="AES-GCM",
     )
-    db.session.add(chat_key)
+    account = ChatAccount(
+        user=user,
+        identity_version=1,
+        membership_sequence=1,
+        identity_public_key="pq-account-identity",
+    )
+    archive = ChatArchiveEpoch(
+        account=account,
+        epoch=1,
+        public_key="pq-archive-public-key",
+        encrypted_private_key="root-wrapped-pq-archive-private-key",
+    )
+    db.session.add_all([chat_key, account, archive])
     db.session.commit()
     new_password = "ChangedPassword123!!"
     data = form_to_data(
@@ -577,6 +640,12 @@ def test_change_password_rewraps_active_chat_key(
         '{"algorithm":"AES-GCM","iv":"bmV3LWl2LTEyMzQ1","ciphertext":"cmV3cmFwcGVk"}'
     )
     assert keys[1].kdf_salt == "bmV3LXNhbHQtMTIzNDU2Nw=="
+    db.session.refresh(account)
+    db.session.refresh(archive)
+    assert account.identity_public_key == "pq-account-identity"
+    assert account.identity_version == 1
+    assert archive.retired_at is None
+    assert archive.encrypted_private_key == "root-wrapped-pq-archive-private-key"
 
 
 @pytest.mark.usefixtures("_authenticated_user")

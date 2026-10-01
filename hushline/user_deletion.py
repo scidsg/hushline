@@ -1,10 +1,17 @@
 import json
+from datetime import UTC, datetime
 
 from sqlalchemy import or_
 
 from hushline.db import db
 from hushline.model import (
     AuthenticationLog,
+    Conversation,
+    ConversationMessage,
+    ConversationMessageArchiveCopy,
+    ConversationMessageCopy,
+    ConversationMessageTransportCopy,
+    ConversationParticipant,
     FieldDefinition,
     FieldValue,
     Message,
@@ -283,6 +290,71 @@ def delete_user_and_related(user: User) -> None:
     stripe_subscription_ids = (
         {user.stripe_subscription_id} if user.stripe_subscription_id else set()
     )
+    deleted_at = datetime.now(UTC)
+    participant_ids = list(
+        db.session.scalars(
+            db.select(ConversationParticipant.id).where(ConversationParticipant.user_id == user.id)
+        )
+    )
+    conversation_ids = list(
+        db.session.scalars(
+            db.select(ConversationParticipant.conversation_id).where(
+                ConversationParticipant.id.in_(participant_ids)
+            )
+        )
+    )
+    if participant_ids:
+        authored_message_ids = db.select(ConversationMessage.id).where(
+            ConversationMessage.sender_participant_id.in_(participant_ids)
+        )
+        db.session.execute(
+            db.delete(ConversationMessageCopy).where(
+                or_(
+                    ConversationMessageCopy.conversation_message_id.in_(authored_message_ids),
+                    ConversationMessageCopy.recipient_participant_id.in_(participant_ids),
+                )
+            ),
+            execution_options={"synchronize_session": False},
+        )
+        db.session.execute(
+            db.delete(ConversationMessageTransportCopy).where(
+                or_(
+                    ConversationMessageTransportCopy.conversation_message_id.in_(
+                        authored_message_ids
+                    ),
+                    ConversationMessageTransportCopy.recipient_participant_id.in_(participant_ids),
+                )
+            ),
+            execution_options={"synchronize_session": False},
+        )
+        db.session.execute(
+            db.delete(ConversationMessageArchiveCopy).where(
+                or_(
+                    ConversationMessageArchiveCopy.conversation_message_id.in_(
+                        authored_message_ids
+                    ),
+                    ConversationMessageArchiveCopy.recipient_participant_id.in_(participant_ids),
+                )
+            ),
+            execution_options={"synchronize_session": False},
+        )
+        db.session.execute(
+            db.update(ConversationParticipant)
+            .where(ConversationParticipant.id.in_(participant_ids))
+            .values(user_id=None, deleted_at=deleted_at),
+            execution_options={"synchronize_session": False},
+        )
+        empty_conversation_ids = db.select(Conversation.id).where(
+            Conversation.id.in_(conversation_ids),
+            ~db.exists().where(
+                ConversationParticipant.conversation_id == Conversation.id,
+                ConversationParticipant.deleted_at.is_(None),
+            ),
+        )
+        db.session.execute(
+            db.delete(Conversation).where(Conversation.id.in_(empty_conversation_ids)),
+            execution_options={"synchronize_session": False},
+        )
 
     # Delete all FieldValue entries related to the user's usernames
     db.session.execute(

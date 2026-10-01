@@ -19,10 +19,15 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.wrappers.response import Response
 from wtforms.validators import ValidationError
 
-from hushline.auth import CHAT_KEY_SESSION_ID_SESSION_KEY, authentication_required
+from hushline.auth import (
+    CHAT_KEY_SESSION_ID_SESSION_KEY,
+    authentication_required,
+    rotate_user_session_id,
+)
 from hushline.chat_key_lifecycle import (
     PQ_CHAT_ARCHIVE_SUITE,
     PQ_CHAT_PROTOCOL,
+    PQ_CHAT_PROTOCOL_VERSION,
     canonical_chat_json,
     chat_session_binding,
 )
@@ -35,12 +40,14 @@ from hushline.model import (
     ChatPqRateLimitAttempt,
     ChatPrekeyClaim,
     ChatSignedPrekey,
+    ConversationMessage,
     ConversationMessageTransportCopy,
     User,
 )
 
 MEMBERSHIP_SIGNATURE_DOMAIN = b"HushLine/HL-PQCHAT-1/device-membership/v1"
 UNLOCK_SIGNATURE_DOMAIN = b"HushLine/HL-PQCHAT-1/unlock-enrollment/v1"
+UNLOCK_REVOCATION_SIGNATURE_DOMAIN = b"HushLine/HL-PQCHAT-1/unlock-revocation/v1"
 PREKEY_SIGNATURE_DOMAIN = b"HushLine/HL-PQCHAT-1/prekey-publication/v1"
 REVOCATION_SIGNATURE_DOMAIN = b"HushLine/HL-PQCHAT-1/device-revocation/v1"
 DEVICE_MEMBERSHIP_LIFETIME = timedelta(days=30)
@@ -210,7 +217,13 @@ def _verify_ed25519(public_key: str, signature: Any, domain: bytes, value: Any) 
         raise PqDeviceError("AUTHENTICATION_FAILED", 403) from error
 
 
-def _verify_unlock_signature(user: User, signature: Any, value: Any) -> None:
+def _verify_unlock_signature(
+    user: User,
+    signature: Any,
+    value: Any,
+    *,
+    domain: bytes = UNLOCK_SIGNATURE_DOMAIN,
+) -> None:
     chat_key = user.active_chat_key
     if chat_key is None or not chat_key.public_signing_key:
         raise PqDeviceError("CAPABILITY_UNAVAILABLE", 409)
@@ -230,7 +243,7 @@ def _verify_unlock_signature(user: User, signature: Any, value: Any) -> None:
         )
         verification_key.verify(
             der_signature,
-            UNLOCK_SIGNATURE_DOMAIN + b"\x00" + canonical_chat_json(value),
+            domain + b"\x00" + canonical_chat_json(value),
             ec.ECDSA(hashes.SHA256()),
         )
     except (InvalidSignature, KeyError, TypeError, ValueError, PqDeviceError) as error:
@@ -350,6 +363,11 @@ def _prune_unreferenced_stale_devices(account: ChatAccount, now: datetime) -> No
                 ~db.exists().where(ChatSignedPrekey.device_id == ChatDevice.id),
                 ~db.exists().where(
                     ConversationMessageTransportCopy.recipient_device_id == ChatDevice.id
+                ),
+                ~db.exists().where(
+                    ConversationMessage.protocol_version == PQ_CHAT_PROTOCOL_VERSION,
+                    ConversationMessage.manifest["sender_device_id"].as_string()
+                    == ChatDevice.public_id,
                 ),
             )
             .order_by(ChatDevice.created_at.desc())
@@ -838,6 +856,7 @@ def register_pq_device_routes(app: Flask) -> None:
             device.membership_sha256 = membership_sha256
             device.signing_public_key = membership["device_signing_public_key"]
             device.protocol_identity_public_key = membership["protocol_identity_public_key"]
+            device.account_identity_public_key = identity_public_key
             device.membership = membership
             device.membership_signature = payload["membership_signature"]
             device.expires_at = expires_at
@@ -1188,7 +1207,12 @@ def register_pq_device_routes(app: Flask) -> None:
             _validate_json_csrf()
             user = _authenticated_user()
             payload = request.get_json(silent=True)
-            if not isinstance(payload, dict) or set(payload) != {"revocation", "signature"}:
+            if not isinstance(payload, dict) or set(payload) != {
+                "archive",
+                "revocation",
+                "signature",
+                "unlock_signature",
+            }:
                 raise PqDeviceError("MALFORMED_WIRE")
             account = db.session.scalars(
                 db.select(ChatAccount).where(ChatAccount.user_id == user.id).with_for_update()
@@ -1198,6 +1222,8 @@ def register_pq_device_routes(app: Flask) -> None:
             revocation = payload["revocation"]
             if not isinstance(revocation, dict) or set(revocation) != {
                 "account_id",
+                "archive_epoch",
+                "archive_public_key_sha256",
                 "device_id",
                 "membership_sequence",
                 "revoked_at",
@@ -1206,10 +1232,19 @@ def register_pq_device_routes(app: Flask) -> None:
                 raise PqDeviceError("MALFORMED_WIRE")
             now = datetime.now(UTC)
             revoked_at = _timestamp(revocation["revoked_at"])
+            archive_epoch = _uint(revocation["archive_epoch"], positive=True)
+            membership_sequence = _uint(revocation["membership_sequence"], positive=True)
+            archive_digest = revocation["archive_public_key_sha256"]
+            if (
+                not isinstance(archive_digest, str)
+                or len(archive_digest) != _HEX_SHA256_LENGTH
+                or any(character not in "0123456789abcdef" for character in archive_digest)
+            ):
+                raise PqDeviceError("MALFORMED_WIRE")
             if (
                 revocation["account_id"] != account.public_id
                 or revocation["device_id"] != _uuid(device_id)
-                or revocation["membership_sequence"] != account.membership_sequence + 1
+                or membership_sequence != account.membership_sequence + 1
                 or revocation["status"] != "revoked"
                 or abs(now - revoked_at) > _CLOCK_SKEW
             ):
@@ -1219,6 +1254,13 @@ def register_pq_device_routes(app: Flask) -> None:
                 payload["signature"],
                 REVOCATION_SIGNATURE_DOMAIN,
                 revocation,
+            )
+            archive = payload["archive"]
+            _verify_unlock_signature(
+                user,
+                payload["unlock_signature"],
+                {"archive": archive, "revocation": revocation},
+                domain=UNLOCK_REVOCATION_SIGNATURE_DOMAIN,
             )
             device = db.session.scalars(
                 db.select(ChatDevice)
@@ -1231,26 +1273,38 @@ def register_pq_device_routes(app: Flask) -> None:
             ).one_or_none()
             if device is None:
                 raise PqDeviceError("STALE_MEMBERSHIP", 409)
-            device.revoked_at = now
+            current_epoch = db.session.scalars(
+                db.select(ChatArchiveEpoch).where(
+                    ChatArchiveEpoch.account_id == account.id,
+                    ChatArchiveEpoch.retired_at.is_(None),
+                )
+            ).one_or_none()
+            if current_epoch is None or archive_epoch <= current_epoch.epoch:
+                raise PqDeviceError("STALE_MEMBERSHIP", 409)
+            _validate_archive(
+                {"archive": archive},
+                account,
+                {
+                    "archive_epoch": revocation["archive_epoch"],
+                    "archive_public_key_sha256": revocation["archive_public_key_sha256"],
+                },
+                now=now,
+            )
             account.membership_sequence = revocation["membership_sequence"]
-            db.session.execute(
-                db.update(ChatSignedPrekey)
-                .where(
-                    ChatSignedPrekey.device_id == device.id,
-                    ChatSignedPrekey.retired_at.is_(None),
-                )
-                .values(retired_at=now)
-            )
-            db.session.execute(
-                db.update(ChatOneTimePrekey)
-                .where(
-                    ChatOneTimePrekey.device_id == device.id,
-                    ChatOneTimePrekey.consumed_at.is_(None),
-                )
-                .values(expires_at=now)
-            )
+            rotate_user_session_id(user)
             db.session.commit()
-            return jsonify({"device_id": device.public_id, "revoked": True}), 200
+            return (
+                jsonify(
+                    {
+                        "archive_epoch": revocation["archive_epoch"],
+                        "device_id": device.public_id,
+                        "requires_login": True,
+                        "requires_device_reenrollment": True,
+                        "revoked": True,
+                    }
+                ),
+                200,
+            )
         except PqDeviceError as error:
             db.session.rollback()
             return _json_error(error)

@@ -153,16 +153,13 @@ def _pq_chat_account_for_user(user_id: int) -> ChatAccount | None:
     ).one_or_none()
 
 
-def _authorized_pq_sender_device(user: User, payload: Any) -> ChatDevice | None:
+def _pq_sender_device(user: User, payload: Any) -> ChatDevice | None:
     if not isinstance(payload, dict) or not isinstance(payload.get("manifest"), dict):
         return None
     manifest = payload["manifest"]
     sender_account_id = manifest.get("sender_account_id")
     sender_device_id = manifest.get("sender_device_id")
-    chat_session_id = session.get(CHAT_KEY_SESSION_ID_SESSION_KEY)
     if not all(isinstance(value, str) and value for value in (sender_account_id, sender_device_id)):
-        return None
-    if not isinstance(chat_session_id, str) or not chat_session_id:
         return None
     return db.session.scalars(
         db.select(ChatDevice)
@@ -171,9 +168,6 @@ def _authorized_pq_sender_device(user: User, payload: Any) -> ChatDevice | None:
             ChatAccount.user_id == user.id,
             ChatAccount.public_id == sender_account_id,
             ChatDevice.public_id == sender_device_id,
-            ChatDevice.session_id_hash == chat_session_binding(chat_session_id),
-            ChatDevice.revoked_at.is_(None),
-            ChatDevice.expires_at > datetime.now(UTC),
         )
     ).one_or_none()
 
@@ -366,7 +360,7 @@ def _commit_pq_chat_message(
 ) -> tuple[Response, int]:
     if thread.minimum_protocol_version > PQ_CHAT_PROTOCOL_VERSION:
         return _pq_chat_error("SUITE_MISMATCH")
-    sender_device = _authorized_pq_sender_device(user, payload)
+    sender_device = _pq_sender_device(user, payload)
     if sender_device is None:
         return _pq_chat_error("AUTHENTICATION_FAILED")
     try:
@@ -376,6 +370,23 @@ def _commit_pq_chat_message(
         prior_response = _pq_idempotent_response(package, conversation_id=thread.id)
         if prior_response is not None:
             return prior_response
+        now = datetime.now(UTC)
+        chat_session_id = session.get(CHAT_KEY_SESSION_ID_SESSION_KEY)
+        sender_expires_at = (
+            sender_device.expires_at
+            if sender_device.expires_at.tzinfo is not None
+            else sender_device.expires_at.replace(tzinfo=UTC)
+        )
+        if (
+            not isinstance(chat_session_id, str)
+            or not hmac.compare_digest(
+                sender_device.session_id_hash,
+                chat_session_binding(chat_session_id),
+            )
+            or sender_device.revoked_at is not None
+            or sender_expires_at <= now
+        ):
+            raise PqChatPackageError("STALE_MEMBERSHIP")
         participants, devices, epochs = _validate_pq_copy_inventory(
             package,
             thread=thread,
@@ -1021,15 +1032,20 @@ def register_message_routes(app: Flask) -> None:
         db.session.commit()
 
         other_participants = _conversation_other_participants(thread, participant)
-        conversation_name = ", ".join(
-            other_participant.user.primary_username.display_name
-            or other_participant.user.primary_username.username
+        other_users = [
+            other_user
             for other_participant in other_participants
+            if (other_user := other_participant.user) is not None
+        ]
+        conversation_name = (
+            ", ".join(
+                other_user.primary_username.display_name or other_user.primary_username.username
+                for other_user in other_users
+            )
+            or "Deleted participant"
         )
         conversation_username = (
-            other_participants[0].user.primary_username.username
-            if len(other_participants) == 1
-            else None
+            other_users[0].primary_username.username if len(other_users) == 1 else None
         )
 
         message_copies = []
@@ -1042,6 +1058,10 @@ def register_message_routes(app: Flask) -> None:
                     if encrypted_copy.recipient_participant_id == participant.id
                 ),
                 None,
+            )
+            pq_copy_available = any(
+                archive_copy.recipient_participant_id == participant.id
+                for archive_copy in conversation_message.archive_copies
             )
             message_copies.append(
                 (
@@ -1056,7 +1076,10 @@ def register_message_routes(app: Flask) -> None:
                     "encrypted_payload": copy.encrypted_payload if copy else None,
                     "pq_message_id": (
                         conversation_message.public_id
-                        if conversation_message.protocol_version == PQ_CHAT_PROTOCOL_VERSION
+                        if (
+                            conversation_message.protocol_version == PQ_CHAT_PROTOCOL_VERSION
+                            and pq_copy_available
+                        )
                         else None
                     ),
                 }
@@ -1350,6 +1373,21 @@ def register_message_routes(app: Flask) -> None:
             )
             if key in authorized:
                 ordered_copies.append(authorized[key])
+        sender_device = db.session.scalars(
+            db.select(ChatDevice)
+            .join(ChatAccount)
+            .where(
+                ChatDevice.public_id == message.manifest["sender_device_id"],
+                ChatAccount.public_id == message.manifest["sender_account_id"],
+            )
+        ).one_or_none()
+        if sender_device is None:
+            abort(404)
+        sender_identity_public_key = (
+            sender_device.account_identity_public_key or sender_device.account.identity_public_key
+        )
+        if sender_identity_public_key is None:
+            abort(404)
         return (
             jsonify(
                 {
@@ -1357,6 +1395,14 @@ def register_message_routes(app: Flask) -> None:
                     "signature": message.manifest_signature,
                     "copies": ordered_copies,
                     "conversation_version": message.conversation_version,
+                    "sender": {
+                        "account_identity_public_key": sender_identity_public_key,
+                        "device": {
+                            "membership": sender_device.membership,
+                            "membership_sha256": sender_device.membership_sha256,
+                            "membership_signature": sender_device.membership_signature,
+                        },
+                    },
                 }
             ),
             200,

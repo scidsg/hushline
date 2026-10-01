@@ -835,6 +835,8 @@ def test_password_reset_get_renders_form_for_active_token(client: FlaskClient, u
     response = client.get(url_for("reset_password", token=raw_token))
 
     assert response.status_code == 200
+    assert "locks existing protected conversation history" in response.text
+    assert "cannot recover old chat or archive keys" in response.text
     assert "Reset Password" in response.text
     assert 'name="password"' in response.text
 

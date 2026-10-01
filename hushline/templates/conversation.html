@@ -126,7 +126,7 @@
           aria-label="{{ 'Your message' if is_own_message else 'Message from ' ~ conversation_name }}"
         >
           <time data-conversation-message-time class="meta"></time>
-          {% if encrypted_copy or conversation_message.protocol_version == 1 %}
+          {% if encrypted_copy or message_copy_payloads[loop.index0].pq_message_id %}
             <p class="conversation-message-body">Encrypted message. Waiting for browser chat key.</p>
           {% else %}
             <p class="conversation-message-body unavailable">

@@ -182,6 +182,7 @@
   <body
     class="{% block body_class %}{% endblock %}"
     data-authenticated="{{ 'true' if 'user_id' in session and session.get('is_authenticated', False) else 'false' }}"
+    data-auth-session-max-age-ms="{{ auth_session_max_age_ms }}"
     data-chat-key-session-id="{{ chat_key_session_id }}"
   >
     {% if splash_screen_enabled %}

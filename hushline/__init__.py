@@ -298,6 +298,7 @@ def configure_jinja(app: Flask) -> None:
             splash_screen_duration_ms=app.config.get(SPLASH_SCREEN_DURATION_MS, 2000),
             setup_incomplete=False,
             user=None,
+            auth_session_max_age_ms="",
             chat_key_session_id="",
         )
         brand_primary_color = data.get(OrganizationSetting.BRAND_PRIMARY_COLOR, "#7d25c1")
@@ -308,6 +309,9 @@ def configure_jinja(app: Flask) -> None:
             data["user"] = user
             if user:
                 if session.get("is_authenticated", False):
+                    data["auth_session_max_age_ms"] = int(
+                        app.permanent_session_lifetime.total_seconds() * 1000
+                    )
                     if not isinstance(session.get(CHAT_KEY_SESSION_ID_SESSION_KEY), str):
                         rotate_chat_key_session_id()
                     data["chat_key_session_id"] = session.get(CHAT_KEY_SESSION_ID_SESSION_KEY, "")

@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from typing import Tuple
 
 from flask import (
@@ -8,7 +9,11 @@ from flask import (
 )
 from werkzeug.wrappers.response import Response
 
-from hushline.auth import authentication_required
+from hushline.auth import (
+    CHAT_KEY_SESSION_ID_SESSION_KEY,
+    authentication_required,
+)
+from hushline.chat_key_lifecycle import chat_session_binding
 from hushline.db import db
 from hushline.model import (
     User,
@@ -39,6 +44,22 @@ def register_auth_routes(bp: Blueprint) -> None:
     @authentication_required
     def auth() -> Response | Tuple[str, int]:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
+        chat_session_id = session.get(CHAT_KEY_SESSION_ID_SESSION_KEY)
+        current_chat_session_hash = (
+            chat_session_binding(chat_session_id)
+            if isinstance(chat_session_id, str) and chat_session_id
+            else None
+        )
+        pq_devices = sorted(
+            (
+                device
+                for device in (user.chat_account.devices if user.chat_account else [])
+                if device.revoked_at is None
+                and device.expires_at.replace(tzinfo=UTC) > datetime.now(UTC)
+            ),
+            key=lambda device: device.created_at,
+            reverse=True,
+        )
         change_username_form = ChangeUsernameForm()
         change_password_form = ChangePasswordForm()
         submitted_form = _submitted_auth_form(change_username_form, change_password_form)
@@ -64,6 +85,8 @@ def register_auth_routes(bp: Blueprint) -> None:
             "settings/auth.html",
             user=user,
             chat_key=user.active_chat_key,
+            current_chat_session_hash=current_chat_session_hash,
+            pq_devices=pq_devices,
             change_username_form=change_username_form,
             change_password_form=change_password_form,
         ), status_code
