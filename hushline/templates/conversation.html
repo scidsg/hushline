@@ -67,7 +67,27 @@
     data-conversation-public-id="{{ conversation.public_id }}"
     data-participant-id="{{ participant.id }}"
     data-protocol-version="{{ conversation.minimum_protocol_version }}"
+    data-protocol-target-version="{{ target_protocol_version }}"
+    data-protected-writes-paused="{{ 'true' if protected_writes_paused else 'false' }}"
   >
+    <p
+      class="meta"
+      role="status"
+      aria-live="polite"
+      data-conversation-protection-status
+    >
+      {% if not client_protocol_supported %}
+        Update needed to send in this conversation. Existing messages remain readable.
+      {% elif protected_writes_paused %}
+        Protected sending is temporarily paused. Existing messages remain readable and your draft will be kept.
+      {% elif conversation.minimum_protocol_version >= pq_chat_protocol_version %}
+        New messages require post-quantum encryption. Earlier messages keep their original protection.
+      {% elif target_protocol_version >= pq_chat_protocol_version %}
+        Post-quantum encryption will activate automatically with the next message.
+      {% else %}
+        This conversation currently uses legacy end-to-end encryption.
+      {% endif %}
+    </p>
     <div
       id="conversation-key-locked"
       class="conversation-unlock-panel"
@@ -123,6 +143,7 @@
         <article
           class="conversation-message {{ 'is-own-message' if is_own_message else 'is-other-message' }}"
           data-conversation-message-id="{{ conversation_message.id }}"
+          data-protocol-version="{{ conversation_message.protocol_version }}"
           aria-label="{{ 'Your message' if is_own_message else 'Message from ' ~ conversation_name }}"
         >
           <time data-conversation-message-time class="meta"></time>
@@ -133,6 +154,13 @@
               This message was deleted.
             </p>
           {% endif %}
+          <span class="meta conversation-message-protection">
+            {% if conversation_message.protocol_version == pq_chat_protocol_version %}
+              Post-quantum encrypted · classical authentication
+            {% else %}
+              Legacy encrypted · classical authentication
+            {% endif %}
+          </span>
         </article>
       {% endfor %}
     </section>
@@ -173,8 +201,18 @@
       ) }}
       {% if not can_compose %}
         <p id="conversation-compose-unavailable" class="meta">
-          Replies are unavailable until you have an active signing-capable Hush Line
-          chat key and every participant has an active chat key.
+          {% if not client_protocol_supported %}
+            Update Hush Line before sending. Your existing messages remain readable.
+          {% elif protected_writes_paused %}
+            Protected sending is temporarily paused. Keep this page open to preserve your draft.
+          {% elif conversation.minimum_protocol_version >= pq_chat_protocol_version and not protected_capabilities_available %}
+            Protected replies are unavailable until every participant has a current protected-chat browser.
+          {% elif not can_compose_with_keys %}
+            Replies are unavailable until you have an active signing-capable Hush Line
+            chat key and every participant has an active chat key.
+          {% elif not protected_capabilities_available %}
+            Protected replies are unavailable until every participant has a current protected-chat browser.
+          {% endif %}
         </p>
       {% endif %}
     </form>

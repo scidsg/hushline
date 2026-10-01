@@ -33,11 +33,18 @@ from hushline.model import (
     Conversation,
     ConversationMessage,
     ConversationMessageArchiveCopy,
+    ConversationMessageCopy,
     ConversationMessageTransportCopy,
     ConversationParticipant,
     NotificationRecipient,
     User,
 )
+
+
+@pytest.fixture(autouse=True)
+def _enable_pq_conversation_migration(app: Flask) -> None:
+    app.config["PQ_CHAT_AUTO_MIGRATION_ENABLED"] = True
+    app.config["PQ_CHAT_MIGRATION_ROLLOUT_PERCENT"] = 100
 
 
 def _b64url(value: bytes) -> str:
@@ -101,7 +108,14 @@ def _account_state(  # noqa: PLR0913
         signing_public_key=_b64url(signing_public_key),
         protocol_identity_public_key=_b64url(b"p" * 32),
         account_identity_public_key=account.identity_public_key,
-        membership={"device_id": device_id},
+        membership={
+            "account_id": account_id,
+            "archive_suites": [PQ_CHAT_ARCHIVE_SUITE],
+            "capabilities": [PQ_CHAT_PROTOCOL],
+            "device_id": device_id,
+            "membership_sequence": membership_sequence,
+            "status": "active",
+        },
         membership_signature=_b64url(b"m" * 64),
         expires_at=datetime.now(UTC) + timedelta(days=30),
     )
@@ -411,6 +425,52 @@ def test_concurrent_protected_replays_commit_one_logical_message(
     assert db.session.scalar(db.select(db.func.count()).select_from(ConversationMessage)) == 1
 
 
+def test_concurrent_first_upgrade_writes_keep_monotonic_versions(
+    app: Flask, user: User, user2: User
+) -> None:
+    thread = _conversation(user, user2)
+    sender_account, sender_device, signing_key, recipient_account, recipient_device = (
+        _protected_state(user, user2)
+    )
+    packages = [
+        _protected_package(
+            thread.public_id,
+            sender_account,
+            sender_device,
+            signing_key,
+            recipient_account,
+            recipient_device,
+        )
+        for _ in range(2)
+    ]
+    endpoint = url_for("append_conversation_message", public_id=thread.public_id)
+    thread_id = thread.id
+    user_id = user.id
+    user_session_id = user.session_id
+    username = user.primary_username.username
+
+    def send(package: dict[str, Any]) -> int:
+        with app.test_client() as concurrent_client:
+            with concurrent_client.session_transaction() as browser_session:
+                browser_session["user_id"] = user_id
+                browser_session["session_id"] = user_session_id
+                browser_session["username"] = username
+                browser_session["is_authenticated"] = True
+                browser_session[CHAT_KEY_SESSION_ID_SESSION_KEY] = "sender-session"
+            return concurrent_client.post(endpoint, json=package).status_code
+
+    db.session.remove()
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        statuses = sorted(executor.map(send, packages))
+
+    assert statuses == [201, 201]
+    migrated = db.session.get(Conversation, thread_id)
+    assert migrated is not None
+    assert migrated.minimum_protocol_version == 1
+    assert migrated.version == 2
+    assert [message.conversation_version for message in migrated.messages] == [1, 2]
+
+
 def test_protected_reply_rejects_missing_copy_without_partial_commit(
     client: FlaskClient, user: User, user2: User
 ) -> None:
@@ -496,8 +556,326 @@ def test_protected_conversation_refuses_legacy_writer(
     )
 
     assert response.status_code == 409
-    assert response.get_json() == {"error": "Conversation requires protected messages."}
+    assert response.get_json() == {
+        "error": "UPDATE_REQUIRED",
+        "message": "Update needed to send a protected message.",
+    }
     assert db.session.scalar(db.select(db.func.count()).select_from(ConversationMessage)) == 0
+
+
+def test_rollout_excludes_first_protected_reply_without_changing_floor(
+    app: Flask, client: FlaskClient, user: User, user2: User
+) -> None:
+    thread = _conversation(user, user2)
+    sender_account, sender_device, signing_key, recipient_account, recipient_device = (
+        _protected_state(user, user2)
+    )
+    package = _protected_package(
+        thread.public_id,
+        sender_account,
+        sender_device,
+        signing_key,
+        recipient_account,
+        recipient_device,
+    )
+    app.config["PQ_CHAT_MIGRATION_ROLLOUT_PERCENT"] = 0
+    _authenticate(client, user, "sender-session")
+
+    response = client.post(
+        url_for("append_conversation_message", public_id=thread.public_id), json=package
+    )
+
+    assert response.status_code == 409
+    assert response.get_json() == {"error": "MIGRATION_NOT_ENABLED"}
+    db.session.refresh(thread)
+    assert thread.minimum_protocol_version == 0
+    assert thread.version == 0
+    assert thread.messages == []
+
+
+def test_authenticated_capabilities_select_automatic_upgrade_in_existing_flow(
+    app: Flask, client: FlaskClient, user: User, user2: User
+) -> None:
+    thread = _conversation(user, user2)
+    _protected_state(user, user2)
+    _authenticate(client, user, "sender-session")
+
+    eligible = client.get(url_for("conversation", public_id=thread.public_id))
+    app.config["PQ_CHAT_MIGRATION_ROLLOUT_PERCENT"] = 0
+    excluded = client.get(url_for("conversation", public_id=thread.public_id))
+
+    assert eligible.status_code == 200
+    assert 'data-protocol-version="0"' in eligible.text
+    assert 'data-protocol-target-version="1"' in eligible.text
+    assert (
+        "Post-quantum encryption will activate automatically with the next message."
+        in eligible.text
+    )
+    assert excluded.status_code == 200
+    assert 'data-protocol-target-version="0"' in excluded.text
+    assert "This conversation currently uses legacy end-to-end encryption." in excluded.text
+
+
+def test_missing_authenticated_device_capability_cannot_trigger_migration(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    thread = _conversation(user, user2)
+    sender_account, sender_device, signing_key, recipient_account, recipient_device = (
+        _protected_state(user, user2)
+    )
+    recipient_device.membership = {
+        **recipient_device.membership,
+        "capabilities": [],
+    }
+    db.session.commit()
+    package = _protected_package(
+        thread.public_id,
+        sender_account,
+        sender_device,
+        signing_key,
+        recipient_account,
+        recipient_device,
+    )
+    _authenticate(client, user, "sender-session")
+
+    page = client.get(url_for("conversation", public_id=thread.public_id))
+    response = client.post(
+        url_for("append_conversation_message", public_id=thread.public_id), json=package
+    )
+
+    assert page.status_code == 200
+    assert 'data-protocol-target-version="0"' in page.text
+    assert response.status_code == 409
+    assert response.get_json() == {"error": "MIGRATION_NOT_ENABLED"}
+    db.session.refresh(thread)
+    assert thread.minimum_protocol_version == 0
+    assert thread.messages == []
+
+
+def test_disabling_migration_never_downgrades_an_upgraded_conversation(
+    app: Flask, client: FlaskClient, user: User, user2: User
+) -> None:
+    thread = _conversation(user, user2)
+    thread.minimum_protocol_version = 1
+    sender_account, sender_device, signing_key, recipient_account, recipient_device = (
+        _protected_state(user, user2)
+    )
+    package = _protected_package(
+        thread.public_id,
+        sender_account,
+        sender_device,
+        signing_key,
+        recipient_account,
+        recipient_device,
+    )
+    app.config["PQ_CHAT_AUTO_MIGRATION_ENABLED"] = False
+    app.config["PQ_CHAT_MIGRATION_ROLLOUT_PERCENT"] = 0
+    db.session.commit()
+    _authenticate(client, user, "sender-session")
+
+    protected_response = client.post(
+        url_for("append_conversation_message", public_id=thread.public_id), json=package
+    )
+    legacy_response = client.post(
+        url_for("append_conversation_message", public_id=thread.public_id),
+        json={"encrypted_copies": {}},
+    )
+
+    assert protected_response.status_code == 201
+    assert legacy_response.status_code == 409
+    assert legacy_response.get_json()["error"] == "UPDATE_REQUIRED"
+    db.session.refresh(thread)
+    assert thread.minimum_protocol_version == 1
+    assert [message.protocol_version for message in thread.messages] == [1]
+
+
+def test_participant_reset_preserves_protected_reads_and_floor(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    thread = _conversation(user, user2)
+    sender_account, sender_device, signing_key, recipient_account, recipient_device = (
+        _protected_state(user, user2)
+    )
+    package = _protected_package(
+        thread.public_id,
+        sender_account,
+        sender_device,
+        signing_key,
+        recipient_account,
+        recipient_device,
+    )
+    _authenticate(client, user, "sender-session")
+    created = client.post(
+        url_for("append_conversation_message", public_id=thread.public_id), json=package
+    )
+    recipient_account.identity_public_key = None
+    recipient_device.revoked_at = datetime.now(UTC)
+    db.session.commit()
+
+    page = client.get(url_for("conversation", public_id=thread.public_id))
+    read = client.get(
+        url_for(
+            "pq_conversation_message",
+            public_id=thread.public_id,
+            message_public_id=created.get_json()["message_id"],
+        ),
+        headers={"X-Hushline-Device-ID": sender_device.public_id},
+    )
+    legacy = client.post(
+        url_for("append_conversation_message", public_id=thread.public_id),
+        json={"encrypted_copies": {}},
+    )
+
+    assert created.status_code == 201
+    assert page.status_code == 200
+    assert 'data-protocol-target-version="1"' in page.text
+    assert "Protected replies are unavailable" in page.text
+    assert read.status_code == 200
+    assert legacy.status_code == 409
+    assert legacy.get_json()["error"] == "UPDATE_REQUIRED"
+    db.session.refresh(thread)
+    assert thread.minimum_protocol_version == 1
+    assert len(thread.messages) == 1
+
+
+def test_upgraded_conversation_refuses_stripped_protected_negotiation(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    thread = _conversation(user, user2)
+    thread.minimum_protocol_version = 1
+    sender_account, sender_device, signing_key, recipient_account, recipient_device = (
+        _protected_state(user, user2)
+    )
+    package = _protected_package(
+        thread.public_id,
+        sender_account,
+        sender_device,
+        signing_key,
+        recipient_account,
+        recipient_device,
+    )
+    package["manifest"].pop("capability_selection")
+    db.session.commit()
+    _authenticate(client, user, "sender-session")
+
+    response = client.post(
+        url_for("append_conversation_message", public_id=thread.public_id), json=package
+    )
+
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "MALFORMED_WIRE"}
+    db.session.refresh(thread)
+    assert thread.minimum_protocol_version == 1
+    assert thread.version == 0
+    assert thread.messages == []
+
+
+def test_kill_switch_preserves_acknowledgement_reads_and_version_floor(
+    app: Flask, client: FlaskClient, user: User, user2: User
+) -> None:
+    thread = _conversation(user, user2)
+    sender_account, sender_device, signing_key, recipient_account, recipient_device = (
+        _protected_state(user, user2)
+    )
+    package = _protected_package(
+        thread.public_id,
+        sender_account,
+        sender_device,
+        signing_key,
+        recipient_account,
+        recipient_device,
+    )
+    _authenticate(client, user, "sender-session")
+    created = client.post(
+        url_for("append_conversation_message", public_id=thread.public_id), json=package
+    )
+    app.config["PQ_CHAT_PROTECTED_WRITES_PAUSED"] = True
+    replay = client.post(
+        url_for("append_conversation_message", public_id=thread.public_id), json=package
+    )
+    blocked = client.post(
+        url_for("append_conversation_message", public_id=thread.public_id),
+        json=_protected_package(
+            thread.public_id,
+            sender_account,
+            sender_device,
+            signing_key,
+            recipient_account,
+            recipient_device,
+        ),
+    )
+
+    _authenticate(client, user2, "recipient-session")
+    read = client.get(
+        url_for(
+            "pq_conversation_message",
+            public_id=thread.public_id,
+            message_public_id=created.get_json()["message_id"],
+        ),
+        headers={"X-Hushline-Device-ID": recipient_device.public_id},
+    )
+    page = client.get(url_for("conversation", public_id=thread.public_id))
+
+    assert created.status_code == 201
+    assert replay.status_code == 200
+    assert replay.get_json()["idempotent"] is True
+    assert blocked.status_code == 503
+    assert blocked.get_json() == {"error": "PROTECTED_WRITES_PAUSED"}
+    assert read.status_code == 200
+    assert page.status_code == 200
+    assert 'data-protected-writes-paused="true"' in page.text
+    assert "Protected sending is temporarily paused." in page.text
+    db.session.refresh(thread)
+    assert thread.minimum_protocol_version == 1
+    assert thread.version == 1
+    assert len(thread.messages) == 1
+
+
+def test_mixed_history_retains_per_message_protocol_truth(
+    client: FlaskClient, user: User, user2: User
+) -> None:
+    thread = _conversation(user, user2)
+    sender_participant = thread.participant_for_user_id(user.id)
+    recipient_participant = thread.participant_for_user_id(user2.id)
+    assert sender_participant is not None
+    assert recipient_participant is not None
+    legacy = ConversationMessage(protocol_version=0, conversation_version=1)
+    legacy.conversation = thread
+    legacy.sender_participant = sender_participant
+    legacy_copy = ConversationMessageCopy()
+    legacy_copy.recipient_participant = sender_participant
+    legacy_copy.encrypted_payload = '{"algorithm":"ECDH-P256-AES-GCM"}'
+    legacy.encrypted_copies.append(legacy_copy)
+    thread.version = 1
+    db.session.add(legacy)
+    db.session.commit()
+    sender_account, sender_device, signing_key, recipient_account, recipient_device = (
+        _protected_state(user, user2)
+    )
+    package = _protected_package(
+        thread.public_id,
+        sender_account,
+        sender_device,
+        signing_key,
+        recipient_account,
+        recipient_device,
+    )
+    _authenticate(client, user, "sender-session")
+    protected = client.post(
+        url_for("append_conversation_message", public_id=thread.public_id), json=package
+    )
+
+    response = client.get(url_for("conversation", public_id=thread.public_id))
+
+    assert protected.status_code == 201
+    assert response.status_code == 200
+    legacy_label_position = response.text.index("Legacy encrypted · classical authentication")
+    protected_label_position = response.text.index(
+        "Post-quantum encrypted · classical authentication"
+    )
+    assert legacy_label_position < protected_label_position
+    assert 'data-protocol-version="0"' in response.text
+    assert 'data-protocol-version="1"' in response.text
 
 
 @pytest.mark.parametrize(
@@ -780,4 +1158,41 @@ def test_initial_protected_endpoint_creates_one_conversation(
     assert all(
         field_value.value == "Stored in encrypted conversation."
         for field_value in thread.initial_message.field_values
+    )
+
+
+def test_kill_switch_rejects_initial_protected_write_without_partial_conversation(
+    app: Flask, client: FlaskClient, user: User, user2: User
+) -> None:
+    sender_account, sender_device, signing_key, recipient_account, recipient_device = (
+        _protected_state(user, user2)
+    )
+    conversation_id = str(uuid4())
+    package = _protected_package(
+        conversation_id,
+        sender_account,
+        sender_device,
+        signing_key,
+        recipient_account,
+        recipient_device,
+    )
+    app.config["PQ_CHAT_PROTECTED_WRITES_PAUSED"] = True
+    _authenticate(client, user, "sender-session")
+
+    response = client.post(
+        url_for(
+            "create_pq_conversation_message",
+            username=user2.primary_username.username,
+        ),
+        json=package,
+        headers=_initial_headers(app, user2),
+    )
+
+    assert response.status_code == 503
+    assert response.get_json() == {"error": "PROTECTED_WRITES_PAUSED"}
+    assert (
+        db.session.scalar(
+            db.select(Conversation.id).where(Conversation.public_id == conversation_id)
+        )
+        is None
     )

@@ -173,7 +173,7 @@ def test_pq_delivery_uses_one_durable_package_for_initial_messages_and_replies()
     assert 'jsonFromScript("pqInitialDelivery", null)' in encryption_js
     assert "window.HushLineChatKeys.sendPqMessage" in encryption_js
     assert "pendingPqConversation(" in encryption_js
-    assert 'root.dataset.protocolVersion === "1"' in lifecycle_js
+    assert "root.dataset.protocolTargetVersion || root.dataset.protocolVersion" in lifecycle_js
     assert "await adapter.commitSend({" in lifecycle_js
     assert "adapter.deliverOutbox({" in lifecycle_js
     assert "exactRequestBytes" in lifecycle_js
@@ -602,6 +602,9 @@ def test_conversation_replies_and_polling_update_thread_in_place() -> None:
     assert 'scrollConversationThreadToLatest("smooth")' not in js
     assert "currentCopies.textContent = nextCopies.textContent;" in js
     assert "conversationMessagesSignature(nextDocument)" in js
+    assert "syncConversationPolicy(nextDocument);" in js
+    assert '"protocolTargetVersion"' in js
+    assert '"protocolVersion"' in js
     assert 'getElementById("conversationMessageCopies")?.textContent' in js
     assert "window.location.reload()" not in js
     assert "thread.scrollTo({" in js
@@ -617,9 +620,38 @@ def test_conversation_replies_and_polling_update_thread_in_place() -> None:
     assert "previousScrollTop" in static_js
     assert 'scrollConversationThreadToLatest("smooth")' not in static_js
     assert 'getElementById("conversationMessageCopies")?.textContent' in static_js
+    assert "syncConversationPolicy(nextDocument);" in static_js
     assert "window.location.reload()" not in static_js
     assert "thread.scrollTo({" in static_js
     assert "scrollHeight" in static_js
+
+
+def test_conversation_downgrade_and_pause_errors_preserve_draft() -> None:
+    js = (ROOT / "assets/js/chat-key-lifecycle.js").read_text(encoding="utf-8")
+    template = (ROOT / "hushline/templates/conversation.html").read_text(encoding="utf-8")
+
+    assert "function conversationSendFailureStatus(error)" in js
+    assert 'error?.code === "UPDATE_REQUIRED"' in js
+    assert 'error?.code === "PROTECTED_WRITES_PAUSED"' in js
+    assert "Your draft has been kept" in js
+    assert 'if (error && typeof error === "object")' in js
+    assert "error.pendingProtectedSend = true;" in js
+    assert "setConversationProtectedRetryPending(true);" in js
+    assert "body.readOnly = pending;" in js
+    assert 'submit.value = pending ? "Retry" : "Send";' in js
+    assert "const retryingDisplayedDraft = body.readOnly;" in js
+    assert "result?.retried && !retryingDisplayedDraft" in js
+    assert "Your current draft was not sent and has been kept." in js
+    assert 'body.value = "";' in js
+    handler = js.index("handleConversationSubmit")
+    classical_request = js.index("const response = await fetch(root.dataset.messageUrl", handler)
+    assert js.index("if (!response.ok) {", classical_request) < js.index(
+        'body.value = "";', classical_request
+    )
+    assert 'data-protocol-target-version="{{ target_protocol_version }}"' in template
+    assert "Earlier messages keep their original protection." in template
+    assert "Legacy encrypted · classical authentication" in template
+    assert "Post-quantum encrypted · classical authentication" in template
 
 
 def test_conversation_composer_enter_sends_shift_enter_keeps_newline() -> None:

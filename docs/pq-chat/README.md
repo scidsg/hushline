@@ -56,12 +56,12 @@ The PQ chat discovery work is split into independently reviewable gates:
   password, session, device-revocation, archive-rotation, stale-device,
   deletion, compromise-boundary, and unchanged-unlock evidence that remains
   blocked.
-- **G11:** the [conversation-migration readiness ADR](adr-0010-conversation-migration-readiness.md)
-  and [machine-readable readiness record](g11-readiness.json) preserve G9 and
-  G10 as hard prerequisites for `scidsg/hushline#2376` and inventory the
-  authenticated negotiation, monotonic version, mixed-history, truthful
-  status, stale-client, draft-safety, feature-control, and rollback evidence
-  that remains blocked.
+- **G11:** the [conversation-migration ADR](adr-0010-conversation-migration-readiness.md)
+  and [machine-readable readiness record](g11-readiness.json) record the
+  implementation for `scidsg/hushline#2406`: authenticated negotiation,
+  monotonic versions, mixed-history truth, stale-client refusal, draft safety,
+  and rollout controls. Browser, quality, and independent review evidence is
+  still pending.
 - **G12:** the [release-validation readiness ADR](adr-0011-release-validation-readiness.md)
   and [versioned validation report](g12-validation-report.json) preserve G11
   as a hard prerequisite for `scidsg/hushline#2377` and inventory the
@@ -142,16 +142,16 @@ delivery, revocation, or epoch-transition contract to rotate safely. No
 production password, session, device, archive, account-deletion, emergency-exit,
 or browser-state behavior is changed.
 
-G11 is **blocked before implementation** because G9 and G10 are blocked and
-there is no accepted protected write, acknowledgement, capability,
-conversation-version, archive, or lifecycle contract to migrate safely. No
-production model, migration, route, browser asset, template, feature control,
-legacy reader, status copy, or conversation behavior is changed.
+G11 is **implemented for integration with validation and review pending**.
+Eligible conversations migrate automatically on the first complete protected
+write, upgraded floors remain monotonic, mixed history retains per-message
+truth, old writers fail closed, and deployment controls cannot reactivate a
+classical writer. No merge or production-release approval is asserted.
 
-G12 is **blocked before validation** because G11 is blocked and supplies no
-accepted integrated PQ-chat build to test. The report records every required
-result as blocked with no evidence link or measurement; it does not turn
-legacy tests, upstream claims, or this readiness review into release evidence.
+G12 is **pending validation**. G11 now supplies an integrated build, but the
+versioned report still needs the required browser, adversarial, quality,
+rollback, audit, and human-review results at the final revision. Existing
+readiness entries do not become release evidence automatically.
 
 G13 is **blocked before independent review** because G12 is blocked and
 supplies no accepted release candidate, pinned dependency identity, or passing

@@ -6,10 +6,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 PQ_CHAT_DOCS = REPO_ROOT / "docs" / "pq-chat"
 READINESS_PATH = PQ_CHAT_DOCS / "g11-readiness.json"
 ADR_PATH = PQ_CHAT_DOCS / "adr-0010-conversation-migration-readiness.md"
-PREREQUISITE_PATHS = {
-    "G9": PQ_CHAT_DOCS / "g9-readiness.json",
-    "G10": PQ_CHAT_DOCS / "g10-readiness.json",
-}
+PREREQUISITE_GATES = {"G9", "G10"}
 
 
 def _readiness(path: Path = READINESS_PATH) -> dict[str, Any]:
@@ -17,34 +14,38 @@ def _readiness(path: Path = READINESS_PATH) -> dict[str, Any]:
         return json.load(readiness_file)
 
 
-def test_g11_readiness_is_linked_and_records_no_production_changes() -> None:
+def test_g11_readiness_is_linked_and_records_implemented_surfaces() -> None:
     index = (PQ_CHAT_DOCS / "README.md").read_text(encoding="utf-8")
     adr = ADR_PATH.read_text(encoding="utf-8")
     readiness = _readiness()
 
     assert "g11-readiness.json" in index
     assert "adr-0010-conversation-migration-readiness.md" in index
-    assert "Status: **Blocked before implementation**" in adr
-    assert readiness["decision"] == "blocked-prerequisites"
-    assert readiness["production_changes"] is False
-    assert all(not surface["changed"] for surface in readiness["production_surfaces"])
+    assert "Status: **Implemented for integration; validation and review pending**" in adr
+    assert readiness["decision"] == "implemented-pending-validation-review"
+    assert readiness["production_changes"] is True
+    changed = {
+        surface["path"] for surface in readiness["production_surfaces"] if surface["changed"]
+    }
+    assert changed == {
+        "assets/js/chat-key-lifecycle.js",
+        "docker-compose*.yaml",
+        "hushline/config.py",
+        "hushline/routes/message.py",
+        "hushline/templates/conversation.html",
+    }
 
 
-def test_g11_cannot_advance_until_g9_and_g10_are_approved() -> None:
+def test_g11_records_implemented_g9_and_g10_inputs_without_claiming_approval() -> None:
     readiness = _readiness()
     prerequisites = {item["gate"]: item for item in readiness["prerequisites"]}
 
-    assert prerequisites.keys() == PREREQUISITE_PATHS.keys()
-    for gate, path in PREREQUISITE_PATHS.items():
-        prerequisite = prerequisites[gate]
-        observed = _readiness(path)
-
-        assert prerequisite["observed_result"] == observed["decision"]
-        assert prerequisite["required_result"] == "approved"
-        assert prerequisite["satisfied"] is False
-        assert observed["decision"] != prerequisite["required_result"]
-
-    assert readiness["decision"] not in {"ready-for-implementation", "approved"}
+    assert prerequisites.keys() == PREREQUISITE_GATES
+    assert all(item["required_result"] == "implemented" for item in prerequisites.values())
+    assert all(item["observed_result"] == "implemented" for item in prerequisites.values())
+    assert all(item["satisfied"] is True for item in prerequisites.values())
+    assert all(item["blocker"] is None for item in prerequisites.values())
+    assert readiness["decision"] != "approved"
 
 
 def test_g11_inventory_covers_migration_acceptance_contract() -> None:
@@ -68,8 +69,15 @@ def test_g11_inventory_covers_migration_acceptance_contract() -> None:
         "rollback-floor-retains-readers-and-below-floor-write-refusal",
         "normal-flow-click-prompt-accessibility-and-performance-contract",
     }
-    assert all(item["status"] == "blocked" for item in deliverables.values())
-    assert all(item["evidence"] is None for item in deliverables.values())
+    pending = deliverables["normal-flow-click-prompt-accessibility-and-performance-contract"]
+    implemented = [item for item in deliverables.values() if item is not pending]
+    assert all(item["status"] == "implemented" for item in implemented)
+    assert all(item["evidence"] for item in implemented)
+    assert pending == {
+        "id": "normal-flow-click-prompt-accessibility-and-performance-contract",
+        "status": "pending-validation",
+        "evidence": None,
+    }
 
 
 def test_g11_records_monotonic_version_and_history_truth_invariants() -> None:
@@ -116,7 +124,7 @@ def test_g11_forbids_downgrades_and_keeps_reviews_pending() -> None:
     assert set(readiness["forbidden_interim_outcomes"]) == {
         "unauthenticated-or-client-controlled-capability-negotiation",
         "missing-negotiation-treated-as-classical-write-permission",
-        "protected-version-or-eligibility-invented-before-prerequisite-approval",
+        "protected-version-or-eligibility-without-implemented-protocol-inputs",
         "conversation-floor-advance-without-complete-protected-write",
         "protected-write-visible-without-conversation-floor-advance",
         "conversation-version-decrease-clear-or-bypass",

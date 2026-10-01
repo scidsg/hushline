@@ -1,188 +1,121 @@
-# ADR-0010: PQ Chat Conversation-Migration Readiness
+# ADR-0010: PQ Chat Conversation Migration
 
-Status: **Blocked before implementation**
+Status: **Implemented for integration; validation and review pending**
 
-Date: 2026-09-25
+Date: 2026-09-30
 
 Decision gate: G11 of `scidsg/hushline#2365`
 
-Issue: `scidsg/hushline#2376`
+Issue: `scidsg/hushline#2406`
 
 ## Context
 
-G11 must make PQ the automatic path for eligible authenticated conversations
-without adding a setup flow, credential, pairing ceremony, confirmation, or
-normal-path prompt. The first accepted protected write must advance an
-authoritative conversation minimum monotonically. After that transition,
-server and browser writers must reject version-2/classical writes even when a
-stale client omits capability fields, an intermediary strips negotiation data,
-a feature flag is disabled, or the application is rolled back.
+The earlier readiness-only decision for `#2376` recorded G9 and G10 as
+implementation blockers. The maintainer's 2026-09-27 correction superseded
+that sequencing: build the complete integration with synthetic data, then
+bring the finished revision and evidence for approval. Protected delivery and
+credential lifecycle implementations are now present on the integration
+branch, so this ADR records the implemented migration contract rather than the
+historical blocker.
 
-The same timeline must continue to render retained legacy and protected
-messages in chronological order. Security status is a property of each
-authenticated message/version and the current conversation write floor:
-activation cannot relabel historical classical ciphertext as PQ. An old or
-temporarily failing client must preserve the draft and expose an accessible
-update-needed or retry state; it cannot silently downgrade, report success, or
-clear the composer before protected storage is acknowledged.
-Authenticated negotiation also does not upgrade the separate classical
-authentication limitation into a PQ-authentication claim.
-
-These behaviors depend directly on G9's atomic protected-delivery contract and
-G10's accepted capability, device, archive, stale-client, and lifecycle
-behavior. Both prerequisite artifacts are present on this branch, but both
-record blocked decisions and no production implementation. The
-machine-readable [G11 readiness record](g11-readiness.json) pins those findings
-and inventories the migration and review evidence that cannot safely be
-produced yet.
-
-## Dependency Finding
-
-<!-- prettier-ignore -->
-| Gate | Required input | Local evidence | Finding |
-| --- | --- | --- | --- |
-| G9 / `scidsg/hushline#2374` | Accepted protected opening/reply writes with authenticated versions and capabilities, complete-copy atomic commit, stable retry, and commit-coupled acknowledgement | Commit `4df7845b5d5a494f3314e24e3d8b551d99458878`; [ADR-0008](adr-0008-protected-delivery-readiness.md) and [readiness record](g9-readiness.json) | **Unsatisfied:** G9 is blocked before implementation and supplies no protected write, authenticated negotiation input, complete-copy transaction, stable retry, or acknowledgement implementation |
-| G10 / `scidsg/hushline#2375` | Accepted device/archive lifecycle with capability freshness, stale-device rejection, epoch transitions, and routine fresh-browser recovery | Commit `a78b5c361cfbbf70a5678f4eabb8230dab359d90`; [ADR-0009](adr-0009-credential-lifecycle-readiness.md) and [readiness record](g10-readiness.json) | **Unsatisfied:** G10 is blocked before implementation and supplies no accepted capability/device lifecycle, archive epoch, stale-client recovery, or fresh-browser implementation |
-
-A merged readiness artifact, issue order, or a closed checkbox is not proof
-that either gate passed. G11 cannot invent the protected protocol version,
-authenticated capability representation, eligibility rule, transition
-transaction, downgrade error taxonomy, or rollback floor on behalf of the
-missing designs and their human reviewers.
+Human product, accessibility, cryptographic, and independent security review
+remain release gates. This record does not approve merge to `main` or launch.
 
 ## Decision
 
-G11 is blocked before implementation. Do not change production conversation
-models, migrations, readers, writers, templates, browser assets, status copy,
-or feature controls until G9 and G10 are accepted and available on
-`codex/epic-2365` as production implementations with exact reviewed contracts.
-In particular, do not:
+Eligible authenticated two-party conversations automatically select
+`HL-PQCHAT-1` for the next send without an opt-in, setup page, additional
+credential, pairing step, confirmation, or prompt. Eligibility is derived from
+server-held account identity, current archive epoch, and signed active device
+memberships whose authenticated capabilities and archive suite select the
+same protocol.
 
-- infer eligibility from unauthenticated or client-controlled capability
-  fields, or treat a missing field as permission to write classically;
-- select a protected version number or advance a conversation before the
-  complete protected write and its minimum-version transition commit under the
-  accepted transaction contract;
-- decrease, clear, or bypass the protected write floor during a flag change,
-  kill switch, deploy rollback, retry, restore, or request from an old client;
-- rewrite, rewrap, relabel, or summarize retained legacy ciphertext as PQ, or
-  derive per-message status from only the conversation's current version;
-- clear a draft, show send success, update the timeline, or emit notification
-  side effects before the accepted protected-storage acknowledgement;
-- add a routine opt-in, setup wizard, credential, pairing step, confirmation,
-  algorithm choice, or capability prompt; or
-- claim migration, browser, accessibility, performance, downgrade-resistance,
-  rollback, or independent-review evidence that has not run.
+The first complete protected write and the conversation's minimum protocol
+version advance in one database transaction under a row lock. The minimum is
+monotonic. Every classical writer checks the stored minimum independently of
+request negotiation fields or feature settings, so stale clients and stripped
+fields cannot append classical ciphertext after migration.
 
-No production model, migration, route, browser asset, template, CSP, feature
-flag, status label, dependency, or security claim is changed by this decision.
-Existing legacy conversation behavior and ciphertext remain unchanged.
+Readers remain version-aware. Legacy and protected messages share one ordered
+timeline, while each record's stored protocol version controls its visible
+description. Protected status never relabels legacy history, and the UI states
+that authentication remains classical.
 
-## Deferred Migration Contract
+Failed, paused, or update-needed sends retain the composer content. A durable
+protected outbox operation becomes read-only while retry is pending so edited
+text cannot be confused with the exact-byte retry. The composer clears and
+reports success only after the protected storage acknowledgement.
 
-<!-- prettier-ignore -->
-| Area | Evidence required after the prerequisites pass | Current disposition |
-| --- | --- | --- |
-| Eligibility and automatic activation | Reviewed eligibility derived from authenticated current account/device capabilities; normal login, open, and send flows activate without an opt-in, setup page, credential, pairing ceremony, confirmation, or added click | Blocked; G9/G10 supply no accepted capability or activation input |
-| Monotonic conversation floor | Authoritative server state advances only forward in the same transaction as the first complete protected write; every later write is checked against that floor independent of request omissions, flags, or client age | Blocked; protected version and transaction semantics are unspecified |
-| Authenticated negotiation | Canonical capability/version/suite/participant/device context is authenticated end to end, with omission, stripping, substitution, replay, fork, and stale-view rejection on server and client | Blocked; G9 has no envelope or capability binding and G10 has no lifecycle freshness contract |
-| Mixed-history reader | One chronological timeline reads retained legacy and protected records; each record keeps its authenticated version and exact security description without re-encryption or relabelling | Blocked; accepted legacy/new schemas, envelope metadata, and archive readers do not exist |
-| Status and details | Accessible conversation-level write state and per-message details distinguish legacy history, protected messages, pending/retry state, unsupported clients, and the classical-authentication limitation using approved non-misleading copy | Blocked; product terminology and authenticated status inputs are unapproved |
-| Stale/old-client behavior | Server refuses classical or below-floor writes even with omitted negotiation fields; client keeps the draft and exposes update-needed guidance without reporting success or attempting fallback | Blocked; version floor, error taxonomy, and acknowledgement contract are unavailable |
-| Retry and acknowledgement | Transient failures keep the exact draft/outbox operation; only a protected-storage acknowledgement clears the composer or creates success UI, and ambiguous retries remain idempotent | Blocked; G9 supplies no stable retry or commit-coupled acknowledgement implementation |
-| Feature controls and kill switch | Controls may stop new activation or protected writes, but never lower an upgraded conversation's floor, enable a classical writer, hide retained protected reads, or alter per-message truth | Blocked; safe control ownership and writer/read behavior are unspecified |
-| Deployment and rollback | Expand with legacy/protected readers before writers; set a tested rollback floor that retains protected reads and below-floor refusal; prohibit rollback to binaries that lack either invariant | Blocked; no production reader, writer, schema, or compatible deployment floor exists |
-| Everyday UX and quality | Existing login, inbox, thread, and one-action send/reply flows; draft behavior; browser/private-mode support; accessibility 100; performance at least 95; and approved timing budgets remain intact | Blocked pending implementation and real-browser evidence |
+## Rollout Controls
 
-## Required State Invariants After Unblocking
+The deployment exposes three controls:
 
-The implementation and tests must demonstrate all of these invariants without
-assuming a particular unapproved wire format or protected version number:
+- `PQ_CHAT_AUTO_MIGRATION_ENABLED` enables or disables new automatic
+  conversation migrations.
+- `PQ_CHAT_MIGRATION_ROLLOUT_PERCENT` selects a deterministic conversation
+  cohort from 0 through 100 percent.
+- `PQ_CHAT_PROTECTED_WRITES_PAUSED` is the kill switch for new protected
+  writes.
 
-1. The server is authoritative for a conversation's minimum accepted write
-   version, and updates to it are monotonic under concurrent requests.
-2. The first protected message and the floor advance are one atomic outcome;
-   neither is visible alone.
-3. A write below the floor fails closed whether its capability/version fields
-   are explicit, absent, stripped, stale, replayed, or internally inconsistent.
-4. Client-side checks provide early feedback but cannot replace server
-   enforcement; stale assets and direct API callers receive the same refusal.
-5. Feature controls can prevent new activation or protected writes but cannot
-   reduce stored minimums or re-enable classical writes in upgraded threads.
-6. Rollback retains protected readers and server-side floor enforcement. A
-   binary that cannot do both is below the permitted rollback floor.
-7. Each message's authenticated stored version drives its description. The
-   current conversation floor never upgrades the claim for an older message.
-8. A success state is reachable only from an acknowledgement for the complete
-   protected commit. Rejection or uncertainty preserves the draft and safe
-   retry identity without adding a fallback path.
+Automatic migration and its cohort default to disabled/zero until an approved
+deployment explicitly enables a staged population. This keeps the finished
+integration reviewable without treating code completion as launch approval.
 
-## Required Validation After Unblocking
+The first two controls affect only conversations whose stored minimum has not
+advanced. Disabling them cannot lower an existing minimum or reopen the
+classical writer. The kill switch permits acknowledgement recovery for an
+already committed idempotent operation, rejects new protected commits, and
+does not affect protected or legacy reads.
 
-The implementation must provide linked, non-secret evidence for:
+## Security Invariants
 
-1. eligible and ineligible authenticated conversations across supported
-   participant/device capability combinations, proving automatic activation
-   adds no prompt, credential, pairing, page, confirmation, or click;
-2. synthetic legacy-only, protected-only, and interleaved histories with exact
-   chronology, decryptability, authenticated per-message versions, truthful
-   details including the classical-authentication limitation, unread/read
-   state, deletion, and notification behavior;
-3. concurrent first-upgrade writes and every later lower-version attempt,
-   including absent, stripped, substituted, replayed, forged, stale, and
-   conflicting capability/version fields at both browser and direct APIs;
-4. stale cached assets and old clients before and after activation, proving
-   accessible update-needed behavior, draft preservation, no false success,
-   no classical write, and recovery after a supported client loads;
-5. network, protocol, storage, transaction, response, and acknowledgement
-   failures proving retry guidance, exact-operation reuse, one committed
-   message, and no premature composer clearing or side effect;
-6. flag enable/disable/re-enable and kill-switch drills before and after
-   activation, proving protected reads and stored minimums persist and no
-   classical writer becomes reachable;
-7. expand/deploy/rollback/roll-forward drills with mixed application versions,
-   proving the safe reader/server-enforcement floor and refusing an unsafe
-   rollback rather than losing reads or accepting downgrade writes; and
-8. Chromium, Firefox, and WebKit normal/private modes, keyboard and screen
-   reader states, accessibility 100, performance at least 95, approved timing
-   budgets, synthetic before/after click and prompt counts, CSP, and
-   capture-free Playwright artifacts.
+1. Signed current device capabilities, not client assertions alone, determine
+   migration eligibility.
+2. The protected write and floor transition are atomic; neither can become
+   visible alone.
+3. Conversation minimum versions only increase.
+4. Missing, stripped, stale, forged, or conflicting negotiation never permits
+   a below-floor write.
+5. Feature controls never reactivate classical writes in upgraded threads.
+6. Each message retains its own version and security description.
+7. Protected readers stay available while writes are paused.
+8. Draft clearing and success UI require a committed acknowledgement.
+9. Telemetry and errors contain no plaintext, draft, private key, protocol
+   state, archive secret, token, or exact ciphertext.
 
-Real-browser results, cryptographic review, product copy approval, and human
-security approval remain pending until actually supplied. Instrumentation must
-not log plaintext, drafts, private keys, protocol state, archive secrets, exact
-sensitive ciphertext, authentication tokens, or stable user/device
-fingerprints.
+## Implementation Evidence
 
-## Unblocking and Review Sequence
+- `hushline/routes/message.py`: authenticated eligibility, deterministic
+  cohorting, atomic floor enforcement, old-writer refusal, kill switch, and
+  mixed-version payloads.
+- `hushline/templates/conversation.html`: accessible conversation policy,
+  update-needed/pause states, and truthful per-message descriptions.
+- `assets/js/chat-key-lifecycle.js`: automatic protected selection, policy
+  refresh, draft-safe exact-operation retry, and acknowledgement-only success.
+- `hushline/config.py` and Docker Compose configurations: parsed rollout and
+  pause controls available to supported deployments.
+- `tests/test_pq_message_storage.py`: automatic migration, flag disablement,
+  stripped negotiation, protected/classical mixed history, idempotent
+  acknowledgement recovery, kill-switch read preservation, and monotonic
+  floor coverage.
+- `tests/test_frontend_compat.py`: client downgrade, polling, retry, draft, and
+  status contract coverage.
 
-1. Complete the earlier gate sequence, including pending G1 approval and a
-   passing exact G2 protocol candidate.
-2. Implement and accept G9 and G10 on `codex/epic-2365`; readiness-only records
-   do not satisfy either prerequisite.
-3. Update `g11-readiness.json` to pin those accepted commits and transcribe the
-   exact authenticated capability, eligibility, version, transition, status,
-   error, acknowledgement, feature-control, and rollback rules into failing
-   implementation tests.
-4. Deploy additive readers and server-side floor enforcement before enabling
-   any protected writer. Implement automatic activation and UI states only
-   after mixed-version and downgrade tests pass.
-5. Produce the required browser, private-mode, fault, stale-asset, flag, and
-   rollback evidence, then obtain product/accessibility, full-stack/security,
-   and independent security review at the exact implementation commit.
+## Pending Release Evidence
 
-The implementation author cannot fill any reviewer disposition. Disabling a
-feature is not a protocol downgrade mechanism, and application rollback is
-safe only to a version that retains both protected reads and the authoritative
-write floor.
+The implementation is ready for integration validation, not release approval.
+The following remain pending at the exact final revision:
 
-## Consequences
+- Chromium, Firefox, and WebKit normal/private-mode runs, including stale
+  cached assets and supported-client recovery;
+- keyboard and screen-reader checks, accessibility 100, and performance at
+  least 95;
+- synthetic click/prompt counts, rollout/rollback drills, and capture-free
+  Playwright artifacts;
+- full CI, dependency audits, CodeQL, and workflow security checks; and
+- product/accessibility, full-stack security, and independent security review
+  with remediation and retest.
 
-- No unauthenticated negotiation, invented version transition, misleading
-  history label, stale-client fallback, or unsafe rollback path is introduced.
-- Existing conversation ciphertext and behavior remain intact.
-- Every acceptance criterion and downgrade/rollback drill has an evidence slot
-  rather than a fabricated prerequisite, browser result, or approval.
-- G11 remains incomplete until G9 and G10 pass and the production migration,
-  mixed-version, real-browser, rollback, quality, and human-review evidence
-  exists.
+An application rollback is permitted only to a revision that retains both the
+protected reader and authoritative below-floor write refusal. No approval,
+merge, or production launch is asserted by this ADR.

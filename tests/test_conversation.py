@@ -915,6 +915,7 @@ def test_conversation_view_hides_message_metadata_from_page_payload(
         {
             "message_id",
             "encrypted_payload",
+            "protocol_version",
             "pq_message_id",
         }
         == set(message_copy_payload.keys())

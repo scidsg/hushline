@@ -185,6 +185,10 @@ An unlocked Hush Line chat key remains available only in the authenticated brows
 
 New account conversation replies require all participants to have active chat keys with public encryption keys and public signing keys. If any participant only has legacy chat-key material, the conversation remains readable where possible, but composing new replies is unavailable until all participants have signing-capable chat keys.
 
+Eligible authenticated conversations move to post-quantum encryption automatically on their first protected write. That write advances a server-authoritative minimum protocol version which cannot decrease; older clients cannot append classical ciphertext after the transition. Legacy and protected messages remain together in chronological order and retain their own encryption-version description.
+
+Operators can stage automatic migration by cohort or pause protected writes. These controls never lower an upgraded conversation's minimum version or remove protected read access. A paused or update-needed send keeps the draft and does not report success before protected storage acknowledges the message.
+
 Conversation plaintext is not stored by the server. Conversation messages are stored as per-participant encrypted payloads, and only conversation participants can open the route or append replies. Administrators may manage accounts and trust states, but admin status alone does not grant conversation access.
 
 Deleting an account conversation is local to the participant who deletes it. The conversation is removed from that participant's inbox, their encrypted copies are removed, and messages they authored appear as deleted placeholders to remaining participants. Other participants keep the thread and any encrypted copies still available to them. The shared conversation record is removed only after every participant has deleted their side. If the conversation began from a one-way intake message, that original message is detached or removed only when the shared conversation is fully removed.

@@ -12,6 +12,9 @@ from hushline.config import (
     ENCRYPTED_FIELD_WRITE_FORMAT,
     PASSWORD_HASH_REHASH_ON_AUTH_ENABLED,
     PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT,
+    PQ_CHAT_AUTO_MIGRATION_ENABLED,
+    PQ_CHAT_MIGRATION_ROLLOUT_PERCENT,
+    PQ_CHAT_PROTECTED_WRITES_PAUSED,
     SPLASH_SCREEN_DURATION_MS,
     AliasMode,
     ConfigParseError,
@@ -220,3 +223,35 @@ def test_splash_screen_duration_defaults_to_two_seconds_and_parses_override() ->
     env[SPLASH_SCREEN_DURATION_MS] = "1250"
     cfg = load_config(env)
     assert cfg[SPLASH_SCREEN_DURATION_MS] == 1250
+
+
+def test_pq_chat_rollout_controls_have_safe_parseable_values() -> None:
+    env = dict(**os.environ)
+    for key in (
+        PQ_CHAT_AUTO_MIGRATION_ENABLED,
+        PQ_CHAT_MIGRATION_ROLLOUT_PERCENT,
+        PQ_CHAT_PROTECTED_WRITES_PAUSED,
+    ):
+        env.pop(key, None)
+
+    cfg = load_config(env)
+    assert cfg[PQ_CHAT_AUTO_MIGRATION_ENABLED] is False
+    assert cfg[PQ_CHAT_MIGRATION_ROLLOUT_PERCENT] == 0
+    assert cfg[PQ_CHAT_PROTECTED_WRITES_PAUSED] is False
+
+    env[PQ_CHAT_AUTO_MIGRATION_ENABLED] = "false"
+    env[PQ_CHAT_MIGRATION_ROLLOUT_PERCENT] = "25"
+    env[PQ_CHAT_PROTECTED_WRITES_PAUSED] = "true"
+    cfg = load_config(env)
+    assert cfg[PQ_CHAT_AUTO_MIGRATION_ENABLED] is False
+    assert cfg[PQ_CHAT_MIGRATION_ROLLOUT_PERCENT] == 25
+    assert cfg[PQ_CHAT_PROTECTED_WRITES_PAUSED] is True
+
+
+@pytest.mark.parametrize("value", ["-1", "101", "not-a-number"])
+def test_pq_chat_rollout_percent_rejects_out_of_range_values(value: str) -> None:
+    env = dict(**os.environ)
+    env[PQ_CHAT_MIGRATION_ROLLOUT_PERCENT] = value
+
+    with pytest.raises(ConfigParseError, match="between 0 and 100"):
+        load_config(env)

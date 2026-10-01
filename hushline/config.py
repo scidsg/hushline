@@ -20,6 +20,10 @@ ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED = "ENCRYPTED_FIELD_AES_GCM_WRITES_ENABLED
 ENCRYPTED_FIELD_LEGACY_READS_ENABLED = "ENCRYPTED_FIELD_LEGACY_READS_ENABLED"
 ENCRYPTED_FIELD_WRITE_FORMAT = "ENCRYPTED_FIELD_WRITE_FORMAT"
 SPLASH_SCREEN_DURATION_MS = "SPLASH_SCREEN_DURATION_MS"
+PQ_CHAT_AUTO_MIGRATION_ENABLED = "PQ_CHAT_AUTO_MIGRATION_ENABLED"
+PQ_CHAT_MIGRATION_ROLLOUT_PERCENT = "PQ_CHAT_MIGRATION_ROLLOUT_PERCENT"
+PQ_CHAT_PROTECTED_WRITES_PAUSED = "PQ_CHAT_PROTECTED_WRITES_PAUSED"
+_PQ_CHAT_MIGRATION_ROLLOUT_MAX_PERCENT = 100
 
 
 class ConfigParseError(Exception):
@@ -193,6 +197,8 @@ def _load_hushline_misc(env: Mapping[str, str]) -> Mapping[str, Any]:
         ("FILE_UPLOADS_ENABLED", False),
         (PASSWORD_HASH_REHASH_ON_AUTH_ENABLED, False),
         (PASSWORD_HASH_WRITE_USE_WERKZEUG_SCRYPT, False),
+        (PQ_CHAT_AUTO_MIGRATION_ENABLED, False),
+        (PQ_CHAT_PROTECTED_WRITES_PAUSED, False),
         ("REGISTRATION_SETTINGS_ENABLED", True),
         ("USER_VERIFICATION_ENABLED", False),
     ]
@@ -201,6 +207,18 @@ def _load_hushline_misc(env: Mapping[str, str]) -> Mapping[str, Any]:
             data[key] = parse_bool(value)
         else:
             data[key] = default
+
+    try:
+        rollout_percent = if_not_none(env.get(PQ_CHAT_MIGRATION_ROLLOUT_PERCENT), int)
+    except ValueError as error:
+        raise ConfigParseError(
+            f"{PQ_CHAT_MIGRATION_ROLLOUT_PERCENT} must be an integer between 0 and 100"
+        ) from error
+    if rollout_percent is None:
+        rollout_percent = 0
+    if not 0 <= rollout_percent <= _PQ_CHAT_MIGRATION_ROLLOUT_MAX_PERCENT:
+        raise ConfigParseError(f"{PQ_CHAT_MIGRATION_ROLLOUT_PERCENT} must be between 0 and 100")
+    data[PQ_CHAT_MIGRATION_ROLLOUT_PERCENT] = rollout_percent
 
     if alias_str := env.get("ALIAS_MODE"):
         data["ALIAS_MODE"] = AliasMode.parse(alias_str)

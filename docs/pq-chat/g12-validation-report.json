@@ -11,16 +11,16 @@
   "prerequisites": [
     {
       "gate": "G11",
-      "issue": "scidsg/hushline#2376",
+      "issue": "scidsg/hushline#2406",
       "artifact_commit": "1646e579c03eed0d418037dab30d24e579963d68",
       "required_result": "approved",
-      "observed_result": "blocked-prerequisites",
+      "observed_result": "implemented-pending-validation-review",
       "satisfied": false,
       "evidence": [
         "adr-0010-conversation-migration-readiness.md",
         "g11-readiness.json"
       ],
-      "blocker": "G11 produced no accepted integrated PQ-chat implementation, protocol behavior, retained-copy paths, browser behavior, or release candidate to validate."
+      "blocker": "G11 implementation remains pending the required validation review and approval."
     }
   ],
   "build_identity": {
