@@ -18,6 +18,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Validate refresh credentials
+        env:
+          GH_TOKEN: ${{ secrets.ADMIN_PAT }}
+        run: |
+          gh api user --jq .login
+          gh api "repos/$GITHUB_REPOSITORY" --jq '.permissions.push'
+
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Refresh SecureDrop directory listings
