@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.self_service_test_request import guard_plan, prepare, validate_config
+from scripts.self_service_test_request import guard_plan, pointer, prepare, validate_config
 
 
 def config() -> dict:
@@ -141,3 +141,14 @@ def test_admin_claim_is_encrypted_and_plaintext_inputs_are_private(
         payload=ciphertext,
     )
     assert secrets.compare_digest(plaintext, invitation.encode())
+
+
+def test_pointer_locates_private_order_json(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output = tmp_path / "output"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    request = tmp_path / "pointer.json"
+    request.write_text(json.dumps({"order_id": "a" * 32, "config_ref": "b" * 40}))
+    pointer(request)
+    assert f"order_path=self-service-tests/orders/{'a' * 32}.json" in output.read_text()
