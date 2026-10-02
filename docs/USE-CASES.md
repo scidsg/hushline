@@ -264,3 +264,15 @@ These are use-case themes already implied by the mission, even when the current 
 - More explicit vulnerable-user accommodations in the sender flow
 - Stronger evidence-review workflows that connect inbox, OCR, and authenticity checks more tightly
 - Richer organizational case-management needs beyond status labels and inbox filtering
+
+### Disposable Single Tenant provisioning test
+
+An operator uses the app-style account and plan flow, confirms a simulated annual
+payment, and enters a customer-controlled hostname. The protected staging workflow
+reads that order from private Git configuration and provisions a separate app and
+database with staging-only credentials. The DNS screen displays the assigned CNAME
+and ownership TXT records. Successful checks enable Continue without navigating;
+the deployment screen separately verifies HTTPS and application health before its
+own Continue action. A short-lived one-use invitation allows the operator to claim
+the first administrator. This test is limited to one instance, expires after 24
+hours, and does not implement production billing or license enforcement.
