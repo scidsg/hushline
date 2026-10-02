@@ -1,0 +1,24 @@
+---
+name: Self-service test validation
+permissions:
+  contents: read
+on:
+  push:
+    branches: [feat/self-service-test-runner]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Required lint
+        run: make lint
+      - name: Focused bootstrap and deployment request tests
+        run: make test TESTS="tests/test_self_service_test_bootstrap.py tests/test_self_service_test_request.py" PYTEST_ADDOPTS="--skip-local-only"
+      - name: Dependency audits
+        run: make audit-python audit-node-runtime
