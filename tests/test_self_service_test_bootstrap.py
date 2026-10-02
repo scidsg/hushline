@@ -5,9 +5,9 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from flask import Flask
 
+import scripts.prepare_self_service_test as bootstrap
 from hushline.db import db
 from hushline.model import InviteCode, OrganizationSetting, User
-import scripts.prepare_self_service_test as bootstrap
 from scripts.prepare_self_service_test import prepare
 
 CLAIM = "A" * 22
