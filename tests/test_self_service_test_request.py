@@ -2,11 +2,13 @@
 
 import base64
 import json
+import secrets
+import subprocess
 from pathlib import Path
 
 import pytest
 
-from scripts.self_service_test_request import guard_plan, validate_config
+from scripts.self_service_test_request import guard_plan, prepare, validate_config
 
 
 def config() -> dict:
@@ -96,3 +98,46 @@ def test_accepts_isolated_plan(tmp_path: Path) -> None:
         )
     )
     guard_plan(plan, "hushline-staging-pr-123")
+
+
+def openssl(*arguments: str, payload: bytes | None = None) -> bytes:
+    command = ["/usr/bin/openssl", *arguments]
+    result = subprocess.run(command, input=payload, capture_output=True, check=True)  # noqa: S603 — fixed executable and isolated test paths
+    return result.stdout
+
+
+def test_admin_claim_is_encrypted_and_plaintext_inputs_are_private(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "outputs"))
+    private_key = tmp_path / "private.pem"
+    openssl(
+        "genpkey", "-algorithm", "RSA", "-pkeyopt", "rsa_keygen_bits:2048", "-out", str(private_key)
+    )
+    request = config()
+    request["claim_public_key"] = base64.b64encode(
+        openssl("pkey", "-in", str(private_key), "-pubout")
+    ).decode()
+    source = tmp_path / "request.json"
+    source.write_text(json.dumps(request))
+    inputs = tmp_path / "private-inputs.json"
+    prepare(source, inputs)
+    assert "::add-mask::" in capsys.readouterr().out
+    assert inputs.stat().st_mode & 0o777 == 0o600
+    invitation = json.loads(inputs.read_text())["self_service_claim_code"]
+    ciphertext = (tmp_path / "self-service-status/admin-claim.enc").read_bytes()
+    assert invitation.encode() not in ciphertext
+    assert invitation not in (tmp_path / "outputs").read_text()
+    plaintext = openssl(
+        "pkeyutl",
+        "-decrypt",
+        "-inkey",
+        str(private_key),
+        "-pkeyopt",
+        "rsa_padding_mode:oaep",
+        "-pkeyopt",
+        "rsa_oaep_md:sha256",
+        payload=ciphertext,
+    )
+    assert secrets.compare_digest(plaintext, invitation.encode())
