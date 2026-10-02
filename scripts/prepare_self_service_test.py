@@ -37,8 +37,12 @@ def main() -> None:
     claim_code = os.environ.get("SELF_SERVICE_TEST_CLAIM_CODE", "")
     if not claim_code:
         return
-    with create_app().app_context():
-        prepare(workspace, claim_code)
+    try:
+        with create_app().app_context():
+            prepare(workspace, claim_code)
+    except Exception:
+        # SQL exceptions can include bound invitation values; never emit them.
+        raise SystemExit("Private test bootstrap failed; refusing to start.") from None
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ from flask import Flask
 
 from hushline.db import db
 from hushline.model import InviteCode, OrganizationSetting, User
+import scripts.prepare_self_service_test as bootstrap
 from scripts.prepare_self_service_test import prepare
 
 CLAIM = "A" * 22
@@ -48,3 +49,17 @@ def test_bootstrap_leaves_existing_user_untouched(app: Flask) -> None:
         prepare("hushline-staging-pr-99999", CLAIM)
         assert db.session.scalar(db.select(db.func.count()).select_from(InviteCode)) == 0
         assert user.is_admin
+
+
+def test_bootstrap_failure_does_not_expose_invitation(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SELF_SERVICE_TEST_WORKSPACE", "hushline-staging-pr-99999")
+    monkeypatch.setenv("SELF_SERVICE_TEST_CLAIM_CODE", CLAIM)
+
+    def failed_app() -> Flask:
+        raise RuntimeError(CLAIM)
+
+    monkeypatch.setattr(bootstrap, "create_app", failed_app)
+    with pytest.raises(SystemExit, match="Private test bootstrap failed") as error:
+        bootstrap.main()
+    assert CLAIM not in str(error.value)
+    assert error.value.__suppress_context__
