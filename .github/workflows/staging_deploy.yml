@@ -18,7 +18,7 @@ concurrency:
 
 env:
   INFRA_REPOSITORY: scidsg/hushline-infra
-  INFRA_REF: a41e6decaf9c421f0b743f604b1f4bd42600103e
+  INFRA_REF: 08bf6971712a807912298d9778061bd4aee1eb63
   STAGING_TF_PATH: hushline-ephemeral-staging
   TF_PROJECT_HUSH_LINE_DEV: prj-iEruEQFmaNTCRAtA
 
@@ -289,7 +289,7 @@ jobs:
 
       - name: Wait for HTTPS health check
         env:
-          APP_URL: ${{ steps.tf-outputs.outputs.app_live_url }}
+          APP_URL: ${{ steps.customer.outputs.custom_domain != '' && format('https://{0}', steps.customer.outputs.custom_domain) || steps.tf-outputs.outputs.app_live_url }}
         run: |
           set -euo pipefail
           health_url="${APP_URL%/}/health.json"
@@ -323,7 +323,7 @@ jobs:
       - name: Run trusted browser smoke tests
         working-directory: trusted-tests
         env:
-          PLAYWRIGHT_BASE_URL: ${{ steps.tf-outputs.outputs.app_live_url }}
+          PLAYWRIGHT_BASE_URL: ${{ steps.customer.outputs.custom_domain != '' && format('https://{0}', steps.customer.outputs.custom_domain) || steps.tf-outputs.outputs.app_live_url }}
         run: npx playwright test --config=playwright.staging.config.js
 
       - name: Verify disposable onion endpoint
@@ -347,9 +347,10 @@ jobs:
           if [ "$ready" != "true" ]; then exit 1; fi
 
       - name: Comment staging access details
+        if: steps.request.outputs.enabled != 'true'
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         env:
-          APP_URL: ${{ steps.tf-outputs.outputs.app_live_url }}
+          APP_URL: ${{ steps.customer.outputs.custom_domain != '' && format('https://{0}', steps.customer.outputs.custom_domain) || steps.tf-outputs.outputs.app_live_url }}
           ONION_HOSTNAME: ${{ steps.tf-outputs.outputs.onion_hostname }}
         with:
           script: |
