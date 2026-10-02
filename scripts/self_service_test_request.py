@@ -57,7 +57,7 @@ def validate_config(data: dict) -> None:
     ):
         raise ValueError("Test deployment cannot claim shared production or reserved hosts")
     limit = data["license_limit"]
-    if limit is not None and (type(limit) is not int or limit < 1):
+    if limit is not None and (not isinstance(limit, int) or isinstance(limit, bool) or limit < 1):
         raise ValueError("Invalid license selection")
     key = base64.b64decode(data["claim_public_key"], validate=True)
     if len(key) > MAX_PUBLIC_KEY_BYTES or not key.startswith(b"-----BEGIN PUBLIC KEY-----"):
@@ -79,19 +79,20 @@ def prepare(path: Path, destination: Path) -> None:
     destination.chmod(0o600)
     public_key = destination.parent / "claim-public.pem"
     public_key.write_bytes(base64.b64decode(data["claim_public_key"], validate=True))
-    encrypted = subprocess.run(  # noqa: S603 — fixed executable and validated local key path
-        [
-            "/usr/bin/openssl",
-            "pkeyutl",
-            "-encrypt",
-            "-pubin",
-            "-inkey",
-            str(public_key),
-            "-pkeyopt",
-            "rsa_padding_mode:oaep",
-            "-pkeyopt",
-            "rsa_oaep_md:sha256",
-        ],
+    command = [
+        "/usr/bin/openssl",
+        "pkeyutl",
+        "-encrypt",
+        "-pubin",
+        "-inkey",
+        str(public_key),
+        "-pkeyopt",
+        "rsa_padding_mode:oaep",
+        "-pkeyopt",
+        "rsa_oaep_md:sha256",
+    ]
+    encrypted = subprocess.run(
+        command,  # noqa: S603 — fixed executable and validated local key path
         input=claim_code.encode(),
         capture_output=True,
         check=False,
