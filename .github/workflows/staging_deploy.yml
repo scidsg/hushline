@@ -18,7 +18,7 @@ concurrency:
 
 env:
   INFRA_REPOSITORY: scidsg/hushline-infra
-  INFRA_REF: 08bf6971712a807912298d9778061bd4aee1eb63
+  INFRA_REF: 849066156ad0d2c62fb587c34e253d4fa2022f32
   STAGING_TF_PATH: hushline-ephemeral-staging
   TF_PROJECT_HUSH_LINE_DEV: prj-iEruEQFmaNTCRAtA
 
