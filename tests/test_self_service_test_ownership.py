@@ -232,6 +232,8 @@ def test_nonempty_workspace_is_never_deleted(monkeypatch: pytest.MonkeyPatch) ->
 
 def test_workflow_cannot_sweep_other_instances() -> None:
     text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
+    assert "secrets.HUSHLINE_INFRA_STAGING_PAT" in text
+    assert "secrets.HUSHLINE_INFRA_TOKEN" not in text
     assert "schedule:" not in text
     assert "number == 2447" in text
     assert "head.ref == 'feat/self-service-test-runner'" in text

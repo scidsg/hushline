@@ -38,7 +38,7 @@ jobs:
         env:
           STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
           STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-          INFRA_READ_TOKEN: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
+          INFRA_READ_TOKEN: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
         run: |
           set -euo pipefail
           for required_name in STAGING_DO_TOKEN STAGING_TF_TOKEN INFRA_READ_TOKEN; do
@@ -53,7 +53,7 @@ jobs:
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
           ref: ${{ env.INFRA_REF }}
-          token: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
+          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
           persist-credentials: false
           path: infra
 
@@ -75,7 +75,7 @@ jobs:
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
           ref: ${{ steps.request.outputs.config_ref }}
-          token: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
+          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
           persist-credentials: false
           path: customer-config
 
@@ -325,7 +325,7 @@ jobs:
         env:
           STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
           STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-          INFRA_READ_TOKEN: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
+          INFRA_READ_TOKEN: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
         run: |
           set -euo pipefail
           for required_name in STAGING_DO_TOKEN STAGING_TF_TOKEN INFRA_READ_TOKEN; do
@@ -340,7 +340,7 @@ jobs:
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
           ref: ${{ env.INFRA_REF }}
-          token: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
+          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
           persist-credentials: false
           path: infra
 
@@ -362,7 +362,7 @@ jobs:
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
           ref: ${{ steps.request.outputs.config_ref }}
-          token: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
+          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
           persist-credentials: false
           path: customer-config
 
