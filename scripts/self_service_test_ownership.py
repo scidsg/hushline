@@ -212,12 +212,19 @@ def validate_live(ids: dict, order: str) -> None:
 
 def state_resources(data: dict) -> dict:
     results = {}
+    seen = set()
     for resource in data.get("resources", []):
         address = f"{resource['type']}.{resource['name']}"
         if resource.get("mode") != "managed" or resource.get("module") or address not in ADDRESSES:
             raise ValueError("State contains a resource outside the isolated test root")
         instances = resource["instances"]
-        if address in results or len(instances) != 1 or instances[0].get("deposed"):
+        if address in seen:
+            raise ValueError("State contains ambiguous resource ownership")
+        seen.add(address)
+        # Failed creates can leave an address with no owned resource instance.
+        if not instances:
+            continue
+        if len(instances) != 1 or instances[0].get("deposed"):
             raise ValueError("State contains ambiguous resource ownership")
         results[address] = instances[0]["attributes"]
     return results

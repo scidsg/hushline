@@ -578,3 +578,25 @@ def test_hosted_state_redirect_is_allowlisted_and_never_forwards_token(
             "/v1/object/test",
             None,
         )
+
+
+def test_failed_create_placeholder_has_no_resource_ownership() -> None:
+    raw = {
+        "resources": [
+            {"mode": "managed", "type": "digitalocean_app", "name": "staging", "instances": []}
+        ]
+    }
+    assert ownership.state_resources(raw) == {}
+    raw["resources"].append(copy.deepcopy(raw["resources"][0]))
+    with pytest.raises(ValueError, match="ambiguous"):
+        ownership.state_resources(raw)
+
+
+def test_empty_foreign_placeholder_is_still_rejected() -> None:
+    raw = {
+        "resources": [
+            {"mode": "managed", "type": "digitalocean_app", "name": "production", "instances": []}
+        ]
+    }
+    with pytest.raises(ValueError, match="outside"):
+        ownership.state_resources(raw)
