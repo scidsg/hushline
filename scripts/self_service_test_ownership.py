@@ -773,8 +773,8 @@ def inspect_original_plan(data: dict) -> list:
 
 def sanitized_runtime_logs(app_id: str, deployment_id: str, component: str) -> dict:
     response = do(
-        f"/apps/{app_id}/deployments/{deployment_id}/components/{component}/logs"
-        "?type=RUN_RESTARTED&follow=false&tail_lines=200"
+        f"/apps/{app_id}/deployments/{deployment_id}/logs"
+        f"?type=RUN_RESTARTED&follow=false&tail_lines=200&component_name={component}"
     )
     urls = response.get("historic_urls", [])
     if not urls and response.get("live_url"):
