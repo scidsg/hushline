@@ -866,6 +866,12 @@ def sanitized_runtime_logs(app_id: str, deployment_id: str, component: str) -> d
         "unknown_migration": "Can't locate revision",
         "server_started": "> Starting the server",
         "ssl_failure": "certificate verify failed",
+        "invalid_fernet_key": "Fernet key must be",
+        "invalid_database_url": "Could not parse SQLAlchemy URL",
+        "invalid_integer": "invalid literal for int",
+        "invalid_storage_driver": "Unknown storage driver",
+        "localhost_dependency": "localhost",
+        "loopback_dependency": "127.0.0.1",
     }
     errors = [
         name
@@ -886,6 +892,13 @@ def sanitized_runtime_logs(app_id: str, deployment_id: str, component: str) -> d
         "log_hosts": hosts,
         "markers": [key for key, value in markers.items() if value.lower() in logs.lower()],
         "error_classes": errors,
+        "frames": [
+            f"{Path(path).name}:{line}:{function}"
+            for path, line, function in re.findall(
+                r'File "([^"\n]+\.py)", line ([0-9]+), in ([A-Za-z_][A-Za-z0-9_]*)', logs
+            )
+            if path.startswith("/app/") or "/site-packages/" in path
+        ][-12:],
         "migration_ids": re.findall(r"Running upgrade [a-f0-9]* -> ([a-f0-9]{12})", logs)[-5:],
     }
 
