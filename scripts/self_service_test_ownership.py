@@ -600,13 +600,51 @@ def repair_failed_app_state(order: str) -> None:
         raise ValueError("State resources changed after ownership proof")
     command("untaint", "-lock-timeout=30s", "digitalocean_app.staging")
     after = json.loads(command("state", "pull"))
-    expected = json.loads(json.dumps(raw))
+    verify_app_state_repair(raw, after)
+
+
+def verify_app_state_repair(before: dict, after: dict) -> None:
+    """Ignore serialization order; permit only the original app marker removal."""
+    if state_resources(before) != state_resources(after):
+        raise ValueError("State repair changed original resource attributes")
+    expected = json.loads(json.dumps(before))
     expected["serial"] += 1
-    for resource in expected["resources"]:
-        if resource.get("type") == "digitalocean_app" and resource.get("name") == "staging":
-            resource["instances"][0].pop("status", None)
-    if after != expected:
+    app = next(
+        resource
+        for resource in expected["resources"]
+        if resource["type"] == "digitalocean_app" and resource["name"] == "staging"
+    )
+    if len(app["instances"]) != 1 or app["instances"][0].get("status") != "tainted":
+        raise ValueError("State repair did not start from the original app taint marker")
+    app["instances"][0].pop("status")
+
+    def normalize(data: dict) -> dict:
+        result = json.loads(json.dumps(data))
+        # Terraform rewrites resource ordering and omits empty resource shells.
+        # The strict state_resources checks above reject foreign or duplicate shells.
+        result["resources"] = sorted(
+            [resource for resource in result["resources"] if resource["instances"]],
+            key=lambda resource: (resource["type"], resource["name"]),
+        )
+        return result
+
+    if normalize(after) != normalize(expected):
         raise ValueError("State repair changed more than the original app taint marker")
+
+
+def previous_state(order: str) -> dict:
+    query = urllib.parse.urlencode(
+        {
+            "filter[workspace][name]": identity(order)[0],
+            "filter[organization][name]": ORG,
+            "filter[status]": "finalized",
+            "page[size]": "2",
+        }
+    )
+    versions = tf(f"/state-versions?{query}")["data"]
+    if len(versions) != SERVICE_COUNT:
+        raise ValueError("Original app state repair history is missing")
+    return read_state_version(versions[1])
 
 
 def inspect_original_deployment(order: str) -> dict:
@@ -643,16 +681,7 @@ def inspect_original_deployment(order: str) -> dict:
         )
     ):
         raise ValueError("Live application ownership does not match the original order")
-    query = urllib.parse.urlencode(
-        {
-            "filter[workspace][name]": identity(order)[0],
-            "filter[organization][name]": ORG,
-            "filter[status]": "finalized",
-            "page[size]": "2",
-        }
-    )
-    versions = tf(f"/state-versions?{query}")["data"]
-    previous = read_state_version(versions[1]) if len(versions) > 1 else raw_state
+    previous = previous_state(order)
     diff_keys = [
         key
         for key in sorted(set(previous) | set(raw_state))
@@ -781,6 +810,8 @@ def main() -> None:
         ):
             with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
                 print("needs_state_repair=true", file=output)
+        elif "digitalocean_app.staging" in resources:
+            verify_app_state_repair(previous_state(args.order), raw)
     elif args.operation == "recover-plan":
         if args.plan is None:
             raise ValueError("Recovery requires a checked plan")

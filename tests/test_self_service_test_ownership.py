@@ -752,7 +752,7 @@ def test_state_repair_only_removes_original_app_taint(
 ) -> None:
     name, _ = ownership.identity(ownership.RECOVERY_ORDER)
     monkeypatch.setenv("TF_WORKSPACE", name)
-    raw = {
+    raw: dict = {
         "lineage": "original-lineage",
         "serial": 4,
         "resources": [
@@ -807,3 +807,50 @@ def test_state_repair_only_removes_original_app_taint(
     else:
         ownership.repair_failed_app_state(ownership.RECOVERY_ORDER)
         assert calls[2] == ["terraform", "untaint", "-lock-timeout=30s", "digitalocean_app.staging"]
+
+
+@pytest.mark.parametrize("alter", [None, "attribute", "lineage", "serial", "foreign-shell"])
+def test_state_repair_verification_accepts_reordering_only(alter: str | None) -> None:
+    before: dict = {
+        "lineage": "original",
+        "serial": 3,
+        "resources": [
+            {
+                "mode": "managed",
+                "type": "digitalocean_project",
+                "name": "staging",
+                "instances": [{"attributes": {"id": "original-project"}}],
+            },
+            {
+                "mode": "managed",
+                "type": "digitalocean_app",
+                "name": "staging",
+                "instances": [{"status": "tainted", "attributes": {"id": ownership.RECOVERY_APP}}],
+            },
+            {
+                "mode": "managed",
+                "type": "digitalocean_database_firewall",
+                "name": "staging",
+                "instances": [],
+            },
+        ],
+    }
+    after = copy.deepcopy(before)
+    after["serial"] = 4
+    after["resources"][1]["instances"][0].pop("status")
+    after["resources"] = list(reversed(after["resources"][:2]))
+    if alter == "attribute":
+        after["resources"][0]["instances"][0]["attributes"]["id"] = "foreign"
+    elif alter == "lineage":
+        after["lineage"] = "foreign"
+    elif alter == "serial":
+        after["serial"] = 5
+    elif alter == "foreign-shell":
+        after["resources"].append(
+            {"mode": "managed", "type": "digitalocean_droplet", "name": "foreign", "instances": []}
+        )
+    if alter:
+        with pytest.raises(ValueError, match="State|outside"):
+            ownership.verify_app_state_repair(before, after)
+    else:
+        ownership.verify_app_state_repair(before, after)
