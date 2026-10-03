@@ -32,10 +32,12 @@ def identity(order: str) -> tuple[str, str]:
 def request(
     host: str, path: str, token: str, body: dict | None = None, method: str = "GET"
 ) -> dict:
+    if host not in {"app.terraform.io", "api.digitalocean.com"}:
+        raise ValueError("Control-plane host is not authorized")
     if not path.startswith("/") or path.startswith("//"):
         raise ValueError("Invalid control-plane path")
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/vnd.api+json"}
-    query = urllib.request.Request(
+    query = urllib.request.Request(  # noqa: S310 — allowlisted HTTPS cloud endpoints
         f"https://{host}{path}",
         data=json.dumps(body).encode() if body is not None else None,
         headers=headers,
@@ -229,7 +231,10 @@ def validate_resources(resources: dict, order: str) -> dict:
     ):
         raise ValueError("Resource names or relationships escaped the owned test project")
     ids = {address: value.get("id") for address, value in resources.items()}
-    if any(not isinstance(value, str) or not value for value in ids.values()):
+    if any(
+        not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9-]+", value)
+        for value in ids.values()
+    ):
         raise ValueError("Resource ownership IDs are missing")
     return ids
 

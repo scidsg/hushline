@@ -91,8 +91,8 @@ def prepare(path: Path, destination: Path) -> None:
         "-pkeyopt",
         "rsa_oaep_md:sha256",
     ]
-    encrypted = subprocess.run(  # noqa: S603 — fixed executable and validated local key path
-        command,
+    encrypted = subprocess.run(
+        command,  # noqa: S603 — fixed executable and validated local key path
         input=claim_code.encode(),
         capture_output=True,
         check=False,
