@@ -2,9 +2,13 @@
 
 import copy
 import json
+import sys
 import urllib.error
+from contextlib import nullcontext
+from datetime import datetime, timezone
 from email.message import Message
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -238,7 +242,7 @@ def test_workflow_cannot_sweep_other_instances() -> None:
     text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
     assert "secrets.HUSHLINE_INFRA_STAGING_PAT" in text
     assert "secrets.HUSHLINE_INFRA_TOKEN" not in text
-    assert text.count("environment: self-service-test-2447") == 3
+    assert text.count("environment: self-service-test-2447") == 4
     assert text.count("environment: ephemeral-staging") == 1
     assert "schedule:" not in text
     assert "number == 2447" in text
@@ -1121,7 +1125,7 @@ def test_finalize_only_original_healthy_instance(
     }
     if problem == "wrong-id":
         ids["digitalocean_app.staging"] = "foreign-app"
-    live = {
+    live: dict = {
         "active_deployment": {"phase": "ACTIVE"},
         "default_ingress": "https://original.ondigitalocean.app",
         "spec": {
@@ -1191,10 +1195,139 @@ def test_finalization_rejects_other_order_before_cloud_requests(
 
 def test_finalization_workflow_cannot_redeploy_or_regenerate_claim() -> None:
     text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
-    finalization = text.split("  finalize:\n")[1].split("  destroy:\n")[0]
+    finalization = text.split("  finalize:\n")[1].split("  renew-claim:\n")[0]
     assert "terraform" not in finalization
     assert "prepare_self_service_test" not in finalization
     assert "run_id: 37157273469" in finalization
     assert "9a35277295e1384b6e90b5f586248b0c98b6e481" in finalization
     assert "finalize-original de44b913bbc22b3ac75d8e5b114bdc45" in finalization
     assert "self-service-claim" in finalization
+
+
+@pytest.mark.parametrize("bad_binding", [True, False])
+def test_claim_renewal_checks_original_database_before_console(
+    monkeypatch: pytest.MonkeyPatch,
+    bad_binding: bool,
+) -> None:
+    finalized = Mock()
+    monkeypatch.setattr(ownership, "finalize_original", finalized)
+    api = Mock(
+        return_value={
+            "app": {
+                "spec": {
+                    "databases": [
+                        {
+                            "cluster_name": "foreign"
+                            if bad_binding
+                            else ownership.identity(ownership.RECOVERY_ORDER)[0]
+                        }
+                    ]
+                }
+            }
+        }
+    )
+    monkeypatch.setattr(ownership, "do", api)
+    if bad_binding:
+        with pytest.raises(ValueError, match="original database"):
+            ownership.renew_original_claim(ownership.RECOVERY_ORDER)
+        assert api.call_count == 1
+    else:
+        # A malformed exec response is rejected without opening a console.
+        with pytest.raises(KeyError):
+            ownership.renew_original_claim(ownership.RECOVERY_ORDER)
+        assert api.call_count == 2
+    finalized.assert_called_once_with(ownership.RECOVERY_ORDER)
+
+
+def test_claim_renewal_payload_never_creates_or_prints_invitation() -> None:
+    compile(ownership.RENEW_CLAIM_SCRIPT, "claim-renewal", "exec")
+    assert "db.session.add" not in ownership.RENEW_CLAIM_SCRIPT
+    assert "invitation.expiration_date" in ownership.RENEW_CLAIM_SCRIPT
+    assert "select_from(User)" in ownership.RENEW_CLAIM_SCRIPT
+    assert "SELF_SERVICE_TEST_WORKSPACE" in ownership.RENEW_CLAIM_SCRIPT
+    assert "print(code" not in ownership.RENEW_CLAIM_SCRIPT
+
+
+@pytest.mark.parametrize(("users", "missing"), [(0, False), (1, False), (0, True)])
+def test_remote_claim_renewal_preserves_users_and_original_code(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture,
+    users: int,
+    missing: bool,
+) -> None:
+    code = "A" * 22
+    monkeypatch.setenv(
+        "SELF_SERVICE_TEST_WORKSPACE", ownership.identity(ownership.RECOVERY_ORDER)[0]
+    )
+    monkeypatch.setenv("SELF_SERVICE_TEST_CLAIM_CODE", code)
+    monkeypatch.setenv(
+        "SQLALCHEMY_DATABASE_URI", "postgresql://unused@test.db.ondigitalocean.com/defaultdb"
+    )
+    invitation = SimpleNamespace(
+        expiration_date=datetime(2000, 1, 1, tzinfo=timezone.utc), code=code
+    )
+    session = Mock()
+    session.scalar.side_effect = [users, None if missing else invitation]
+    monkeypatch.setitem(sys.modules, "sqlalchemy", SimpleNamespace(text=lambda query: query))
+    fake_db = SimpleNamespace(session=session, select=Mock(return_value=Mock()), func=Mock())
+    monkeypatch.setitem(
+        sys.modules,
+        "hushline",
+        SimpleNamespace(create_app=lambda: SimpleNamespace(app_context=nullcontext)),
+    )
+    monkeypatch.setitem(sys.modules, "hushline.db", SimpleNamespace(db=fake_db))
+    monkeypatch.setitem(
+        sys.modules,
+        "hushline.model",
+        SimpleNamespace(InviteCode=SimpleNamespace(code=code), User=object()),
+    )
+    if missing:
+        with pytest.raises(SystemExit, match="HL_CLAIM_RENEWAL_FAILED"):
+            exec(ownership.RENEW_CLAIM_SCRIPT, {})  # noqa: S102 — execute the fixed tested payload
+        session.commit.assert_not_called()
+    else:
+        exec(ownership.RENEW_CLAIM_SCRIPT, {})  # noqa: S102 — execute the fixed tested payload
+        session.commit.assert_called_once()
+        if users:
+            assert invitation.expiration_date.year == 2000
+            assert session.scalar.call_count == 1
+        else:
+            assert invitation.expiration_date > datetime.now(timezone.utc)
+    session.add.assert_not_called()
+    assert invitation.code == code
+    assert code not in capsys.readouterr().out
+
+
+def test_console_renewal_handles_split_marker_and_never_logs_transcript(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture,
+) -> None:
+    monkeypatch.setattr(ownership, "finalize_original", Mock())
+    api = Mock(
+        side_effect=[
+            {
+                "app": {
+                    "spec": {
+                        "databases": [
+                            {"cluster_name": ownership.identity(ownership.RECOVERY_ORDER)[0]}
+                        ]
+                    }
+                }
+            },
+            {"url": "wss://console.digitalocean.com/socket?token=private-example"},
+        ]
+    )
+    monkeypatch.setattr(ownership, "do", api)
+    console = Mock()
+    console.recv.side_effect = [
+        json.dumps({"data": "private-transcript HL_CLAIM_RE"}),
+        json.dumps({"data": "NEWED"}),
+    ]
+    connection = Mock(return_value=console)
+    monkeypatch.setitem(sys.modules, "websocket", SimpleNamespace(create_connection=connection))
+    ownership.renew_original_claim(ownership.RECOVERY_ORDER)
+    console.close.assert_called_once()
+    output = capsys.readouterr().out
+    assert "renewed" in output
+    assert "private" not in output
+    assert "token" not in output

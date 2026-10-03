@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import gzip
 import io
 import json
 import os
 import re
 import subprocess
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -862,6 +864,93 @@ def finalize_original(order: str) -> None:
         print(f"onion_hostname={onion}", file=output)
 
 
+RENEW_CLAIM_SCRIPT = """
+import os, re
+from datetime import datetime, timedelta, timezone
+from urllib.parse import urlsplit
+from sqlalchemy import text
+from hushline import create_app
+from hushline.db import db
+from hushline.model import InviteCode, User
+try:
+    expected = "hushline-self-service-test-de44b913bbc22b3ac75d8e5b114bdc45"
+    assert os.environ.get("SELF_SERVICE_TEST_WORKSPACE") == expected
+    code = os.environ.get("SELF_SERVICE_TEST_CLAIM_CODE", "")
+    assert re.fullmatch(r"[A-Za-z0-9_-]{22}", code)
+    with create_app().app_context():
+        hostname = urlsplit(os.environ.get("SQLALCHEMY_DATABASE_URI", "")).hostname
+        assert hostname and hostname.endswith(".db.ondigitalocean.com")
+        db.session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": 716340528})
+        if db.session.scalar(db.select(db.func.count()).select_from(User)):
+            db.session.commit()
+            print("HL_CLAIM_ALREADY_USED", flush=True)
+        else:
+            invitation = db.session.scalar(db.select(InviteCode).where(InviteCode.code == code))
+            assert invitation is not None
+            invitation.expiration_date = datetime.now(timezone.utc) + timedelta(hours=24)
+            db.session.commit()
+            print("HL_CLAIM_RENEWED", flush=True)
+except Exception:
+    raise SystemExit("HL_CLAIM_RENEWAL_FAILED") from None
+"""
+
+
+def renew_original_claim(order: str) -> None:
+    """Renew only the original unused claim; never create users or invitations."""
+    finalize_original(order)
+    live = do(f"/apps/{RECOVERY_APP}")["app"]
+    if (
+        len(live["spec"].get("databases", [])) != 1
+        or live["spec"]["databases"][0].get("cluster_name") != identity(order)[0]
+    ):
+        raise ValueError("Claim renewal requires the original database binding")
+    response = do(f"/apps/{RECOVERY_APP}/components/app/exec")
+    url = urllib.parse.urlsplit(response["url"])
+    if (
+        url.scheme != "wss"
+        or not url.hostname
+        or url.username
+        or url.password
+        or url.fragment
+        or not urllib.parse.parse_qs(url.query).get("token")
+    ):
+        raise ValueError("Invalid original-app console URL")
+    # The scoped authenticated app API issues this URL. Never forward DO credentials
+    # to the console or print its token, transcript, environment, or SQL exceptions.
+    import websocket  # — only the guarded recovery job needs this dependency
+
+    encoded = base64.b64encode(RENEW_CLAIM_SCRIPT.encode()).decode()
+    command = (
+        "stty -echo; poetry run python -c \"exec(__import__('base64').b64decode('"
+        + encoded
+        + "'))\"; exit\n"
+    )
+    try:
+        console = websocket.create_connection(response["url"], timeout=15, redirect_limit=0)
+        try:
+            console.send(json.dumps({"op": "stdin", "data": command}))
+            deadline = time.monotonic() + 180
+            data = ""
+            while time.monotonic() < deadline:
+                message = json.loads(console.recv())
+                data = (data + message.get("data", ""))[-4096:]
+                if "HL_CLAIM_RENEWED" in data:
+                    print("Original unused account claim renewed; infrastructure unchanged.")
+                    return
+                if "HL_CLAIM_ALREADY_USED" in data:
+                    print("Original account already claimed; no invitation changed.")
+                    return
+                if "HL_CLAIM_RENEWAL_FAILED" in data:
+                    raise ValueError("Original account claim renewal failed safely")
+            raise ValueError("Original account claim renewal timed out")
+        finally:
+            console.close()
+    except Exception:
+        raise ValueError(
+            "Original account claim could not be renewed; no credentials disclosed"
+        ) from None
+
+
 def inspect_original_plan(data: dict) -> list:
     run = tf("/runs/run-2H5ufxagxtt3yuZp")["data"]
     if run["relationships"]["workspace"]["data"]["id"] != data["id"]:
@@ -1169,6 +1258,7 @@ def main() -> None:
             "recover-plan",
             "repair-app-state",
             "finalize-original",
+            "renew-original-claim",
             "inspect",
         ],
     )
@@ -1177,6 +1267,8 @@ def main() -> None:
     args = parser.parse_args()
     if args.operation == "inspect":
         print(json.dumps(inspect_original_deployment(args.order)))
+    elif args.operation == "renew-original-claim":
+        renew_original_claim(args.order)
     elif args.operation == "finalize-original":
         finalize_original(args.order)
     elif args.operation == "repair-app-state":

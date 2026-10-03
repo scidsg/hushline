@@ -9,7 +9,7 @@ on:
     types: [labeled, unlabeled, synchronize, closed]
 
 concurrency:
-  group: ${{ github.event.action == 'labeled' && github.event.label.name == 'self-service-inspect' && 'self-service-inspect-2447' || 'self-service-test-2447' }}
+  group: ${{ github.event.action == 'labeled' && contains(fromJSON('["self-service-inspect", "self-service-renew-claim"]'), github.event.label.name) && format('{0}-2447', github.event.label.name) || 'self-service-test-2447' }}
   cancel-in-progress: false
 
 env:
@@ -514,6 +514,31 @@ jobs:
           kill "$(cat "${tor_runtime}/tor.pid")" 2>/dev/null || true
           rm -rf "$tor_runtime"
           if [ "$ready" != "true" ]; then exit 1; fi
+
+  renew-claim:
+    if: >-
+      github.repository == 'scidsg/hushline' &&
+      github.event.pull_request.number == 2447 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
+      github.event.action == 'labeled' && github.event.label.name == 'self-service-renew-claim'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: self-service-test-2447
+    steps:
+      - name: Check out signed original-order recovery code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Install console protocol dependency
+        run: python3 -m pip install --disable-pip-version-check websocket-client==1.8.0
+      - name: Renew only the original unused account claim
+        env:
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          CUSTOM_DOMAIN: hushline.foo
+        run: python3 scripts/self_service_test_ownership.py renew-original-claim de44b913bbc22b3ac75d8e5b114bdc45
 
   destroy:
     if: >-
