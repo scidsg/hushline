@@ -157,12 +157,12 @@ def preflight(order: str, domain: str) -> None:
     for app in inventory("/apps", "apps"):
         domains = []
         for entry in app["spec"].get("domains", []):
-            if "name" not in entry:
+            if "domain" not in entry:
                 # DEFAULT selects DigitalOcean's generated .ondigitalocean.app host.
                 if entry.get("type") == "DEFAULT":
                     continue
                 raise ValueError("Custom domain inventory is missing its hostname")
-            domains.append(entry["name"])
+            domains.append(entry["domain"])
         if app["spec"]["name"] == name or domain in domains:
             raise ValueError("Test name or hostname already belongs to an existing instance")
 
