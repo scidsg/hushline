@@ -230,7 +230,7 @@ def state_resources(data: dict) -> dict:
     return results
 
 
-def read_state(data: dict) -> dict:
+def read_raw_state(data: dict) -> dict:
     version = tf(f"/workspaces/{data['id']}/current-state-version")["data"]
     url = version["attributes"]["hosted-state-download-url"]
     parsed = urllib.parse.urlsplit(url)
@@ -275,7 +275,11 @@ def read_state(data: dict) -> dict:
         redirect_path = redirect.path + ("?" + redirect.query if redirect.query else "")
         # The storage URL is signed. Never forward the API token to the redirect.
         payload = request("archivist.terraform.io", redirect_path, None)
-    return state_resources(payload)
+    return payload
+
+
+def read_state(data: dict) -> dict:
+    return state_resources(read_raw_state(data))
 
 
 def validate_resources(resources: dict, order: str) -> dict:
@@ -497,7 +501,8 @@ def inspect_original_deployment(order: str) -> dict:
     if data is None:
         raise ValueError("Original workspace is missing")
     validate_workspace(data, order)
-    state = read_state(data)
+    raw_state = read_raw_state(data)
+    state = state_resources(raw_state)
     if any(
         state.get(address, {}).get("id") != identifier
         for address, identifier in RECOVERY_IDS.items()
@@ -545,9 +550,26 @@ def inspect_original_deployment(order: str) -> dict:
             )
         return result
 
+    app_status = [
+        instance.get("status", "ready")
+        for resource in raw_state.get("resources", [])
+        if resource.get("type") == "digitalocean_app" and resource.get("name") == "staging"
+        for instance in resource.get("instances", [])
+    ]
+    migration_flag = next(
+        (
+            entry.get("value")
+            for entry in spec.get("envs", [])
+            if entry.get("key") == "RUN_STARTUP_MIGRATIONS"
+        ),
+        None,
+    )
     return {
         "order_id": order,
         "app_id": app_id,
+        "app_state_status": app_status,
+        "active_deployment_phase": (live.get("active_deployment") or {}).get("phase"),
+        "startup_migrations_enabled": migration_flag == "true",
         "phase": deployment.get("phase"),
         "steps": steps(
             deployment.get("progress", {}).get("steps", [])
