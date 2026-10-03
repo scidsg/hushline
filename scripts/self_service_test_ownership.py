@@ -236,7 +236,9 @@ def read_state(data: dict) -> dict:
             (parsed.hostname == "archivist.terraform.io" and parsed.path.startswith("/v1/object/"))
             or (
                 parsed.hostname == "app.terraform.io"
-                and parsed.path.startswith("/api/v2/state-versions/")
+                and re.fullmatch(
+                    r"/api/(?:v2/)?state-versions/sv-[A-Za-z0-9]+/hosted_state", parsed.path
+                )
             )
         )
     ):

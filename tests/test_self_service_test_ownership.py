@@ -523,3 +523,26 @@ def test_hosted_state_download_uses_authenticated_allowlisted_host(
     request.assert_called_once_with(
         "archivist.terraform.io", "/v1/object/test", "test-only-credential"
     )
+
+
+@pytest.mark.parametrize("prefix", ["/api", "/api/v2"])
+def test_current_hcp_hosted_state_route_is_authenticated(
+    monkeypatch: pytest.MonkeyPatch, prefix: str
+) -> None:
+    monkeypatch.setenv("STAGING_TF_TOKEN", "test-only-credential")
+    path = prefix + "/state-versions/sv-Test123/hosted_state"
+    monkeypatch.setattr(
+        ownership,
+        "tf",
+        lambda value: {
+            "data": {
+                "attributes": {
+                    "hosted-state-download-url": "https://app.terraform.io" + path,
+                }
+            }
+        },
+    )
+    request = Mock(return_value={"resources": []})
+    monkeypatch.setattr(ownership, "request", request)
+    assert ownership.read_state({"id": "ws-owned"}) == {}
+    request.assert_called_once_with("app.terraform.io", path, "test-only-credential")
