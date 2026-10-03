@@ -271,7 +271,9 @@ An operator uses the app-style account and plan flow, confirms a simulated annua
 payment, and enters a customer-controlled hostname. Confirmed payment authorizes
 automatic provisioning without a customer deployment review. The isolated workflow
 reads that order from private Git configuration and provisions a separate app and
-database with staging-only credentials. The DNS screen displays the assigned CNAME
+database with staging-only credentials. One pre-deploy job initializes the schema
+and private invitation before either app service starts, using lowercase boolean
+configuration accepted by the app. The DNS screen displays the assigned CNAME
 and ownership TXT records. Successful checks enable Continue without navigating;
 the deployment screen separately verifies HTTPS and application health before its
 own Continue action. A short-lived one-use invitation allows the operator to claim

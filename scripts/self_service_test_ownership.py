@@ -500,7 +500,12 @@ def app_refresh_equivalent(before: dict, after: dict) -> bool:
                     or matches[0].get("path") != [{"prefix": "/"}]
                 ):
                     raise ValueError("Refresh added non-default routing")
-            for component in [spec, *spec.get("service", []), *spec.get("worker", [])]:
+            for component in [
+                spec,
+                *spec.get("service", []),
+                *spec.get("worker", []),
+                *spec.get("job", []),
+            ]:
                 for env in component.get("env", []):
                     if env.get("type") == "SECRET":
                         # The API returns encrypted secret representations. Keys,
@@ -612,6 +617,20 @@ def guard_recovery(path: Path, order: str) -> None:
                 )
             ):
                 raise ValueError("Recovery may only update the original failed app in place")
+            jobs = (after.get("spec") or [{}])[0].get("job", [])
+            if jobs and (
+                len(jobs) != 1
+                or jobs[0].get("name") != "initialize-instance"
+                or jobs[0].get("kind") != "PRE_DEPLOY"
+                or jobs[0].get("git")
+                != (before.get("spec") or [{}])[0].get("service", [{}])[0].get("git")
+                or jobs[0].get("run_command")
+                != (
+                    "sh -c 'poetry run flask db upgrade && "
+                    "poetry run python -m scripts.prepare_self_service_test'"
+                )
+            ):
+                raise ValueError("Recovery initializer escaped the original app source")
         elif change["actions"] != ["create"] or before is not None:
             raise ValueError("Recovery may only create the missing app and firewall")
         elif address == "digitalocean_app.staging":

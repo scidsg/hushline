@@ -1030,3 +1030,38 @@ def test_verified_repair_history_survives_failed_inplace_updates(
             ownership.verify_original_repair_history(ownership.RECOVERY_ORDER, current)
     else:
         ownership.verify_original_repair_history(ownership.RECOVERY_ORDER, current)
+
+
+@pytest.mark.parametrize("alter", [None, "source", "kind", "command"])
+def test_recovery_initializer_is_pinned_to_original_source(
+    original_failed_app: dict, tmp_path: Path, alter: str | None
+) -> None:
+    plan = failed_app_plan(original_failed_app)
+    app = next(
+        change["change"]
+        for change in plan["resource_changes"]
+        if change["address"] == "digitalocean_app.staging"
+    )
+    job: dict = {
+        "name": "initialize-instance",
+        "kind": "PRE_DEPLOY",
+        "git": copy.deepcopy(app["before"]["spec"][0]["service"][0]["git"]),
+        "run_command": (
+            "sh -c 'poetry run flask db upgrade && "
+            "poetry run python -m scripts.prepare_self_service_test'"
+        ),
+    }
+    if alter == "source":
+        job["git"]["branch"] = "main"
+    elif alter == "kind":
+        job["kind"] = "POST_DEPLOY"
+    elif alter == "command":
+        job["run_command"] = "other-command"
+    app["after"]["spec"][0]["job"] = [job]
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(plan))
+    if alter:
+        with pytest.raises(ValueError, match="initializer"):
+            ownership.guard_recovery(path, ownership.RECOVERY_ORDER)
+    else:
+        ownership.guard_recovery(path, ownership.RECOVERY_ORDER)

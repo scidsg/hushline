@@ -14,7 +14,7 @@ concurrency:
 
 env:
   INFRA_REPOSITORY: scidsg/hushline-infra
-  INFRA_REF: 1e41fd59366e3a8d75286ee6c9ae3b1e3fce152c
+  INFRA_REF: f1570dbe01b5a2155805b938c795afbaf08f4829
   STAGING_TF_PATH: hushline-self-service-test
 
 jobs:
