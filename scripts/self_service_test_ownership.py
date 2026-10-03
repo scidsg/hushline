@@ -708,6 +708,40 @@ def verify_app_state_repair(before: dict, after: dict) -> None:
         raise ValueError("State repair changed more than the original app taint marker")
 
 
+def verify_original_repair_history(order: str, current: dict) -> None:
+    expected_ids = {**RECOVERY_IDS, "digitalocean_app.staging": RECOVERY_APP}
+    if {
+        address: attrs.get("id") for address, attrs in state_resources(current).items()
+    } != expected_ids or not current.get("lineage"):
+        raise ValueError("Original app repair history has different ownership")
+    query = urllib.parse.urlencode(
+        {
+            "filter[workspace][name]": identity(order)[0],
+            "filter[organization][name]": ORG,
+            "filter[status]": "finalized",
+            "page[size]": "20",
+        }
+    )
+    versions = tf(f"/state-versions?{query}")["data"]
+    for newer, older in zip(versions, versions[1:], strict=False):
+        after = read_state_version(newer)
+        before = read_state_version(older)
+        if (
+            after.get("lineage") != current["lineage"]
+            or after.get("serial", -1) > current["serial"]
+        ):
+            continue
+        try:
+            verify_app_state_repair(before, after)
+        except ValueError:
+            continue
+        if {
+            address: attrs.get("id") for address, attrs in state_resources(after).items()
+        } == expected_ids:
+            return
+    raise ValueError("Original app taint repair cannot be verified from state history")
+
+
 def previous_state(order: str) -> dict:
     query = urllib.parse.urlencode(
         {
@@ -1036,7 +1070,7 @@ def main() -> None:
             with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
                 print("needs_state_repair=true", file=output)
         elif "digitalocean_app.staging" in resources:
-            verify_app_state_repair(previous_state(args.order), raw)
+            verify_original_repair_history(args.order, raw)
     elif args.operation == "recover-plan":
         if args.plan is None:
             raise ValueError("Recovery requires a checked plan")

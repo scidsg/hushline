@@ -982,3 +982,51 @@ def test_runtime_logs_reject_foreign_hosts(monkeypatch: pytest.MonkeyPatch) -> N
     result = ownership.sanitized_runtime_logs(ownership.RECOVERY_APP, "owned-deployment", "app")
     assert result["available"] is False
     opener.assert_not_called()
+
+
+@pytest.mark.parametrize("alter", [None, "lineage", "current-id", "missing-proof"])
+def test_verified_repair_history_survives_failed_inplace_updates(
+    monkeypatch: pytest.MonkeyPatch, alter: str | None
+) -> None:
+    before: dict = {
+        "lineage": "original",
+        "serial": 3,
+        "resources": [
+            {
+                "mode": "managed",
+                "type": address.split(".")[0],
+                "name": address.split(".")[1],
+                "instances": [
+                    {
+                        "attributes": {"id": identifier},
+                        **({"status": "tainted"} if address == "digitalocean_app.staging" else {}),
+                    }
+                ],
+            }
+            for address, identifier in {
+                **ownership.RECOVERY_IDS,
+                "digitalocean_app.staging": ownership.RECOVERY_APP,
+            }.items()
+        ],
+    }
+    repaired = copy.deepcopy(before)
+    repaired["serial"] = 4
+    repaired["resources"][-1]["instances"][0].pop("status")
+    current = copy.deepcopy(repaired)
+    current["serial"] = 5
+    current["resources"][-1]["instances"][0]["attributes"]["updated_at"] = "original-app-update"
+    versions = [{"id": "latest"}, {"id": "repaired"}, {"id": "tainted"}]
+    data = {"latest": current, "repaired": repaired, "tainted": before}
+    if alter == "lineage":
+        current["lineage"] = "foreign"
+    elif alter == "current-id":
+        current["resources"][-1]["instances"][0]["attributes"]["id"] = "foreign"
+    elif alter == "missing-proof":
+        versions = versions[:2]
+    monkeypatch.setattr(ownership, "tf", lambda path: {"data": versions})
+    monkeypatch.setattr(ownership, "read_state_version", lambda version: data[version["id"]])
+    if alter:
+        with pytest.raises(ValueError, match="history|ownership"):
+            ownership.verify_original_repair_history(ownership.RECOVERY_ORDER, current)
+    else:
+        ownership.verify_original_repair_history(ownership.RECOVERY_ORDER, current)

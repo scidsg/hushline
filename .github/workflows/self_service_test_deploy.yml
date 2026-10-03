@@ -536,4 +536,11 @@ jobs:
           STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
           STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
           CUSTOM_DOMAIN: hushline.foo
-        run: python3 scripts/self_service_test_ownership.py inspect de44b913bbc22b3ac75d8e5b114bdc45
+        run: python3 scripts/self_service_test_ownership.py inspect de44b913bbc22b3ac75d8e5b114bdc45 > owned-diagnostics.json
+      - name: Retain sanitized original-order diagnostics
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: owned-diagnostics
+          path: owned-diagnostics.json
+          retention-days: 1
+          if-no-files-found: error
