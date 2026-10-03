@@ -182,7 +182,9 @@ def test_hostname_already_used_by_another_app_is_rejected(monkeypatch: pytest.Mo
         lambda path, key: (
             []
             if path != "/apps"
-            else [{"spec": {"name": "other-instance", "domains": [{"domain": "tips.customer.org"}]}}]
+            else [
+                {"spec": {"name": "other-instance", "domains": [{"domain": "tips.customer.org"}]}}
+            ]
         ),
     )
     with pytest.raises(ValueError, match="existing instance"):
