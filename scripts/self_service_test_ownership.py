@@ -334,9 +334,20 @@ if __name__ == "__main__":
         ) from None
     except ValueError as error:
         raise SystemExit(f"Test ownership check failed: {error}; no mutations permitted.") from None
-    except KeyError:
+    except KeyError as error:
+        field = error.args[0]
+        if field not in {
+            "projects",
+            "databases",
+            "apps",
+            "name",
+            "spec",
+            "CUSTOM_DOMAIN",
+            "STAGING_DO_TOKEN",
+        }:
+            field = "required field"
         raise SystemExit(
-            "Test cloud inventory has an unexpected schema; no mutations permitted."
+            f"Test cloud inventory is missing {field}; no mutations permitted."
         ) from None
     except OSError:
         raise SystemExit("Test ownership check failed; no further mutations permitted.") from None
