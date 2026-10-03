@@ -771,6 +771,76 @@ def inspect_original_plan(data: dict) -> list:
     ]
 
 
+def sanitized_runtime_logs(app_id: str, deployment_id: str, component: str) -> dict:
+    response = do(
+        f"/apps/{app_id}/deployments/{deployment_id}/components/{component}/logs"
+        "?type=RUN_RESTARTED&follow=false&tail_lines=200"
+    )
+    urls = response.get("historic_urls", [])
+    if not urls and response.get("live_url"):
+        urls = [response["live_url"]]
+    logs = ""
+    hosts = []
+    for url in urls[-3:]:
+        parsed = urllib.parse.urlsplit(url)
+        host = parsed.hostname or ""
+        hosts.append(host)
+        if (
+            parsed.scheme != "https"
+            or parsed.port not in {None, 443}
+            or parsed.username
+            or parsed.password
+            or parsed.fragment
+            or not (host.endswith((".digitalocean.com", ".digitaloceanspaces.com")))
+        ):
+            continue
+
+        class NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, *args: Any, **kwargs: Any) -> None:
+                return None
+
+        try:
+            # Signed URL, no API token, no redirect and no raw log output.
+            with urllib.request.build_opener(NoRedirect()).open(url, timeout=20) as source:
+                logs += source.read(262144).decode("utf-8", errors="replace")
+        except (urllib.error.URLError, TimeoutError):
+            continue
+    markers = {
+        "migrations_started": "> Running migrations",
+        "migrations_skipped": "> Skipping startup migrations",
+        "bootstrap_failed": "Private test bootstrap failed",
+        "connection_refused": "Connection refused",
+        "connection_timeout": "timeout expired",
+        "network_timeout": "Connection timed out",
+        "missing_table": "does not exist",
+        "duplicate_table": "already exists",
+        "unknown_migration": "Can't locate revision",
+        "server_started": "> Starting the server",
+        "ssl_failure": "certificate verify failed",
+    }
+    errors = [
+        name
+        for name in [
+            "OperationalError",
+            "ProgrammingError",
+            "IntegrityError",
+            "UndefinedTable",
+            "DuplicateTable",
+            "DeadlockDetected",
+            "RuntimeError",
+            "ValueError",
+        ]
+        if name in logs
+    ]
+    return {
+        "available": bool(logs),
+        "log_hosts": hosts,
+        "markers": [key for key, value in markers.items() if value.lower() in logs.lower()],
+        "error_classes": errors,
+        "migration_ids": re.findall(r"Running upgrade [a-f0-9]* -> ([a-f0-9]{12})", logs)[-5:],
+    }
+
+
 def inspect_original_deployment(order: str) -> dict:
     if order != RECOVERY_ORDER or os.environ.get("CUSTOM_DOMAIN") != "hushline.foo":
         raise ValueError("Inspection is restricted to the original authorized test")
@@ -889,6 +959,10 @@ def inspect_original_deployment(order: str) -> dict:
         "active_deployment_phase": (live.get("active_deployment") or {}).get("phase"),
         "startup_migrations_enabled": migration_flag == "true",
         "phase": deployment.get("phase"),
+        "runtime": {
+            component: sanitized_runtime_logs(app_id, deployment_id, component)
+            for component in ["app", "app-onion"]
+        },
         "steps": steps(
             deployment.get("progress", {}).get("steps", [])
             + deployment.get("progress", {}).get("summary_steps", [])
