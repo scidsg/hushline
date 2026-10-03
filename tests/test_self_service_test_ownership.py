@@ -47,7 +47,7 @@ def resources() -> dict:
         },
         "digitalocean_app.staging": {
             "id": "app-id",
-            "spec": [{"name": NAME}],
+            "spec": [{"name": ownership.app_name(ORDER)}],
             "project_id": "project-id",
         },
         "digitalocean_database_firewall.staging": {
@@ -158,7 +158,7 @@ def test_foreign_project_resource_stops_cleanup(monkeypatch: pytest.MonkeyPatch)
         "do",
         lambda path: {
             "/projects/project-id": {"project": resources()["digitalocean_project.staging"]},
-            "/apps/app-id": {"app": {"id": "app-id", "spec": {"name": NAME}}},
+            "/apps/app-id": {"app": {"id": "app-id", "spec": {"name": ownership.app_name(ORDER)}}},
             "/databases/db-id": {"database": resources()["digitalocean_database_cluster.db"]},
         }[path],
     )
@@ -281,3 +281,198 @@ def test_generated_domain_can_omit_name_but_custom_domain_cannot(
     else:
         with pytest.raises(ValueError, match="missing its hostname"):
             ownership.preflight(ORDER, "tips.customer.org")
+
+
+@pytest.fixture()
+def original_partial_order(monkeypatch: pytest.MonkeyPatch) -> dict:
+    order = ownership.RECOVERY_ORDER
+    name, source = ownership.identity(order)
+    partial = {
+        "digitalocean_project.staging": {
+            "id": ownership.RECOVERY_IDS["digitalocean_project.staging"],
+            "name": name,
+            "description": f"Owned disposable Hush Line test {name}",
+        },
+        "digitalocean_database_cluster.db": {
+            "id": ownership.RECOVERY_IDS["digitalocean_database_cluster.db"],
+            "name": name,
+            "project_id": ownership.RECOVERY_IDS["digitalocean_project.staging"],
+        },
+    }
+    data = workspace()
+    data["attributes"].update(
+        name=name,
+        **{
+            "source-name": source,
+            "description": json.dumps({"schema": 1, "order_id": order, "resources": None}),
+        },
+    )
+    monkeypatch.setenv("CUSTOM_DOMAIN", "hushline.foo")
+    monkeypatch.setattr(ownership, "workspace", lambda value: data)
+    monkeypatch.setattr(ownership, "read_state", lambda value: partial)
+    monkeypatch.setattr(
+        ownership,
+        "do",
+        lambda path: {
+            "project": partial["digitalocean_project.staging"],
+            "database": partial["digitalocean_database_cluster.db"],
+        },
+    )
+    monkeypatch.setattr(
+        ownership,
+        "inventory",
+        lambda path, key: (
+            []
+            if path == "/apps"
+            else [{"urn": "do:dbaas:" + ownership.RECOVERY_IDS["digitalocean_database_cluster.db"]}]
+        ),
+    )
+    return partial
+
+
+def recovery_plan(partial: dict) -> dict:
+    changes = [
+        {
+            "address": address,
+            "change": {
+                "actions": ["no-op"],
+                "before": copy.deepcopy(value),
+                "after": copy.deepcopy(value),
+            },
+        }
+        for address, value in partial.items()
+    ]
+    changes.extend(
+        [
+            {
+                "address": "digitalocean_app.staging",
+                "change": {
+                    "actions": ["create"],
+                    "before": None,
+                    "after": {
+                        "spec": [{"name": ownership.app_name(ownership.RECOVERY_ORDER)}],
+                        "project_id": ownership.RECOVERY_IDS["digitalocean_project.staging"],
+                    },
+                },
+            },
+            {
+                "address": "digitalocean_database_firewall.staging",
+                "change": {
+                    "actions": ["create"],
+                    "before": None,
+                    "after": {
+                        "cluster_id": ownership.RECOVERY_IDS["digitalocean_database_cluster.db"],
+                        "rule": [{"type": "app", "value": None}],
+                    },
+                    "after_unknown": {"rule": [{"value": True}]},
+                },
+            },
+        ]
+    )
+    return {
+        "resource_changes": changes,
+        "prior_state": {
+            "values": {
+                "root_module": {
+                    "resources": [
+                        {"address": address, "values": value} for address, value in partial.items()
+                    ]
+                }
+            }
+        },
+    }
+
+
+def test_recovery_only_reads_original_owned_partial_state(original_partial_order: dict) -> None:
+    assert ownership.recovery(ownership.RECOVERY_ORDER) == original_partial_order
+    with pytest.raises(ValueError, match="restricted"):
+        ownership.recovery(ORDER)
+
+
+@pytest.mark.parametrize("alter", ["foreign-id", "foreign-name", "foreign-project", "extra-app"])
+def test_recovery_rejects_foreign_or_already_created_resources(
+    original_partial_order: dict, alter: str
+) -> None:
+    if alter == "extra-app":
+        original_partial_order["digitalocean_app.staging"] = {"id": "foreign"}
+    else:
+        key = {"foreign-id": "id", "foreign-name": "name", "foreign-project": "project_id"}[alter]
+        original_partial_order["digitalocean_database_cluster.db"][key] = "foreign"
+    with pytest.raises(ValueError, match="original|ownership"):
+        ownership.recovery(ownership.RECOVERY_ORDER)
+
+
+def test_recovery_refuses_other_hostname(
+    original_partial_order: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CUSTOM_DOMAIN", "other.customer.org")
+    with pytest.raises(ValueError, match="restricted"):
+        ownership.recovery(ownership.RECOVERY_ORDER)
+
+
+def test_recovery_refuses_foreign_project_members(
+    original_partial_order: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ownership, "inventory", lambda path, key: [{"urn": "do:dbaas:foreign"}])
+    with pytest.raises(ValueError, match="exclusively"):
+        ownership.recovery(ownership.RECOVERY_ORDER)
+
+
+def test_recovery_plan_preserves_database_and_only_creates_missing_resources(
+    original_partial_order: dict, tmp_path: Path
+) -> None:
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(recovery_plan(original_partial_order)))
+    ownership.guard_recovery(path, ownership.RECOVERY_ORDER)
+
+
+@pytest.mark.parametrize(
+    "alter",
+    [
+        "database-update",
+        "database-id",
+        "project-rename",
+        "app-update",
+        "foreign-project",
+        "foreign-database",
+        "foreign-app",
+        "extra-resource",
+        "import",
+        "move",
+        "module",
+        "drift",
+    ],
+)
+def test_recovery_plan_cannot_touch_existing_or_foreign_resources(
+    original_partial_order: dict, tmp_path: Path, alter: str
+) -> None:
+    plan = recovery_plan(original_partial_order)
+    project, database, app, firewall = plan["resource_changes"]
+    if alter == "database-update":
+        database["change"]["actions"] = ["update"]
+    elif alter == "database-id":
+        database["change"]["before"]["id"] = "foreign"
+    elif alter == "project-rename":
+        project["change"]["after"]["name"] = "foreign"
+    elif alter == "app-update":
+        app["change"]["actions"] = ["update"]
+    elif alter == "foreign-project":
+        app["change"]["after"]["project_id"] = "foreign"
+    elif alter == "foreign-database":
+        firewall["change"]["after"]["cluster_id"] = "foreign"
+    elif alter == "foreign-app":
+        firewall["change"]["after"]["rule"][0]["value"] = "foreign"
+    elif alter == "extra-resource":
+        plan["resource_changes"].append(copy.deepcopy(app))
+    elif alter == "import":
+        app["change"]["importing"] = {"id": "foreign"}
+    elif alter == "move":
+        app["previous_address"] = "digitalocean_app.production"
+    elif alter == "module":
+        app["module_address"] = "module.production"
+    else:
+        plan["resource_drift"] = [project]
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(plan))
+    with pytest.raises(ValueError, match="Recovery"):
+        ownership.guard_recovery(path, ownership.RECOVERY_ORDER)

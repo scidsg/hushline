@@ -14,6 +14,11 @@ from typing import Any
 
 PROJECT = "prj-iEruEQFmaNTCRAtA"
 DIRECTORY = "hushline-self-service-test"
+RECOVERY_ORDER = "de44b913bbc22b3ac75d8e5b114bdc45"
+RECOVERY_IDS = {
+    "digitalocean_project.staging": "c668d9b7-e17b-4817-85e3-ed78d3b55af9",
+    "digitalocean_database_cluster.db": "e4de185b-6961-424d-8924-4acd92abec95",
+}
 ORG = "science-and-design"
 ADDRESSES = {
     "digitalocean_project.staging",
@@ -27,6 +32,11 @@ def identity(order: str) -> tuple[str, str]:
     if not re.fullmatch(r"[a-f0-9]{32}", order):
         raise ValueError("Invalid order ownership identifier")
     return f"hushline-self-service-test-{order}", f"scidsg/hushline self-service-test {order}"
+
+
+def app_name(order: str) -> str:
+    identity(order)
+    return "hlst-" + order[:27]
 
 
 def request(
@@ -154,6 +164,10 @@ def preflight(order: str, domain: str) -> None:
     for database in inventory("/databases", "databases"):
         if database["name"] == name:
             raise ValueError("Test database name already belongs to an existing resource")
+    check_app_availability(order, domain)
+
+
+def check_app_availability(order: str, domain: str) -> None:
     for app in inventory("/apps", "apps"):
         domains = []
         for entry in app["spec"].get("domains", []):
@@ -163,7 +177,7 @@ def preflight(order: str, domain: str) -> None:
                     continue
                 raise ValueError("Custom domain inventory is missing its hostname")
             domains.append(entry["domain"])
-        if app["spec"]["name"] == name or domain in domains:
+        if app["spec"]["name"] == app_name(order) or domain in domains:
             raise ValueError("Test name or hostname already belongs to an existing instance")
 
 
@@ -180,7 +194,7 @@ def validate_live(ids: dict, order: str) -> None:
         or project.get("name") != name
         or project.get("description") != f"Owned disposable Hush Line test {name}"
         or app.get("id") != app_id
-        or app["spec"].get("name") != name
+        or app["spec"].get("name") != app_name(order)
         or database.get("id") != db_id
         or database.get("name") != name
         or database.get("project_id") != project_id
@@ -228,7 +242,7 @@ def validate_resources(resources: dict, order: str) -> dict:
         project.get("name") != name
         or project.get("description") != f"Owned disposable Hush Line test {name}"
         or database.get("name") != name
-        or app["spec"][0].get("name") != name
+        or app["spec"][0].get("name") != app_name(order)
         or database.get("project_id") != project.get("id")
         or app.get("project_id") != project.get("id")
         or firewall.get("cluster_id") != database.get("id")
@@ -307,15 +321,131 @@ def remove_workspace(order: str) -> None:
     tf(f"/workspaces/{data['id']}/actions/safe-delete", method="POST")
 
 
+def recovery(order: str) -> dict:
+    """Continue only the original partial apply, never adopt an existing instance."""
+    if order != RECOVERY_ORDER or os.environ.get("CUSTOM_DOMAIN") != "hushline.foo":
+        raise ValueError("Recovery is restricted to the original authorized test order")
+    data = workspace(order)
+    if data is None:
+        raise ValueError("Original test workspace is missing")
+    manifest = validate_workspace(data, order)
+    if manifest.get("resources") is not None:
+        raise ValueError("Recovery cannot alter an already completed instance")
+    resources = read_state(data)
+    if set(resources) != set(RECOVERY_IDS):
+        raise ValueError("Recovery requires exactly the original project and database")
+    name, _ = identity(order)
+    project = resources["digitalocean_project.staging"]
+    database = resources["digitalocean_database_cluster.db"]
+    project_id = RECOVERY_IDS["digitalocean_project.staging"]
+    db_id = RECOVERY_IDS["digitalocean_database_cluster.db"]
+    if (
+        any(
+            resources[address].get("id") != identifier
+            for address, identifier in RECOVERY_IDS.items()
+        )
+        or project.get("name") != name
+        or project.get("description") != f"Owned disposable Hush Line test {name}"
+        or database.get("name") != name
+        or database.get("project_id") != project_id
+    ):
+        raise ValueError("Partial resource ownership does not match the original apply")
+    live_project = do(f"/projects/{project_id}")["project"]
+    live_database = do(f"/databases/{db_id}")["database"]
+    members = {item["urn"] for item in inventory(f"/projects/{project_id}/resources", "resources")}
+    if (
+        live_project.get("id") != project_id
+        or live_project.get("name") != name
+        or live_project.get("description") != project.get("description")
+        or live_database.get("id") != db_id
+        or live_database.get("name") != name
+        or live_database.get("project_id") != project_id
+        or members != {f"do:dbaas:{db_id}"}
+    ):
+        raise ValueError("Live partial resources do not belong exclusively to this order")
+    check_app_availability(order, "hushline.foo")
+    return resources
+
+
+def guard_recovery(path: Path, order: str) -> None:
+    resources = recovery(order)
+    plan = json.loads(path.read_text())
+    changes = plan.get("resource_changes", [])
+    if len(changes) != len(ADDRESSES) or {item["address"] for item in changes} != ADDRESSES:
+        raise ValueError("Recovery plan escaped the original owned resource set")
+    if plan.get("resource_drift"):
+        raise ValueError("Recovery cannot proceed with resource drift")
+    prior = plan.get("prior_state", {}).get("values", {}).get("root_module", {})
+    if prior.get("child_modules"):
+        raise ValueError("Recovery cannot include modules")
+    prior_resources = prior.get("resources", [])
+    if (
+        len(prior_resources) != len(RECOVERY_IDS)
+        or {item.get("address") for item in prior_resources} != set(RECOVERY_IDS)
+        or any(
+            item.get("values", {}).get("id") != RECOVERY_IDS[item["address"]]
+            for item in prior_resources
+        )
+    ):
+        raise ValueError("Recovery prior state must contain only the original resource IDs")
+    for item in changes:
+        address = item["address"]
+        change = item["change"]
+        if change.get("importing") or item.get("previous_address") or item.get("module_address"):
+            raise ValueError("Recovery cannot import, move, or adopt resources")
+        before = change.get("before")
+        after = change.get("after") or {}
+        if address in RECOVERY_IDS:
+            if (
+                change["actions"] != ["no-op"]
+                or not isinstance(before, dict)
+                or before.get("id") != RECOVERY_IDS[address]
+                or after != before
+                or before.get("name") != resources[address].get("name")
+            ):
+                raise ValueError("Recovery cannot modify the original project or database")
+        elif change["actions"] != ["create"] or before is not None:
+            raise ValueError("Recovery may only create the missing app and firewall")
+        elif address == "digitalocean_app.staging":
+            if (after.get("spec") or [{}])[0].get("name") != app_name(order) or after.get(
+                "project_id"
+            ) != RECOVERY_IDS["digitalocean_project.staging"]:
+                raise ValueError("Recovery app escaped the original project")
+        elif address == "digitalocean_database_firewall.staging" and (
+            after.get("cluster_id") != RECOVERY_IDS["digitalocean_database_cluster.db"]
+            or len(after.get("rule", [])) != 1
+            or after["rule"][0].get("type") != "app"
+            or after["rule"][0].get("value") is not None
+            or (change.get("after_unknown", {}).get("rule") or [{}])[0].get("value") is not True
+        ):
+            raise ValueError("Recovery firewall escaped the original database or new app")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "operation", choices=["preflight", "create", "record", "owned", "destroy-plan", "remove"]
+        "operation",
+        choices=[
+            "preflight",
+            "create",
+            "record",
+            "owned",
+            "destroy-plan",
+            "remove",
+            "recover-check",
+            "recover-plan",
+        ],
     )
     parser.add_argument("order")
     parser.add_argument("plan", nargs="?", type=Path)
     args = parser.parse_args()
-    if args.operation == "preflight":
+    if args.operation == "recover-check":
+        recovery(args.order)
+    elif args.operation == "recover-plan":
+        if args.plan is None:
+            raise ValueError("Recovery requires a checked plan")
+        guard_recovery(args.plan, args.order)
+    elif args.operation == "preflight":
         preflight(args.order, os.environ["CUSTOM_DOMAIN"])
     elif args.operation == "create":
         create(args.order)

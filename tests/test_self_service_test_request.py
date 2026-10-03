@@ -94,7 +94,7 @@ def isolated_plan() -> dict:
             {"project_id": True},
         ),
         "digitalocean_app.staging": (
-            {"spec": [{"name": name}], "project_id": None},
+            {"spec": [{"name": "hlst-" + "a" * 27}], "project_id": None},
             {"project_id": True},
         ),
         "digitalocean_database_firewall.staging": ({"cluster_id": None}, {"cluster_id": True}),

@@ -14,7 +14,7 @@ concurrency:
 
 env:
   INFRA_REPOSITORY: scidsg/hushline-infra
-  INFRA_REF: 14cf7a88772c275c266515f560c368b2f8f0f63c
+  INFRA_REF: 73509d8e5827161096219a317638e6e53668b571
   STAGING_TF_PATH: hushline-self-service-test
 
 jobs:
@@ -24,8 +24,10 @@ jobs:
       github.event.pull_request.number == 2447 &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
+      ((github.event.action == 'labeled' && github.event.label.name == 'self-service-resume') ||
+      (!contains(github.event.pull_request.labels.*.name, 'self-service-resume') &&
       ((github.event.action == 'labeled' && github.event.label.name == 'self-service-test') ||
-      (github.event.action == 'synchronize' && contains(github.event.pull_request.labels.*.name, 'self-service-test')))
+      (github.event.action == 'synchronize' && contains(github.event.pull_request.labels.*.name, 'self-service-test')))))
     runs-on: ubuntu-latest
     timeout-minutes: 90
     environment: self-service-test-2447
@@ -33,6 +35,7 @@ jobs:
       contents: write
     env:
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      RECOVERY_MODE: ${{ github.event.action == 'labeled' && github.event.label.name == 'self-service-resume' }}
     steps:
       - name: Verify staging-only credentials are configured
         env:
@@ -105,23 +108,45 @@ jobs:
           PYCODE
 
       - name: Reject existing cloud names and hostnames
+        if: env.RECOVERY_MODE != 'true'
         env:
           STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
           CUSTOM_DOMAIN: ${{ steps.customer.outputs.custom_domain }}
         run: python3 request/scripts/self_service_test_ownership.py preflight "$ORDER_ID"
 
+      - name: Verify original partial resource ownership
+        if: env.RECOVERY_MODE == 'true'
+        env:
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          CUSTOM_DOMAIN: ${{ steps.customer.outputs.custom_domain }}
+        run: python3 request/scripts/self_service_test_ownership.py recover-check "$ORDER_ID"
+
       - name: Create a new order-owned workspace
+        if: env.RECOVERY_MODE != 'true'
         env:
           STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
         run: python3 request/scripts/self_service_test_ownership.py create "$ORDER_ID"
 
       - name: Create the order-only build branch
+        if: env.RECOVERY_MODE != 'true'
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         with:
           script: |
             // Never overwrite an existing Git branch, including on retries.
             await github.rest.git.createRef({owner: context.repo.owner, repo: context.repo.repo,
               ref: `refs/heads/${process.env.STAGING_BRANCH}`, sha: process.env.PR_HEAD_SHA});
+
+      - name: Verify the original build branch is unchanged
+        if: env.RECOVERY_MODE == 'true'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            const ref = await github.rest.git.getRef({owner: context.repo.owner, repo: context.repo.repo,
+              ref: `heads/${process.env.STAGING_BRANCH}`});
+            if (ref.data.object.sha !== 'e3ddd19c3b189a5a593b84482d83ea603bf055d3') {
+              throw new Error('The original order build branch changed; recovery is forbidden.');
+            }
 
       - name: Generate disposable application secrets
         id: app-secrets
@@ -200,9 +225,16 @@ jobs:
       - name: Guard the test-only Terraform plan
         env:
           PLAN_PATH: ${{ steps.plan.outputs.json_plan_path }}
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          CUSTOM_DOMAIN: ${{ steps.customer.outputs.custom_domain }}
         run: |
           test -n "${{ steps.plan.outputs.plan_path }}"
-          python3 request/scripts/self_service_test_request.py guard "$PLAN_PATH" "$STAGING_NAME"
+          if [ "$RECOVERY_MODE" = "true" ]; then
+            python3 request/scripts/self_service_test_ownership.py recover-plan "$ORDER_ID" "$PLAN_PATH"
+          else
+            python3 request/scripts/self_service_test_request.py guard "$PLAN_PATH" "$STAGING_NAME"
+          fi
 
       - name: Apply isolated staging infrastructure
         id: apply

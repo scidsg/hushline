@@ -137,7 +137,12 @@ def guard_plan(path: Path, name: str) -> None:
             resource_name = (values.get("spec") or [{}])[0].get("name")
         else:
             resource_name = values.get("name")
-        if address != "digitalocean_database_firewall.staging" and resource_name != name:
+        expected_name = (
+            "hlst-" + name.removeprefix("hushline-self-service-test-")[:27]
+            if address == "digitalocean_app.staging"
+            else name
+        )
+        if address != "digitalocean_database_firewall.staging" and resource_name != expected_name:
             raise ValueError("Plan escaped the expected test resource namespace")
         unknown = change.get("after_unknown", {})
         if address in {"digitalocean_database_cluster.db", "digitalocean_app.staging"} and (
