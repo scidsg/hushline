@@ -12,7 +12,7 @@ from hushline.model import InviteCode, OrganizationSetting, User
 
 
 def prepare(workspace: str, claim_code: str) -> None:
-    if not re.fullmatch(r"hushline-staging-pr-[1-9][0-9]*", workspace):
+    if not re.fullmatch(r"hushline-self-service-test-[a-f0-9]{32}", workspace):
         raise ValueError("Only an isolated staging workspace can bootstrap a test invitation")
     if not re.fullmatch(r"[A-Za-z0-9_-]{22}", claim_code):
         raise ValueError("Invalid test invitation format")

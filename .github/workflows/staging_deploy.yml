@@ -18,7 +18,7 @@ concurrency:
 
 env:
   INFRA_REPOSITORY: scidsg/hushline-infra
-  INFRA_REF: 849066156ad0d2c62fb587c34e253d4fa2022f32
+  INFRA_REF: a41e6decaf9c421f0b743f604b1f4bd42600103e
   STAGING_TF_PATH: hushline-ephemeral-staging
   TF_PROJECT_HUSH_LINE_DEV: prj-iEruEQFmaNTCRAtA
 
@@ -99,37 +99,6 @@ jobs:
           token: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
           persist-credentials: false
           path: infra
-
-      - name: Check out the customer test request
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          ref: ${{ env.PR_HEAD_SHA }}
-          persist-credentials: false
-          path: request
-
-      - name: Validate customer request pointer
-        id: request
-        run: python3 request/scripts/self_service_test_request.py pointer request/.self-service-test.json
-
-      - name: Check out immutable private customer config
-        if: steps.request.outputs.enabled == 'true'
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          repository: ${{ env.INFRA_REPOSITORY }}
-          ref: ${{ steps.request.outputs.config_ref }}
-          token: ${{ secrets.HUSHLINE_INFRA_TOKEN }}
-          persist-credentials: false
-          path: customer-config
-
-      - name: Prepare isolated customer Terraform variables
-        id: customer
-        env:
-          ORDER_PATH: ${{ steps.request.outputs.order_path }}
-        run: |
-          set -euo pipefail
-          python3 request/scripts/self_service_test_request.py prepare \
-            "customer-config/${ORDER_PATH:-no-customer-request}" \
-            "infra/${STAGING_TF_PATH}/self-service-request.tfvars.json"
 
       - name: Create or refresh isolated Terraform workspace
         env:
@@ -214,14 +183,12 @@ jobs:
           printf 'hostname=%s\npublic_key=%s\nsecret_key=%s\n' "$hostname" "$public_key" "$secret_key" >> "$GITHUB_OUTPUT"
 
       - name: Plan isolated staging infrastructure
-        id: plan
         uses: dflook/terraform-plan@d9df4f6c2484e709ba7ffaa16c98a6906f4760cd
         env:
           TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
         with:
           path: infra/${{ env.STAGING_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
-          var_file: infra/${{ env.STAGING_TF_PATH }}/self-service-request.tfvars.json
           add_github_comment: true
           variables: |
             DO_TOKEN = "${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}"
@@ -234,12 +201,6 @@ jobs:
             ONION_PUBLIC_KEY_B64 = "${{ steps.onion.outputs.public_key }}"
             ONION_SECRET_KEY_B64 = "${{ steps.onion.outputs.secret_key }}"
 
-      - name: Guard the test-only Terraform plan
-        if: steps.request.outputs.enabled == 'true'
-        env:
-          PLAN_PATH: ${{ steps.plan.outputs.json_plan_path }}
-        run: python3 request/scripts/self_service_test_request.py guard "$PLAN_PATH" "$STAGING_NAME"
-
       - name: Apply isolated staging infrastructure
         id: apply
         uses: dflook/terraform-apply@dcda97d729f1843ede471d2fac989cb946f5622a
@@ -248,7 +209,6 @@ jobs:
         with:
           path: infra/${{ env.STAGING_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
-          var_file: infra/${{ env.STAGING_TF_PATH }}/self-service-request.tfvars.json
           variables: |
             DO_TOKEN = "${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}"
             name = "${{ env.STAGING_NAME }}"
@@ -269,34 +229,15 @@ jobs:
           path: infra/${{ env.STAGING_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
 
-      - name: Publish customer DNS target
-        if: steps.request.outputs.enabled == 'true'
-        env:
-          APP_DEFAULT_INGRESS: ${{ steps.tf-outputs.outputs.app_default_ingress }}
-          APP_ID: ${{ steps.tf-outputs.outputs.app_id }}
-          ORDER_ID: ${{ steps.customer.outputs.order_id }}
-          CUSTOM_DOMAIN: ${{ steps.customer.outputs.custom_domain }}
-        run: python3 request/scripts/self_service_test_request.py status self-service-status/status.json
-
-      - name: Upload safe customer deployment outputs
-        if: steps.request.outputs.enabled == 'true'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: self-service-status
-          overwrite: true
-          path: self-service-status/
-          retention-days: 1
-          if-no-files-found: error
-
       - name: Wait for HTTPS health check
         env:
-          APP_URL: ${{ steps.customer.outputs.custom_domain != '' && format('https://{0}', steps.customer.outputs.custom_domain) || steps.tf-outputs.outputs.app_live_url }}
+          APP_URL: ${{ steps.tf-outputs.outputs.app_live_url }}
         run: |
           set -euo pipefail
           health_url="${APP_URL%/}/health.json"
-          for attempt in $(seq 1 240); do
+          for attempt in $(seq 1 60); do
             if curl --fail --silent --show-error --max-time 15 "$health_url" >/dev/null; then exit 0; fi
-            echo "Waiting for staging health check (${attempt}/240)"
+            echo "Waiting for staging health check (${attempt}/60)"
             sleep 10
           done
           exit 1
@@ -324,7 +265,7 @@ jobs:
       - name: Run trusted browser smoke tests
         working-directory: trusted-tests
         env:
-          PLAYWRIGHT_BASE_URL: ${{ steps.customer.outputs.custom_domain != '' && format('https://{0}', steps.customer.outputs.custom_domain) || steps.tf-outputs.outputs.app_live_url }}
+          PLAYWRIGHT_BASE_URL: ${{ steps.tf-outputs.outputs.app_live_url }}
         run: npx playwright test --config=playwright.staging.config.js
 
       - name: Verify disposable onion endpoint
@@ -348,10 +289,9 @@ jobs:
           if [ "$ready" != "true" ]; then exit 1; fi
 
       - name: Comment staging access details
-        if: steps.request.outputs.enabled != 'true'
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         env:
-          APP_URL: ${{ steps.customer.outputs.custom_domain != '' && format('https://{0}', steps.customer.outputs.custom_domain) || steps.tf-outputs.outputs.app_live_url }}
+          APP_URL: ${{ steps.tf-outputs.outputs.app_live_url }}
           ONION_HOSTNAME: ${{ steps.tf-outputs.outputs.onion_hostname }}
         with:
           script: |

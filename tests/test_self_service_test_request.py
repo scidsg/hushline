@@ -58,8 +58,16 @@ def test_rejects_invalid_license_selection(limit: object) -> None:
 @pytest.mark.parametrize(
     ("address", "actions", "name"),
     [
-        ("digitalocean_app.production", ["create"], "hushline-staging-pr-123"),
-        ("digitalocean_project.staging", ["delete", "create"], "hushline-staging-pr-123"),
+        (
+            "digitalocean_app.production",
+            ["create"],
+            "hushline-self-service-test-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        ),
+        (
+            "digitalocean_project.staging",
+            ["delete", "create"],
+            "hushline-self-service-test-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        ),
         ("digitalocean_project.staging", ["create"], "shared-project"),
     ],
 )
@@ -77,27 +85,74 @@ def test_rejects_shared_or_destructive_plans(
         )
     )
     with pytest.raises(ValueError, match="Invalid|cannot|Plan"):
-        guard_plan(plan, "hushline-staging-pr-123")
+        guard_plan(plan, "hushline-self-service-test-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+
+
+def isolated_plan() -> dict:
+    name = "hushline-self-service-test-" + "a" * 32
+    values = {
+        "digitalocean_project.staging": ({"name": name}, {}),
+        "digitalocean_database_cluster.db": (
+            {"name": name, "project_id": None},
+            {"project_id": True},
+        ),
+        "digitalocean_app.staging": (
+            {"spec": [{"name": name}], "project_id": None},
+            {"project_id": True},
+        ),
+        "digitalocean_database_firewall.staging": ({"cluster_id": None}, {"cluster_id": True}),
+    }
+    return {
+        "resource_changes": [
+            {
+                "address": address,
+                "change": {
+                    "actions": ["create"],
+                    "before": None,
+                    "after": after,
+                    "after_unknown": unknown,
+                },
+            }
+            for address, (after, unknown) in values.items()
+        ]
+    }
 
 
 def test_accepts_isolated_plan(tmp_path: Path) -> None:
     plan = tmp_path / "plan.json"
-    plan.write_text(
-        json.dumps(
-            {
-                "resource_changes": [
-                    {
-                        "address": "digitalocean_project.staging",
-                        "change": {
-                            "actions": ["create"],
-                            "after": {"name": "hushline-staging-pr-123"},
-                        },
-                    }
-                ]
-            }
-        )
-    )
-    guard_plan(plan, "hushline-staging-pr-123")
+    plan.write_text(json.dumps(isolated_plan()))
+    guard_plan(plan, "hushline-self-service-test-" + "a" * 32)
+
+
+@pytest.mark.parametrize(
+    "actions", [["update"], ["no-op"], ["read"], ["delete"], ["delete", "create"]]
+)
+def test_existing_resource_actions_are_rejected(tmp_path: Path, actions: list[str]) -> None:
+    data = isolated_plan()
+    data["resource_changes"][0]["change"]["actions"] = actions
+    plan = tmp_path / "plan.json"
+    plan.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="cannot"):
+        guard_plan(plan, "hushline-self-service-test-" + "a" * 32)
+
+
+@pytest.mark.parametrize("key", ["before", "importing"])
+def test_import_and_existing_state_are_rejected(tmp_path: Path, key: str) -> None:
+    data = isolated_plan()
+    data["resource_changes"][0]["change"][key] = {"id": "production-id"}
+    plan = tmp_path / "plan.json"
+    plan.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="cannot"):
+        guard_plan(plan, "hushline-self-service-test-" + "a" * 32)
+
+
+def test_attach_to_existing_project_is_rejected(tmp_path: Path) -> None:
+    data = isolated_plan()
+    data["resource_changes"][1]["change"]["after"]["project_id"] = "production-id"
+    plan = tmp_path / "plan.json"
+    plan.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="existing project"):
+        guard_plan(plan, "hushline-self-service-test-" + "a" * 32)
 
 
 def openssl(*arguments: str, payload: bytes | None = None) -> bytes:

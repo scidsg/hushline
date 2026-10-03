@@ -274,5 +274,12 @@ database with staging-only credentials. The DNS screen displays the assigned CNA
 and ownership TXT records. Successful checks enable Continue without navigating;
 the deployment screen separately verifies HTTPS and application health before its
 own Continue action. A short-lived one-use invitation allows the operator to claim
-the first administrator. This test is limited to one instance, expires after 24
-hours, and does not implement production billing or license enforcement.
+the first administrator. This test is limited to one instance and does not implement
+production billing or license enforcement. It uses a separate, order-scoped
+Terraform root and workflow; shared staging and production workflows are unchanged.
+Deployment refuses existing workspaces and cloud names, accepts only four resource
+creations, and applies the exact checked plan. Cleanup requires the original order
+manifest, recorded IDs, matching live cloud resources, and a checked saved deletion
+plan. An incomplete apply or ownership mismatch stops cleanup for operator review;
+there is no unguarded scheduled or HCP automatic destruction. Remove the
+`self-service-test` label on the controller PR to request guarded cleanup.

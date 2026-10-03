@@ -53,7 +53,7 @@ def validate_config(data: dict) -> None:
     ):
         raise ValueError("Invalid test hostname")
     if domain in BLOCKED_HOSTS or domain.endswith(
-        (".onion", ".local", ".localhost", ".invalid", ".example")
+        (".hushline.app", ".onion", ".local", ".localhost", ".invalid", ".example")
     ):
         raise ValueError("Test deployment cannot claim shared production or reserved hosts")
     limit = data["license_limit"]
@@ -91,8 +91,8 @@ def prepare(path: Path, destination: Path) -> None:
         "-pkeyopt",
         "rsa_oaep_md:sha256",
     ]
-    encrypted = subprocess.run(
-        command,  # noqa: S603 — fixed executable and validated local key path
+    encrypted = subprocess.run(  # noqa: S603 — fixed executable and validated local key path
+        command,
         input=claim_code.encode(),
         capture_output=True,
         check=False,
@@ -106,8 +106,8 @@ def prepare(path: Path, destination: Path) -> None:
 
 
 def guard_plan(path: Path, name: str) -> None:
-    if not re.fullmatch(r"hushline-staging-pr-[1-9][0-9]*", name):
-        raise ValueError("Only a disposable test workspace may be applied")
+    if not re.fullmatch(r"hushline-self-service-test-[a-f0-9]{32}", name):
+        raise ValueError("Only an order-owned test workspace may be applied")
     allowed = {
         "digitalocean_project.staging",
         "digitalocean_database_cluster.db",
@@ -115,18 +115,39 @@ def guard_plan(path: Path, name: str) -> None:
         "digitalocean_database_firewall.staging",
     }
     plan = json.loads(path.read_text())
-    for resource in plan.get("resource_changes", []):
-        if resource["address"] not in allowed:
-            raise ValueError("Plan includes resources outside the isolated test root")
-        actions = resource["change"]["actions"]
-        if "delete" in actions:
-            raise ValueError("Test deployment cannot destroy or replace existing resources")
-        values = resource["change"].get("after") or {}
-        resource_name = values.get("name")
-        if resource["address"] == "digitalocean_app.staging":
+    changes = plan.get("resource_changes", [])
+    if len(changes) != len(allowed) or {item["address"] for item in changes} != allowed:
+        raise ValueError("Plan must create exactly the four isolated test resources")
+    prior = plan.get("prior_state", {}).get("values", {}).get("root_module", {})
+    if prior.get("resources") or prior.get("child_modules") or plan.get("resource_drift"):
+        raise ValueError("Plan cannot adopt or refresh existing resources")
+    for resource in changes:
+        change = resource["change"]
+        if (
+            change["actions"] != ["create"]
+            or change.get("before") is not None
+            or change.get("importing")
+            or resource.get("previous_address")
+            or resource.get("module_address")
+        ):
+            raise ValueError("Plan cannot update, import, move, replace, or destroy resources")
+        values = change.get("after") or {}
+        address = resource["address"]
+        if address == "digitalocean_app.staging":
             resource_name = (values.get("spec") or [{}])[0].get("name")
-        if resource_name is not None and resource_name != name:
+        else:
+            resource_name = values.get("name")
+        if address != "digitalocean_database_firewall.staging" and resource_name != name:
             raise ValueError("Plan escaped the expected test resource namespace")
+        unknown = change.get("after_unknown", {})
+        if address in {"digitalocean_database_cluster.db", "digitalocean_app.staging"} and (
+            values.get("project_id") is not None or unknown.get("project_id") is not True
+        ):
+            raise ValueError("Plan cannot attach resources to an existing project")
+        if address == "digitalocean_database_firewall.staging" and (
+            values.get("cluster_id") is not None or unknown.get("cluster_id") is not True
+        ):
+            raise ValueError("Plan cannot alter an existing database firewall")
 
 
 def status(destination: Path) -> None:

@@ -16,8 +16,8 @@ TEST_PASSWORD = "made-up-only-password"
 
 def test_invitation_is_private_short_lived_and_idempotent(app: Flask) -> None:
     with app.app_context():
-        prepare("hushline-staging-pr-99999", CLAIM)
-        prepare("hushline-staging-pr-99999", CLAIM)
+        prepare("hushline-self-service-test-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", CLAIM)
+        prepare("hushline-self-service-test-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", CLAIM)
         codes = db.session.scalars(db.select(InviteCode)).all()
         assert len(codes) == 1
         assert codes[0].code == CLAIM
@@ -37,7 +37,7 @@ def test_bootstrap_rejects_shared_workspace(app: Flask) -> None:
 
 def test_bootstrap_rejects_bad_claim(app: Flask) -> None:
     with app.app_context(), pytest.raises(ValueError, match="invitation format"):
-        prepare("hushline-staging-pr-99999", "bad")
+        prepare("hushline-self-service-test-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bad")
 
 
 def test_bootstrap_leaves_existing_user_untouched(app: Flask) -> None:
@@ -46,13 +46,15 @@ def test_bootstrap_leaves_existing_user_untouched(app: Flask) -> None:
         user.is_admin = True
         db.session.add(user)
         db.session.commit()
-        prepare("hushline-staging-pr-99999", CLAIM)
+        prepare("hushline-self-service-test-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", CLAIM)
         assert db.session.scalar(db.select(db.func.count()).select_from(InviteCode)) == 0
         assert user.is_admin
 
 
 def test_bootstrap_failure_does_not_expose_invitation(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("SELF_SERVICE_TEST_WORKSPACE", "hushline-staging-pr-99999")
+    monkeypatch.setenv(
+        "SELF_SERVICE_TEST_WORKSPACE", "hushline-self-service-test-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    )
     monkeypatch.setenv("SELF_SERVICE_TEST_CLAIM_CODE", CLAIM)
 
     def failed_app() -> Flask:

@@ -19,6 +19,6 @@ jobs:
       - name: Required lint
         run: make lint
       - name: Focused bootstrap and deployment request tests
-        run: make test TESTS="tests/test_self_service_test_bootstrap.py tests/test_self_service_test_request.py" PYTEST_ADDOPTS="--skip-local-only"
+        run: make test TESTS="tests/test_self_service_test_bootstrap.py tests/test_self_service_test_request.py tests/test_self_service_test_ownership.py" PYTEST_ADDOPTS="--skip-local-only"
       - name: Dependency audits
         run: make audit-python audit-node-runtime
