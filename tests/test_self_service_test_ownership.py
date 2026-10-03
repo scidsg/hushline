@@ -854,3 +854,32 @@ def test_state_repair_verification_accepts_reordering_only(alter: str | None) ->
             ownership.verify_app_state_repair(before, after)
     else:
         ownership.verify_app_state_repair(before, after)
+
+
+@pytest.mark.parametrize("alter", [None, "foreign-urn", "spec", "foreign-id"])
+def test_original_app_refresh_may_only_fill_its_own_urn(
+    original_failed_app: dict, tmp_path: Path, alter: str | None
+) -> None:
+    plan = failed_app_plan(original_failed_app)
+    before = copy.deepcopy(original_failed_app["digitalocean_app.staging"])
+    after = copy.deepcopy(before)
+    after["urn"] = f"do:app:{ownership.RECOVERY_APP}"
+    if alter == "foreign-urn":
+        after["urn"] = "do:app:foreign"
+    elif alter == "spec":
+        after["spec"][0]["name"] = "foreign"
+    elif alter == "foreign-id":
+        after["id"] = "foreign"
+    plan["resource_drift"] = [
+        {
+            "address": "digitalocean_app.staging",
+            "change": {"actions": ["update"], "before": before, "after": after},
+        }
+    ]
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(plan))
+    if alter:
+        with pytest.raises(ValueError, match="refresh"):
+            ownership.guard_recovery(path, ownership.RECOVERY_ORDER)
+    else:
+        ownership.guard_recovery(path, ownership.RECOVERY_ORDER)

@@ -459,6 +459,7 @@ def recovery(order: str) -> dict:
 
 def guard_recovery(path: Path, order: str) -> None:
     resources = recovery(order)
+    existing_ids = {address: value["id"] for address, value in resources.items()}
     plan = json.loads(path.read_text())
     changes = plan.get("resource_changes", [])
     if len(changes) != len(ADDRESSES) or {item["address"] for item in changes} != ADDRESSES:
@@ -471,18 +472,26 @@ def guard_recovery(path: Path, order: str) -> None:
         before = change.get("before") or {}
         after = change.get("after") or {}
         if (
-            address not in RECOVERY_IDS
+            address not in existing_ids
             or drift.get("module_address")
             or drift.get("previous_address")
             or change.get("importing")
             or change.get("actions") != ["update"]
-            or before.get("id") != RECOVERY_IDS[address]
-            or after.get("id") != RECOVERY_IDS[address]
+            or before.get("id") != existing_ids[address]
+            or after.get("id") != existing_ids[address]
             or before.get("name") != resources[address].get("name")
             or after.get("name") != resources[address].get("name")
             or (
                 address == "digitalocean_database_cluster.db"
                 and after.get("project_id") != RECOVERY_IDS["digitalocean_project.staging"]
+            )
+            or (
+                address == "digitalocean_app.staging"
+                and (
+                    after.get("urn") != f"do:app:{RECOVERY_APP}"
+                    or {key: value for key, value in before.items() if key != "urn"}
+                    != {key: value for key, value in after.items() if key != "urn"}
+                )
             )
         ):
             raise ValueError("Recovery refresh escaped the original owned resource IDs")
@@ -511,7 +520,7 @@ def guard_recovery(path: Path, order: str) -> None:
             if (
                 change["actions"] != ["no-op"]
                 or not isinstance(before, dict)
-                or before.get("id") != RECOVERY_IDS[address]
+                or before.get("id") != existing_ids[address]
                 or after != before
                 or before.get("name") != resources[address].get("name")
             ):
