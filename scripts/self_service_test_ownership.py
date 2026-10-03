@@ -467,6 +467,46 @@ def recovery(order: str) -> dict:
     return resources
 
 
+def app_refresh_equivalent(before: dict, after: dict) -> bool:
+    """Allow provider secret encoding and the platform's single default route."""
+
+    def normalize(data: dict) -> dict:
+        result = json.loads(json.dumps(data))
+        for spec in result.get("spec", []):
+            domains = {entry["name"] for entry in spec.get("domain", [])}
+            if set(spec.get("domains") or []) - domains:
+                raise ValueError("Refresh added a different domain")
+            spec.pop("domains", None)
+            ingress = spec.pop("ingress", [])
+            if ingress:
+                rules = ingress[0].get("rule", [])
+                if len(ingress) != 1 or len(rules) != 1 or ingress[0].get("secure_header"):
+                    raise ValueError("Refresh added non-default routing")
+                rule = rules[0]
+                component = rule.get("component", [])
+                matches = rule.get("match", [])
+                if (
+                    rule.get("cors")
+                    or rule.get("redirect")
+                    or len(component) != 1
+                    or component[0].get("name") != "app"
+                    or component[0].get("rewrite")
+                    or len(matches) != 1
+                    or matches[0].get("authority")
+                    or matches[0].get("path") != [{"prefix": "/"}]
+                ):
+                    raise ValueError("Refresh added non-default routing")
+            for component in [spec, *spec.get("service", []), *spec.get("worker", [])]:
+                for env in component.get("env", []):
+                    if env.get("type") == "SECRET":
+                        # The API returns encrypted secret representations. Keys,
+                        # types, scopes and all non-secret values still compare.
+                        env["value"] = "private-provider-representation"
+        return {key: value for key, value in result.items() if key not in APP_REFRESH_FIELDS}
+
+    return normalize(before) == normalize(after)
+
+
 def guard_recovery(path: Path, order: str) -> None:
     resources = recovery(order)
     existing_ids = {address: value["id"] for address, value in resources.items()}
@@ -500,10 +540,7 @@ def guard_recovery(path: Path, order: str) -> None:
                 and (
                     after.get("urn") != f"do:app:{RECOVERY_APP}"
                     or after.get("active_deployment_id") not in {None, ""}
-                    or {
-                        key: value for key, value in before.items() if key not in APP_REFRESH_FIELDS
-                    }
-                    != {key: value for key, value in after.items() if key not in APP_REFRESH_FIELDS}
+                    or not app_refresh_equivalent(before, after)
                 )
             )
         ):

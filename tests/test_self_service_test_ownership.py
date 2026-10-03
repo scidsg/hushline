@@ -887,3 +887,59 @@ def test_original_app_refresh_may_only_fill_its_own_urn(
             ownership.guard_recovery(path, ownership.RECOVERY_ORDER)
     else:
         ownership.guard_recovery(path, ownership.RECOVERY_ORDER)
+
+
+@pytest.mark.parametrize("alter", [None, "domain", "route", "redirect", "general-env", "source"])
+def test_app_refresh_allows_only_platform_defaults_and_secret_encoding(alter: str | None) -> None:
+    before: dict = {
+        "id": ownership.RECOVERY_APP,
+        "project_id": "original",
+        "spec": [
+            {
+                "name": "original",
+                "domain": [{"name": "hushline.foo"}],
+                "domains": [],
+                "ingress": [],
+                "service": [
+                    {
+                        "name": "app",
+                        "git": [{"branch": "original"}],
+                        "env": [
+                            {"key": "SECRET_KEY", "type": "SECRET", "value": "private"},
+                            {
+                                "key": "PUBLIC_BASE_URL",
+                                "type": "GENERAL",
+                                "value": "https://hushline.foo",
+                            },
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+    after = copy.deepcopy(before)
+    spec = after["spec"][0]
+    spec["domains"] = ["hushline.foo"]
+    spec["service"][0]["env"][0]["value"] = "encrypted-private"
+    rule: dict = {
+        "component": [{"name": "app", "rewrite": "", "preserve_path_prefix": True}],
+        "match": [{"path": [{"prefix": "/"}], "authority": []}],
+        "redirect": [],
+        "cors": [],
+    }
+    spec["ingress"] = [{"rule": [rule], "secure_header": []}]
+    if alter == "domain":
+        spec["domains"] = ["other.foo"]
+    elif alter == "route":
+        rule["component"][0]["name"] = "other-app"
+    elif alter == "redirect":
+        rule["redirect"] = [{"uri": "https://other.foo"}]
+    elif alter == "general-env":
+        spec["service"][0]["env"][1]["value"] = "https://other.foo"
+    elif alter == "source":
+        spec["service"][0]["git"][0]["branch"] = "main"
+    if alter in {"domain", "route", "redirect"}:
+        with pytest.raises(ValueError, match="domain|routing"):
+            ownership.app_refresh_equivalent(before, after)
+    else:
+        assert ownership.app_refresh_equivalent(before, after) is (alter is None)
