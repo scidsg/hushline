@@ -2,6 +2,8 @@
 
 import copy
 import json
+import urllib.error
+from email.message import Message
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -502,7 +504,7 @@ def test_state_download_refuses_token_forwarding_to_untrusted_url(
     request.assert_not_called()
 
 
-def test_hosted_state_download_uses_authenticated_allowlisted_host(
+def test_signed_storage_download_does_not_forward_api_credential(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("STAGING_TF_TOKEN", "test-only-credential")
@@ -520,9 +522,7 @@ def test_hosted_state_download_uses_authenticated_allowlisted_host(
     request = Mock(return_value={"resources": []})
     monkeypatch.setattr(ownership, "request", request)
     assert ownership.read_state({"id": "ws-owned"}) == {}
-    request.assert_called_once_with(
-        "archivist.terraform.io", "/v1/object/test", "test-only-credential"
-    )
+    request.assert_called_once_with("archivist.terraform.io", "/v1/object/test", None)
 
 
 @pytest.mark.parametrize("prefix", ["/api", "/api/v2"])
@@ -546,3 +546,35 @@ def test_current_hcp_hosted_state_route_is_authenticated(
     monkeypatch.setattr(ownership, "request", request)
     assert ownership.read_state({"id": "ws-owned"}) == {}
     request.assert_called_once_with("app.terraform.io", path, "test-only-credential")
+
+
+@pytest.mark.parametrize(
+    "target",
+    ["https://archivist.terraform.io/v1/object/test", "https://evil.example/v1/object/test"],
+)
+def test_hosted_state_redirect_is_allowlisted_and_never_forwards_token(
+    monkeypatch: pytest.MonkeyPatch, target: str
+) -> None:
+    monkeypatch.setenv("STAGING_TF_TOKEN", "test-only-credential")
+    source = "https://app.terraform.io/api/state-versions/sv-Test123/hosted_state"
+    monkeypatch.setattr(
+        ownership,
+        "tf",
+        lambda path: {"data": {"attributes": {"hosted-state-download-url": source}}},
+    )
+    headers = Message()
+    headers["Location"] = target
+    error = urllib.error.HTTPError(source, 302, "Found", headers, None)
+    request = Mock(side_effect=[error, {"resources": []}])
+    monkeypatch.setattr(ownership, "request", request)
+    if "evil.example" in target:
+        with pytest.raises(ValueError, match="approved HCP"):
+            ownership.read_state({"id": "ws-owned"})
+        assert request.call_count == 1
+    else:
+        assert ownership.read_state({"id": "ws-owned"}) == {}
+        assert request.call_args_list[-1].args == (
+            "archivist.terraform.io",
+            "/v1/object/test",
+            None,
+        )

@@ -41,13 +41,15 @@ def app_name(order: str) -> str:
 
 
 def request(
-    host: str, path: str, token: str, body: dict | None = None, method: str = "GET"
+    host: str, path: str, token: str | None, body: dict | None = None, method: str = "GET"
 ) -> dict:
     if host not in {"app.terraform.io", "api.digitalocean.com", "archivist.terraform.io"}:
         raise ValueError("Control-plane host is not authorized")
     if not path.startswith("/") or path.startswith("//"):
         raise ValueError("Invalid control-plane path")
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/vnd.api+json"}
+    headers = {"Content-Type": "application/vnd.api+json"}
+    if token is not None:
+        headers["Authorization"] = f"Bearer {token}"
     query = urllib.request.Request(  # noqa: S310 — allowlisted HTTPS cloud endpoints
         f"https://{host}{path}",
         data=json.dumps(body).encode() if body is not None else None,
@@ -246,7 +248,27 @@ def read_state(data: dict) -> dict:
     # HCP hosted-state downloads require authentication. The common requester
     # rejects redirects, so the token cannot be forwarded to another host.
     path = parsed.path + ("?" + parsed.query if parsed.query else "")
-    return state_resources(request(parsed.hostname, path, os.environ["STAGING_TF_TOKEN"]))
+    token = os.environ["STAGING_TF_TOKEN"] if parsed.hostname == "app.terraform.io" else None
+    try:
+        payload = request(parsed.hostname, path, token)
+    except urllib.error.HTTPError as error:
+        if error.code != HTTPStatus.FOUND:
+            raise
+        redirect = urllib.parse.urlsplit(error.headers.get("Location", ""))
+        if (
+            redirect.scheme != "https"
+            or redirect.hostname != "archivist.terraform.io"
+            or redirect.port not in {None, 443}
+            or redirect.username is not None
+            or redirect.password is not None
+            or redirect.fragment
+            or not redirect.path.startswith("/v1/object/")
+        ):
+            raise ValueError("State redirect is not an approved HCP storage URL") from None
+        redirect_path = redirect.path + ("?" + redirect.query if redirect.query else "")
+        # The storage URL is signed. Never forward the API token to the redirect.
+        payload = request("archivist.terraform.io", redirect_path, None)
+    return state_resources(payload)
 
 
 def validate_resources(resources: dict, order: str) -> dict:
