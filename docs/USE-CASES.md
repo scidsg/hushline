@@ -268,7 +268,8 @@ These are use-case themes already implied by the mission, even when the current 
 ### Disposable Single Tenant provisioning test
 
 An operator uses the app-style account and plan flow, confirms a simulated annual
-payment, and enters a customer-controlled hostname. The protected staging workflow
+payment, and enters a customer-controlled hostname. Confirmed payment authorizes
+automatic provisioning without a customer deployment review. The isolated workflow
 reads that order from private Git configuration and provisions a separate app and
 database with staging-only credentials. The DNS screen displays the assigned CNAME
 and ownership TXT records. Successful checks enable Continue without navigating;
@@ -280,6 +281,11 @@ Terraform root and workflow; shared staging and production workflows are unchang
 Deployment refuses existing workspaces and cloud names, accepts only four resource
 creations, and applies the exact checked plan. Cleanup requires the original order
 manifest, recorded IDs, matching live cloud resources, and a checked saved deletion
-plan. An incomplete apply or ownership mismatch stops cleanup for operator review;
+plan. Recovery of the original test order can preserve its verified project and
+database and repair its never-live failed app in place. Its exact app ID, hostname,
+build branch, workspace, state lineage, and project membership must match; no
+replacement, deletion, import, or database update is accepted. Fresh orders still
+refuse every existing workspace. An incomplete apply or ownership mismatch stops
+cleanup for operator review;
 there is no unguarded scheduled or HCP automatic destruction. Remove the
 `self-service-test` label on the controller PR to request guarded cleanup.
