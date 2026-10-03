@@ -772,10 +772,19 @@ def inspect_original_plan(data: dict) -> list:
 
 
 def sanitized_runtime_logs(app_id: str, deployment_id: str, component: str) -> dict:
-    response = do(
-        f"/apps/{app_id}/deployments/{deployment_id}/logs"
-        f"?type=RUN_RESTARTED&follow=false&tail_lines=200&component_name={component}"
-    )
+    response = {}
+    for log_type in ["DEPLOY", "RUN_RESTARTED"]:
+        try:
+            response = do(
+                f"/apps/{app_id}/deployments/{deployment_id}/logs"
+                f"?type={log_type}&follow=false&tail_lines=200&component_name={component}"
+            )
+        except urllib.error.HTTPError as error:
+            if error.code not in {HTTPStatus.BAD_REQUEST, HTTPStatus.NOT_FOUND}:
+                raise
+            continue
+        if response.get("historic_urls") or response.get("live_url"):
+            break
     urls = response.get("historic_urls", [])
     if not urls and response.get("live_url"):
         urls = [response["live_url"]]
@@ -909,8 +918,13 @@ def inspect_original_deployment(order: str) -> dict:
         for key in sorted(set(previous_instance) | set(current_instance))
         if previous_instance.get(key) != current_instance.get(key)
     ]
-    latest = live.get("pending_deployment") or live.get("active_deployment") or {}
-    deployment_id = latest.get("id", "e5629d20-dea2-4799-9770-4e45b0651a24")
+    latest = live.get("pending_deployment") or live.get("active_deployment")
+    if not latest:
+        deployments = do(f"/apps/{app_id}/deployments?per_page=1")["deployments"]
+        if not deployments:
+            raise ValueError("Original app deployment history is missing")
+        latest = deployments[0]
+    deployment_id = latest.get("id")
     if not isinstance(deployment_id, str) or not re.fullmatch(r"[a-f0-9-]{36}", deployment_id):
         raise ValueError("Invalid original-app deployment identity")
     deployment = do(f"/apps/{app_id}/deployments/{deployment_id}")["deployment"]
@@ -939,14 +953,17 @@ def inspect_original_deployment(order: str) -> dict:
         if resource.get("type") == "digitalocean_app" and resource.get("name") == "staging"
         for instance in resource.get("instances", [])
     ]
-    migration_flag = next(
-        (
-            entry.get("value")
-            for entry in spec.get("envs", [])
-            if entry.get("key") == "RUN_STARTUP_MIGRATIONS"
-        ),
-        None,
-    )
+    migration_flags = [
+        next(
+            (
+                entry.get("value")
+                for entry in service.get("envs", [])
+                if entry.get("key") == "RUN_STARTUP_MIGRATIONS"
+            ),
+            None,
+        )
+        for service in spec.get("services", [])
+    ]
     return {
         "order_id": order,
         "app_id": app_id,
@@ -957,7 +974,8 @@ def inspect_original_deployment(order: str) -> dict:
         "app_instance_changed_fields": instance_diff,
         "state_serial_advance": raw_state.get("serial", 0) - previous.get("serial", 0),
         "active_deployment_phase": (live.get("active_deployment") or {}).get("phase"),
-        "startup_migrations_enabled": migration_flag == "true",
+        "startup_migrations_enabled": bool(migration_flags)
+        and all(flag == "true" for flag in migration_flags),
         "phase": deployment.get("phase"),
         "runtime": {
             component: sanitized_runtime_logs(app_id, deployment_id, component)
