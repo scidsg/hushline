@@ -421,8 +421,29 @@ def guard_recovery(path: Path, order: str) -> None:
     changes = plan.get("resource_changes", [])
     if len(changes) != len(ADDRESSES) or {item["address"] for item in changes} != ADDRESSES:
         raise ValueError("Recovery plan escaped the original owned resource set")
-    if plan.get("resource_drift"):
-        raise ValueError("Recovery cannot proceed with resource drift")
+    # Refresh differences are not mutations. Only the original IDs may be
+    # refreshed; the resource_changes checks below still require exact no-ops.
+    for drift in plan.get("resource_drift", []):
+        address = drift.get("address")
+        change = drift.get("change", {})
+        before = change.get("before") or {}
+        after = change.get("after") or {}
+        if (
+            address not in RECOVERY_IDS
+            or drift.get("module_address")
+            or drift.get("previous_address")
+            or change.get("importing")
+            or change.get("actions") != ["update"]
+            or before.get("id") != RECOVERY_IDS[address]
+            or after.get("id") != RECOVERY_IDS[address]
+            or before.get("name") != resources[address].get("name")
+            or after.get("name") != resources[address].get("name")
+            or (
+                address == "digitalocean_database_cluster.db"
+                and after.get("project_id") != RECOVERY_IDS["digitalocean_project.staging"]
+            )
+        ):
+            raise ValueError("Recovery refresh escaped the original owned resource IDs")
     prior = plan.get("prior_state", {}).get("values", {}).get("root_module", {})
     if prior.get("child_modules"):
         raise ValueError("Recovery cannot include modules")

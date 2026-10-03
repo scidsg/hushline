@@ -473,7 +473,9 @@ def test_recovery_plan_cannot_touch_existing_or_foreign_resources(
     elif alter == "module":
         app["module_address"] = "module.production"
     else:
-        plan["resource_drift"] = [project]
+        plan["resource_drift"] = [
+            {"address": "digitalocean_database_cluster.production", "change": project["change"]}
+        ]
     path = tmp_path / "plan.json"
     path.write_text(json.dumps(plan))
     with pytest.raises(ValueError, match="Recovery"):
@@ -600,3 +602,20 @@ def test_empty_foreign_placeholder_is_still_rejected() -> None:
     }
     with pytest.raises(ValueError, match="outside"):
         ownership.state_resources(raw)
+
+
+def test_recovery_accepts_owned_refresh_metadata_only_with_noop_plan(
+    original_partial_order: dict, tmp_path: Path
+) -> None:
+    plan = recovery_plan(original_partial_order)
+    database = copy.deepcopy(plan["resource_changes"][1])
+    database["change"]["actions"] = ["update"]
+    database["change"]["after"]["computed_connection_metadata"] = "refreshed"
+    plan["resource_drift"] = [database]
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(plan))
+    ownership.guard_recovery(path, ownership.RECOVERY_ORDER)
+    plan["resource_changes"][1]["change"]["actions"] = ["update"]
+    path.write_text(json.dumps(plan))
+    with pytest.raises(ValueError, match="cannot modify"):
+        ownership.guard_recovery(path, ownership.RECOVERY_ORDER)
