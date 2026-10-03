@@ -261,3 +261,21 @@ def test_empty_workspace_uses_server_side_safe_delete(monkeypatch: pytest.Monkey
     monkeypatch.setattr(ownership, "tf", api)
     ownership.remove_workspace(ORDER)
     api.assert_called_once_with("/workspaces/ws-test123/actions/safe-delete", method="POST")
+
+
+@pytest.mark.parametrize("kind", ["DEFAULT", "PRIMARY"])
+def test_generated_domain_can_omit_name_but_custom_domain_cannot(
+    monkeypatch: pytest.MonkeyPatch, kind: str
+) -> None:
+    monkeypatch.setattr(
+        ownership,
+        "inventory",
+        lambda path, key: []
+        if path != "/apps"
+        else [{"spec": {"name": "other-instance", "domains": [{"type": kind}]}}],
+    )
+    if kind == "DEFAULT":
+        ownership.preflight(ORDER, "tips.customer.org")
+    else:
+        with pytest.raises(ValueError, match="missing its hostname"):
+            ownership.preflight(ORDER, "tips.customer.org")

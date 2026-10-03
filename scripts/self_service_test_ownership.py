@@ -155,9 +155,15 @@ def preflight(order: str, domain: str) -> None:
         if database["name"] == name:
             raise ValueError("Test database name already belongs to an existing resource")
     for app in inventory("/apps", "apps"):
-        if app["spec"]["name"] == name or any(
-            entry["name"] == domain for entry in app["spec"].get("domains", [])
-        ):
+        domains = []
+        for entry in app["spec"].get("domains", []):
+            if "name" not in entry:
+                # DEFAULT selects DigitalOcean's generated .ondigitalocean.app host.
+                if entry.get("type") == "DEFAULT":
+                    continue
+                raise ValueError("Custom domain inventory is missing its hostname")
+            domains.append(entry["name"])
+        if app["spec"]["name"] == name or domain in domains:
             raise ValueError("Test name or hostname already belongs to an existing instance")
 
 
