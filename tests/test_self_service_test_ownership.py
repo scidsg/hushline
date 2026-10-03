@@ -67,6 +67,7 @@ def resources() -> dict:
         ("auto-apply", True),
         ("global-remote-state", True),
         ("auto-destroy-activity-duration", "24h"),
+        ("auto-destroy-at", "2026-10-04T00:00:00Z"),
         ("vcs-repo", {"identifier": "scidsg/hushline-infra"}),
     ],
 )
@@ -239,3 +240,20 @@ def test_workflow_cannot_sweep_other_instances() -> None:
     assert "terraform-destroy-workspace@" not in text
     assert "force: true" not in text
     assert "removeLabel" not in text
+
+
+def test_empty_workspace_uses_server_side_safe_delete(monkeypatch: pytest.MonkeyPatch) -> None:
+    data = workspace()
+    data["attributes"]["description"] = json.dumps(
+        {
+            "schema": 1,
+            "order_id": ORDER,
+            "resources": ownership.validate_resources(resources(), ORDER),
+        }
+    )
+    monkeypatch.setattr(ownership, "workspace", lambda order: data)
+    monkeypatch.setattr(ownership, "read_state", lambda data: {})
+    api = Mock()
+    monkeypatch.setattr(ownership, "tf", api)
+    ownership.remove_workspace(ORDER)
+    api.assert_called_once_with("/workspaces/ws-test123/actions/safe-delete", method="POST")

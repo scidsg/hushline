@@ -75,15 +75,12 @@ def test_rejects_shared_or_destructive_plans(
     tmp_path: Path, address: str, actions: list[str], name: str
 ) -> None:
     plan = tmp_path / "plan.json"
-    plan.write_text(
-        json.dumps(
-            {
-                "resource_changes": [
-                    {"address": address, "change": {"actions": actions, "after": {"name": name}}}
-                ]
-            }
-        )
-    )
+    data = isolated_plan()
+    data["resource_changes"][0] = {
+        "address": address,
+        "change": {"actions": actions, "after": {"name": name}},
+    }
+    plan.write_text(json.dumps(data))
     with pytest.raises(ValueError, match="Invalid|cannot|Plan"):
         guard_plan(plan, "hushline-self-service-test-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 

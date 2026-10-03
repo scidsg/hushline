@@ -85,6 +85,7 @@ def validate_workspace(data: dict, order: str) -> dict:
         or attributes.get("auto-apply-run-trigger") is not False
         or attributes.get("global-remote-state") is not False
         or attributes.get("auto-destroy-activity-duration") is not None
+        or attributes.get("auto-destroy-at") is not None
         or attributes.get("vcs-repo") is not None
         or relationships["project"]["data"]["id"] != PROJECT
     ):
@@ -297,7 +298,7 @@ def remove_workspace(order: str) -> None:
     manifest = validate_workspace(data, order)
     if set(manifest.get("resources") or {}) != ADDRESSES or read_state(data):
         raise ValueError("Cannot delete a workspace until its owned resources are gone")
-    tf(f"/workspaces/{data['id']}", method="DELETE")
+    tf(f"/workspaces/{data['id']}/actions/safe-delete", method="POST")
 
 
 def main() -> None:
