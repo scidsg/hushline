@@ -332,5 +332,11 @@ if __name__ == "__main__":
         raise SystemExit(
             f"Test control-plane request failed with HTTP {error.code}; no mutations permitted."
         ) from None
-    except (ValueError, KeyError, OSError):
+    except ValueError as error:
+        raise SystemExit(f"Test ownership check failed: {error}; no mutations permitted.") from None
+    except KeyError:
+        raise SystemExit(
+            "Test cloud inventory has an unexpected schema; no mutations permitted."
+        ) from None
+    except OSError:
         raise SystemExit("Test ownership check failed; no further mutations permitted.") from None
