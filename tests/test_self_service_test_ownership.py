@@ -619,3 +619,191 @@ def test_recovery_accepts_owned_refresh_metadata_only_with_noop_plan(
     path.write_text(json.dumps(plan))
     with pytest.raises(ValueError, match="cannot modify"):
         ownership.guard_recovery(path, ownership.RECOVERY_ORDER)
+
+
+@pytest.fixture()
+def original_failed_app(original_partial_order: dict, monkeypatch: pytest.MonkeyPatch) -> dict:
+    order = ownership.RECOVERY_ORDER
+    project = ownership.RECOVERY_IDS["digitalocean_project.staging"]
+    db = ownership.RECOVERY_IDS["digitalocean_database_cluster.db"]
+    services = [
+        {
+            "name": name,
+            "git": {
+                "branch": f"self-service-test/{order}",
+                "repo_clone_url": "https://github.com/scidsg/hushline.git",
+            },
+        }
+        for name in ["app", "app-onion"]
+    ]
+    spec = {
+        "name": ownership.app_name(order),
+        "domain": [{"name": "hushline.foo"}],
+        "service": services,
+    }
+    original_partial_order["digitalocean_app.staging"] = {
+        "id": ownership.RECOVERY_APP,
+        "project_id": project,
+        "spec": [spec],
+    }
+    live = {
+        "id": ownership.RECOVERY_APP,
+        "spec": {
+            "name": ownership.app_name(order),
+            "domains": [{"domain": "hushline.foo"}],
+            "services": services,
+        },
+        "active_deployment": None,
+    }
+    monkeypatch.setattr(
+        ownership,
+        "do",
+        lambda path: {
+            f"/projects/{project}": {
+                "project": original_partial_order["digitalocean_project.staging"]
+            },
+            f"/databases/{db}": {
+                "database": original_partial_order["digitalocean_database_cluster.db"]
+            },
+            f"/apps/{ownership.RECOVERY_APP}": {"app": live},
+        }[path],
+    )
+    monkeypatch.setattr(
+        ownership,
+        "inventory",
+        lambda path, key: [{"urn": f"do:dbaas:{db}"}, {"urn": f"do:app:{ownership.RECOVERY_APP}"}],
+    )
+    return original_partial_order
+
+
+def failed_app_plan(resources: dict) -> dict:
+    partial = {k: v for k, v in resources.items() if k in ownership.RECOVERY_IDS}
+    plan = recovery_plan(partial)
+    for change in plan["resource_changes"]:
+        if change["address"] == "digitalocean_app.staging":
+            value = resources[change["address"]]
+            change["change"].update(
+                actions=["update"], before=copy.deepcopy(value), after=copy.deepcopy(value)
+            )
+        elif change["address"] == "digitalocean_database_firewall.staging":
+            change["change"]["after"]["rule"][0]["value"] = ownership.RECOVERY_APP
+            change["change"]["after_unknown"] = {}
+    plan["prior_state"]["values"]["root_module"]["resources"].append(
+        {"address": "digitalocean_app.staging", "values": resources["digitalocean_app.staging"]}
+    )
+    return plan
+
+
+def test_failed_app_can_be_updated_without_replacement(
+    original_failed_app: dict, tmp_path: Path
+) -> None:
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(failed_app_plan(original_failed_app)))
+    ownership.guard_recovery(path, ownership.RECOVERY_ORDER)
+
+
+@pytest.mark.parametrize(
+    "alter", ["replace", "foreign-id", "domain", "branch", "firewall", "database"]
+)
+def test_failed_app_recovery_rejects_escape(
+    original_failed_app: dict, tmp_path: Path, alter: str
+) -> None:
+    plan = failed_app_plan(original_failed_app)
+    app = next(
+        x["change"] for x in plan["resource_changes"] if x["address"] == "digitalocean_app.staging"
+    )
+    if alter == "replace":
+        app["actions"] = ["delete", "create"]
+    elif alter == "foreign-id":
+        app["after"]["id"] = "foreign"
+    elif alter == "domain":
+        app["after"]["spec"][0]["domain"] = [{"name": "other.foo"}]
+    elif alter == "branch":
+        app["after"]["spec"][0]["service"][0]["git"]["branch"] = "main"
+    elif alter == "firewall":
+        plan["resource_changes"][-1]["change"]["after"]["rule"][0]["value"] = "foreign"
+    else:
+        plan["resource_changes"][1]["change"]["actions"] = ["update"]
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(plan))
+    with pytest.raises(ValueError, match="Recovery"):
+        ownership.guard_recovery(path, ownership.RECOVERY_ORDER)
+
+
+def test_live_app_cannot_be_recovered(
+    original_failed_app: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    api = ownership.do
+
+    def live(path: str) -> dict:
+        response = api(path)
+        if "app" in response:
+            response["app"]["active_deployment"] = {"phase": "ACTIVE"}
+        return response
+
+    monkeypatch.setattr(ownership, "do", live)
+    with pytest.raises(ValueError, match="never-live"):
+        ownership.recovery(ownership.RECOVERY_ORDER)
+
+
+@pytest.mark.parametrize("alter", [None, "workspace", "lineage", "serial", "app-id", "not-tainted"])
+def test_state_repair_only_removes_original_app_taint(
+    original_failed_app: dict, monkeypatch: pytest.MonkeyPatch, alter: str | None
+) -> None:
+    name, _ = ownership.identity(ownership.RECOVERY_ORDER)
+    monkeypatch.setenv("TF_WORKSPACE", name)
+    raw = {
+        "lineage": "original-lineage",
+        "serial": 4,
+        "resources": [
+            {
+                "mode": "managed",
+                "type": address.split(".")[0],
+                "name": address.split(".")[1],
+                "instances": [
+                    {
+                        "attributes": value,
+                        **({"status": "tainted"} if address == "digitalocean_app.staging" else {}),
+                    }
+                ],
+            }
+            for address, value in original_failed_app.items()
+        ],
+    }
+    monkeypatch.setattr(ownership, "read_raw_state", lambda data: raw)
+    pulled = copy.deepcopy(raw)
+    shown = name
+    if alter == "workspace":
+        shown = "production"
+    elif alter == "lineage":
+        pulled["lineage"] = "foreign"
+    elif alter == "serial":
+        pulled["serial"] += 1
+    elif alter == "app-id":
+        pulled["resources"][-1]["instances"][0]["attributes"]["id"] = "foreign"
+    elif alter == "not-tainted":
+        raw["resources"][-1]["instances"][0].pop("status")
+        pulled = copy.deepcopy(raw)
+    after = copy.deepcopy(raw)
+    after["serial"] += 1
+    after["resources"][-1]["instances"][0].pop("status", None)
+    calls = []
+
+    def run(args: list, **kwargs: object) -> Mock:
+        calls.append(args)
+        if args[1:] == ["workspace", "show"]:
+            output = shown
+        elif args[1:] == ["state", "pull"]:
+            output = json.dumps(after if len(calls) > 3 else pulled)
+        else:
+            output = ""
+        return Mock(returncode=0, stdout=output)
+
+    monkeypatch.setattr(ownership.subprocess, "run", run)
+    if alter:
+        with pytest.raises(ValueError, match="workspace|state|taint"):
+            ownership.repair_failed_app_state(ownership.RECOVERY_ORDER)
+        assert all("untaint" not in command for command in calls)
+    else:
+        ownership.repair_failed_app_state(ownership.RECOVERY_ORDER)
+        assert calls[2] == ["terraform", "untaint", "-lock-timeout=30s", "digitalocean_app.staging"]

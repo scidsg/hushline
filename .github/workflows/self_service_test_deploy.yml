@@ -14,7 +14,7 @@ concurrency:
 
 env:
   INFRA_REPOSITORY: scidsg/hushline-infra
-  INFRA_REF: bbded2d364802fdfe6d6bafaa04cdc227eed7e9d
+  INFRA_REF: 1e41fd59366e3a8d75286ee6c9ae3b1e3fce152c
   STAGING_TF_PATH: hushline-self-service-test
 
 jobs:
@@ -92,6 +92,14 @@ jobs:
             "customer-config/${ORDER_PATH:-no-customer-request}" \
             "infra/${STAGING_TF_PATH}/self-service-request.tfvars.json"
 
+      - name: Retain encrypted customer claim before provisioning
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: self-service-claim
+          path: self-service-status/admin-claim.enc
+          retention-days: 1
+          if-no-files-found: error
+
       - name: Assign order-owned names
         env:
           ORDER_ID: ${{ steps.customer.outputs.order_id }}
@@ -115,12 +123,34 @@ jobs:
         run: python3 request/scripts/self_service_test_ownership.py preflight "$ORDER_ID"
 
       - name: Verify original partial resource ownership
+        id: recovery
         if: env.RECOVERY_MODE == 'true'
         env:
           STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
           STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
           CUSTOM_DOMAIN: ${{ steps.customer.outputs.custom_domain }}
         run: python3 request/scripts/self_service_test_ownership.py recover-check "$ORDER_ID"
+
+      - name: Set up Terraform for original failed app state repair
+        if: steps.recovery.outputs.needs_state_repair == 'true'
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
+        with:
+          terraform_version: 1.13.5
+          terraform_wrapper: false
+          cli_config_credentials_token: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+
+      - name: Preserve the original failed app instead of replacing it
+        if: steps.recovery.outputs.needs_state_repair == 'true'
+        working-directory: infra/hushline-self-service-test
+        env:
+          TF_WORKSPACE: ${{ env.WORKSPACE_NAME }}
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          CUSTOM_DOMAIN: ${{ steps.customer.outputs.custom_domain }}
+        run: |
+          set -euo pipefail
+          terraform init -input=false
+          python3 ../../request/scripts/self_service_test_ownership.py repair-app-state "$ORDER_ID"
 
       - name: Create a new order-owned workspace
         if: env.RECOVERY_MODE != 'true'
@@ -407,6 +437,14 @@ jobs:
           python3 request/scripts/self_service_test_request.py prepare \
             "customer-config/${ORDER_PATH:-no-customer-request}" \
             "infra/${STAGING_TF_PATH}/self-service-request.tfvars.json"
+
+      - name: Retain encrypted customer claim before provisioning
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: self-service-claim
+          path: self-service-status/admin-claim.enc
+          retention-days: 1
+          if-no-files-found: error
 
       - name: Assign order-owned names
         env:

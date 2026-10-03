@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -20,6 +21,8 @@ RECOVERY_IDS = {
     "digitalocean_project.staging": "c668d9b7-e17b-4817-85e3-ed78d3b55af9",
     "digitalocean_database_cluster.db": "e4de185b-6961-424d-8924-4acd92abec95",
 }
+SERVICE_COUNT = 2
+RECOVERY_APP = "11ce3bed-e389-4510-81d2-3bdad9146eda"
 ORG = "science-and-design"
 ADDRESSES = {
     "digitalocean_project.staging",
@@ -384,8 +387,11 @@ def recovery(order: str) -> dict:
     if manifest.get("resources") is not None:
         raise ValueError("Recovery cannot alter an already completed instance")
     resources = read_state(data)
-    if set(resources) != set(RECOVERY_IDS):
-        raise ValueError("Recovery requires exactly the original project and database")
+    if set(resources) not in [set(RECOVERY_IDS), set(RECOVERY_IDS) | {"digitalocean_app.staging"}]:
+        raise ValueError(
+            "Recovery requires the original project and database, "
+            "with only the original failed app"
+        )
     name, _ = identity(order)
     project = resources["digitalocean_project.staging"]
     database = resources["digitalocean_database_cluster.db"]
@@ -412,10 +418,38 @@ def recovery(order: str) -> dict:
         or live_database.get("id") != db_id
         or live_database.get("name") != name
         or live_database.get("project_id") != project_id
-        or members != {f"do:dbaas:{db_id}"}
+        or members
+        != (
+            {f"do:dbaas:{db_id}"}
+            | ({f"do:app:{RECOVERY_APP}"} if "digitalocean_app.staging" in resources else set())
+        )
     ):
-        raise ValueError("Live partial resources do not belong exclusively to this order")
-    check_app_availability(order, "hushline.foo")
+        raise ValueError("Live partial resource ownership is not exclusively the original order")
+    if "digitalocean_app.staging" in resources:
+        app = resources["digitalocean_app.staging"]
+        live = do(f"/apps/{RECOVERY_APP}")["app"]
+        if (
+            app.get("id") != RECOVERY_APP
+            or app.get("project_id") != project_id
+            or (app.get("spec") or [{}])[0].get("name") != app_name(order)
+            or live.get("id") != RECOVERY_APP
+            or live.get("active_deployment")
+            or (live.get("in_progress_deployment") or {}).get("phase")
+            not in {None, "ERROR", "CANCELED"}
+            or live.get("spec", {}).get("name") != app_name(order)
+            or {entry.get("domain") for entry in live.get("spec", {}).get("domains", [])}
+            != {"hushline.foo"}
+            or len(live.get("spec", {}).get("services", [])) != SERVICE_COUNT
+            or any(
+                service.get("git", {}).get("branch") != f"self-service-test/{order}"
+                or service.get("git", {}).get("repo_clone_url")
+                != "https://github.com/scidsg/hushline.git"
+                for service in live["spec"]["services"]
+            )
+        ):
+            raise ValueError("Recovery requires the original never-live failed app")
+    else:
+        check_app_availability(order, "hushline.foo")
     return resources
 
 
@@ -452,11 +486,12 @@ def guard_recovery(path: Path, order: str) -> None:
     if prior.get("child_modules"):
         raise ValueError("Recovery cannot include modules")
     prior_resources = prior.get("resources", [])
+    existing_ids = {address: value["id"] for address, value in resources.items()}
     if (
-        len(prior_resources) != len(RECOVERY_IDS)
-        or {item.get("address") for item in prior_resources} != set(RECOVERY_IDS)
+        len(prior_resources) != len(existing_ids)
+        or {item.get("address") for item in prior_resources} != set(existing_ids)
         or any(
-            item.get("values", {}).get("id") != RECOVERY_IDS[item["address"]]
+            item.get("values", {}).get("id") != existing_ids[item["address"]]
             for item in prior_resources
         )
     ):
@@ -477,6 +512,26 @@ def guard_recovery(path: Path, order: str) -> None:
                 or before.get("name") != resources[address].get("name")
             ):
                 raise ValueError("Recovery cannot modify the original project or database")
+        elif address == "digitalocean_app.staging" and address in existing_ids:
+            if (
+                change["actions"] not in [["update"], ["no-op"]]
+                or not isinstance(before, dict)
+                or before.get("id") != RECOVERY_APP
+                or after.get("id") != RECOVERY_APP
+                or after.get("project_id") != RECOVERY_IDS["digitalocean_project.staging"]
+                or (after.get("spec") or [{}])[0].get("name") != app_name(order)
+                or (after.get("spec") or [{}])[0].get("domain")
+                != (before.get("spec") or [{}])[0].get("domain")
+                or any(
+                    service.get("git") != prior_service.get("git")
+                    for service, prior_service in zip(
+                        (after.get("spec") or [{}])[0].get("service", []),
+                        (before.get("spec") or [{}])[0].get("service", []),
+                        strict=True,
+                    )
+                )
+            ):
+                raise ValueError("Recovery may only update the original failed app in place")
         elif change["actions"] != ["create"] or before is not None:
             raise ValueError("Recovery may only create the missing app and firewall")
         elif address == "digitalocean_app.staging":
@@ -488,10 +543,66 @@ def guard_recovery(path: Path, order: str) -> None:
             after.get("cluster_id") != RECOVERY_IDS["digitalocean_database_cluster.db"]
             or len(after.get("rule", [])) != 1
             or after["rule"][0].get("type") != "app"
-            or after["rule"][0].get("value") is not None
-            or (change.get("after_unknown", {}).get("rule") or [{}])[0].get("value") is not True
+            or (
+                after["rule"][0].get("value") != RECOVERY_APP
+                if "digitalocean_app.staging" in existing_ids
+                else (
+                    after["rule"][0].get("value") is not None
+                    or (change.get("after_unknown", {}).get("rule") or [{}])[0].get("value")
+                    is not True
+                )
+            )
         ):
             raise ValueError("Recovery firewall escaped the original database or new app")
+
+
+def repair_failed_app_state(order: str) -> None:
+    """Preserve the original failed app instead of Terraform replacing it."""
+    resources = recovery(order)
+    name, _ = identity(order)
+    if "digitalocean_app.staging" not in resources or os.environ.get("TF_WORKSPACE") != name:
+        raise ValueError("State repair requires the original app and exact workspace")
+
+    def command(*args: str) -> str:
+        result = subprocess.run(
+            ["terraform", *args],  # noqa: S603,S607 — fixed CLI and arguments, no shell
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=180,
+        )
+        if result.returncode:
+            raise ValueError("Guarded Terraform state command failed; output withheld")
+        return result.stdout
+
+    if command("workspace", "show").strip() != name:
+        raise ValueError("Terraform selected a different workspace")
+    current = workspace(order)
+    if current is None:
+        raise ValueError("Original workspace is missing")
+    raw = read_raw_state(current)
+    local = json.loads(command("state", "pull"))
+    if local != raw or not raw.get("lineage") or not isinstance(raw.get("serial"), int):
+        raise ValueError("CLI state does not match the verified original workspace")
+    instances = [
+        instance
+        for resource in raw.get("resources", [])
+        if resource.get("type") == "digitalocean_app" and resource.get("name") == "staging"
+        for instance in resource.get("instances", [])
+    ]
+    if len(instances) != 1 or instances[0].get("status") != "tainted":
+        raise ValueError("Only the original failed app taint marker may be repaired")
+    if state_resources(raw) != resources:
+        raise ValueError("State resources changed after ownership proof")
+    command("untaint", "-lock-timeout=30s", "digitalocean_app.staging")
+    after = json.loads(command("state", "pull"))
+    expected = json.loads(json.dumps(raw))
+    expected["serial"] += 1
+    for resource in expected["resources"]:
+        if resource.get("type") == "digitalocean_app" and resource.get("name") == "staging":
+            resource["instances"][0].pop("status", None)
+    if after != expected:
+        raise ValueError("State repair changed more than the original app taint marker")
 
 
 def inspect_original_deployment(order: str) -> dict:
@@ -591,6 +702,7 @@ def main() -> None:
             "remove",
             "recover-check",
             "recover-plan",
+            "repair-app-state",
             "inspect",
         ],
     )
@@ -599,8 +711,25 @@ def main() -> None:
     args = parser.parse_args()
     if args.operation == "inspect":
         print(json.dumps(inspect_original_deployment(args.order)))
+    elif args.operation == "repair-app-state":
+        repair_failed_app_state(args.order)
     elif args.operation == "recover-check":
-        recovery(args.order)
+        resources = recovery(args.order)
+        data = workspace(args.order)
+        if data is None:
+            raise ValueError("Original workspace is missing")
+        raw = read_raw_state(data)
+        if (
+            any(
+                instance.get("status") == "tainted"
+                for resource in raw.get("resources", [])
+                if resource.get("type") == "digitalocean_app" and resource.get("name") == "staging"
+                for instance in resource.get("instances", [])
+            )
+            and "digitalocean_app.staging" in resources
+        ):
+            with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+                print("needs_state_repair=true", file=output)
     elif args.operation == "recover-plan":
         if args.plan is None:
             raise ValueError("Recovery requires a checked plan")
