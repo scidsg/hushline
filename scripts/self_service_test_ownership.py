@@ -1051,7 +1051,15 @@ def inspect_original_deployment(order: str) -> dict:
         "phase": deployment.get("phase"),
         "runtime": {
             component: sanitized_runtime_logs(app_id, deployment_id, component)
-            for component in ["app", "app-onion"]
+            for component in [
+                "app",
+                "app-onion",
+                *(
+                    ["initialize-instance"]
+                    if any(job.get("name") == "initialize-instance" for job in spec.get("jobs", []))
+                    else []
+                ),
+            ]
         },
         "steps": steps(
             deployment.get("progress", {}).get("steps", [])

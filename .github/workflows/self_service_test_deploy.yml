@@ -9,7 +9,7 @@ on:
     types: [labeled, unlabeled, synchronize, closed]
 
 concurrency:
-  group: self-service-test-2447
+  group: ${{ github.event.action == 'labeled' && github.event.label.name == 'self-service-inspect' && 'self-service-inspect-2447' || 'self-service-test-2447' }}
   cancel-in-progress: false
 
 env:
