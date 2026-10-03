@@ -490,6 +490,72 @@ def guard_recovery(path: Path, order: str) -> None:
             raise ValueError("Recovery firewall escaped the original database or new app")
 
 
+def inspect_original_deployment(order: str) -> dict:
+    if order != RECOVERY_ORDER or os.environ.get("CUSTOM_DOMAIN") != "hushline.foo":
+        raise ValueError("Inspection is restricted to the original authorized test")
+    data = workspace(order)
+    if data is None:
+        raise ValueError("Original workspace is missing")
+    validate_workspace(data, order)
+    state = read_state(data)
+    if any(
+        state.get(address, {}).get("id") != identifier
+        for address, identifier in RECOVERY_IDS.items()
+    ):
+        raise ValueError("Original resource IDs no longer match")
+    app_id = "11ce3bed-e389-4510-81d2-3bdad9146eda"
+    if state.get("digitalocean_app.staging", {}).get("id") not in {None, app_id}:
+        raise ValueError("Application ID does not match the original creation run")
+    live = do(f"/apps/{app_id}")["app"]
+    spec = live["spec"]
+    domains = {entry.get("domain") for entry in spec.get("domains", [])}
+    project_id = RECOVERY_IDS["digitalocean_project.staging"]
+    db_id = RECOVERY_IDS["digitalocean_database_cluster.db"]
+    members = {item["urn"] for item in inventory(f"/projects/{project_id}/resources", "resources")}
+    if (
+        live.get("id") != app_id
+        or spec.get("name") != app_name(order)
+        or "hushline.foo" not in domains
+        or members != {f"do:dbaas:{db_id}", f"do:app:{app_id}"}
+        or any(
+            service.get("git", {}).get("branch") != f"self-service-test/{order}"
+            for service in spec.get("services", [])
+        )
+    ):
+        raise ValueError("Live application ownership does not match the original order")
+    deployment = do(f"/apps/{app_id}/deployments/e5629d20-dea2-4799-9770-4e45b0651a24")[
+        "deployment"
+    ]
+
+    def steps(values: list) -> list:
+        result = []
+        for step in values:
+            reason = step.get("reason")
+            code = reason.get("code") if isinstance(reason, dict) else reason
+            result.append(
+                {
+                    "name": step.get("name"),
+                    "component": step.get("component_name"),
+                    "status": step.get("status"),
+                    "code": code
+                    if isinstance(code, str) and re.fullmatch(r"[A-Za-z0-9_-]+", code)
+                    else None,
+                    "steps": steps(step.get("steps", [])),
+                }
+            )
+        return result
+
+    return {
+        "order_id": order,
+        "app_id": app_id,
+        "phase": deployment.get("phase"),
+        "steps": steps(
+            deployment.get("progress", {}).get("steps", [])
+            + deployment.get("progress", {}).get("summary_steps", [])
+        ),
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -503,12 +569,15 @@ def main() -> None:
             "remove",
             "recover-check",
             "recover-plan",
+            "inspect",
         ],
     )
     parser.add_argument("order")
     parser.add_argument("plan", nargs="?", type=Path)
     args = parser.parse_args()
-    if args.operation == "recover-check":
+    if args.operation == "inspect":
+        print(json.dumps(inspect_original_deployment(args.order)))
+    elif args.operation == "recover-check":
         recovery(args.order)
     elif args.operation == "recover-plan":
         if args.plan is None:

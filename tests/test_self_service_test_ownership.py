@@ -238,7 +238,7 @@ def test_workflow_cannot_sweep_other_instances() -> None:
     text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
     assert "secrets.HUSHLINE_INFRA_STAGING_PAT" in text
     assert "secrets.HUSHLINE_INFRA_TOKEN" not in text
-    assert text.count("environment: self-service-test-2447") == 1
+    assert text.count("environment: self-service-test-2447") == 2
     assert text.count("environment: ephemeral-staging") == 1
     assert "schedule:" not in text
     assert "number == 2447" in text

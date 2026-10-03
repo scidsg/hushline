@@ -474,3 +474,28 @@ jobs:
         env:
           STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
         run: python3 request/scripts/self_service_test_ownership.py remove "$ORDER_ID"
+
+  inspect:
+    if: >-
+      github.repository == 'scidsg/hushline' &&
+      github.event.pull_request.number == 2447 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
+      github.event.action == 'labeled' && github.event.label.name == 'self-service-inspect'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: self-service-test-2447
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the signed test diagnostics
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Read only the original owned deployment status
+        env:
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          CUSTOM_DOMAIN: hushline.foo
+        run: python3 scripts/self_service_test_ownership.py inspect de44b913bbc22b3ac75d8e5b114bdc45
