@@ -21,6 +21,16 @@ RECOVERY_IDS = {
     "digitalocean_project.staging": "c668d9b7-e17b-4817-85e3-ed78d3b55af9",
     "digitalocean_database_cluster.db": "e4de185b-6961-424d-8924-4acd92abec95",
 }
+APP_REFRESH_FIELDS = {
+    "urn",
+    "default_ingress",
+    "live_url",
+    "live_domain",
+    "active_deployment_id",
+    "updated_at",
+    "created_at",
+    "dedicated_ips",
+}
 SERVICE_COUNT = 2
 RECOVERY_APP = "11ce3bed-e389-4510-81d2-3bdad9146eda"
 ORG = "science-and-design"
@@ -489,12 +499,28 @@ def guard_recovery(path: Path, order: str) -> None:
                 address == "digitalocean_app.staging"
                 and (
                     after.get("urn") != f"do:app:{RECOVERY_APP}"
-                    or {key: value for key, value in before.items() if key != "urn"}
-                    != {key: value for key, value in after.items() if key != "urn"}
+                    or after.get("active_deployment_id") not in {None, ""}
+                    or {
+                        key: value for key, value in before.items() if key not in APP_REFRESH_FIELDS
+                    }
+                    != {key: value for key, value in after.items() if key not in APP_REFRESH_FIELDS}
                 )
             )
         ):
-            raise ValueError("Recovery refresh escaped the original owned resource IDs")
+            changed = sorted(
+                key for key in set(before) | set(after) if before.get(key) != after.get(key)
+            )
+            safe_fields = [
+                key
+                for key in changed
+                if key
+                in APP_REFRESH_FIELDS
+                | {"id", "name", "spec", "project_id", "deployment_per_page", "timeouts"}
+            ]
+            raise ValueError(
+                "Recovery refresh escaped the original owned resource IDs; "
+                f"changed fields: {safe_fields}"
+            )
     prior = plan.get("prior_state", {}).get("values", {}).get("root_module", {})
     if prior.get("child_modules"):
         raise ValueError("Recovery cannot include modules")

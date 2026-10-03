@@ -864,6 +864,10 @@ def test_original_app_refresh_may_only_fill_its_own_urn(
     before = copy.deepcopy(original_failed_app["digitalocean_app.staging"])
     after = copy.deepcopy(before)
     after["urn"] = f"do:app:{ownership.RECOVERY_APP}"
+    after["active_deployment_id"] = ""
+    after["default_ingress"] = "https://original.ondigitalocean.app"
+    after["created_at"] = "platform-assigned"
+    after["updated_at"] = "platform-assigned"
     if alter == "foreign-urn":
         after["urn"] = "do:app:foreign"
     elif alter == "spec":
