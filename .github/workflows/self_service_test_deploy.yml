@@ -28,7 +28,7 @@ jobs:
       (github.event.action == 'synchronize' && contains(github.event.pull_request.labels.*.name, 'self-service-test')))
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    environment: ephemeral-staging
+    environment: self-service-test-2447
     permissions:
       contents: write
     env:

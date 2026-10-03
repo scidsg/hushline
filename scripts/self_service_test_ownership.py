@@ -328,5 +328,9 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         main()
+    except urllib.error.HTTPError as error:
+        raise SystemExit(
+            f"Test control-plane request failed with HTTP {error.code}; no mutations permitted."
+        ) from None
     except (ValueError, KeyError, OSError):
         raise SystemExit("Test ownership check failed; no further mutations permitted.") from None
