@@ -682,6 +682,56 @@ def previous_state(order: str) -> dict:
     return read_state_version(versions[1])
 
 
+def inspect_original_plan(data: dict) -> list:
+    run = tf("/runs/run-2H5ufxagxtt3yuZp")["data"]
+    if run["relationships"]["workspace"]["data"]["id"] != data["id"]:
+        raise ValueError("Diagnostic plan belongs to a different workspace")
+    plan_id = run["relationships"]["plan"]["data"]["id"]
+    if not re.fullmatch(r"plan-[A-Za-z0-9]+", plan_id):
+        raise ValueError("Invalid diagnostic plan identity")
+    try:
+        plan = tf(f"/plans/{plan_id}/json-output")
+    except urllib.error.HTTPError as error:
+        if error.code not in {HTTPStatus.FOUND, HTTPStatus.TEMPORARY_REDIRECT}:
+            raise
+        url = urllib.parse.urlsplit(error.headers.get("Location", ""))
+        if (
+            url.scheme != "https"
+            or url.hostname != "archivist.terraform.io"
+            or url.port not in {None, 443}
+            or url.username
+            or url.password
+            or url.fragment
+            or not url.path.startswith("/v1/object/")
+        ):
+            raise ValueError("Plan download redirect is not approved") from None
+        plan = request(
+            "archivist.terraform.io", url.path + ("?" + url.query if url.query else ""), None
+        )
+
+    def fields(before: Any, after: Any, prefix: str = "") -> list[str]:
+        if isinstance(before, dict) and isinstance(after, dict):
+            results = []
+            for key in sorted(set(before) | set(after)):
+                # Schema fields only, never dictionary values or dynamic names.
+                if re.fullmatch(r"[a-z_]+", key):
+                    results.extend(fields(before.get(key), after.get(key), prefix + "." + key))
+            return results
+        if isinstance(before, list) and isinstance(after, list) and len(before) == len(after):
+            return [
+                path
+                for index, pair in enumerate(zip(before, after, strict=True))
+                for path in fields(*pair, prefix + f"[{index}]")
+            ]
+        return [prefix] if before != after else []
+
+    return [
+        fields(change["change"].get("before"), change["change"].get("after"))
+        for change in plan.get("resource_drift", [])
+        if change.get("address") == "digitalocean_app.staging"
+    ]
+
+
 def inspect_original_deployment(order: str) -> dict:
     if order != RECOVERY_ORDER or os.environ.get("CUSTOM_DOMAIN") != "hushline.foo":
         raise ValueError("Inspection is restricted to the original authorized test")
@@ -789,6 +839,7 @@ def inspect_original_deployment(order: str) -> dict:
     return {
         "order_id": order,
         "app_id": app_id,
+        "plan_refresh_fields": inspect_original_plan(data),
         "app_state_status": app_status,
         "state_changed_fields": diff_keys,
         "app_state_changed_fields": app_diff,
