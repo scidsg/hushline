@@ -7,6 +7,7 @@ import json
 import os
 import re
 import urllib.error
+import urllib.parse
 import urllib.request
 from http import HTTPStatus
 from pathlib import Path
@@ -42,7 +43,7 @@ def app_name(order: str) -> str:
 def request(
     host: str, path: str, token: str, body: dict | None = None, method: str = "GET"
 ) -> dict:
-    if host not in {"app.terraform.io", "api.digitalocean.com"}:
+    if host not in {"app.terraform.io", "api.digitalocean.com", "archivist.terraform.io"}:
         raise ValueError("Control-plane host is not authorized")
     if not path.startswith("/") or path.startswith("//"):
         raise ValueError("Invalid control-plane path")
@@ -223,11 +224,27 @@ def state_resources(data: dict) -> dict:
 def read_state(data: dict) -> dict:
     version = tf(f"/workspaces/{data['id']}/current-state-version")["data"]
     url = version["attributes"]["hosted-state-download-url"]
-    # State URLs are signed by HCP; do not include the API bearer token.
-    if not url.startswith("https://"):
+    parsed = urllib.parse.urlsplit(url)
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname not in {"app.terraform.io", "archivist.terraform.io"}
+        or parsed.port not in {None, 443}
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.fragment
+        or not (
+            (parsed.hostname == "archivist.terraform.io" and parsed.path.startswith("/v1/object/"))
+            or (
+                parsed.hostname == "app.terraform.io"
+                and parsed.path.startswith("/api/v2/state-versions/")
+            )
+        )
+    ):
         raise ValueError("Invalid state download URL")
-    with urllib.request.urlopen(url, timeout=60) as response:  # noqa: S310 — HTTPS URL returned by authenticated HCP API
-        return state_resources(json.loads(response.read()))
+    # HCP hosted-state downloads require authentication. The common requester
+    # rejects redirects, so the token cannot be forwarded to another host.
+    path = parsed.path + ("?" + parsed.query if parsed.query else "")
+    return state_resources(request(parsed.hostname, path, os.environ["STAGING_TF_TOKEN"]))
 
 
 def validate_resources(resources: dict, order: str) -> dict:

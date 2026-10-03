@@ -476,3 +476,50 @@ def test_recovery_plan_cannot_touch_existing_or_foreign_resources(
     path.write_text(json.dumps(plan))
     with pytest.raises(ValueError, match="Recovery"):
         ownership.guard_recovery(path, ownership.RECOVERY_ORDER)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://archivist.terraform.io/v1/object/test",
+        "https://evil.example/v1/object/test",
+        "https://archivist.terraform.io.evil.example/v1/object/test",
+        "https://user:password@archivist.terraform.io/v1/object/test",
+        "https://archivist.terraform.io:444/v1/object/test",
+        "https://app.terraform.io/arbitrary/path",
+    ],
+)
+def test_state_download_refuses_token_forwarding_to_untrusted_url(
+    monkeypatch: pytest.MonkeyPatch, url: str
+) -> None:
+    monkeypatch.setattr(
+        ownership, "tf", lambda path: {"data": {"attributes": {"hosted-state-download-url": url}}}
+    )
+    request = Mock()
+    monkeypatch.setattr(ownership, "request", request)
+    with pytest.raises(ValueError, match="Invalid state"):
+        ownership.read_state({"id": "ws-owned"})
+    request.assert_not_called()
+
+
+def test_hosted_state_download_uses_authenticated_allowlisted_host(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("STAGING_TF_TOKEN", "test-only-credential")
+    monkeypatch.setattr(
+        ownership,
+        "tf",
+        lambda path: {
+            "data": {
+                "attributes": {
+                    "hosted-state-download-url": "https://archivist.terraform.io/v1/object/test",
+                }
+            }
+        },
+    )
+    request = Mock(return_value={"resources": []})
+    monkeypatch.setattr(ownership, "request", request)
+    assert ownership.read_state({"id": "ws-owned"}) == {}
+    request.assert_called_once_with(
+        "archivist.terraform.io", "/v1/object/test", "test-only-credential"
+    )
