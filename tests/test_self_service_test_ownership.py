@@ -946,3 +946,39 @@ def test_app_refresh_allows_only_platform_defaults_and_secret_encoding(alter: st
             ownership.app_refresh_equivalent(before, after)
     else:
         assert ownership.app_refresh_equivalent(before, after) is (alter is None)
+
+
+@pytest.mark.parametrize("compressed", [False, True])
+def test_runtime_diagnostics_keep_secrets_private(
+    monkeypatch: pytest.MonkeyPatch, compressed: bool
+) -> None:
+    url = "https://appbuild-logs-sfo3.sfo3.digitaloceanspaces.com/owned?signature=private"
+    monkeypatch.setattr(ownership, "do", lambda path: {"historic_urls": [url]})
+    raw = (
+        b"> Running migrations\nsqlalchemy.exc.ProgrammingError: relation does not exist\n"
+        b"SECRET=never-publish-this\n"
+    )
+    payload = ownership.gzip.compress(raw) if compressed else raw
+    response = Mock()
+    response.__enter__ = Mock(return_value=Mock(read=Mock(return_value=payload)))
+    response.__exit__ = Mock(return_value=None)
+    opener = Mock(open=Mock(return_value=response))
+    monkeypatch.setattr(ownership.urllib.request, "build_opener", lambda *args: opener)
+    result = ownership.sanitized_runtime_logs(ownership.RECOVERY_APP, "owned-deployment", "app")
+    assert result["available"] is True
+    assert result["markers"] == ["migrations_started", "missing_table"]
+    assert result["error_classes"] == ["ProgrammingError"]
+    assert "never-publish-this" not in json.dumps(result)
+    assert "signature" not in json.dumps(result)
+    assert opener.open.call_args.args == (url,)
+
+
+def test_runtime_logs_reject_foreign_hosts(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        ownership, "do", lambda path: {"historic_urls": ["https://foreign.example/secret"]}
+    )
+    opener = Mock()
+    monkeypatch.setattr(ownership.urllib.request, "build_opener", opener)
+    result = ownership.sanitized_runtime_logs(ownership.RECOVERY_APP, "owned-deployment", "app")
+    assert result["available"] is False
+    opener.assert_not_called()

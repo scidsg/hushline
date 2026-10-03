@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import gzip
+import io
 import json
 import os
 import re
@@ -811,8 +813,12 @@ def sanitized_runtime_logs(app_id: str, deployment_id: str, component: str) -> d
         try:
             # Signed URL, no API token, no redirect and no raw log output.
             with urllib.request.build_opener(NoRedirect()).open(url, timeout=20) as source:
-                logs += source.read(262144).decode("utf-8", errors="replace")
-        except (urllib.error.URLError, TimeoutError):
+                payload = source.read(262144)
+                if payload.startswith(b"\x1f\x8b"):
+                    with gzip.GzipFile(fileobj=io.BytesIO(payload)) as archive:
+                        payload = archive.read(262144)
+                logs += payload.decode("utf-8", errors="replace")
+        except (urllib.error.URLError, TimeoutError, gzip.BadGzipFile, EOFError):
             continue
     markers = {
         "migrations_started": "> Running migrations",
