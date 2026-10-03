@@ -121,6 +121,13 @@ def validate_workspace(data: dict, order: str) -> dict:
     manifest = json.loads(attributes.get("description", ""))
     if manifest.get("order_id") != order or manifest.get("schema") != 1:
         raise ValueError("Workspace ownership manifest does not match this order")
+    if isinstance(manifest.get("resources"), list):
+        ids = manifest["resources"]
+        if len(ids) != len(ADDRESSES) or any(
+            not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9-]+", value) for value in ids
+        ):
+            raise ValueError("Compact resource ownership record is invalid")
+        manifest["resources"] = dict(zip(sorted(ADDRESSES), ids, strict=True))
     return manifest
 
 
@@ -338,12 +345,36 @@ def record(order: str) -> None:
     manifest = validate_workspace(data, order)
     if manifest.get("resources") is not None:
         raise ValueError("Cannot overwrite the original resource ownership record")
-    manifest["resources"] = validate_resources(read_state(data), order)
-    tf(
-        f"/workspaces/{data['id']}",
-        {"data": {"type": "workspaces", "attributes": {"description": json.dumps(manifest)}}},
-        "PATCH",
-    )
+    ids = validate_resources(read_state(data), order)
+    manifest["resources"] = [ids[address] for address in sorted(ADDRESSES)]
+    description = json.dumps(manifest, separators=(",", ":"))
+    if len(description) > 256:  # noqa: PLR2004 — workspace metadata size contract
+        raise ValueError("Ownership metadata exceeds its compact size limit")
+    try:
+        tf(
+            f"/workspaces/{data['id']}",
+            {
+                "data": {
+                    "type": "workspaces",
+                    "id": data["id"],
+                    "attributes": {"description": description},
+                }
+            },
+            "PATCH",
+        )
+    except urllib.error.HTTPError as error:
+        if error.code != HTTPStatus.UNPROCESSABLE_ENTITY:
+            raise
+        payload = json.loads(error.read())
+        details = " ".join(str(item.get("detail", "")) for item in payload.get("errors", []))
+        markers = [
+            key
+            for key in ["description", "length", "long", "ID", "required"]
+            if key.lower() in details.lower()
+        ]
+        raise ValueError(
+            f"Ownership metadata validation failed; reason markers: {markers}"
+        ) from None
 
 
 def owned(order: str) -> dict:
@@ -776,6 +807,61 @@ def previous_state(order: str) -> dict:
     return read_state_version(versions[1])
 
 
+def finalize_original(order: str) -> None:
+    """Publish the original successful apply without rerunning any provisioning."""
+    if order != RECOVERY_ORDER or os.environ.get("CUSTOM_DOMAIN") != "hushline.foo":
+        raise ValueError("Finalization is restricted to the original authorized order")
+    data = workspace(order)
+    if data is None:
+        raise ValueError("Original workspace is missing")
+    manifest = validate_workspace(data, order)
+    ids = validate_resources(read_state(data), order)
+    if (
+        any(ids.get(address) != value for address, value in RECOVERY_IDS.items())
+        or ids["digitalocean_app.staging"] != RECOVERY_APP
+    ):
+        raise ValueError("Finalization has different original resource IDs")
+    validate_live(ids, order)
+    live = do(f"/apps/{RECOVERY_APP}")["app"]
+    if (
+        (live.get("active_deployment") or {}).get("phase") != "ACTIVE"
+        or live.get("pending_deployment")
+        or {entry.get("domain") for entry in live["spec"].get("domains", [])} != {"hushline.foo"}
+        or len(live["spec"].get("services", [])) != SERVICE_COUNT
+        or any(
+            service.get("git", {}).get("branch") != f"self-service-test/{order}"
+            or service.get("git", {}).get("repo_clone_url")
+            != "https://github.com/scidsg/hushline.git"
+            for service in live["spec"]["services"]
+        )
+    ):
+        raise ValueError("Finalization requires the original healthy app and unchanged source")
+    ingress = urllib.parse.urlsplit(live.get("default_ingress", "")).hostname
+    if ingress is None or not re.fullmatch(r"[a-z0-9-]+\.ondigitalocean\.app", ingress):
+        raise ValueError("Original app DNS target is invalid")
+    onion = next(
+        (
+            env.get("value")
+            for worker in live["spec"].get("workers", [])
+            if worker.get("name") == "onion-service"
+            for env in worker.get("envs", [])
+            if env.get("key") == "ONION_HOSTNAME"
+        ),
+        "",
+    )
+    if not isinstance(onion, str) or not re.fullmatch(r"[a-z2-7]{56}\.onion", onion):
+        raise ValueError("Original app onion hostname is invalid")
+    if manifest.get("resources") is None:
+        record(order)
+    elif manifest["resources"] != ids:
+        raise ValueError("Finalization cannot overwrite different ownership IDs")
+    owned(order)
+    with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+        print(f"app_default_ingress=https://{ingress}", file=output)
+        print(f"app_id={RECOVERY_APP}", file=output)
+        print(f"onion_hostname={onion}", file=output)
+
+
 def inspect_original_plan(data: dict) -> list:
     run = tf("/runs/run-2H5ufxagxtt3yuZp")["data"]
     if run["relationships"]["workspace"]["data"]["id"] != data["id"]:
@@ -1082,6 +1168,7 @@ def main() -> None:
             "recover-check",
             "recover-plan",
             "repair-app-state",
+            "finalize-original",
             "inspect",
         ],
     )
@@ -1090,6 +1177,8 @@ def main() -> None:
     args = parser.parse_args()
     if args.operation == "inspect":
         print(json.dumps(inspect_original_deployment(args.order)))
+    elif args.operation == "finalize-original":
+        finalize_original(args.order)
     elif args.operation == "repair-app-state":
         repair_failed_app_state(args.order)
     elif args.operation == "recover-check":

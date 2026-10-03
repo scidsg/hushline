@@ -238,7 +238,7 @@ def test_workflow_cannot_sweep_other_instances() -> None:
     text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
     assert "secrets.HUSHLINE_INFRA_STAGING_PAT" in text
     assert "secrets.HUSHLINE_INFRA_TOKEN" not in text
-    assert text.count("environment: self-service-test-2447") == 2
+    assert text.count("environment: self-service-test-2447") == 3
     assert text.count("environment: ephemeral-staging") == 1
     assert "schedule:" not in text
     assert "number == 2447" in text
@@ -1065,3 +1065,136 @@ def test_recovery_initializer_is_pinned_to_original_source(
             ownership.guard_recovery(path, ownership.RECOVERY_ORDER)
     else:
         ownership.guard_recovery(path, ownership.RECOVERY_ORDER)
+
+
+def test_compact_ownership_record_round_trips(monkeypatch: pytest.MonkeyPatch) -> None:
+    data = workspace()
+    state = resources()
+    for attributes in state.values():
+        attributes["id"] = "12345678-1234-1234-1234-123456789abc"
+    state["digitalocean_database_cluster.db"]["project_id"] = state["digitalocean_project.staging"][
+        "id"
+    ]
+    state["digitalocean_app.staging"]["project_id"] = state["digitalocean_project.staging"]["id"]
+    state["digitalocean_database_firewall.staging"]["cluster_id"] = state[
+        "digitalocean_database_cluster.db"
+    ]["id"]
+    state["digitalocean_database_firewall.staging"]["rule"][0]["value"] = state[
+        "digitalocean_app.staging"
+    ]["id"]
+    monkeypatch.setattr(ownership, "workspace", lambda order: data)
+    monkeypatch.setattr(ownership, "read_state", lambda data: state)
+    api = Mock()
+    monkeypatch.setattr(ownership, "tf", api)
+    ownership.record(ORDER)
+    payload = api.call_args.args[1]["data"]
+    assert payload["id"] == data["id"]
+    description = payload["attributes"]["description"]
+    assert len(description) <= 256
+    data["attributes"]["description"] = description
+    assert ownership.validate_workspace(data, ORDER)["resources"] == ownership.validate_resources(
+        state, ORDER
+    )
+
+
+@pytest.mark.parametrize("ids", [[], ["id"] * 3, ["id"] * 5, ["invalid/id"] * 4])
+def test_invalid_compact_ownership_is_rejected(ids: list) -> None:
+    data = workspace()
+    data["attributes"]["description"] = json.dumps(
+        {"schema": 1, "order_id": ORDER, "resources": ids}
+    )
+    with pytest.raises(ValueError, match="Compact resource"):
+        ownership.validate_workspace(data, ORDER)
+
+
+@pytest.mark.parametrize("problem", [None, "wrong-id", "inactive", "pending", "domain", "source"])
+def test_finalize_only_original_healthy_instance(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    problem: str | None,
+) -> None:
+    order = ownership.RECOVERY_ORDER
+    ids = {
+        **ownership.RECOVERY_IDS,
+        "digitalocean_app.staging": ownership.RECOVERY_APP,
+        "digitalocean_database_firewall.staging": "firewall-id",
+    }
+    if problem == "wrong-id":
+        ids["digitalocean_app.staging"] = "foreign-app"
+    live = {
+        "active_deployment": {"phase": "ACTIVE"},
+        "default_ingress": "https://original.ondigitalocean.app",
+        "spec": {
+            "domains": [{"domain": "hushline.foo"}],
+            "services": [
+                {
+                    "git": {
+                        "branch": f"self-service-test/{order}",
+                        "repo_clone_url": "https://github.com/scidsg/hushline.git",
+                    }
+                }
+                for _ in range(2)
+            ],
+            "workers": [
+                {
+                    "name": "onion-service",
+                    "envs": [{"key": "ONION_HOSTNAME", "value": "a" * 56 + ".onion"}],
+                }
+            ],
+        },
+    }
+    if problem == "inactive":
+        live["active_deployment"]["phase"] = "ERROR"
+    elif problem == "pending":
+        live["pending_deployment"] = {"phase": "PENDING_BUILD"}
+    elif problem == "domain":
+        live["spec"]["domains"] = [{"domain": "production.example"}]
+    elif problem == "source":
+        live["spec"]["services"][0]["git"]["branch"] = "main"
+    monkeypatch.setenv("CUSTOM_DOMAIN", "hushline.foo")
+    monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "outputs"))
+    monkeypatch.setattr(ownership, "workspace", lambda order: {"id": "ws-test"})
+    monkeypatch.setattr(ownership, "validate_workspace", lambda data, order: {"resources": None})
+    monkeypatch.setattr(ownership, "read_state", lambda data: {})
+    monkeypatch.setattr(ownership, "validate_resources", lambda state, order: ids)
+    monkeypatch.setattr(ownership, "validate_live", Mock())
+    api = Mock(return_value={"app": live})
+    monkeypatch.setattr(ownership, "do", api)
+    record = Mock()
+    monkeypatch.setattr(ownership, "record", record)
+    monkeypatch.setattr(ownership, "owned", Mock())
+    if problem:
+        with pytest.raises(ValueError, match="original"):
+            ownership.finalize_original(order)
+        record.assert_not_called()
+        assert not (tmp_path / "outputs").exists()
+    else:
+        ownership.finalize_original(order)
+        record.assert_called_once_with(order)
+        api.assert_called_once_with(f"/apps/{ownership.RECOVERY_APP}")
+        assert (
+            "app_default_ingress=https://original.ondigitalocean.app"
+            in (tmp_path / "outputs").read_text()
+        )
+
+
+def test_finalization_rejects_other_order_before_cloud_requests(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CUSTOM_DOMAIN", "hushline.foo")
+    api = Mock()
+    monkeypatch.setattr(ownership, "workspace", api)
+    with pytest.raises(ValueError, match="original authorized"):
+        ownership.finalize_original(ORDER)
+    api.assert_not_called()
+
+
+def test_finalization_workflow_cannot_redeploy_or_regenerate_claim() -> None:
+    text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
+    finalization = text.split("  finalize:\n")[1].split("  destroy:\n")[0]
+    assert "terraform" not in finalization
+    assert "prepare_self_service_test" not in finalization
+    assert "run_id: 37157273469" in finalization
+    assert "9a35277295e1384b6e90b5f586248b0c98b6e481" in finalization
+    assert "finalize-original de44b913bbc22b3ac75d8e5b114bdc45" in finalization
+    assert "self-service-claim" in finalization

@@ -367,6 +367,154 @@ jobs:
           rm -rf "$tor_runtime"
           if [ "$ready" != "true" ]; then exit 1; fi
 
+  finalize:
+    if: >-
+      github.repository == 'scidsg/hushline' &&
+      github.event.pull_request.number == 2447 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
+      github.event.action == 'labeled' && github.event.label.name == 'self-service-finalize'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: self-service-test-2447
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Check out signed finalization code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Verify the original successful apply and encrypted claim
+        id: original
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            const fs = require('fs');
+            const pointer = JSON.parse(fs.readFileSync('.self-service-test.json', 'utf8'));
+            if (pointer.order_id !== 'de44b913bbc22b3ac75d8e5b114bdc45' ||
+                pointer.config_ref !== '444e8341cff8ae57361d9e8ab643692559045a3a') {
+              throw new Error('Original order pointer changed.');
+            }
+            const args = {owner: context.repo.owner, repo: context.repo.repo, run_id: 37157273469};
+            const run = (await github.rest.actions.getWorkflowRun(args)).data;
+            if (run.head_sha !== '9a35277295e1384b6e90b5f586248b0c98b6e481' || run.path !== '.github/workflows/self_service_test_deploy.yml') {
+              throw new Error('Original provisioning head changed.');
+            }
+            const jobs = (await github.rest.actions.listJobsForWorkflowRun(args)).data.jobs;
+            const deploy = jobs.find(job => job.name === 'deploy');
+            if (!deploy || !deploy.steps.some(step => step.name === 'Apply isolated staging infrastructure' && step.conclusion === 'success')) {
+              throw new Error('Original infrastructure apply was not successful.');
+            }
+            const artifacts = (await github.rest.actions.listWorkflowRunArtifacts(args)).data.artifacts;
+            const claim = artifacts.find(artifact => artifact.name === 'self-service-claim' && !artifact.expired);
+            if (!claim) throw new Error('Original encrypted invitation is missing.');
+            core.setOutput('claim_artifact_id', claim.id);
+
+      - name: Download only the original encrypted claim
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLAIM_ARTIFACT_ID: ${{ steps.original.outputs.claim_artifact_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/scidsg/hushline/actions/artifacts/${CLAIM_ARTIFACT_ID}/zip" > original-claim.zip
+          python3 - <<'PY'
+          import zipfile
+          from pathlib import Path
+          with zipfile.ZipFile('original-claim.zip') as archive:
+              if archive.namelist() != ['admin-claim.enc']:
+                  raise SystemExit('Unexpected original encrypted artifact contents')
+              destination = Path('self-service-status')
+              destination.mkdir()
+              (destination / 'admin-claim.enc').write_bytes(archive.read('admin-claim.enc'))
+          PY
+
+      - name: Finalize original ownership and read DNS outputs
+        id: finalized
+        env:
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          CUSTOM_DOMAIN: hushline.foo
+        run: python3 scripts/self_service_test_ownership.py finalize-original de44b913bbc22b3ac75d8e5b114bdc45
+
+      - name: Publish customer DNS target
+        env:
+          APP_DEFAULT_INGRESS: ${{ steps.finalized.outputs.app_default_ingress }}
+          APP_ID: ${{ steps.finalized.outputs.app_id }}
+          ORDER_ID: de44b913bbc22b3ac75d8e5b114bdc45
+          WORKSPACE_NAME: hushline-self-service-test-de44b913bbc22b3ac75d8e5b114bdc45
+          CUSTOM_DOMAIN: hushline.foo
+        run: python3 scripts/self_service_test_request.py status self-service-status/status.json
+
+      - name: Upload safe customer deployment outputs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: self-service-status
+          path: self-service-status/
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Wait for HTTPS health check
+        env:
+          APP_URL: https://hushline.foo
+        run: |
+          set -euo pipefail
+          health_url="${APP_URL%/}/health.json"
+          for attempt in $(seq 1 240); do
+            if curl --fail --silent --show-error --max-time 15 "$health_url" >/dev/null; then exit 0; fi
+            echo "Waiting for staging health check (${attempt}/240)"
+            sleep 10
+          done
+          exit 1
+
+      - name: Check out trusted smoke tests
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          path: trusted-tests
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: trusted-tests/package-lock.json
+
+      - name: Install trusted browser smoke-test dependencies
+        working-directory: trusted-tests
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+
+      - name: Run trusted browser smoke tests
+        working-directory: trusted-tests
+        env:
+          PLAYWRIGHT_BASE_URL: https://hushline.foo
+        run: npx playwright test --config=playwright.staging.config.js
+
+      - name: Verify disposable onion endpoint
+        env:
+          ONION_HOSTNAME: ${{ steps.finalized.outputs.onion_hostname }}
+        run: |
+          set -euo pipefail
+          tor_runtime="$(mktemp -d)"
+          chmod 700 "$tor_runtime"
+          tor --RunAsDaemon 1 --DataDirectory "$tor_runtime" --PidFile "${tor_runtime}/tor.pid" \
+            --SocksPort 9050 --Log "notice file ${tor_runtime}/tor.log"
+          ready=false
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error --max-time 30 --socks5-hostname 127.0.0.1:9050 \
+              "http://${ONION_HOSTNAME}/health.json" >/dev/null; then ready=true; break; fi
+            echo "Waiting for disposable onion endpoint (${attempt}/60)"
+            sleep 10
+          done
+          kill "$(cat "${tor_runtime}/tor.pid")" 2>/dev/null || true
+          rm -rf "$tor_runtime"
+          if [ "$ready" != "true" ]; then exit 1; fi
+
   destroy:
     if: >-
       github.repository == 'scidsg/hushline' &&
