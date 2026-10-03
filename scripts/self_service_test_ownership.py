@@ -235,6 +235,10 @@ def state_resources(data: dict) -> dict:
 
 def read_raw_state(data: dict) -> dict:
     version = tf(f"/workspaces/{data['id']}/current-state-version")["data"]
+    return read_state_version(version)
+
+
+def read_state_version(version: dict) -> dict:
     url = version["attributes"]["hosted-state-download-url"]
     parsed = urllib.parse.urlsplit(url)
     if (
@@ -639,6 +643,49 @@ def inspect_original_deployment(order: str) -> dict:
         )
     ):
         raise ValueError("Live application ownership does not match the original order")
+    query = urllib.parse.urlencode(
+        {
+            "filter[workspace][name]": identity(order)[0],
+            "filter[organization][name]": ORG,
+            "filter[status]": "finalized",
+            "page[size]": "2",
+        }
+    )
+    versions = tf(f"/state-versions?{query}")["data"]
+    previous = read_state_version(versions[1]) if len(versions) > 1 else raw_state
+    diff_keys = [
+        key
+        for key in sorted(set(previous) | set(raw_state))
+        if previous.get(key) != raw_state.get(key)
+    ]
+    previous_app: dict = next(
+        (
+            resource
+            for resource in previous.get("resources", [])
+            if resource.get("type") == "digitalocean_app" and resource.get("name") == "staging"
+        ),
+        {},
+    )
+    current_app: dict = next(
+        (
+            resource
+            for resource in raw_state.get("resources", [])
+            if resource.get("type") == "digitalocean_app" and resource.get("name") == "staging"
+        ),
+        {},
+    )
+    app_diff = [
+        key
+        for key in sorted(set(previous_app) | set(current_app))
+        if previous_app.get(key) != current_app.get(key)
+    ]
+    previous_instance = (previous_app.get("instances") or [{}])[0]
+    current_instance = (current_app.get("instances") or [{}])[0]
+    instance_diff = [
+        key
+        for key in sorted(set(previous_instance) | set(current_instance))
+        if previous_instance.get(key) != current_instance.get(key)
+    ]
     deployment = do(f"/apps/{app_id}/deployments/e5629d20-dea2-4799-9770-4e45b0651a24")[
         "deployment"
     ]
@@ -679,6 +726,10 @@ def inspect_original_deployment(order: str) -> dict:
         "order_id": order,
         "app_id": app_id,
         "app_state_status": app_status,
+        "state_changed_fields": diff_keys,
+        "app_state_changed_fields": app_diff,
+        "app_instance_changed_fields": instance_diff,
+        "state_serial_advance": raw_state.get("serial", 0) - previous.get("serial", 0),
         "active_deployment_phase": (live.get("active_deployment") or {}).get("phase"),
         "startup_migrations_enabled": migration_flag == "true",
         "phase": deployment.get("phase"),
