@@ -448,8 +448,10 @@ def recovery(order: str) -> dict:
             or (app.get("spec") or [{}])[0].get("name") != app_name(order)
             or live.get("id") != RECOVERY_APP
             or live.get("active_deployment")
-            or (live.get("in_progress_deployment") or {}).get("phase")
-            not in {None, "ERROR", "CANCELED"}
+            or any(
+                (live.get(key) or {}).get("phase") not in {None, "ERROR", "CANCELED"}
+                for key in ["pending_deployment", "in_progress_deployment"]
+            )
             or live.get("spec", {}).get("name") != app_name(order)
             or {entry.get("domain") for entry in live.get("spec", {}).get("domains", [])}
             != {"hushline.foo"}
@@ -837,9 +839,11 @@ def inspect_original_deployment(order: str) -> dict:
         for key in sorted(set(previous_instance) | set(current_instance))
         if previous_instance.get(key) != current_instance.get(key)
     ]
-    deployment = do(f"/apps/{app_id}/deployments/e5629d20-dea2-4799-9770-4e45b0651a24")[
-        "deployment"
-    ]
+    latest = live.get("pending_deployment") or live.get("active_deployment") or {}
+    deployment_id = latest.get("id", "e5629d20-dea2-4799-9770-4e45b0651a24")
+    if not isinstance(deployment_id, str) or not re.fullmatch(r"[a-f0-9-]{36}", deployment_id):
+        raise ValueError("Invalid original-app deployment identity")
+    deployment = do(f"/apps/{app_id}/deployments/{deployment_id}")["deployment"]
 
     def steps(values: list) -> list:
         result = []

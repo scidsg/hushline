@@ -730,15 +730,18 @@ def test_failed_app_recovery_rejects_escape(
         ownership.guard_recovery(path, ownership.RECOVERY_ORDER)
 
 
+@pytest.mark.parametrize(
+    "field", ["active_deployment", "pending_deployment", "in_progress_deployment"]
+)
 def test_live_app_cannot_be_recovered(
-    original_failed_app: dict, monkeypatch: pytest.MonkeyPatch
+    original_failed_app: dict, monkeypatch: pytest.MonkeyPatch, field: str
 ) -> None:
     api = ownership.do
 
     def live(path: str) -> dict:
         response = api(path)
         if "app" in response:
-            response["app"]["active_deployment"] = {"phase": "ACTIVE"}
+            response["app"][field] = {"phase": "DEPLOYING"}
         return response
 
     monkeypatch.setattr(ownership, "do", live)
