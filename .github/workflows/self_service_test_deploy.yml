@@ -354,11 +354,11 @@ jobs:
           set -euo pipefail
           tor_runtime="$(mktemp -d)"
           chmod 700 "$tor_runtime"
-          tor --RunAsDaemon 1 --DataDirectory "$tor_runtime" --PidFile "${tor_runtime}/tor.pid" \
-            --SocksPort 9050 --Log "notice file ${tor_runtime}/tor.log"
+          tor -f /dev/null --RunAsDaemon 1 --DataDirectory "$tor_runtime" --PidFile "${tor_runtime}/tor.pid" \
+            --SocksPort 19050 --Log "notice file ${tor_runtime}/tor.log"
           ready=false
           for attempt in $(seq 1 60); do
-            if curl --fail --silent --show-error --max-time 30 --socks5-hostname 127.0.0.1:9050 \
+            if curl --fail --silent --show-error --max-time 30 --socks5-hostname 127.0.0.1:19050 \
               "http://${ONION_HOSTNAME}/health.json" >/dev/null; then ready=true; break; fi
             echo "Waiting for disposable onion endpoint (${attempt}/60)"
             sleep 10
@@ -508,11 +508,11 @@ jobs:
           set -euo pipefail
           tor_runtime="$(mktemp -d)"
           chmod 700 "$tor_runtime"
-          tor --RunAsDaemon 1 --DataDirectory "$tor_runtime" --PidFile "${tor_runtime}/tor.pid" \
-            --SocksPort 9050 --Log "notice file ${tor_runtime}/tor.log"
+          tor -f /dev/null --RunAsDaemon 1 --DataDirectory "$tor_runtime" --PidFile "${tor_runtime}/tor.pid" \
+            --SocksPort 19050 --Log "notice file ${tor_runtime}/tor.log"
           ready=false
           for attempt in $(seq 1 60); do
-            if curl --fail --silent --show-error --max-time 30 --socks5-hostname 127.0.0.1:9050 \
+            if curl --fail --silent --show-error --max-time 30 --socks5-hostname 127.0.0.1:19050 \
               "http://${ONION_HOSTNAME}/health.json" >/dev/null; then ready=true; break; fi
             echo "Waiting for disposable onion endpoint (${attempt}/60)"
             sleep 10
@@ -702,11 +702,11 @@ jobs:
           set -euo pipefail
           tor_runtime="$(mktemp -d)"
           chmod 700 "$tor_runtime"
-          tor --RunAsDaemon 1 --DataDirectory "$tor_runtime" --PidFile "${tor_runtime}/tor.pid" \
-            --SocksPort 9050 --Log "notice file ${tor_runtime}/tor.log"
+          tor -f /dev/null --RunAsDaemon 1 --DataDirectory "$tor_runtime" --PidFile "${tor_runtime}/tor.pid" \
+            --SocksPort 19050 --Log "notice file ${tor_runtime}/tor.log"
           ready=false
           for attempt in $(seq 1 60); do
-            if curl --fail --silent --show-error --max-time 30 --socks5-hostname 127.0.0.1:9050 \
+            if curl --fail --silent --show-error --max-time 30 --socks5-hostname 127.0.0.1:19050 \
               "http://${ONION_HOSTNAME}/health.json" >/dev/null; then ready=true; break; fi
             echo "Waiting for disposable onion endpoint (${attempt}/60)"
             sleep 10

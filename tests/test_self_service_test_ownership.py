@@ -1386,3 +1386,18 @@ def test_each_onion_verification_job_installs_tor_first() -> None:
         assert steps.index("- name: Install Tor") < steps.index(
             "- name: Verify disposable onion endpoint"
         )
+
+
+def test_onion_verification_uses_its_own_tor_listener() -> None:
+    text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
+    for job, next_job in [
+        ("deploy", "finalize"),
+        ("finalize", "repair-claim"),
+        ("repair-claim", "destroy"),
+    ]:
+        steps = text.split(f"  {job}:\n")[1].split(f"  {next_job}:\n")[0]
+        verification = steps.split("- name: Verify disposable onion endpoint")[1]
+        assert "tor -f /dev/null" in verification
+        assert "--SocksPort 19050" in verification
+        assert "--socks5-hostname 127.0.0.1:19050" in verification
+        assert "127.0.0.1:9050" not in verification
