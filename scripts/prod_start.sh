@@ -8,6 +8,11 @@ else
   echo "> Skipping startup migrations"
 fi
 
+# Only the disposable self-service test job supplies this invitation.
+if [ -n "${SELF_SERVICE_TEST_CLAIM_CODE:-}" ]; then
+  poetry run python -m scripts.prepare_self_service_test || exit 1
+fi
+
 # Configure Stripe and tiers
 if [ -n "$STRIPE_SECRET_KEY" ]; then
   echo "> Configuring Stripe"

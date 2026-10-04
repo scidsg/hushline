@@ -264,3 +264,30 @@ These are use-case themes already implied by the mission, even when the current 
 - More explicit vulnerable-user accommodations in the sender flow
 - Stronger evidence-review workflows that connect inbox, OCR, and authenticity checks more tightly
 - Richer organizational case-management needs beyond status labels and inbox filtering
+
+### Disposable Single Tenant provisioning test
+
+An operator uses the app-style account and plan flow, confirms a simulated annual
+payment, and enters a customer-controlled hostname. Confirmed payment authorizes
+automatic provisioning without a customer deployment review. The isolated workflow
+reads that order from private Git configuration and provisions a separate app and
+database with staging-only credentials. One pre-deploy job initializes the schema
+and private invitation before either app service starts, using lowercase boolean
+configuration accepted by the app. The DNS screen displays the assigned CNAME
+and ownership TXT records. Successful checks enable Continue without navigating;
+the deployment screen separately verifies HTTPS and application health before its
+own Continue action. A short-lived one-use invitation allows the operator to claim
+the first administrator. This test is limited to one instance and does not implement
+production billing or license enforcement. It uses a separate, order-scoped
+Terraform root and workflow; shared staging and production workflows are unchanged.
+Deployment refuses existing workspaces and cloud names, accepts only four resource
+creations, and applies the exact checked plan. Cleanup requires the original order
+manifest, recorded IDs, matching live cloud resources, and a checked saved deletion
+plan. Recovery of the original test order can preserve its verified project and
+database and repair its never-live failed app in place. Its exact app ID, hostname,
+build branch, workspace, state lineage, and project membership must match; no
+replacement, deletion, import, or database update is accepted. Fresh orders still
+refuse every existing workspace. An incomplete apply or ownership mismatch stops
+cleanup for operator review;
+there is no unguarded scheduled or HCP automatic destruction. Remove the
+`self-service-test` label on the controller PR to request guarded cleanup.
