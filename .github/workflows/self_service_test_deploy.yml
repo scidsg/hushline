@@ -925,10 +925,12 @@ jobs:
       - name: Assign verified order identity
         if: steps.request.outputs.enabled == 'true'
         run: |
-          echo "ORDER_ID=${{ steps.customer.outputs.order_id }}" >> "$GITHUB_ENV"
-          echo "WORKSPACE_NAME=${{ steps.customer.outputs.workspace }}" >> "$GITHUB_ENV"
-          echo "STAGING_NAME=${{ steps.customer.outputs.workspace }}" >> "$GITHUB_ENV"
-          echo "STAGING_BRANCH=self-service-test/${{ steps.customer.outputs.order_id }}" >> "$GITHUB_ENV"
+          {
+            echo "ORDER_ID=${{ steps.customer.outputs.order_id }}"
+            echo "WORKSPACE_NAME=${{ steps.customer.outputs.workspace }}"
+            echo "STAGING_NAME=${{ steps.customer.outputs.workspace }}"
+            echo "STAGING_BRANCH=self-service-test/${{ steps.customer.outputs.order_id }}"
+          } >> "$GITHUB_ENV"
 
       - name: Verify original workspace and resource ownership
         if: steps.request.outputs.enabled == 'true'
