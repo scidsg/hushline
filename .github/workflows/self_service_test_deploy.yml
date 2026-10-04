@@ -895,3 +895,129 @@ jobs:
           path: owned-diagnostics.json
           retention-days: 1
           if-no-files-found: error
+
+  smtp-inspect:
+    if: >-
+      github.repository == 'scidsg/hushline' &&
+      github.event.pull_request.number == 2447 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
+      github.event.action == 'labeled' && github.event.label.name == 'self-service-smtp-inspect'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: self-service-test-2447
+    permissions:
+      contents: read
+    env:
+      CUSTOM_DOMAIN: hushline.foo
+    steps:
+      - name: Check out signed original-order SMTP safeguards
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify original ownership and read SMTP presence only
+        env:
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        run: python3 -m scripts.self_service_test_smtp inspect de44b913bbc22b3ac75d8e5b114bdc45 > smtp-presence.json
+      - name: Retain only sanitized SMTP presence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: smtp-presence
+          path: smtp-presence.json
+          retention-days: 1
+          if-no-files-found: error
+
+  smtp-configure:
+    if: >-
+      github.repository == 'scidsg/hushline' &&
+      github.event.pull_request.number == 2447 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
+      github.event.action == 'labeled' && github.event.label.name == 'self-service-smtp-configure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: self-service-test-2447
+    permissions:
+      contents: read
+    env:
+      INFRA_REF: 6c3883cf162d64cf338a4d6bdb8048fc861f9ba7
+      CUSTOM_DOMAIN: hushline.foo
+      ORDER_ID: de44b913bbc22b3ac75d8e5b114bdc45
+      WORKSPACE_NAME: hushline-self-service-test-de44b913bbc22b3ac75d8e5b114bdc45
+    steps:
+      - name: Check out signed original-order SMTP safeguards
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify immutable original request and build source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json, subprocess
+          from pathlib import Path
+          pointer = json.loads(Path('.self-service-test.json').read_text())
+          if pointer != {'order_id': 'de44b913bbc22b3ac75d8e5b114bdc45', 'config_ref': '444e8341cff8ae57361d9e8ab643692559045a3a'}:
+              raise SystemExit('Original request pointer changed')
+          result = subprocess.run(['gh', 'api', 'repos/scidsg/hushline/git/ref/heads/self-service-test/de44b913bbc22b3ac75d8e5b114bdc45'], capture_output=True, text=True, check=False)
+          if result.returncode or json.loads(result.stdout)['object']['sha'] != 'e3ddd19c3b189a5a593b84482d83ea603bf055d3':
+              raise SystemExit('Original immutable build source changed')
+          PY
+      - name: Check out pinned test-only Terraform root
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: ${{ env.INFRA_REPOSITORY }}
+          ref: ${{ env.INFRA_REF }}
+          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          persist-credentials: false
+          path: infra
+      - name: Verify original ownership and preserve unrelated runtime settings
+        env:
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          HUSHLINE_SINGLE_TENANT_SMTP_USERNAME: ${{ secrets.HUSHLINE_SINGLE_TENANT_SMTP_USERNAME }}
+          HUSHLINE_SINGLE_TENANT_SMTP_PASSWORD: ${{ secrets.HUSHLINE_SINGLE_TENANT_SMTP_PASSWORD }}
+        run: python3 -m scripts.self_service_test_smtp prepare "$ORDER_ID" infra/hushline-self-service-test/single-tenant-smtp.tfvars.json
+      - name: Plan SMTP-only original-app update
+        id: plan
+        uses: dflook/terraform-plan@d9df4f6c2484e709ba7ffaa16c98a6906f4760cd
+        env:
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        with:
+          path: infra/hushline-self-service-test
+          workspace: ${{ env.WORKSPACE_NAME }}
+          var_file: infra/hushline-self-service-test/single-tenant-smtp.tfvars.json
+          add_github_comment: false
+      - name: Reject every change outside original service SMTP fields
+        env:
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          HUSHLINE_SINGLE_TENANT_SMTP_USERNAME: ${{ secrets.HUSHLINE_SINGLE_TENANT_SMTP_USERNAME }}
+          HUSHLINE_SINGLE_TENANT_SMTP_PASSWORD: ${{ secrets.HUSHLINE_SINGLE_TENANT_SMTP_PASSWORD }}
+        run: python3 -m scripts.self_service_test_smtp guard "$ORDER_ID" "${{ steps.plan.outputs.json_plan_path }}"
+      - name: Apply the exact guarded SMTP configuration plan
+        uses: dflook/terraform-apply@dcda97d729f1843ede471d2fac989cb946f5622a
+        env:
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        with:
+          path: infra/hushline-self-service-test
+          workspace: ${{ env.WORKSPACE_NAME }}
+          plan_path: ${{ steps.plan.outputs.plan_path }}
+          auto_approve: true
+      - name: Verify original ownership and active SMTP configuration
+        env:
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        run: python3 -m scripts.self_service_test_smtp inspect "$ORDER_ID" > smtp-presence.json
+      - name: Verify existing HTTPS health
+        run: curl --fail --silent --show-error --max-time 30 https://hushline.foo/health.json >/dev/null
+      - name: Retain only sanitized SMTP presence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: smtp-presence
+          path: smtp-presence.json
+          retention-days: 1
+          if-no-files-found: error
