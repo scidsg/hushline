@@ -34,7 +34,9 @@ from tests.test_self_service_test_ownership import ORDER, resources
         "unknown-field",
     ],
 )
-def test_guard_rejects_every_non_smtp_change(monkeypatch, tmp_path: Path, problem):
+def test_guard_rejects_every_non_smtp_change(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, problem: str | None
+) -> None:
     state = resources()
     spec = state["digitalocean_app.staging"]["spec"][0]
     spec.update(
@@ -71,7 +73,7 @@ def test_guard_rejects_every_non_smtp_change(monkeypatch, tmp_path: Path, proble
     monkeypatch.setattr(smtp, "approved_smtp", lambda: expected)
     ids = {address: value["id"] for address, value in state.items()}
     monkeypatch.setattr(smtp.ownership, "validate_resources", lambda data, order: ids)
-    plan = {
+    plan: dict = {
         "prior_state": {
             "values": {
                 "root_module": {
@@ -153,7 +155,7 @@ def test_guard_rejects_every_non_smtp_change(monkeypatch, tmp_path: Path, proble
         smtp.guard(path, ORDER)
 
 
-def test_inspection_reports_presence_without_values(monkeypatch):
+def test_inspection_reports_presence_without_values(monkeypatch: pytest.MonkeyPatch) -> None:
     state = resources()
     live_spec = {
         "services": [
@@ -178,8 +180,10 @@ def test_inspection_reports_presence_without_values(monkeypatch):
     assert "private-smtp-value" not in json.dumps(result)
 
 
-def test_smtp_operations_reject_foreign_order_before_cloud_access(monkeypatch):
-    def forbidden(*args):
+def test_smtp_operations_reject_foreign_order_before_cloud_access(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def forbidden(*args: object) -> None:
         pytest.fail("Foreign order reached cloud API")
 
     monkeypatch.setattr(smtp.ownership, "finalize_original", forbidden)
@@ -187,7 +191,7 @@ def test_smtp_operations_reject_foreign_order_before_cloud_access(monkeypatch):
         smtp.original(ORDER)
 
 
-def test_workflow_does_not_reinitialize_or_provision_for_smtp():
+def test_workflow_does_not_reinitialize_or_provision_for_smtp() -> None:
     text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
     job = text.split("  smtp-configure:\n")[1]
     assert "self-service-test-2447" in job
