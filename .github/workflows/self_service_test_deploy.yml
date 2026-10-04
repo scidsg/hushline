@@ -1101,16 +1101,9 @@ jobs:
             echo "STAGING_BRANCH=self-service-test/${{ steps.customer.outputs.order_id }}"
           } >> "$GITHUB_ENV"
 
-      - name: Verify original workspace and resource ownership
-        if: steps.request.outputs.enabled == 'true'
-        env:
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
-        run: python3 request/scripts/self_service_test_ownership.py owned "$ORDER_ID"
-
-      - name: Plan deletion of the owned test resources
-        if: steps.request.outputs.enabled == 'true'
-        id: plan
+      - name: Plan deletion of app and stored data
+        if: steps.customer.outputs.services == 'true'
+        id: plan_services
         uses: dflook/terraform-plan@d9df4f6c2484e709ba7ffaa16c98a6906f4760cd
         env:
           TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
@@ -1118,6 +1111,10 @@ jobs:
           path: infra/${{ env.STAGING_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
           destroy: true
+          target: |
+            digitalocean_app.staging
+            digitalocean_database_cluster.db
+            digitalocean_database_firewall.staging
           add_github_comment: false
           var_file: infra/${{ env.STAGING_TF_PATH }}/self-service-request.tfvars.json
           variables: |
@@ -1131,38 +1128,121 @@ jobs:
             ONION_PUBLIC_KEY_B64 = "unused-during-destroy"
             ONION_SECRET_KEY_B64 = "unused-during-destroy"
 
-      - name: Read latest private cancellation before applying
-        if: steps.request.outputs.enabled == 'true'
+      - name: Read latest private cancellation before services deletion
+        if: steps.customer.outputs.services == 'true'
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
           ref: feat/self-service-test-provisioning-verified
           token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
           persist-credentials: false
-          path: current-cancellation
+          path: current-services-cancellation
 
-      - name: Verify every deletion ID belongs to this order
-        if: steps.request.outputs.enabled == 'true'
+      - name: Verify service deletion ownership
+        if: steps.customer.outputs.services == 'true'
         env:
+          RETIREMENT_PHASE: services
           STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-          PLAN_PATH: ${{ steps.plan.outputs.json_plan_path }}
+          PLAN_PATH: ${{ steps.plan_services.outputs.json_plan_path }}
           STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
         run: |
-          test -n "${{ steps.plan.outputs.plan_path }}"
+          test -n "${{ steps.plan_services.outputs.plan_path }}"
           PYTHONPATH=request python3 request/scripts/self_service_test_retirement.py guard \
             "customer-config/${{ steps.request.outputs.proof_path }}" \
-            "current-cancellation/${{ steps.request.outputs.proof_path }}" "$PLAN_PATH"
+            "current-services-cancellation/${{ steps.request.outputs.proof_path }}" "$PLAN_PATH"
 
-      - name: Apply the exact guarded deletion plan
-        if: steps.request.outputs.enabled == 'true'
+      - name: Apply guarded app and data deletion
+        if: steps.customer.outputs.services == 'true'
         uses: dflook/terraform-apply@dcda97d729f1843ede471d2fac989cb946f5622a
         env:
           TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
         with:
           path: infra/${{ env.STAGING_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
-          plan_path: ${{ steps.plan.outputs.plan_path }}
+          plan_path: ${{ steps.plan_services.outputs.plan_path }}
           auto_approve: true
+
+      - name: Confirm the recorded project is empty
+        if: steps.customer.outputs.project == 'true'
+        env:
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+        run: |
+          PYTHONPATH=request python3 - <<'PY'
+          import os
+          from scripts.self_service_test_retirement import remaining_project
+          remaining_project(os.environ["ORDER_ID"])
+          PY
+
+      - name: Plan deletion of the empty project
+        if: steps.customer.outputs.project == 'true'
+        id: plan_project
+        uses: dflook/terraform-plan@d9df4f6c2484e709ba7ffaa16c98a6906f4760cd
+        env:
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        with:
+          path: infra/${{ env.STAGING_TF_PATH }}
+          workspace: ${{ env.WORKSPACE_NAME }}
+          destroy: true
+          target: digitalocean_project.staging
+          add_github_comment: false
+          var_file: infra/${{ env.STAGING_TF_PATH }}/self-service-request.tfvars.json
+          variables: |
+            DO_TOKEN = "${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}"
+            name = "${{ env.STAGING_NAME }}"
+            branch = "${{ env.STAGING_BRANCH }}"
+            SECRET_KEY = "unused-during-destroy"
+            ENCRYPTION_KEY = "unused-during-destroy"
+            SESSION_FERNET_KEY = "unused-during-destroy"
+            ONION_HOSTNAME = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.onion"
+            ONION_PUBLIC_KEY_B64 = "unused-during-destroy"
+            ONION_SECRET_KEY_B64 = "unused-during-destroy"
+
+      - name: Read latest private cancellation before project deletion
+        if: steps.customer.outputs.project == 'true'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: ${{ env.INFRA_REPOSITORY }}
+          ref: feat/self-service-test-provisioning-verified
+          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          persist-credentials: false
+          path: current-project-cancellation
+
+      - name: Verify empty-project deletion ownership
+        if: steps.customer.outputs.project == 'true'
+        env:
+          RETIREMENT_PHASE: project
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          PLAN_PATH: ${{ steps.plan_project.outputs.json_plan_path }}
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+        run: |
+          test -n "${{ steps.plan_project.outputs.plan_path }}"
+          PYTHONPATH=request python3 request/scripts/self_service_test_retirement.py guard \
+            "customer-config/${{ steps.request.outputs.proof_path }}" \
+            "current-project-cancellation/${{ steps.request.outputs.proof_path }}" "$PLAN_PATH"
+
+      - name: Apply guarded empty-project deletion
+        if: steps.customer.outputs.project == 'true'
+        uses: dflook/terraform-apply@dcda97d729f1843ede471d2fac989cb946f5622a
+        env:
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        with:
+          path: infra/${{ env.STAGING_TF_PATH }}
+          workspace: ${{ env.WORKSPACE_NAME }}
+          plan_path: ${{ steps.plan_project.outputs.plan_path }}
+          auto_approve: true
+
+      - name: Verify all recorded resources are absent
+        if: steps.request.outputs.enabled == 'true'
+        env:
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+        run: |
+          PYTHONPATH=request python3 - <<'PY'
+          import os
+          from scripts.self_service_test_retirement import all_absent
+          all_absent(os.environ["ORDER_ID"])
+          PY
 
       - name: Delete only the verified empty workspace
         if: steps.request.outputs.enabled == 'true'

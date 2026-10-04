@@ -78,8 +78,12 @@ def test_retirement_workflow_has_independent_guards() -> None:
     assert "environment: self-service-test-2447" in job
     assert "self_service_test_retirement.py prepare" in job
     assert "self_service_test_retirement.py guard" in job
-    assert "current-cancellation" in job
-    assert "plan_path: ${{ steps.plan.outputs.plan_path }}" in job
+    assert "current-services-cancellation" in job
+    assert "current-project-cancellation" in job
+    assert "plan_path: ${{ steps.plan_services.outputs.plan_path }}" in job
+    assert "plan_path: ${{ steps.plan_project.outputs.plan_path }}" in job
+    assert "Confirm the recorded project is empty" in job
+    assert "Verify all recorded resources are absent" in job
     assert "admin-claim" not in job
     assert "auto_approve: true" in job
     assert "self_service_test_ownership.py remove" in job

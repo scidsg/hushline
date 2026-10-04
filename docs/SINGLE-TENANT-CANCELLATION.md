@@ -22,10 +22,16 @@ An absent pointer disables every private/cloud step. A present pointer must
 identify the original `hushline.foo` order or the one explicitly authorized
 disposable fixture; the real workflow clock must show that
 the full annual term has ended. Before applying, it rereads the latest private
-cancellation and requires an unchanged record. The saved plan must delete exactly
-the four recorded, currently owned resource IDs, without replacements, imports,
-additional resources, or changes to other workspaces. Workspace removal uses
-safe-delete only after its state is empty. Claim material is not regenerated.
+cancellation and requires an unchanged record. Two saved plans delete only the
+recorded resource IDs: first the app, database, and firewall, then the empty
+project. The project plan is refreshed after the provider confirms the app and
+database are absent and the project contains no resources. This avoids the pinned
+provider attempting to move already deleted resources into its default project.
+Neither plan permits replacements, imports, additional resources, or changes to
+other workspaces. Recovery accepts only the same recorded empty project or an
+empty state with every recorded resource confirmed absent; other partial states
+are blocked. Workspace removal uses safe-delete only after its state is empty and
+all provider resources are confirmed absent. Claim material is not regenerated.
 
 The original instance is never deleted as part of validation. In particular, an old
 test order without annual billing dates must not be assigned an inferred expiry

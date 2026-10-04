@@ -248,7 +248,9 @@ def test_workflow_cannot_sweep_other_instances() -> None:
     assert "number == 2447" in text
     assert "head.ref == 'feat/self-service-test-runner'" in text
     assert "self-service-test" in text
-    assert text.count("plan_path: ${{ steps.plan.outputs.plan_path }}") == 6
+    assert text.count("plan_path: ${{ steps.plan.outputs.plan_path }}") == 5
+    assert "plan_path: ${{ steps.plan_services.outputs.plan_path }}" in text
+    assert "plan_path: ${{ steps.plan_project.outputs.plan_path }}" in text
     assert "terraform-destroy-workspace@" not in text
     assert "force: true" not in text
     assert "removeLabel" not in text
