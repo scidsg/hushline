@@ -864,6 +864,141 @@ jobs:
           STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
         run: python3 request/scripts/self_service_test_ownership.py remove "$ORDER_ID"
 
+  retire:
+    if: >-
+      github.repository == 'scidsg/hushline' &&
+      github.event.pull_request.number == 2447 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
+      github.event.action == 'synchronize'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: self-service-test-2447
+    permissions:
+      contents: write
+    env:
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Check out the customer test request
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ env.PR_HEAD_SHA }}
+          persist-credentials: false
+          path: request
+
+      - name: Validate customer request pointer
+        id: request
+        run: |
+          PYTHONPATH=request python3 request/scripts/self_service_test_retirement.py pointer request/.self-service-retirement.json
+
+      - name: Check out immutable staging infrastructure
+        if: steps.request.outputs.enabled == 'true'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: ${{ env.INFRA_REPOSITORY }}
+          ref: 659c4550a936b91f0096247185b35a4b32bf7423
+          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          persist-credentials: false
+          path: infra
+
+      - name: Check out immutable private customer config
+        if: steps.request.outputs.enabled == 'true'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: ${{ env.INFRA_REPOSITORY }}
+          ref: ${{ steps.request.outputs.config_ref }}
+          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          persist-credentials: false
+          path: customer-config
+
+      - name: Verify the cancelled annual term has expired
+        if: steps.request.outputs.enabled == 'true'
+        id: customer
+        env:
+          PROOF_PATH: ${{ steps.request.outputs.proof_path }}
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+        run: |
+          PYTHONPATH=request python3 request/scripts/self_service_test_retirement.py prepare \
+            "customer-config/$PROOF_PATH" \
+            "infra/${STAGING_TF_PATH}/self-service-request.tfvars.json"
+      - name: Assign verified order identity
+        if: steps.request.outputs.enabled == 'true'
+        run: |
+          echo "ORDER_ID=${{ steps.customer.outputs.order_id }}" >> "$GITHUB_ENV"
+          echo "WORKSPACE_NAME=${{ steps.customer.outputs.workspace }}" >> "$GITHUB_ENV"
+          echo "STAGING_NAME=${{ steps.customer.outputs.workspace }}" >> "$GITHUB_ENV"
+          echo "STAGING_BRANCH=self-service-test/${{ steps.customer.outputs.order_id }}" >> "$GITHUB_ENV"
+
+      - name: Verify original workspace and resource ownership
+        if: steps.request.outputs.enabled == 'true'
+        env:
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+        run: python3 request/scripts/self_service_test_ownership.py owned "$ORDER_ID"
+
+      - name: Plan deletion of the owned test resources
+        if: steps.request.outputs.enabled == 'true'
+        id: plan
+        uses: dflook/terraform-plan@d9df4f6c2484e709ba7ffaa16c98a6906f4760cd
+        env:
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        with:
+          path: infra/${{ env.STAGING_TF_PATH }}
+          workspace: ${{ env.WORKSPACE_NAME }}
+          destroy: true
+          add_github_comment: false
+          var_file: infra/${{ env.STAGING_TF_PATH }}/self-service-request.tfvars.json
+          variables: |
+            DO_TOKEN = "${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}"
+            name = "${{ env.STAGING_NAME }}"
+            branch = "${{ env.STAGING_BRANCH }}"
+            SECRET_KEY = "unused-during-destroy"
+            ENCRYPTION_KEY = "unused-during-destroy"
+            SESSION_FERNET_KEY = "unused-during-destroy"
+            ONION_HOSTNAME = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.onion"
+            ONION_PUBLIC_KEY_B64 = "unused-during-destroy"
+            ONION_SECRET_KEY_B64 = "unused-during-destroy"
+
+      - name: Read latest private cancellation before applying
+        if: steps.request.outputs.enabled == 'true'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: ${{ env.INFRA_REPOSITORY }}
+          ref: feat/self-service-test-provisioning-verified
+          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          persist-credentials: false
+          path: current-cancellation
+
+      - name: Verify every deletion ID belongs to this order
+        if: steps.request.outputs.enabled == 'true'
+        env:
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          PLAN_PATH: ${{ steps.plan.outputs.json_plan_path }}
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+        run: |
+          test -n "${{ steps.plan.outputs.plan_path }}"
+          PYTHONPATH=request python3 request/scripts/self_service_test_retirement.py guard \
+            "customer-config/${{ steps.request.outputs.proof_path }}" \
+            "current-cancellation/${{ steps.request.outputs.proof_path }}" "$PLAN_PATH"
+
+      - name: Apply the exact guarded deletion plan
+        if: steps.request.outputs.enabled == 'true'
+        uses: dflook/terraform-apply@dcda97d729f1843ede471d2fac989cb946f5622a
+        env:
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        with:
+          path: infra/${{ env.STAGING_TF_PATH }}
+          workspace: ${{ env.WORKSPACE_NAME }}
+          plan_path: ${{ steps.plan.outputs.plan_path }}
+          auto_approve: true
+
+      - name: Delete only the verified empty workspace
+        if: steps.request.outputs.enabled == 'true'
+        env:
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        run: python3 request/scripts/self_service_test_ownership.py remove "$ORDER_ID"
+
   inspect:
     if: >-
       github.repository == 'scidsg/hushline' &&

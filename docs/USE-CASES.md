@@ -291,3 +291,14 @@ refuse every existing workspace. An incomplete apply or ownership mismatch stops
 cleanup for operator review;
 there is no unguarded scheduled or HCP automatic destruction. Remove the
 `self-service-test` label on the controller PR to request guarded cleanup.
+
+### Annual Single Tenant cancellation
+
+A Single Tenant owner can cancel renewal while retaining service through the
+prepaid annual period. The app shows the paid-through UTC date and asks the owner
+to confirm permanent deletion of the instance and stored messages at that date.
+There is no grace period. Cancellation can be withdrawn before expiry. Teardown
+requires an authoritative annual billing record and exact tenant resource
+ownership; an absent record or failed safeguard blocks deletion. The current
+controller uses simulated payment terms and is restricted to the disposable test
+instance; real checkout and production retirement policies remain separate work.
