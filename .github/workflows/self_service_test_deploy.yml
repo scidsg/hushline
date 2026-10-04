@@ -864,6 +864,170 @@ jobs:
           STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
         run: python3 request/scripts/self_service_test_ownership.py remove "$ORDER_ID"
 
+  fixture-create:
+    if: >-
+      github.repository == 'scidsg/hushline' &&
+      github.event.pull_request.number == 2447 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
+      github.event.action == 'labeled' && github.event.label.name == 'self-service-teardown-fixture'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: self-service-test-2447
+    permissions:
+      contents: write
+    env:
+      ORDER_ID: d9a565c4b17aca835b1f23a0b69b482b
+      WORKSPACE_NAME: hushline-self-service-test-d9a565c4b17aca835b1f23a0b69b482b
+      STAGING_BRANCH: self-service-test/d9a565c4b17aca835b1f23a0b69b482b
+    steps:
+      - name: Check out the signed fixture guards
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          path: request
+
+      - name: Check out the immutable test-only Terraform root
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: ${{ env.INFRA_REPOSITORY }}
+          ref: 659c4550a936b91f0096247185b35a4b32bf7423
+          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          persist-credentials: false
+          path: infra
+
+      - name: Preserve original state and refuse existing fixture resources
+        env:
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+        run: |
+          PYTHONPATH=request python3 - <<'PY'
+          from scripts import self_service_test_ownership as ownership
+          from scripts.self_service_teardown_fixture import ORDER, preserve_original, check_original
+          preserve_original()
+          check_original()
+          if ownership.workspace(ORDER) is not None:
+              raise ValueError("The fixture cannot adopt an existing workspace")
+          ownership.preflight(ORDER, "")
+          PY
+
+      - name: Create only the fresh fixture build branch
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            // Never overwrite an existing branch, even after the fixture is deleted.
+            await github.rest.git.createRef({owner: context.repo.owner, repo: context.repo.repo,
+              ref: `refs/heads/${process.env.STAGING_BRANCH}`,
+              sha: 'e3ddd19c3b189a5a593b84482d83ea603bf055d3'});
+
+      - name: Create the fresh isolated fixture workspace
+        env:
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        run: python3 request/scripts/self_service_test_ownership.py create "$ORDER_ID"
+
+      - name: Install Tor
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends tor
+
+      - name: Generate disposable onion identity
+        id: onion
+        run: |
+          set -euo pipefail
+          runtime_dir="$(mktemp -d)"
+          data_dir="${runtime_dir}/data"
+          service_dir="${runtime_dir}/hidden-service"
+          mkdir -p "$data_dir" "$service_dir"
+          chmod 700 "$runtime_dir" "$data_dir" "$service_dir"
+          cleanup() {
+            if [ -f "${runtime_dir}/tor.pid" ]; then kill "$(cat "${runtime_dir}/tor.pid")" 2>/dev/null || true; fi
+            rm -rf "$runtime_dir"
+          }
+          trap cleanup EXIT
+          tor --RunAsDaemon 1 --DataDirectory "$data_dir" --PidFile "${runtime_dir}/tor.pid" \
+            --SocksPort 0 --HiddenServiceDir "$service_dir" \
+            --HiddenServicePort '80 127.0.0.1:9' --Log "notice file ${runtime_dir}/tor.log"
+          for _ in $(seq 1 60); do
+            if [ -s "${service_dir}/hostname" ] && [ -s "${service_dir}/hs_ed25519_public_key" ] && [ -s "${service_dir}/hs_ed25519_secret_key" ]; then break; fi
+            sleep 1
+          done
+          hostname="$(tr -d '\r\n' < "${service_dir}/hostname")"
+          public_key="$(base64 < "${service_dir}/hs_ed25519_public_key" | tr -d '\r\n')"
+          secret_key="$(base64 < "${service_dir}/hs_ed25519_secret_key" | tr -d '\r\n')"
+          if [ -z "$hostname" ] || [ -z "$public_key" ] || [ -z "$secret_key" ]; then exit 1; fi
+          echo "::add-mask::$public_key"
+          echo "::add-mask::$secret_key"
+          printf 'hostname=%s\npublic_key=%s\nsecret_key=%s\n' "$hostname" "$public_key" "$secret_key" >> "$GITHUB_OUTPUT"
+
+      - name: Generate inputs belonging only to the fresh fixture
+        env:
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          ONION_HOSTNAME: ${{ steps.onion.outputs.hostname }}
+          ONION_PUBLIC_KEY_B64: ${{ steps.onion.outputs.public_key }}
+          ONION_SECRET_KEY_B64: ${{ steps.onion.outputs.secret_key }}
+        run: |
+          PYTHONPATH=request python3 - <<'PY'
+          from pathlib import Path
+          from scripts.self_service_teardown_fixture import prepare
+          prepare(Path("infra/hushline-self-service-test/self-service-request.tfvars.json"))
+          PY
+
+      - name: Plan only four new fixture resources
+        id: plan
+        uses: dflook/terraform-plan@d9df4f6c2484e709ba7ffaa16c98a6906f4760cd
+        env:
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        with:
+          path: infra/${{ env.STAGING_TF_PATH }}
+          workspace: ${{ env.WORKSPACE_NAME }}
+          var_file: infra/${{ env.STAGING_TF_PATH }}/self-service-request.tfvars.json
+          add_github_comment: false
+
+      - name: Reject any change outside the fresh fixture
+        env:
+          PLAN_PATH: ${{ steps.plan.outputs.json_plan_path }}
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+        run: |
+          test -n "${{ steps.plan.outputs.plan_path }}"
+          PYTHONPATH=request python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from scripts.self_service_teardown_fixture import guard_create
+          guard_create(Path(os.environ["PLAN_PATH"]))
+          PY
+
+      - name: Apply the exact creation plan
+        uses: dflook/terraform-apply@dcda97d729f1843ede471d2fac989cb946f5622a
+        env:
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        with:
+          path: infra/${{ env.STAGING_TF_PATH }}
+          workspace: ${{ env.WORKSPACE_NAME }}
+          plan_path: ${{ steps.plan.outputs.plan_path }}
+          auto_approve: true
+
+      - name: Record fixture IDs and verify original state unchanged
+        env:
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+        run: |
+          PYTHONPATH=request python3 - <<'PY'
+          from pathlib import Path
+          from scripts.self_service_teardown_fixture import created
+          created(Path("fixture-status.json"))
+          PY
+
+      - name: Retain only sanitized fixture inventory
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: teardown-fixture-status
+          path: fixture-status.json
+          retention-days: 1
+          if-no-files-found: error
+
   retire:
     if: >-
       github.repository == 'scidsg/hushline' &&
@@ -885,11 +1049,16 @@ jobs:
           ref: ${{ env.PR_HEAD_SHA }}
           persist-credentials: false
           path: request
+          fetch-depth: 2
 
       - name: Validate customer request pointer
         id: request
         run: |
-          PYTHONPATH=request python3 request/scripts/self_service_test_retirement.py pointer request/.self-service-retirement.json
+          if git -C request diff --quiet HEAD^ HEAD -- .self-service-retirement.json; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            PYTHONPATH=request python3 request/scripts/self_service_test_retirement.py pointer request/.self-service-retirement.json
+          fi
 
       - name: Check out immutable staging infrastructure
         if: steps.request.outputs.enabled == 'true'
@@ -1000,6 +1169,17 @@ jobs:
         env:
           STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
         run: python3 request/scripts/self_service_test_ownership.py remove "$ORDER_ID"
+
+      - name: Verify fixture absence and protected original configuration
+        if: steps.request.outputs.enabled == 'true' && steps.customer.outputs.order_id == 'd9a565c4b17aca835b1f23a0b69b482b'
+        env:
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+        run: |
+          PYTHONPATH=request python3 - <<'PY'
+          from scripts.self_service_teardown_fixture import deleted
+          deleted()
+          PY
 
   inspect:
     if: >-

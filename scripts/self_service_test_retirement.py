@@ -9,6 +9,7 @@ import re
 from datetime import UTC, datetime
 from pathlib import Path
 
+from scripts import self_service_teardown_fixture as fixture
 from scripts import self_service_test_ownership as ownership
 from scripts.self_service_test_request import emit
 
@@ -33,8 +34,9 @@ def validate(data: dict, current: datetime) -> None:
         "cancelled_at",
     }:
         raise ValueError("Invalid annual cancellation proof")
-    if data["order_id"] != ownership.RECOVERY_ORDER or data["custom_domain"] != "hushline.foo":
-        raise ValueError("Retirement is restricted to the original test order")
+    authorized = {ownership.RECOVERY_ORDER: "hushline.foo", fixture.ORDER: ""}
+    if data["order_id"] not in authorized or data["custom_domain"] != authorized[data["order_id"]]:
+        raise ValueError("Retirement is restricted to explicitly authorized test orders")
     if (
         data["payment_mode"] != "simulated"
         or not isinstance(data["receipt"], str)
@@ -55,11 +57,15 @@ def prepare(path: Path, destination: Path) -> None:
     data = json.loads(path.read_text())
     validate(data, datetime.now(UTC))
     ids = ownership.owned(data["order_id"])
-    if ids["digitalocean_app.staging"] != ownership.RECOVERY_APP or any(
+    if data["order_id"] == fixture.ORDER:
+        fixture.isolated(ids)
+        fixture.preserve_original()
+        Path(".retirement-fixture-ids.json").write_text(json.dumps(ids))
+    elif ids["digitalocean_app.staging"] != ownership.RECOVERY_APP or any(
         ids[address] != value for address, value in ownership.RECOVERY_IDS.items()
     ):
         raise ValueError("Original test resource identity changed")
-    destination.write_text(json.dumps({"custom_domain": "hushline.foo"}))
+    destination.write_text(json.dumps({"custom_domain": data["custom_domain"]}))
     destination.chmod(0o600)
     name, _ = ownership.identity(data["order_id"])
     emit("order_id", data["order_id"])
@@ -72,7 +78,10 @@ def guard(path: Path, latest: Path, plan: Path) -> None:
         raise ValueError("Annual cancellation changed after planning")
     validate(data, datetime.now(UTC))
     ids = ownership.owned(data["order_id"])
-    if ids["digitalocean_app.staging"] != ownership.RECOVERY_APP:
+    if data["order_id"] == fixture.ORDER:
+        fixture.isolated(ids)
+        fixture.check_original()
+    elif ids["digitalocean_app.staging"] != ownership.RECOVERY_APP:
         raise ValueError("Original test app changed")
     ownership.guard_destroy(plan, data["order_id"], ids)
 
@@ -82,8 +91,11 @@ def pointer(path: Path) -> None:
         emit("enabled", "false")
         return
     data = json.loads(path.read_text())
-    if set(data) != {"order_id", "config_ref"} or data["order_id"] != ownership.RECOVERY_ORDER:
-        raise ValueError("Retirement pointer must identify the original test order")
+    if set(data) != {"order_id", "config_ref"} or data["order_id"] not in {
+        ownership.RECOVERY_ORDER,
+        fixture.ORDER,
+    }:
+        raise ValueError("Retirement pointer must identify an explicitly authorized test order")
     if not re.fullmatch(r"[a-f0-9]{40}", data["config_ref"]):
         raise ValueError("An immutable cancellation commit is required")
     emit("enabled", "true")

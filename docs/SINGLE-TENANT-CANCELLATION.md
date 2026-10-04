@@ -15,17 +15,19 @@ record and an immutable public pointer. Uncancelled terms are never submitted.
 The worker resumes monitoring after restart; it does not blindly replay an
 uncertain or partially completed destructive operation.
 
-The `retire` job is separate from PR-close/label-removal cleanup. It runs without
+The `retire` job is separate from PR-close/label-removal cleanup and only responds
+to a changed retirement pointer, so unrelated commits cannot replay a deletion. It runs without
 customer deployment review in the existing `self-service-test-2447` environment.
 An absent pointer disables every private/cloud step. A present pointer must
-identify the original `hushline.foo` order; the real workflow clock must show that
+identify the original `hushline.foo` order or the one explicitly authorized
+disposable fixture; the real workflow clock must show that
 the full annual term has ended. Before applying, it rereads the latest private
 cancellation and requires an unchanged record. The saved plan must delete exactly
 the four recorded, currently owned resource IDs, without replacements, imports,
 additional resources, or changes to other workspaces. Workspace removal uses
 safe-delete only after its state is empty. Claim material is not regenerated.
 
-No live teardown is part of validation for this change. In particular, an old
+The original instance is never deleted as part of validation. In particular, an old
 test order without annual billing dates must not be assigned an inferred expiry
 from a deployment timestamp. Its test-only annual term can be explicitly created
 starting now, clearly marked simulated, to exercise cancellation without early
@@ -42,9 +44,15 @@ The controller's demo registration/session is not production billing identity.
 This test job cannot retire production or another tenant. Existing production
 client roots retain `prevent_destroy` and their shared mandatory policy. A future
 production lifecycle needs its own scoped authorization and policy design; this
-change does not weaken or detach any existing policy. Proving a real destructive
-run requires an explicitly disposable fixture, not the currently running test
-instance. The controller must stay running for its 60-second expiry scan; it
+change does not weaken or detach any existing policy. The user explicitly authorized creating and deleting one isolated fixture
+(`d9a565c4b17aca835b1f23a0b69b482b`) in HushLineDev. It has a synthetic historical
+annual term in a separate controller database; it cannot claim a customer domain
+or adopt an existing workspace, resource, branch, project, or SMTP identity. Its
+receipt cannot be bound to a customer order. The create-only plan guard and normal
+annual-expiry delete-only guard both apply. Original state and app-spec fingerprints
+are compared before/after each operation. The real workflow clock is never
+overridden. Provider absence is verified after deletion. This authorization does
+not permit deleting the original test instance. The controller must stay running for its 60-second expiry scan; it
 resumes outstanding work on restart. Provider/workflow time adds to the interval
 between the paid-period boundary and completed deletion.
 
@@ -56,4 +64,6 @@ CSRF/CSP, once-only dispatch, restart monitoring, failed teardown containment,
 changed private cancellation, and an absent retirement pointer. Existing
 ownership tests cover foreign resources, replacements, partial plans, and
 nonempty workspace deletion rejection. Local fixtures mock cloud operations;
-never pass a test clock to a real teardown workflow.
+never pass a test clock to a real teardown workflow. The synthetic fixture receipt
+is confined to the newly authorized disposable fixture and never backdates an
+existing customer order.
