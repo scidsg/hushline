@@ -1397,7 +1397,8 @@ def test_onion_verification_uses_its_own_tor_listener() -> None:
     ]:
         steps = text.split(f"  {job}:\n")[1].split(f"  {next_job}:\n")[0]
         verification = steps.split("- name: Verify disposable onion endpoint")[1]
-        assert "tor -f /dev/null" in verification
+        assert 'touch "${tor_runtime}/torrc"' in verification
+        assert 'tor -f "${tor_runtime}/torrc"' in verification
         assert "--SocksPort 19050" in verification
         assert "--socks5-hostname 127.0.0.1:19050" in verification
         assert "127.0.0.1:9050" not in verification
