@@ -248,7 +248,7 @@ def test_workflow_cannot_sweep_other_instances() -> None:
     assert "number == 2447" in text
     assert "head.ref == 'feat/self-service-test-runner'" in text
     assert "self-service-test" in text
-    assert text.count("plan_path: ${{ steps.plan.outputs.plan_path }}") == 2
+    assert text.count("plan_path: ${{ steps.plan.outputs.plan_path }}") == 3
     assert "terraform-destroy-workspace@" not in text
     assert "force: true" not in text
     assert "removeLabel" not in text
@@ -1195,44 +1195,13 @@ def test_finalization_rejects_other_order_before_cloud_requests(
 
 def test_finalization_workflow_cannot_redeploy_or_regenerate_claim() -> None:
     text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
-    finalization = text.split("  finalize:\n")[1].split("  renew-claim:\n")[0]
+    finalization = text.split("  finalize:\n")[1].split("  repair-claim:\n")[0]
     assert "terraform" not in finalization
     assert "prepare_self_service_test" not in finalization
     assert "run_id: 37157273469" in finalization
     assert "9a35277295e1384b6e90b5f586248b0c98b6e481" in finalization
     assert "finalize-original de44b913bbc22b3ac75d8e5b114bdc45" in finalization
     assert "self-service-claim" in finalization
-
-
-@pytest.mark.parametrize("bad_binding", [True, False])
-def test_claim_renewal_checks_original_database_before_console(
-    monkeypatch: pytest.MonkeyPatch,
-    bad_binding: bool,
-) -> None:
-    finalized = Mock()
-    monkeypatch.setattr(ownership, "finalize_original", finalized)
-    api = Mock(
-        return_value={
-            "database": {
-                "id": ownership.RECOVERY_IDS["digitalocean_database_cluster.db"],
-                "name": "foreign"
-                if bad_binding
-                else ownership.identity(ownership.RECOVERY_ORDER)[0],
-                "connection": {"host": "test.db.ondigitalocean.com"},
-            }
-        }
-    )
-    monkeypatch.setattr(ownership, "do", api)
-    if bad_binding:
-        with pytest.raises(ValueError, match="original database"):
-            ownership.renew_original_claim(ownership.RECOVERY_ORDER)
-        assert api.call_count == 1
-    else:
-        # A malformed exec response is rejected without opening a console.
-        with pytest.raises(KeyError):
-            ownership.renew_original_claim(ownership.RECOVERY_ORDER)
-        assert api.call_count == 2
-    finalized.assert_called_once_with(ownership.RECOVERY_ORDER)
 
 
 def test_claim_renewal_payload_never_creates_or_prints_invitation() -> None:
@@ -1304,34 +1273,103 @@ def test_remote_claim_renewal_preserves_users_and_original_code(
     assert code not in capsys.readouterr().out
 
 
-def test_console_renewal_handles_split_marker_and_never_logs_transcript(
+@pytest.mark.parametrize(
+    "problem",
+    [
+        None,
+        "replace",
+        "foreign-id",
+        "database",
+        "secret",
+        "command",
+        "source",
+        "domain",
+        "extra-resource",
+        "repeat",
+    ],
+)
+def test_claim_plan_only_updates_original_initializer(
     monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture,
+    tmp_path: Path,
+    problem: str | None,
 ) -> None:
-    monkeypatch.setattr(ownership, "finalize_original", Mock())
-    api = Mock(
-        side_effect=[
-            {
-                "database": {
-                    "id": ownership.RECOVERY_IDS["digitalocean_database_cluster.db"],
-                    "name": ownership.identity(ownership.RECOVERY_ORDER)[0],
-                    "connection": {"host": "test.db.ondigitalocean.com"},
-                }
-            },
-            {"url": "wss://console.digitalocean.com/socket?token=private-example"},
-        ]
+    state = resources()
+    state["digitalocean_database_cluster.db"]["host"] = "test.db.ondigitalocean.com"
+    spec = state["digitalocean_app.staging"]["spec"][0]
+    old = (
+        "sh -c 'poetry run flask db upgrade && "
+        "poetry run python -m scripts.prepare_self_service_test'"
     )
-    monkeypatch.setattr(ownership, "do", api)
-    console = Mock()
-    console.recv.side_effect = [
-        json.dumps({"data": "private-transcript HL_CLAIM_RE"}),
-        json.dumps({"data": "NEWED"}),
-    ]
-    connection = Mock(return_value=console)
-    monkeypatch.setitem(sys.modules, "websocket", SimpleNamespace(create_connection=connection))
-    ownership.renew_original_claim(ownership.RECOVERY_ORDER)
-    console.close.assert_called_once()
-    output = capsys.readouterr().out
-    assert "renewed" in output
-    assert "private" not in output
-    assert "token" not in output
+    spec.update(
+        job=[{"name": "initialize-instance", "kind": "PRE_DEPLOY", "run_command": old, "env": []}],
+        service=[
+            {
+                "name": "app",
+                "git": [{"branch": "original"}],
+                "env": [{"key": "SECRET_KEY", "type": "SECRET", "value": "original-secret"}],
+            }
+        ],
+        domain=[{"name": "hushline.foo"}],
+    )
+    ids = {address: value["id"] for address, value in state.items()}
+    plan: dict = {
+        "resource_changes": [],
+        "prior_state": {
+            "values": {
+                "root_module": {
+                    "resources": [
+                        {"address": address, "values": value} for address, value in state.items()
+                    ]
+                }
+            }
+        },
+    }
+    for address, value in state.items():
+        plan["resource_changes"].append(
+            {
+                "address": address,
+                "change": {
+                    "actions": ["update"] if address == "digitalocean_app.staging" else ["no-op"],
+                    "before": copy.deepcopy(value),
+                    "after": copy.deepcopy(value),
+                },
+            }
+        )
+    app = next(
+        item for item in plan["resource_changes"] if item["address"] == "digitalocean_app.staging"
+    )["change"]
+    after = app["after"]["spec"][0]
+    after["job"][0]["run_command"] = ownership.claim_repair_command("test.db.ondigitalocean.com")
+    if problem == "replace":
+        app["actions"] = ["delete", "create"]
+    elif problem == "foreign-id":
+        app["after"]["id"] = "foreign"
+    elif problem == "database":
+        next(
+            item
+            for item in plan["resource_changes"]
+            if item["address"] == "digitalocean_database_cluster.db"
+        )["change"]["actions"] = ["update"]
+    elif problem == "secret":
+        after["service"][0]["env"][0]["value"] = "rotated"
+    elif problem == "command":
+        after["job"][0]["run_command"] = "foreign command"
+    elif problem == "source":
+        after["service"][0]["git"][0]["branch"] = "foreign"
+    elif problem == "domain":
+        after["domain"][0]["name"] = "production.example"
+    elif problem == "extra-resource":
+        plan["resource_changes"].append({"address": "foreign"})
+    elif problem == "repeat":
+        app["before"]["spec"][0]["job"][0]["run_command"] = after["job"][0]["run_command"]
+    monkeypatch.setattr(ownership, "finalize_original", Mock())
+    monkeypatch.setattr(ownership, "workspace", lambda order: {"id": "ws-test"})
+    monkeypatch.setattr(ownership, "read_state", lambda data: state)
+    monkeypatch.setattr(ownership, "validate_resources", lambda data, order: ids)
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(plan))
+    if problem:
+        with pytest.raises(ValueError, match="[Cc]laim|[Oo]riginal"):
+            ownership.guard_claim_repair(path, ORDER)
+    else:
+        ownership.guard_claim_repair(path, ORDER)

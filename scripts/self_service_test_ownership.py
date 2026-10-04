@@ -10,7 +10,6 @@ import json
 import os
 import re
 import subprocess
-import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -895,66 +894,151 @@ except Exception:
 """
 
 
-def renew_original_claim(order: str) -> None:
-    """Renew only the original unused claim; never create users or invitations."""
-    finalize_original(order)
-    database = do(f"/databases/{RECOVERY_IDS['digitalocean_database_cluster.db']}")["database"]
-    if (
-        database.get("id") != RECOVERY_IDS["digitalocean_database_cluster.db"]
-        or database.get("name") != identity(order)[0]
-    ):
-        raise ValueError("Claim renewal requires the original database binding")
-    hostname = database.get("connection", {}).get("host", "")
-    if not isinstance(hostname, str) or not re.fullmatch(
-        r"[a-z0-9.-]+\.db\.ondigitalocean\.com", hostname
-    ):
-        raise ValueError("Original database hostname is invalid")
-    response = do(f"/apps/{RECOVERY_APP}/components/app/exec")
-    url = urllib.parse.urlsplit(response["url"])
-    if (
-        url.scheme != "wss"
-        or not url.hostname
-        or url.username
-        or url.password
-        or url.fragment
-        or not urllib.parse.parse_qs(url.query).get("token")
-    ):
-        raise ValueError("Invalid original-app console URL")
-    # The scoped authenticated app API issues this URL. Never forward DO credentials
-    # to the console or print its token, transcript, environment, or SQL exceptions.
-    import websocket  # — only the guarded recovery job needs this dependency
-
-    payload = RENEW_CLAIM_SCRIPT.replace("__ORIGINAL_DATABASE_HOST__", hostname)
-    encoded = base64.b64encode(payload.encode()).decode()
+def claim_repair_command(hostname: str) -> str:
+    encoded = base64.b64encode(
+        RENEW_CLAIM_SCRIPT.replace("__ORIGINAL_DATABASE_HOST__", hostname).encode()
+    ).decode()
     command = (
-        "stty -echo; poetry run python -c \"exec(__import__('base64').b64decode('"
+        "poetry run flask db upgrade && poetry run python -m scripts.prepare_self_service_test"
+        + " && poetry run python -c \"exec(__import__('base64').b64decode('"
         + encoded
-        + "'))\"; exit\n"
+        + "'))\""
     )
-    try:
-        console = websocket.create_connection(response["url"], timeout=15, redirect_limit=0)
-        try:
-            console.send(json.dumps({"op": "stdin", "data": command}))
-            deadline = time.monotonic() + 180
-            data = ""
-            while time.monotonic() < deadline:
-                message = json.loads(console.recv())
-                data = (data + message.get("data", ""))[-4096:]
-                if "HL_CLAIM_RENEWED" in data:
-                    print("Original unused account claim renewed; infrastructure unchanged.")
-                    return
-                if "HL_CLAIM_ALREADY_USED" in data:
-                    print("Original account already claimed; no invitation changed.")
-                    return
-                if "HL_CLAIM_RENEWAL_FAILED" in data:
-                    raise ValueError("Original account claim renewal failed safely")
-            raise ValueError("Original account claim renewal timed out")
-        finally:
-            console.close()
-    except Exception:
-        raise ValueError(
-            "Original account claim could not be renewed; no credentials disclosed"
-        ) from None
+    return "sh -c " + json.dumps(command)
+
+
+def prepare_claim_repair(order: str, destination: Path) -> None:
+    finalize_original(order)
+    data = workspace(order)
+    if data is None:
+        raise ValueError("Original workspace is missing")
+    state = read_state(data)
+    spec = state["digitalocean_app.staging"]["spec"][0]
+    service = next(item for item in spec["service"] if item["name"] == "app")
+    worker = next(item for item in spec["worker"] if item["name"] == "onion-service")
+    environment = {item["key"]: item["value"] for item in service["env"] + worker["env"]}
+    values = {
+        key: environment[key]
+        for key in [
+            "SECRET_KEY",
+            "ENCRYPTION_KEY",
+            "SESSION_FERNET_KEY",
+            "ONION_HOSTNAME",
+            "ONION_PUBLIC_KEY_B64",
+            "ONION_SECRET_KEY_B64",
+        ]
+    }
+    if not re.fullmatch(r"[a-f0-9]{64}", values["SECRET_KEY"]):
+        raise ValueError("Original application secret is unavailable; rotation forbidden")
+    for key in ["ENCRYPTION_KEY", "SESSION_FERNET_KEY"]:
+        if len(base64.urlsafe_b64decode(values[key])) != 32:  # noqa: PLR2004
+            raise ValueError("Original encryption key is unavailable; rotation forbidden")
+    if not re.fullmatch(r"[A-Za-z0-9_-]{22}", environment["SELF_SERVICE_TEST_CLAIM_CODE"]):
+        raise ValueError("Original invitation is unavailable; regeneration forbidden")
+    for key in ["ONION_PUBLIC_KEY_B64", "ONION_SECRET_KEY_B64"]:
+        if not base64.b64decode(values[key], validate=True):
+            raise ValueError("Original onion identity is unavailable; regeneration forbidden")
+    values.update(
+        {
+            "DO_TOKEN": os.environ["STAGING_DO_TOKEN"],
+            "name": identity(order)[0],
+            "branch": f"self-service-test/{order}",
+            "custom_domain": "hushline.foo",
+            "self_service_claim_code": environment["SELF_SERVICE_TEST_CLAIM_CODE"],
+            "repair_original_claim": True,
+        }
+    )
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(json.dumps(values), encoding="utf-8")
+    destination.chmod(0o600)
+
+
+def guard_claim_repair(path: Path, order: str) -> None:
+    finalize_original(order)
+    data = workspace(order)
+    if data is None:
+        raise ValueError("Original workspace is missing")
+    state = read_state(data)
+    ids = validate_resources(state, order)
+    plan = json.loads(path.read_text())
+    changes = plan.get("resource_changes", [])
+    if len(changes) != len(ADDRESSES) or {item["address"] for item in changes} != ADDRESSES:
+        raise ValueError("Claim repair escaped the original resource set")
+    prior = plan.get("prior_state", {}).get("values", {}).get("root_module", {})
+    if (
+        prior.get("child_modules")
+        or {item.get("address") for item in prior.get("resources", [])} != ADDRESSES
+    ):
+        raise ValueError("Claim repair prior state escaped the original workspace")
+    for item in prior["resources"]:
+        if item.get("values", {}).get("id") != ids[item["address"]]:
+            raise ValueError("Claim repair prior resource ID changed")
+    for drift in plan.get("resource_drift", []):
+        change = drift.get("change", {})
+        address = drift.get("address")
+        if (
+            address not in ids
+            or change.get("actions") != ["update"]
+            or change.get("before", {}).get("id") != ids[address]
+            or change.get("after", {}).get("id") != ids[address]
+            or not app_refresh_equivalent(change["before"], change["after"])
+        ):
+            raise ValueError("Claim repair refresh escaped original ownership")
+    for item in changes:
+        address = item["address"]
+        change = item["change"]
+        before, after = change.get("before") or {}, change.get("after") or {}
+        if (
+            item.get("module_address")
+            or item.get("previous_address")
+            or change.get("importing")
+            or before.get("id") != ids[address]
+            or after.get("id") != ids[address]
+        ):
+            raise ValueError("Claim repair cannot import, move or replace resources")
+        if address != "digitalocean_app.staging":
+            if change.get("actions") != ["no-op"]:
+                raise ValueError("Claim repair cannot change project, database or firewall")
+            continue
+        if change.get("actions") != ["update"]:
+            raise ValueError("Claim repair requires an in-place original-app update")
+        jobs = after.get("spec", [{}])[0].get("job", [])
+        if (
+            len(jobs) != 1
+            or jobs[0].get("name") != "initialize-instance"
+            or jobs[0].get("run_command")
+            != claim_repair_command(state["digitalocean_database_cluster.db"]["host"])
+        ):
+            raise ValueError("Claim repair initializer command is not the exact authorized payload")
+        original_jobs = before.get("spec", [{}])[0].get("job", [])
+        expected = (
+            "sh -c 'poetry run flask db upgrade && "
+            "poetry run python -m scripts.prepare_self_service_test'"
+        )
+        if len(original_jobs) != 1 or original_jobs[0].get("run_command") != expected:
+            raise ValueError("Original initializer changed; claim repair cannot repeat")
+        adjusted = json.loads(json.dumps(after))
+        adjusted["spec"][0]["job"][0]["run_command"] = expected
+        if not app_refresh_equivalent(before, adjusted):
+            raise ValueError("Claim repair changed something beyond the initializer command")
+        # Terraform may refresh encrypted API representations. Planned runtime
+        # secrets must exactly match the original owned state's values.
+        original_spec = state[address]["spec"][0]
+        for component in ["service", "worker", "job"]:
+            original = {entry["name"]: entry for entry in original_spec.get(component, [])}
+            for entry in after["spec"][0].get(component, []):
+                secrets = {
+                    env["key"]: env["value"]
+                    for env in entry.get("env", [])
+                    if env["type"] == "SECRET"
+                }
+                original_secrets = {
+                    env["key"]: env["value"]
+                    for env in original[entry["name"]].get("env", [])
+                    if env["type"] == "SECRET"
+                }
+                if secrets != original_secrets:
+                    raise ValueError("Claim repair cannot rotate any runtime secret")
 
 
 def inspect_original_plan(data: dict) -> list:
@@ -1264,7 +1348,8 @@ def main() -> None:
             "recover-plan",
             "repair-app-state",
             "finalize-original",
-            "renew-original-claim",
+            "claim-repair-vars",
+            "claim-repair-plan",
             "inspect",
         ],
     )
@@ -1273,8 +1358,13 @@ def main() -> None:
     args = parser.parse_args()
     if args.operation == "inspect":
         print(json.dumps(inspect_original_deployment(args.order)))
-    elif args.operation == "renew-original-claim":
-        renew_original_claim(args.order)
+    elif args.operation in {"claim-repair-vars", "claim-repair-plan"}:
+        if args.plan is None:
+            raise ValueError("Claim repair requires a checked local path")
+        if args.operation == "claim-repair-vars":
+            prepare_claim_repair(args.order, args.plan)
+        else:
+            guard_claim_repair(args.plan, args.order)
     elif args.operation == "finalize-original":
         finalize_original(args.order)
     elif args.operation == "repair-app-state":
