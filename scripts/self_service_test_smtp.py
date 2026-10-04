@@ -76,7 +76,7 @@ def approved_smtp() -> dict[str, str]:
         "SMTP_SERVER": "mail.riseup.net",
         "SMTP_PORT": "587",
         "SMTP_ENCRYPTION": "StartTLS",
-        "NOTIFICATIONS_ADDRESS": username if "@" in username else username + "@riseup.net",
+        "NOTIFICATIONS_ADDRESS": "Hush Line Notifications <notifications@hushline.app>",
     }
 
 
@@ -174,9 +174,14 @@ def guard(path: Path, order: str) -> None:
         adjusted = copy.deepcopy(after)
         for service in adjusted["spec"][0]["service"]:
             fields = {entry["key"]: entry for entry in service["env"] if entry["key"] in SMTP_KEYS}
-            if set(fields) != SMTP_KEYS or any(
-                fields[key] != {"key": key, "value": value, "type": "SECRET", "scope": "RUN_TIME"}
-                for key, value in expected.items()
+            if (
+                set(fields) != SMTP_KEYS
+                or sum(entry["key"] in SMTP_KEYS for entry in service["env"]) != len(SMTP_KEYS)
+                or any(
+                    fields[key]
+                    != {"key": key, "value": value, "type": "SECRET", "scope": "RUN_TIME"}
+                    for key, value in expected.items()
+                )
             ):
                 raise ValueError("SMTP fields differ from the approved dedicated TLS routing")
             old = next(
@@ -210,6 +215,16 @@ def guard(path: Path, order: str) -> None:
                 }
                 if secrets != original_secrets:
                     raise ValueError("SMTP cannot rotate unrelated secrets")
+                if os.environ.get("SMTP_UPDATE_SENDER_ONLY") == "true" and kind == "service":
+                    new_fields = {entry["key"]: entry["value"] for entry in component["env"]}
+                    old_fields = {entry["key"]: entry["value"] for entry in source["env"]}
+                    if any(
+                        new_fields.get(key) != old_fields.get(key)
+                        for key in SMTP_KEYS - {"NOTIFICATIONS_ADDRESS"}
+                    ):
+                        raise ValueError(
+                            "Sender-only update cannot change SMTP authentication or TLS"
+                        )
 
 
 def main() -> None:

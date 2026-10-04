@@ -935,7 +935,7 @@ jobs:
       github.event.pull_request.number == 2447 &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
-      github.event.action == 'labeled' && github.event.label.name == 'self-service-smtp-configure'
+      github.event.action == 'labeled' && contains(fromJSON('["self-service-smtp-configure", "self-service-smtp-sender"]'), github.event.label.name)
     runs-on: ubuntu-latest
     timeout-minutes: 90
     environment: self-service-test-2447
@@ -943,6 +943,7 @@ jobs:
       contents: read
     env:
       INFRA_REF: 659c4550a936b91f0096247185b35a4b32bf7423
+      SMTP_UPDATE_SENDER_ONLY: ${{ github.event.label.name == 'self-service-smtp-sender' }}
       CUSTOM_DOMAIN: hushline.foo
       ORDER_ID: de44b913bbc22b3ac75d8e5b114bdc45
       WORKSPACE_NAME: hushline-self-service-test-de44b913bbc22b3ac75d8e5b114bdc45

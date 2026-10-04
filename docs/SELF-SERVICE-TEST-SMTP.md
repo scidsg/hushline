@@ -18,6 +18,12 @@ default certificate verification. All six runtime routing fields are stored as
 platform secrets on the two application services; workers and initialization
 commands remain unchanged.
 
+The sender is `Hush Line Notifications <notifications@hushline.app>`. This uses
+the dedicated account for authentication, not production credentials. The
+`self-service-smtp-sender` event additionally requires authentication and TLS
+fields to remain unchanged in the saved plan. The sender update does not modify
+mail authentication DNS records.
+
 The saved Terraform plan guard requires the exact original four resource IDs,
 an application-only in-place update, and only the approved SMTP field values.
 It rejects changes to the database, firewall, project, domain, source branch,

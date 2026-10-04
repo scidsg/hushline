@@ -32,6 +32,9 @@ from tests.test_self_service_test_ownership import ORDER, resources
         "secret-scope",
         "baseline",
         "unknown-field",
+        "duplicate-field",
+        "sender-only",
+        "sender-only-auth",
     ],
 )
 def test_guard_rejects_every_non_smtp_change(
@@ -69,6 +72,22 @@ def test_guard_rejects_every_non_smtp_change(
         "SMTP_ENCRYPTION": "StartTLS",
         "NOTIFICATIONS_ADDRESS": "dedicated-test@riseup.net",
     }
+    if problem in {"sender-only", "sender-only-auth"}:
+        monkeypatch.setenv("SMTP_UPDATE_SENDER_ONLY", "true")
+        for service in spec["service"]:
+            service["env"] += [
+                {
+                    "key": key,
+                    "value": "old-sender@example.test"
+                    if key == "NOTIFICATIONS_ADDRESS"
+                    else "old-authentication"
+                    if key == "SMTP_PASSWORD" and problem == "sender-only-auth"
+                    else value,
+                    "type": "SECRET",
+                    "scope": "RUN_TIME",
+                }
+                for key, value in expected.items()
+            ]
     monkeypatch.setattr(smtp, "original", lambda order: (state, {}))
     monkeypatch.setattr(smtp, "approved_smtp", lambda: expected)
     ids = {address: value["id"] for address, value in state.items()}
@@ -102,6 +121,7 @@ def test_guard_rejects_every_non_smtp_change(
     )
     after = change["after"]["spec"][0]
     for service in after["service"]:
+        service["env"] = [entry for entry in service["env"] if entry["key"] not in smtp.SMTP_KEYS]
         service["env"] += [
             {"key": key, "value": value, "type": "SECRET", "scope": "RUN_TIME"}
             for key, value in expected.items()
@@ -141,6 +161,8 @@ def test_guard_rejects_every_non_smtp_change(
         fields[key]["value"] = None if problem == "unknown-field" else "unapproved"
     elif problem == "missing-field":
         after["service"][0]["env"].remove(fields["SMTP_PASSWORD"])
+    elif problem == "duplicate-field":
+        after["service"][0]["env"].append(copy.deepcopy(fields["SMTP_PASSWORD"]))
     elif problem == "secret-scope":
         fields["SMTP_PASSWORD"]["scope"] = "RUN_AND_BUILD_TIME"
     elif problem == "baseline":
@@ -148,7 +170,7 @@ def test_guard_rejects_every_non_smtp_change(
         change["before"]["spec"][0]["job"][0]["run_command"] = "foreign-baseline"
     path = tmp_path / "plan.json"
     path.write_text(json.dumps(plan))
-    if problem:
+    if problem not in {None, "sender-only"}:
         with pytest.raises(ValueError, match="SMTP"):
             smtp.guard(path, ORDER)
     else:
@@ -201,3 +223,24 @@ def test_workflow_does_not_reinitialize_or_provision_for_smtp() -> None:
     assert "terraform-apply" in job
     assert job.index("Reject every change outside") < job.index("Apply the exact guarded")
     assert "secrets.DIGITALOCEAN_TOKEN" not in job
+
+
+@pytest.mark.parametrize("username", ["dedicated-test", "dedicated-test@riseup.net"])
+def test_sender_display_name_uses_authorized_address_and_dedicated_authentication(
+    monkeypatch: pytest.MonkeyPatch, username: str
+) -> None:
+    from email.message import EmailMessage
+    from email.utils import getaddresses, parseaddr
+
+    monkeypatch.setenv("HUSHLINE_SINGLE_TENANT_SMTP_USERNAME", username)
+    monkeypatch.setenv("HUSHLINE_SINGLE_TENANT_SMTP_PASSWORD", "dedicated-test-password")
+    config = smtp.approved_smtp()
+    message = EmailMessage()
+    message["From"] = config["NOTIFICATIONS_ADDRESS"]
+    assert parseaddr(str(message["From"])) == (
+        "Hush Line Notifications",
+        "notifications@hushline.app",
+    )
+    # smtplib.send_message derives the envelope address from this header.
+    assert getaddresses([message["From"]])[0][1] == "notifications@hushline.app"
+    assert config["SMTP_USERNAME"] == "dedicated-test"
