@@ -879,7 +879,7 @@ try:
     assert re.fullmatch(r"[A-Za-z0-9_-]{22}", code)
     with create_app().app_context():
         hostname = urlsplit(os.environ.get("SQLALCHEMY_DATABASE_URI", "")).hostname
-        assert hostname and hostname.endswith(".db.ondigitalocean.com")
+        assert hostname == "__ORIGINAL_DATABASE_HOST__"
         db.session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": 716340528})
         if db.session.scalar(db.select(db.func.count()).select_from(User)):
             db.session.commit()
@@ -898,12 +898,17 @@ except Exception:
 def renew_original_claim(order: str) -> None:
     """Renew only the original unused claim; never create users or invitations."""
     finalize_original(order)
-    live = do(f"/apps/{RECOVERY_APP}")["app"]
+    database = do(f"/databases/{RECOVERY_IDS['digitalocean_database_cluster.db']}")["database"]
     if (
-        len(live["spec"].get("databases", [])) != 1
-        or live["spec"]["databases"][0].get("cluster_name") != identity(order)[0]
+        database.get("id") != RECOVERY_IDS["digitalocean_database_cluster.db"]
+        or database.get("name") != identity(order)[0]
     ):
         raise ValueError("Claim renewal requires the original database binding")
+    hostname = database.get("connection", {}).get("host", "")
+    if not isinstance(hostname, str) or not re.fullmatch(
+        r"[a-z0-9.-]+\.db\.ondigitalocean\.com", hostname
+    ):
+        raise ValueError("Original database hostname is invalid")
     response = do(f"/apps/{RECOVERY_APP}/components/app/exec")
     url = urllib.parse.urlsplit(response["url"])
     if (
@@ -919,7 +924,8 @@ def renew_original_claim(order: str) -> None:
     # to the console or print its token, transcript, environment, or SQL exceptions.
     import websocket  # — only the guarded recovery job needs this dependency
 
-    encoded = base64.b64encode(RENEW_CLAIM_SCRIPT.encode()).decode()
+    payload = RENEW_CLAIM_SCRIPT.replace("__ORIGINAL_DATABASE_HOST__", hostname)
+    encoded = base64.b64encode(payload.encode()).decode()
     command = (
         "stty -echo; poetry run python -c \"exec(__import__('base64').b64decode('"
         + encoded

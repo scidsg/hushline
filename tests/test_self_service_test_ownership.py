@@ -1213,16 +1213,12 @@ def test_claim_renewal_checks_original_database_before_console(
     monkeypatch.setattr(ownership, "finalize_original", finalized)
     api = Mock(
         return_value={
-            "app": {
-                "spec": {
-                    "databases": [
-                        {
-                            "cluster_name": "foreign"
-                            if bad_binding
-                            else ownership.identity(ownership.RECOVERY_ORDER)[0]
-                        }
-                    ]
-                }
+            "database": {
+                "id": ownership.RECOVERY_IDS["digitalocean_database_cluster.db"],
+                "name": "foreign"
+                if bad_binding
+                else ownership.identity(ownership.RECOVERY_ORDER)[0],
+                "connection": {"host": "test.db.ondigitalocean.com"},
             }
         }
     )
@@ -1283,10 +1279,20 @@ def test_remote_claim_renewal_preserves_users_and_original_code(
     )
     if missing:
         with pytest.raises(SystemExit, match="HL_CLAIM_RENEWAL_FAILED"):
-            exec(ownership.RENEW_CLAIM_SCRIPT, {})  # noqa: S102 — execute the fixed tested payload
+            exec(  # noqa: S102 — execute the fixed tested payload
+                ownership.RENEW_CLAIM_SCRIPT.replace(
+                    "__ORIGINAL_DATABASE_HOST__", "test.db.ondigitalocean.com"
+                ),
+                {},
+            )
         session.commit.assert_not_called()
     else:
-        exec(ownership.RENEW_CLAIM_SCRIPT, {})  # noqa: S102 — execute the fixed tested payload
+        exec(  # noqa: S102 — execute the fixed tested payload
+            ownership.RENEW_CLAIM_SCRIPT.replace(
+                "__ORIGINAL_DATABASE_HOST__", "test.db.ondigitalocean.com"
+            ),
+            {},
+        )
         session.commit.assert_called_once()
         if users:
             assert invitation.expiration_date.year == 2000
@@ -1306,12 +1312,10 @@ def test_console_renewal_handles_split_marker_and_never_logs_transcript(
     api = Mock(
         side_effect=[
             {
-                "app": {
-                    "spec": {
-                        "databases": [
-                            {"cluster_name": ownership.identity(ownership.RECOVERY_ORDER)[0]}
-                        ]
-                    }
+                "database": {
+                    "id": ownership.RECOVERY_IDS["digitalocean_database_cluster.db"],
+                    "name": ownership.identity(ownership.RECOVERY_ORDER)[0],
+                    "connection": {"host": "test.db.ondigitalocean.com"},
                 }
             },
             {"url": "wss://console.digitalocean.com/socket?token=private-example"},
