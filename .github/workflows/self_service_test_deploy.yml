@@ -495,6 +495,12 @@ jobs:
           PLAYWRIGHT_BASE_URL: https://hushline.foo
         run: npx playwright test --config=playwright.staging.config.js
 
+      - name: Install Tor
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends tor
+
       - name: Verify disposable onion endpoint
         env:
           ONION_HOSTNAME: ${{ steps.finalized.outputs.onion_hostname }}
@@ -682,6 +688,12 @@ jobs:
         env:
           PLAYWRIGHT_BASE_URL: https://hushline.foo
         run: npx playwright test --config=playwright.staging.config.js
+
+      - name: Install Tor
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends tor
 
       - name: Verify disposable onion endpoint
         env:

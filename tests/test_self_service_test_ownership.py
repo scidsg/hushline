@@ -1373,3 +1373,16 @@ def test_claim_plan_only_updates_original_initializer(
             ownership.guard_claim_repair(path, ORDER)
     else:
         ownership.guard_claim_repair(path, ORDER)
+
+
+def test_each_onion_verification_job_installs_tor_first() -> None:
+    text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
+    for job, next_job in [
+        ("deploy", "finalize"),
+        ("finalize", "repair-claim"),
+        ("repair-claim", "destroy"),
+    ]:
+        steps = text.split(f"  {job}:\n")[1].split(f"  {next_job}:\n")[0]
+        assert steps.index("- name: Install Tor") < steps.index(
+            "- name: Verify disposable onion endpoint"
+        )
