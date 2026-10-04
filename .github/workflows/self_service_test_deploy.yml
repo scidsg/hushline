@@ -942,7 +942,7 @@ jobs:
     permissions:
       contents: read
     env:
-      INFRA_REF: 6c3883cf162d64cf338a4d6bdb8048fc861f9ba7
+      INFRA_REF: 659c4550a936b91f0096247185b35a4b32bf7423
       CUSTOM_DOMAIN: hushline.foo
       ORDER_ID: de44b913bbc22b3ac75d8e5b114bdc45
       WORKSPACE_NAME: hushline-self-service-test-de44b913bbc22b3ac75d8e5b114bdc45
