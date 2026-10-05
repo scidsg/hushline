@@ -113,6 +113,16 @@ def test_payment_cannot_be_reused_for_a_different_order() -> None:
         payment.validate(data, session)
 
 
+@pytest.mark.parametrize("order", sorted(payment.PROTECTED_ORDERS))
+def test_retired_order_is_rejected_before_stripe_or_cloud_access(order: str) -> None:
+    data, _ = evidence()
+    data["order_id"] = order
+    with patch.object(payment, "retrieve") as request:
+        with pytest.raises(ValueError, match="retired protected"):
+            payment.verify(data)
+        request.assert_not_called()
+
+
 def test_proof_dates_cannot_be_changed_to_force_retirement() -> None:
     data, session = evidence()
     data["stripe_payment"]["period_end"] = "2020-01-01T00:00:00+00:00"

@@ -12,6 +12,11 @@ from decimal import Decimal
 from pathlib import Path
 
 API_VERSION = "2024-06-20"
+PROTECTED_ORDERS = {
+    "de44b913bbc22b3ac75d8e5b114bdc45",
+    "d9a565c4b17aca835b1f23a0b69b482b",
+    "1c08c360da985ca24e9e246371ffc97f",
+}
 
 
 def retrieve(session_id: str) -> dict:
@@ -34,6 +39,8 @@ def retrieve(session_id: str) -> dict:
 
 
 def validate(data: dict, session: dict, retiring: bool = False) -> None:
+    if data.get("order_id") in PROTECTED_ORDERS:
+        raise ValueError("Stripe cannot reuse a retired protected test order")
     proof = data.get("stripe_payment")
     if not isinstance(proof, dict) or set(proof) != {
         "receipt",
@@ -118,6 +125,8 @@ def validate(data: dict, session: dict, retiring: bool = False) -> None:
 
 
 def verify(data: dict, retiring: bool = False) -> None:
+    if data.get("order_id") in PROTECTED_ORDERS:
+        raise ValueError("Stripe cannot reuse a retired protected test order")
     validate(data, retrieve(data["stripe_payment"]["session_id"]), retiring)
 
 
