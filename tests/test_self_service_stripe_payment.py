@@ -176,3 +176,44 @@ def test_stripe_workflow_has_paid_gate_and_unchanged_order_before_apply() -> Non
     assert "plan_path: ${{ steps.plan.outputs.plan_path }}" in job
     assert "current-stripe-order" in job
     assert "Install Tor" in job
+
+
+def test_exact_explicit_sandbox_retirement_preserves_unexpired_paid_year() -> None:
+    data, session = evidence()
+    order = payment.EXPLICIT_RETIREMENT_ORDER
+    data.update(order_id=order, custom_domain="hushline.foo", payment_mode="stripe_test")
+    data["explicit_sandbox_retirement"] = {
+        "reason": "owner-authorized-permanent-sandbox-deletion",
+        "authorized_at": datetime.now(UTC).isoformat(),
+    }
+    session["metadata"]["single_tenant_order"] = order
+    session["subscription"]["metadata"]["single_tenant_order"] = order
+    payment.validate(data, session, retiring=True)
+    del data["explicit_sandbox_retirement"]
+    with pytest.raises(ValueError, match="not cancelled and due"):
+        payment.validate(data, session, retiring=True)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("order_id", "b" * 32),
+        ("custom_domain", "other.example"),
+        ("payment_mode", "simulated"),
+        ("license_limit", 3),
+    ],
+)
+def test_explicit_retirement_cannot_escape_order(field: str, value: object) -> None:
+    data = {
+        "order_id": payment.EXPLICIT_RETIREMENT_ORDER,
+        "custom_domain": "hushline.foo",
+        "payment_mode": "stripe_test",
+        "license_limit": 2,
+        "explicit_sandbox_retirement": {
+            "reason": "owner-authorized-permanent-sandbox-deletion",
+            "authorized_at": datetime.now(UTC).isoformat(),
+        },
+    }
+    data[field] = value
+    with pytest.raises(ValueError, match="exact authorized order"):
+        payment.explicit_retirement(data)

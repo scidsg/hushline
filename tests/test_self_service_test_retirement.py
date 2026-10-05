@@ -87,3 +87,38 @@ def test_retirement_workflow_has_independent_guards() -> None:
     assert "admin-claim" not in job
     assert "auto_approve: true" in job
     assert "self_service_test_ownership.py remove" in job
+
+
+def test_explicit_sandbox_retirement_preserves_term_and_verifies_payment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from scripts import self_service_stripe_payment as payment
+    from tests.test_self_service_stripe_payment import evidence
+
+    data, session = evidence()
+    order = payment.EXPLICIT_RETIREMENT_ORDER
+    data.update(
+        order_id=order,
+        custom_domain="hushline.foo",
+        payment_mode="stripe_test",
+        receipt=data["stripe_payment"]["receipt"],
+        period_start=data["stripe_payment"]["period_start"],
+        period_end=data["stripe_payment"]["period_end"],
+        cancelled_at=None,
+        explicit_sandbox_retirement={
+            "reason": "owner-authorized-permanent-sandbox-deletion",
+            "authorized_at": datetime.now(UTC).isoformat(),
+        },
+    )
+    session["metadata"]["single_tenant_order"] = order
+    session["subscription"]["metadata"]["single_tenant_order"] = order
+    monkeypatch.setattr(payment, "retrieve", lambda _: session)
+    retirement.validate(data, datetime.now(UTC))
+    session["livemode"] = True
+    with pytest.raises(ValueError, match="exact owned annual payment"):
+        retirement.validate(data, datetime.now(UTC))
+    session["livemode"] = False
+    del data["explicit_sandbox_retirement"]
+    data["cancelled_at"] = datetime.now(UTC).isoformat()
+    with pytest.raises(ValueError, match="not yet due"):
+        retirement.validate(data, datetime.now(UTC))

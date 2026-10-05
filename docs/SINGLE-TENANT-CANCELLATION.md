@@ -110,3 +110,13 @@ backdate route. First-attempt success requires both saved-plan deletion phases
 to run successfully; project-only recovery cannot qualify. Failed requests are
 not replayed and no replacement is permitted. Provider health and original state
 fingerprints must pass after creation and after deletion.
+
+
+The owner explicitly authorized permanent early deletion of Stripe sandbox order
+`d9096a7ac4a4a90198550588df08fdcd`, serving `hushline.foo`. Only that exact order,
+hostname, two-license paid sandbox subscription and a timestamped explicit
+retirement proof may skip the annual-expiry requirement. Annual dates are not
+changed. All live/test payment checks, immutable-proof comparisons, resource
+ownership checks, saved delete-only plans and absence/workspace checks remain.
+This is explicit sandbox retirement, not annual-expiry validation. No other order
+can use this exception.

@@ -37,6 +37,11 @@ def validate(data: dict, current: datetime) -> None:
         "period_end",
         "cancelled_at",
     }
+    from scripts.self_service_stripe_payment import explicit_retirement
+
+    explicit = explicit_retirement(data)
+    if explicit:
+        expected.add("explicit_sandbox_retirement")
     stripe_order = data.get("payment_mode") == "stripe_test"
     if set(data) != (expected | {"stripe_payment", "license_limit"} if stripe_order else expected):
         raise ValueError("Invalid annual cancellation proof")
@@ -53,12 +58,18 @@ def validate(data: dict, current: datetime) -> None:
         raise ValueError("Invalid test payment receipt")
     start = timestamp(data["period_start"])
     end = timestamp(data["period_end"])
-    cancelled = timestamp(data["cancelled_at"])
+    cancelled = timestamp(data["cancelled_at"]) if not explicit else None
     day = min(start.day, calendar.monthrange(start.year + 1, start.month)[1])
     if end != start.replace(year=start.year + 1, day=day):
         raise ValueError("A full paid annual period is required")
-    if not start <= cancelled < end or current < end:
+    if not explicit and (cancelled is None or not start <= cancelled < end or current < end):
         raise ValueError("Cancellation is absent, invalid, or not yet due")
+    if explicit and (
+        data["cancelled_at"] is not None
+        or not start <= timestamp(data["explicit_sandbox_retirement"]["authorized_at"]) < end
+        or not start <= current < end
+    ):
+        raise ValueError("Explicit sandbox retirement must preserve the active paid year")
     if stripe_order:
         from scripts.self_service_stripe_payment import verify
 

@@ -12,6 +12,33 @@ from decimal import Decimal
 from pathlib import Path
 
 API_VERSION = "2024-06-20"
+EXPLICIT_RETIREMENT_LICENSES = 2
+EXPLICIT_RETIREMENT_ORDER = "d9096a7ac4a4a90198550588df08fdcd"
+
+
+def explicit_retirement(data: dict) -> bool:
+    """One owner-authorized sandbox deletion; never an annual expiry override."""
+    authorization = data.get("explicit_sandbox_retirement")
+    if authorization is None:
+        return False
+    if (
+        data.get("order_id") != EXPLICIT_RETIREMENT_ORDER
+        or data.get("custom_domain") != "hushline.foo"
+        or data.get("payment_mode") != "stripe_test"
+        or data.get("license_limit") != EXPLICIT_RETIREMENT_LICENSES
+        or not isinstance(authorization, dict)
+        or set(authorization) != {"reason", "authorized_at"}
+        or authorization.get("reason") != "owner-authorized-permanent-sandbox-deletion"
+    ):
+        raise ValueError("Explicit sandbox retirement escaped its exact authorized order")
+    authorized = datetime.fromisoformat(authorization["authorized_at"])
+    if authorized.tzinfo is None or authorized.utcoffset() != UTC.utcoffset(authorized):
+        raise ValueError("Explicit sandbox retirement authorization must be UTC")
+    if not datetime(2026, 10, 5, tzinfo=UTC) <= authorized <= datetime.now(UTC):
+        raise ValueError("Invalid explicit sandbox retirement authorization time")
+    return True
+
+
 PROTECTED_ORDERS = {
     "de44b913bbc22b3ac75d8e5b114bdc45",
     "d9a565c4b17aca835b1f23a0b69b482b",
@@ -117,9 +144,13 @@ def validate(data: dict, session: dict, retiring: bool = False) -> None:
         raise ValueError("Paid invoice must cover the exact annual subscription period")
     if not retiring and not start <= datetime.now(UTC) < end:
         raise ValueError("Stripe payment is not currently valid")
-    if retiring and (
-        datetime.now(UTC) < end
-        or not (sub.get("cancel_at_period_end") or sub.get("status") == "canceled")
+    if (
+        retiring
+        and not explicit_retirement(data)
+        and (
+            datetime.now(UTC) < end
+            or not (sub.get("cancel_at_period_end") or sub.get("status") == "canceled")
+        )
     ):
         raise ValueError("Stripe subscription is not cancelled and due for retirement")
 
