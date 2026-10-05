@@ -10,7 +10,7 @@ import pytest
 from scripts import self_service_stripe_payment as payment
 
 
-def evidence():
+def evidence() -> tuple[dict, dict]:
     start = datetime.now(UTC).replace(microsecond=0) - timedelta(minutes=1)
     end = start.replace(year=start.year + 1)
     metadata = {"single_tenant_receipt": "a" * 32, "single_tenant_order": "b" * 32}
@@ -83,7 +83,7 @@ def evidence():
     return data, session
 
 
-def test_expected_paid_annual_checkout_is_accepted():
+def test_expected_paid_annual_checkout_is_accepted() -> None:
     data, session = evidence()
     payment.validate(data, session)
 
@@ -99,28 +99,28 @@ def test_expected_paid_annual_checkout_is_accepted():
         ("client_reference_id", "c" * 32),
     ],
 )
-def test_changed_payment_is_rejected(field, value):
+def test_changed_payment_is_rejected(field: str, value: object) -> None:
     data, session = evidence()
     session[field] = value
     with pytest.raises(ValueError, match="Stripe|sandbox|annual|subscription|invoice"):
         payment.validate(data, session)
 
 
-def test_payment_cannot_be_reused_for_a_different_order():
+def test_payment_cannot_be_reused_for_a_different_order() -> None:
     data, session = evidence()
     data["order_id"] = "c" * 32
     with pytest.raises(ValueError, match="Stripe|sandbox|annual|subscription|invoice"):
         payment.validate(data, session)
 
 
-def test_proof_dates_cannot_be_changed_to_force_retirement():
+def test_proof_dates_cannot_be_changed_to_force_retirement() -> None:
     data, session = evidence()
     data["stripe_payment"]["period_end"] = "2020-01-01T00:00:00+00:00"
     with pytest.raises(ValueError, match="Stripe|sandbox|annual|subscription|invoice"):
         payment.validate(data, session, retiring=True)
 
 
-def test_subscription_must_be_cancelled_and_expired_before_retirement():
+def test_subscription_must_be_cancelled_and_expired_before_retirement() -> None:
     data, session = evidence()
     with pytest.raises(ValueError, match="Stripe|sandbox|annual|subscription|invoice"):
         payment.validate(data, session, retiring=True)
@@ -135,7 +135,7 @@ def test_subscription_must_be_cancelled_and_expired_before_retirement():
         payment.validate(data, session, retiring=True)
 
 
-def test_live_key_is_rejected_before_network_access(monkeypatch):
+def test_live_key_is_rejected_before_network_access(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("STRIPE_TEST_SECRET_KEY", "sk_live_fake")
     with patch.object(payment.urllib.request, "build_opener") as request:
         with pytest.raises(ValueError, match="Stripe|sandbox|annual|subscription|invoice"):
@@ -143,7 +143,7 @@ def test_live_key_is_rejected_before_network_access(monkeypatch):
         request.assert_not_called()
 
 
-def test_invoice_period_and_price_components_are_verified():
+def test_invoice_period_and_price_components_are_verified() -> None:
     data, session = evidence()
     bad = copy.deepcopy(session)
     bad["subscription"]["latest_invoice"]["lines"]["data"][0]["period"]["end"] -= 1
@@ -155,7 +155,7 @@ def test_invoice_period_and_price_components_are_verified():
         payment.validate(data, bad)
 
 
-def test_stripe_workflow_has_paid_gate_and_unchanged_order_before_apply():
+def test_stripe_workflow_has_paid_gate_and_unchanged_order_before_apply() -> None:
     text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
     job = text.split("  stripe-deploy:\n")[1].split("  finalize:\n")[0]
     assert "number == 2447" in job
