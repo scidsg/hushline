@@ -242,13 +242,13 @@ def test_workflow_cannot_sweep_other_instances() -> None:
     text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
     assert "secrets.HUSHLINE_INFRA_STAGING_PAT" in text
     assert "secrets.HUSHLINE_INFRA_TOKEN" not in text
-    assert text.count("environment: self-service-test-2447") == 8
+    assert text.count("environment: self-service-test-2447") == 9
     assert text.count("environment: ephemeral-staging") == 1
     assert "schedule:" not in text
     assert "number == 2447" in text
     assert "head.ref == 'feat/self-service-test-runner'" in text
     assert "self-service-test" in text
-    assert text.count("plan_path: ${{ steps.plan.outputs.plan_path }}") == 5
+    assert text.count("plan_path: ${{ steps.plan.outputs.plan_path }}") == 6
     assert "plan_path: ${{ steps.plan_services.outputs.plan_path }}" in text
     assert "plan_path: ${{ steps.plan_project.outputs.plan_path }}" in text
     assert "terraform-destroy-workspace@" not in text

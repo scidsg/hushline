@@ -8,6 +8,24 @@ before the period ends. Cancelling is not immediate account or instance deletion
 
 ## Disposable test implementation
 
+The isolated Stripe sandbox controller uses verified `stripe_test` annual terms.
+Its paid Checkout Session reserves a unique order ID in Stripe metadata. A separate
+`stripe-deploy` job responds only to a changed `.self-service-stripe.json` pointer
+on PR 2447. It independently checks Stripe's test API before creating a workspace
+and again before applying the saved create-only plan. The immutable private order
+must remain unchanged. This path cannot reuse the original or fixture payment
+receipts and does not modify their provisioning pointer.
+
+For a Stripe-backed cancellation, the controller updates `cancel_at_period_end`
+and records cancellation without shortening the paid year. Retirement rechecks
+the exact Stripe receipt, customer, subscription, paid invoice, annual price
+components and recorded period. Stripe must confirm cancellation and real UTC
+expiry; a browser redirect or local date edit cannot authorize deletion.
+Renewal and cancellation webhooks are signed, with authoritative API reads to
+handle replay and event ordering. A paid renewal cannot reactivate a retired order.
+The added verification key exists only in `self-service-test-2447`; live keys and
+live events are rejected. Production environments and policies are unchanged.
+
 The onboarding controller persists simulated checkout receipts and annual terms
 separately from provisioning progress. A server-side worker claims cancelled,
 expired terms atomically, once, then publishes a signed private cancellation
@@ -19,8 +37,8 @@ The `retire` job is separate from PR-close/label-removal cleanup and only respon
 to a changed retirement pointer, so unrelated commits cannot replay a deletion. It runs without
 customer deployment review in the existing `self-service-test-2447` environment.
 An absent pointer disables every private/cloud step. A present pointer must
-identify the original `hushline.foo` order or the one explicitly authorized
-disposable fixture; the real workflow clock must show that
+identify the original `hushline.foo` order, the explicitly authorized
+disposable fixture, or an independently verified Stripe sandbox order; the real workflow clock must show that
 the full annual term has ended. Before applying, it rereads the latest private
 cancellation and requires an unchanged record. Two saved plans delete only the
 recorded resource IDs: first the app, database, and firewall, then the empty

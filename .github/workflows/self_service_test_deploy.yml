@@ -368,6 +368,405 @@ jobs:
           rm -rf "$tor_runtime"
           if [ "$ready" != "true" ]; then exit 1; fi
 
+  stripe-deploy:
+    if: >-
+      github.repository == 'scidsg/hushline' &&
+      github.event.pull_request.number == 2447 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
+      github.event.action == 'synchronize'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: self-service-test-2447
+    permissions:
+      contents: write
+    env:
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      RECOVERY_MODE: "false"
+      PYTHONPATH: request
+    steps:
+      - name: Check out the customer test request
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ env.PR_HEAD_SHA }}
+          fetch-depth: 2
+          persist-credentials: false
+          path: request
+
+      - name: Validate customer request pointer
+        id: request
+        run: |
+          if [ ! -f request/.self-service-stripe.json ] || git -C request diff --quiet HEAD^ HEAD -- .self-service-stripe.json; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            python3 request/scripts/self_service_test_request.py pointer request/.self-service-stripe.json
+          fi
+
+      - name: Verify staging-only credentials are configured
+        if: steps.request.outputs.enabled == 'true'
+        env:
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          INFRA_READ_TOKEN: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+        run: |
+          set -euo pipefail
+          for required_name in STAGING_DO_TOKEN STAGING_TF_TOKEN INFRA_READ_TOKEN; do
+            if [ -z "${!required_name:-}" ]; then
+              echo "Missing required staging-only secret: $required_name" >&2
+              exit 1
+            fi
+          done
+
+      - name: Check out immutable staging infrastructure
+        if: steps.request.outputs.enabled == 'true'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: ${{ env.INFRA_REPOSITORY }}
+          ref: ${{ env.INFRA_REF }}
+          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          persist-credentials: false
+          path: infra
+
+      - name: Check out immutable private customer config
+        if: steps.request.outputs.enabled == 'true'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: ${{ env.INFRA_REPOSITORY }}
+          ref: ${{ steps.request.outputs.config_ref }}
+          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          persist-credentials: false
+          path: customer-config
+
+      - name: Prepare isolated customer Terraform variables
+        if: steps.request.outputs.enabled == 'true'
+        id: customer
+        env:
+          STRIPE_TEST_SECRET_KEY: ${{ secrets.HUSHLINE_STRIPE_TEST_SECRET_KEY }}
+          ORDER_PATH: ${{ steps.request.outputs.order_path }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          from scripts.self_service_stripe_payment import verify
+          verify(json.loads(Path("customer-config/" + os.environ["ORDER_PATH"]).read_text()))
+          PY
+          python3 request/scripts/self_service_test_request.py prepare \
+            "customer-config/${ORDER_PATH:-no-customer-request}" \
+            "infra/${STAGING_TF_PATH}/self-service-request.tfvars.json"
+
+      - name: Retain encrypted customer claim before provisioning
+        if: steps.request.outputs.enabled == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: self-service-claim
+          path: self-service-status/admin-claim.enc
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Assign order-owned names
+        if: steps.request.outputs.enabled == 'true'
+        env:
+          ORDER_ID: ${{ steps.customer.outputs.order_id }}
+        run: |
+          python3 - <<'PYCODE'
+          import os
+          from request.scripts.self_service_test_ownership import identity
+          name, _ = identity(os.environ["ORDER_ID"])
+          with open(os.environ["GITHUB_ENV"], "a") as output:
+              print(f"ORDER_ID={os.environ['ORDER_ID']}", file=output)
+              print(f"WORKSPACE_NAME={name}", file=output)
+              print(f"STAGING_NAME={name}", file=output)
+              print(f"STAGING_BRANCH=self-service-test/{os.environ['ORDER_ID']}", file=output)
+          PYCODE
+
+      - name: Reject existing cloud names and hostnames
+        if: steps.request.outputs.enabled == 'true' && (env.RECOVERY_MODE != 'true')
+        env:
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          CUSTOM_DOMAIN: ${{ steps.customer.outputs.custom_domain }}
+        run: python3 request/scripts/self_service_test_ownership.py preflight "$ORDER_ID"
+
+      - name: Verify original partial resource ownership
+        id: recovery
+        if: steps.request.outputs.enabled == 'true' && (env.RECOVERY_MODE == 'true')
+        env:
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          CUSTOM_DOMAIN: ${{ steps.customer.outputs.custom_domain }}
+        run: python3 request/scripts/self_service_test_ownership.py recover-check "$ORDER_ID"
+
+      - name: Set up Terraform for original failed app state repair
+        if: steps.request.outputs.enabled == 'true' && (steps.recovery.outputs.needs_state_repair == 'true')
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
+        with:
+          terraform_version: 1.13.5
+          terraform_wrapper: false
+          cli_config_credentials_token: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+
+      - name: Preserve the original failed app instead of replacing it
+        if: steps.request.outputs.enabled == 'true' && (steps.recovery.outputs.needs_state_repair == 'true')
+        working-directory: infra/hushline-self-service-test
+        env:
+          TF_WORKSPACE: ${{ env.WORKSPACE_NAME }}
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          CUSTOM_DOMAIN: ${{ steps.customer.outputs.custom_domain }}
+        run: |
+          set -euo pipefail
+          terraform init -input=false
+          python3 ../../request/scripts/self_service_test_ownership.py repair-app-state "$ORDER_ID"
+
+      - name: Create a new order-owned workspace
+        if: steps.request.outputs.enabled == 'true' && (env.RECOVERY_MODE != 'true')
+        env:
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        run: python3 request/scripts/self_service_test_ownership.py create "$ORDER_ID"
+
+      - name: Create the order-only build branch
+        if: steps.request.outputs.enabled == 'true' && (env.RECOVERY_MODE != 'true')
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            // Never overwrite an existing Git branch, including on retries.
+            await github.rest.git.createRef({owner: context.repo.owner, repo: context.repo.repo,
+              ref: `refs/heads/${process.env.STAGING_BRANCH}`, sha: process.env.PR_HEAD_SHA});
+
+      - name: Verify the original build branch is unchanged
+        if: steps.request.outputs.enabled == 'true' && (env.RECOVERY_MODE == 'true')
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            const ref = await github.rest.git.getRef({owner: context.repo.owner, repo: context.repo.repo,
+              ref: `heads/${process.env.STAGING_BRANCH}`});
+            if (ref.data.object.sha !== 'e3ddd19c3b189a5a593b84482d83ea603bf055d3') {
+              throw new Error('The original order build branch changed; recovery is forbidden.');
+            }
+
+      - name: Generate disposable application secrets
+        if: steps.request.outputs.enabled == 'true'
+        id: app-secrets
+        run: |
+          python3 - <<'PY'
+          import base64
+          import os
+          import secrets
+          values = {
+              "secret_key": secrets.token_hex(32),
+              "encryption_key": base64.urlsafe_b64encode(os.urandom(32)).decode(),
+              "session_fernet_key": base64.urlsafe_b64encode(os.urandom(32)).decode(),
+          }
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              for key, value in values.items():
+                  print(f"::add-mask::{value}")
+                  print(f"{key}={value}", file=output)
+          PY
+
+      - name: Install Tor
+        if: steps.request.outputs.enabled == 'true'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends tor
+
+      - name: Generate disposable onion identity
+        if: steps.request.outputs.enabled == 'true'
+        id: onion
+        run: |
+          set -euo pipefail
+          runtime_dir="$(mktemp -d)"
+          data_dir="${runtime_dir}/data"
+          service_dir="${runtime_dir}/hidden-service"
+          mkdir -p "$data_dir" "$service_dir"
+          chmod 700 "$runtime_dir" "$data_dir" "$service_dir"
+          cleanup() {
+            if [ -f "${runtime_dir}/tor.pid" ]; then kill "$(cat "${runtime_dir}/tor.pid")" 2>/dev/null || true; fi
+            rm -rf "$runtime_dir"
+          }
+          trap cleanup EXIT
+          tor --RunAsDaemon 1 --DataDirectory "$data_dir" --PidFile "${runtime_dir}/tor.pid" \
+            --SocksPort 0 --HiddenServiceDir "$service_dir" \
+            --HiddenServicePort '80 127.0.0.1:9' --Log "notice file ${runtime_dir}/tor.log"
+          for _ in $(seq 1 60); do
+            if [ -s "${service_dir}/hostname" ] && [ -s "${service_dir}/hs_ed25519_public_key" ] && [ -s "${service_dir}/hs_ed25519_secret_key" ]; then break; fi
+            sleep 1
+          done
+          hostname="$(tr -d '\r\n' < "${service_dir}/hostname")"
+          public_key="$(base64 < "${service_dir}/hs_ed25519_public_key" | tr -d '\r\n')"
+          secret_key="$(base64 < "${service_dir}/hs_ed25519_secret_key" | tr -d '\r\n')"
+          if [ -z "$hostname" ] || [ -z "$public_key" ] || [ -z "$secret_key" ]; then exit 1; fi
+          echo "::add-mask::$public_key"
+          echo "::add-mask::$secret_key"
+          printf 'hostname=%s\npublic_key=%s\nsecret_key=%s\n' "$hostname" "$public_key" "$secret_key" >> "$GITHUB_OUTPUT"
+
+      - name: Plan isolated staging infrastructure
+        if: steps.request.outputs.enabled == 'true'
+        id: plan
+        uses: dflook/terraform-plan@d9df4f6c2484e709ba7ffaa16c98a6906f4760cd
+        env:
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        with:
+          path: infra/${{ env.STAGING_TF_PATH }}
+          workspace: ${{ env.WORKSPACE_NAME }}
+          var_file: infra/${{ env.STAGING_TF_PATH }}/self-service-request.tfvars.json
+          add_github_comment: false
+          variables: |
+            DO_TOKEN = "${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}"
+            name = "${{ env.STAGING_NAME }}"
+            branch = "${{ env.STAGING_BRANCH }}"
+            SECRET_KEY = "${{ steps.app-secrets.outputs.secret_key }}"
+            ENCRYPTION_KEY = "${{ steps.app-secrets.outputs.encryption_key }}"
+            SESSION_FERNET_KEY = "${{ steps.app-secrets.outputs.session_fernet_key }}"
+            ONION_HOSTNAME = "${{ steps.onion.outputs.hostname }}"
+            ONION_PUBLIC_KEY_B64 = "${{ steps.onion.outputs.public_key }}"
+            ONION_SECRET_KEY_B64 = "${{ steps.onion.outputs.secret_key }}"
+
+      - name: Read latest private Stripe order before applying
+        if: steps.request.outputs.enabled == 'true'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: ${{ env.INFRA_REPOSITORY }}
+          ref: feat/self-service-test-provisioning-verified
+          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          persist-credentials: false
+          path: current-stripe-order
+
+      - name: Guard the test-only Terraform plan
+        if: steps.request.outputs.enabled == 'true'
+        env:
+          STRIPE_TEST_SECRET_KEY: ${{ secrets.HUSHLINE_STRIPE_TEST_SECRET_KEY }}
+          ORDER_PATH: ${{ steps.request.outputs.order_path }}
+          PLAN_PATH: ${{ steps.plan.outputs.json_plan_path }}
+          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          CUSTOM_DOMAIN: ${{ steps.customer.outputs.custom_domain }}
+        run: |
+          test -n "${{ steps.plan.outputs.plan_path }}"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from scripts.self_service_stripe_payment import unchanged
+          unchanged(Path("customer-config/" + os.environ["ORDER_PATH"]), Path("current-stripe-order/" + os.environ["ORDER_PATH"]))
+          PY
+          if [ "$RECOVERY_MODE" = "true" ]; then
+            python3 request/scripts/self_service_test_ownership.py recover-plan "$ORDER_ID" "$PLAN_PATH"
+          else
+            python3 request/scripts/self_service_test_request.py guard "$PLAN_PATH" "$STAGING_NAME"
+          fi
+
+      - name: Apply isolated staging infrastructure
+        if: steps.request.outputs.enabled == 'true'
+        id: apply
+        uses: dflook/terraform-apply@dcda97d729f1843ede471d2fac989cb946f5622a
+        env:
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        with:
+          path: infra/${{ env.STAGING_TF_PATH }}
+          workspace: ${{ env.WORKSPACE_NAME }}
+          plan_path: ${{ steps.plan.outputs.plan_path }}
+          auto_approve: true
+
+      - name: Record IDs created by this order
+        if: steps.request.outputs.enabled == 'true'
+        env:
+          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        run: python3 request/scripts/self_service_test_ownership.py record "$ORDER_ID"
+
+      - name: Read staging outputs
+        if: steps.request.outputs.enabled == 'true'
+        id: tf-outputs
+        uses: dflook/terraform-output@115959bea4cc9e0ccc7a7fa0a85528cef1ec4350
+        env:
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+        with:
+          path: infra/${{ env.STAGING_TF_PATH }}
+          workspace: ${{ env.WORKSPACE_NAME }}
+
+      - name: Publish customer DNS target
+        if: steps.request.outputs.enabled == 'true'
+        env:
+          APP_DEFAULT_INGRESS: ${{ steps.tf-outputs.outputs.app_default_ingress }}
+          APP_ID: ${{ steps.tf-outputs.outputs.app_id }}
+          ORDER_ID: ${{ steps.customer.outputs.order_id }}
+          CUSTOM_DOMAIN: ${{ steps.customer.outputs.custom_domain }}
+        run: python3 request/scripts/self_service_test_request.py status self-service-status/status.json
+
+      - name: Upload safe customer deployment outputs
+        if: steps.request.outputs.enabled == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: self-service-status
+          overwrite: true
+          path: self-service-status/
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Wait for HTTPS health check
+        if: steps.request.outputs.enabled == 'true'
+        env:
+          APP_URL: ${{ steps.customer.outputs.custom_domain != '' && format('https://{0}', steps.customer.outputs.custom_domain) || steps.tf-outputs.outputs.app_live_url }}
+        run: |
+          set -euo pipefail
+          health_url="${APP_URL%/}/health.json"
+          for attempt in $(seq 1 240); do
+            if curl --fail --silent --show-error --max-time 15 "$health_url" >/dev/null; then exit 0; fi
+            echo "Waiting for staging health check (${attempt}/240)"
+            sleep 10
+          done
+          exit 1
+
+      - name: Check out trusted smoke tests
+        if: steps.request.outputs.enabled == 'true'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          path: trusted-tests
+
+      - name: Set up Node.js
+        if: steps.request.outputs.enabled == 'true'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: trusted-tests/package-lock.json
+
+      - name: Install trusted browser smoke-test dependencies
+        if: steps.request.outputs.enabled == 'true'
+        working-directory: trusted-tests
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+
+      - name: Run trusted browser smoke tests
+        if: steps.request.outputs.enabled == 'true'
+        working-directory: trusted-tests
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ steps.customer.outputs.custom_domain != '' && format('https://{0}', steps.customer.outputs.custom_domain) || steps.tf-outputs.outputs.app_live_url }}
+        run: npx playwright test --config=playwright.staging.config.js
+
+      - name: Verify disposable onion endpoint
+        if: steps.request.outputs.enabled == 'true'
+        env:
+          ONION_HOSTNAME: ${{ steps.tf-outputs.outputs.onion_hostname }}
+        run: |
+          set -euo pipefail
+          tor_runtime="$(mktemp -d)"
+          chmod 700 "$tor_runtime"
+          touch "${tor_runtime}/torrc"
+          tor -f "${tor_runtime}/torrc" --RunAsDaemon 1 --DataDirectory "$tor_runtime" --PidFile "${tor_runtime}/tor.pid" \
+            --SocksPort 19050 --Log "notice file ${tor_runtime}/tor.log"
+          ready=false
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error --max-time 30 --socks5-hostname 127.0.0.1:19050 \
+              "http://${ONION_HOSTNAME}/health.json" >/dev/null; then ready=true; break; fi
+            echo "Waiting for disposable onion endpoint (${attempt}/60)"
+            sleep 10
+          done
+          kill "$(cat "${tor_runtime}/tor.pid")" 2>/dev/null || true
+          rm -rf "$tor_runtime"
+          if [ "$ready" != "true" ]; then exit 1; fi
+
   finalize:
     if: >-
       github.repository == 'scidsg/hushline' &&
@@ -1134,6 +1533,7 @@ jobs:
         if: steps.request.outputs.enabled == 'true'
         id: customer
         env:
+          STRIPE_TEST_SECRET_KEY: ${{ secrets.HUSHLINE_STRIPE_TEST_SECRET_KEY }}
           PROOF_PATH: ${{ steps.request.outputs.proof_path }}
           STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
           STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
@@ -1191,6 +1591,7 @@ jobs:
       - name: Verify service deletion ownership
         if: steps.customer.outputs.services == 'true'
         env:
+          STRIPE_TEST_SECRET_KEY: ${{ secrets.HUSHLINE_STRIPE_TEST_SECRET_KEY }}
           RETIREMENT_PHASE: services
           STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
           PLAN_PATH: ${{ steps.plan_services.outputs.json_plan_path }}
@@ -1261,6 +1662,7 @@ jobs:
       - name: Verify empty-project deletion ownership
         if: steps.customer.outputs.project == 'true'
         env:
+          STRIPE_TEST_SECRET_KEY: ${{ secrets.HUSHLINE_STRIPE_TEST_SECRET_KEY }}
           RETIREMENT_PHASE: project
           STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
           PLAN_PATH: ${{ steps.plan_project.outputs.json_plan_path }}

@@ -28,7 +28,7 @@ def timestamp(value: str) -> datetime:
 
 
 def validate(data: dict, current: datetime) -> None:
-    if set(data) != {
+    expected = {
         "order_id",
         "custom_domain",
         "receipt",
@@ -36,13 +36,17 @@ def validate(data: dict, current: datetime) -> None:
         "period_start",
         "period_end",
         "cancelled_at",
-    }:
+    }
+    stripe_order = data.get("payment_mode") == "stripe_test"
+    if set(data) != (expected | {"stripe_payment", "license_limit"} if stripe_order else expected):
         raise ValueError("Invalid annual cancellation proof")
     authorized = {ownership.RECOVERY_ORDER: "hushline.foo", fixture.ORDER: ""}
-    if data["order_id"] not in authorized or data["custom_domain"] != authorized[data["order_id"]]:
+    if not stripe_order and (
+        data["order_id"] not in authorized or data["custom_domain"] != authorized[data["order_id"]]
+    ):
         raise ValueError("Retirement is restricted to explicitly authorized test orders")
     if (
-        data["payment_mode"] != "simulated"
+        data["payment_mode"] not in {"simulated", "stripe_test"}
         or not isinstance(data["receipt"], str)
         or not re.fullmatch(r"[a-f0-9]{32}", data["receipt"])
     ):
@@ -55,6 +59,15 @@ def validate(data: dict, current: datetime) -> None:
         raise ValueError("A full paid annual period is required")
     if not start <= cancelled < end or current < end:
         raise ValueError("Cancellation is absent, invalid, or not yet due")
+    if stripe_order:
+        from scripts.self_service_stripe_payment import verify
+
+        proof = data["stripe_payment"]
+        if any(data[key] != proof[key] for key in ["receipt", "period_start", "period_end"]):
+            raise ValueError("Retirement must preserve the verified Stripe billing term")
+        if data["order_id"] in authorized or not re.fullmatch(r"[a-f0-9]{32}", data["order_id"]):
+            raise ValueError("Stripe retirement cannot target a protected previous test order")
+        verify(data, retiring=True)
 
 
 PROJECT_ADDRESS = "digitalocean_project.staging"
@@ -147,10 +160,16 @@ def authorize_ids(order: str, ids: dict, initial: bool = False) -> None:
             Path(".retirement-fixture-ids.json").write_text(json.dumps(ids))
         else:
             fixture.check_original()
-    elif ids["digitalocean_app.staging"] != ownership.RECOVERY_APP or any(
-        ids[address] != value for address, value in ownership.RECOVERY_IDS.items()
+    elif order == ownership.RECOVERY_ORDER and (
+        ids["digitalocean_app.staging"] != ownership.RECOVERY_APP
+        or any(ids[address] != value for address, value in ownership.RECOVERY_IDS.items())
     ):
         raise ValueError("Original test resource identity changed")
+    elif order not in {fixture.ORDER, ownership.RECOVERY_ORDER} and set(ids.values()) & {
+        ownership.RECOVERY_APP,
+        *ownership.RECOVERY_IDS.values(),
+    }:
+        raise ValueError("Stripe retirement overlaps a protected test identity")
 
 
 def checkout_matches(path: Path, data: dict) -> None:
@@ -259,10 +278,17 @@ def pointer(path: Path) -> None:
         emit("enabled", "false")
         return
     data = json.loads(path.read_text())
-    if set(data) != {"order_id", "config_ref"} or data["order_id"] not in {
-        ownership.RECOVERY_ORDER,
-        fixture.ORDER,
-    }:
+    stripe_pointer = (
+        set(data) == {"order_id", "config_ref", "payment_mode"}
+        and data.get("payment_mode") == "stripe_test"
+    )
+    if (
+        not stripe_pointer
+        and (
+            set(data) != {"order_id", "config_ref"}
+            or data["order_id"] not in {ownership.RECOVERY_ORDER, fixture.ORDER}
+        )
+    ) or not re.fullmatch(r"[a-f0-9]{32}", data["order_id"]):
         raise ValueError("Retirement pointer must identify an explicitly authorized test order")
     if not re.fullmatch(r"[a-f0-9]{40}", data["config_ref"]):
         raise ValueError("An immutable cancellation commit is required")

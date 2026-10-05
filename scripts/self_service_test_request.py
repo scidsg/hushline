@@ -41,7 +41,8 @@ def pointer(path: Path) -> None:
 
 
 def validate_config(data: dict) -> None:
-    if set(data) != {"order_id", "custom_domain", "license_limit", "claim_public_key"}:
+    expected = {"order_id", "custom_domain", "license_limit", "claim_public_key"}
+    if set(data) not in [expected, expected | {"stripe_payment"}]:
         raise ValueError("Unexpected test configuration keys")
     if not re.fullmatch(r"[a-f0-9]{32}", data["order_id"]):
         raise ValueError("Invalid order identifier")
@@ -62,6 +63,10 @@ def validate_config(data: dict) -> None:
     key = base64.b64decode(data["claim_public_key"], validate=True)
     if len(key) > MAX_PUBLIC_KEY_BYTES or not key.startswith(b"-----BEGIN PUBLIC KEY-----"):
         raise ValueError("Invalid admin invitation encryption key")
+    if "stripe_payment" in data:
+        from scripts.self_service_stripe_payment import verify
+
+        verify(data)
 
 
 def prepare(path: Path, destination: Path) -> None:
