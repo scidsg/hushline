@@ -89,7 +89,9 @@ def test_fixture_job_cannot_overwrite_or_destroy_during_creation() -> None:
     job = text.split("  fixture-create:\n")[1].split("  retire:\n")[0]
     assert "createRef" in job
     assert "updateRef" not in job
-    assert "self-service-teardown-fixture" in job
+    assert ".self-service-lifecycle-fixture.json" in job
+    assert "Verify simulated payment before any fixture creation" in job
+    assert "github.event.action == 'synchronize'" in job
     assert "guard_create" in job
     assert "destroy: true" not in job
     assert "fixture-status.json" in job

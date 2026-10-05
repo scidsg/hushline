@@ -73,3 +73,22 @@ nonempty workspace deletion rejection. Local fixtures mock cloud operations;
 never pass a test clock to a real teardown workflow. The synthetic fixture receipt
 is confined to the newly authorized disposable fixture and never backdates an
 existing customer order.
+
+## Fresh browser-driven first attempt
+
+The retired d9a565c4b17aca835b1f23a0b69b482b fixture cannot be recreated. The next
+explicitly authorized order is 1c08c360da985ca24e9e246371ffc97f. Its creation job
+responds only to a changed `.self-service-lifecycle-fixture.json` pointer after
+simulated checkout and an explicit browser provisioning request. Unrelated
+commits and the old fixture label cannot create resources. The payment contract
+is private and immutable, scoped to one fresh namespace, and checked again before
+applying. No infrastructure is created during server preparation.
+
+Its separate controller gives checkout a complete synthetic annual term ending
+two hours later (the leap-day edge moves to March 1). The real workflow clock
+and full-year validation remain intact. Cancellation and both teardown guards
+require the same receipt and dates as checkout. There is no date-edit or general
+backdate route. First-attempt success requires both saved-plan deletion phases
+to run successfully; project-only recovery cannot qualify. Failed requests are
+not replayed and no replacement is permitted. Provider health and original state
+fingerprints must pass after creation and after deletion.

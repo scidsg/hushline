@@ -153,9 +153,23 @@ def authorize_ids(order: str, ids: dict, initial: bool = False) -> None:
         raise ValueError("Original test resource identity changed")
 
 
+def checkout_matches(path: Path, data: dict) -> None:
+    if data["order_id"] != fixture.ORDER:
+        return
+    from scripts.self_service_fixture_checkout import contract
+
+    paid_path = path.parent.parent / "lifecycle-orders" / f"{fixture.ORDER}.json"
+    paid = json.loads(paid_path.read_text())
+    contract(paid)
+    keys = {"order_id", "receipt", "payment_mode", "period_start", "period_end"}
+    if any(paid[key] != data[key] for key in keys):
+        raise ValueError("Fixture retirement must preserve the original checkout term")
+
+
 def prepare(path: Path, destination: Path) -> None:
     data = json.loads(path.read_text())
     validate(data, datetime.now(UTC))
+    checkout_matches(path, data)
     order = data["order_id"]
     ids, resources = recorded(order)
     if set(resources) == ownership.ADDRESSES:
@@ -225,7 +239,9 @@ def guard(path: Path, latest: Path, plan: Path) -> None:
     if data != json.loads(latest.read_text()):
         raise ValueError("Annual cancellation changed after planning")
     validate(data, datetime.now(UTC))
+    checkout_matches(path, data)
     order = data["order_id"]
+    checkout_matches(latest, data)
     if os.environ.get("RETIREMENT_PHASE") == "services":
         ids = ownership.owned(order)
         authorize_ids(order, ids)

@@ -870,16 +870,16 @@ jobs:
       github.event.pull_request.number == 2447 &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
-      github.event.action == 'labeled' && github.event.label.name == 'self-service-teardown-fixture'
+      github.event.action == 'synchronize'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     environment: self-service-test-2447
     permissions:
       contents: write
     env:
-      ORDER_ID: d9a565c4b17aca835b1f23a0b69b482b
-      WORKSPACE_NAME: hushline-self-service-test-d9a565c4b17aca835b1f23a0b69b482b
-      STAGING_BRANCH: self-service-test/d9a565c4b17aca835b1f23a0b69b482b
+      ORDER_ID: 1c08c360da985ca24e9e246371ffc97f
+      WORKSPACE_NAME: hushline-self-service-test-1c08c360da985ca24e9e246371ffc97f
+      STAGING_BRANCH: self-service-test/1c08c360da985ca24e9e246371ffc97f
     steps:
       - name: Check out the signed fixture guards
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -887,8 +887,33 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
           path: request
+          fetch-depth: 2
+
+      - name: Validate the paid fixture request pointer
+        id: request
+        run: |
+          if git -C request diff --quiet HEAD^ HEAD -- .self-service-lifecycle-fixture.json; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            PYTHONPATH=request python3 request/scripts/self_service_fixture_checkout.py pointer request/.self-service-lifecycle-fixture.json
+          fi
+
+      - name: Check out the immutable private fixture payment
+        if: steps.request.outputs.enabled == 'true'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: ${{ env.INFRA_REPOSITORY }}
+          ref: ${{ steps.request.outputs.config_ref }}
+          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          persist-credentials: false
+          path: fixture-payment
+
+      - name: Verify simulated payment before any fixture creation
+        if: steps.request.outputs.enabled == 'true'
+        run: PYTHONPATH=request python3 request/scripts/self_service_fixture_checkout.py validate fixture-payment/self-service-tests/lifecycle-orders/1c08c360da985ca24e9e246371ffc97f.json
 
       - name: Check out the immutable test-only Terraform root
+        if: steps.request.outputs.enabled == 'true'
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
@@ -898,6 +923,7 @@ jobs:
           path: infra
 
       - name: Preserve original state and refuse existing fixture resources
+        if: steps.request.outputs.enabled == 'true'
         env:
           STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
           STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
@@ -913,6 +939,7 @@ jobs:
           PY
 
       - name: Create only the fresh fixture build branch
+        if: steps.request.outputs.enabled == 'true'
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         with:
           script: |
@@ -922,11 +949,13 @@ jobs:
               sha: 'e3ddd19c3b189a5a593b84482d83ea603bf055d3'});
 
       - name: Create the fresh isolated fixture workspace
+        if: steps.request.outputs.enabled == 'true'
         env:
           STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
         run: python3 request/scripts/self_service_test_ownership.py create "$ORDER_ID"
 
       - name: Install Tor
+        if: steps.request.outputs.enabled == 'true'
         run: |
           set -euo pipefail
           sudo apt-get update
@@ -934,6 +963,7 @@ jobs:
 
       - name: Generate disposable onion identity
         id: onion
+        if: steps.request.outputs.enabled == 'true'
         run: |
           set -euo pipefail
           runtime_dir="$(mktemp -d)"
@@ -962,6 +992,7 @@ jobs:
           printf 'hostname=%s\npublic_key=%s\nsecret_key=%s\n' "$hostname" "$public_key" "$secret_key" >> "$GITHUB_OUTPUT"
 
       - name: Generate inputs belonging only to the fresh fixture
+        if: steps.request.outputs.enabled == 'true'
         env:
           STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
           ONION_HOSTNAME: ${{ steps.onion.outputs.hostname }}
@@ -976,6 +1007,7 @@ jobs:
 
       - name: Plan only four new fixture resources
         id: plan
+        if: steps.request.outputs.enabled == 'true'
         uses: dflook/terraform-plan@d9df4f6c2484e709ba7ffaa16c98a6906f4760cd
         env:
           TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
@@ -985,7 +1017,18 @@ jobs:
           var_file: infra/${{ env.STAGING_TF_PATH }}/self-service-request.tfvars.json
           add_github_comment: false
 
+      - name: Read latest private fixture payment before applying
+        if: steps.request.outputs.enabled == 'true'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: ${{ env.INFRA_REPOSITORY }}
+          ref: feat/self-service-test-provisioning-verified
+          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          persist-credentials: false
+          path: current-fixture-payment
+
       - name: Reject any change outside the fresh fixture
+        if: steps.request.outputs.enabled == 'true'
         env:
           PLAN_PATH: ${{ steps.plan.outputs.json_plan_path }}
           STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
@@ -996,10 +1039,13 @@ jobs:
           import os
           from pathlib import Path
           from scripts.self_service_teardown_fixture import guard_create
+          from scripts.self_service_fixture_checkout import unchanged
+          unchanged(Path("fixture-payment/self-service-tests/lifecycle-orders/1c08c360da985ca24e9e246371ffc97f.json"), Path("current-fixture-payment/self-service-tests/lifecycle-orders/1c08c360da985ca24e9e246371ffc97f.json"))
           guard_create(Path(os.environ["PLAN_PATH"]))
           PY
 
       - name: Apply the exact creation plan
+        if: steps.request.outputs.enabled == 'true'
         uses: dflook/terraform-apply@dcda97d729f1843ede471d2fac989cb946f5622a
         env:
           TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
@@ -1010,6 +1056,7 @@ jobs:
           auto_approve: true
 
       - name: Record fixture IDs and verify original state unchanged
+        if: steps.request.outputs.enabled == 'true'
         env:
           STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
           STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
@@ -1017,10 +1064,13 @@ jobs:
           PYTHONPATH=request python3 - <<'PY'
           from pathlib import Path
           from scripts.self_service_teardown_fixture import created
+          from scripts.self_service_fixture_checkout import healthy
           created(Path("fixture-status.json"))
+          healthy(Path("fixture-status.json"))
           PY
 
       - name: Retain only sanitized fixture inventory
+        if: steps.request.outputs.enabled == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: teardown-fixture-status
@@ -1251,7 +1301,7 @@ jobs:
         run: python3 request/scripts/self_service_test_ownership.py remove "$ORDER_ID"
 
       - name: Verify fixture absence and protected original configuration
-        if: steps.request.outputs.enabled == 'true' && steps.customer.outputs.order_id == 'd9a565c4b17aca835b1f23a0b69b482b'
+        if: steps.request.outputs.enabled == 'true' && steps.customer.outputs.order_id == '1c08c360da985ca24e9e246371ffc97f'
         env:
           STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
           STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}

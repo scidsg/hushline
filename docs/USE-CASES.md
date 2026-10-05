@@ -302,3 +302,18 @@ requires an authoritative annual billing record and exact tenant resource
 ownership; an absent record or failed safeguard blocks deletion. The current
 controller uses simulated payment terms and is restricted to the disposable test
 instance; real checkout and production retirement policies remain separate work.
+
+### Isolated full-lifecycle test
+
+One new authorized disposable order uses a separate controller database and port.
+The existing onboarding UI creates a simulated payment receipt, then a browser
+provisioning action requests real, strictly isolated HushLineDev infrastructure.
+A provider-assigned HTTPS hostname avoids any existing DNS changes. The fixture
+has a complete synthetic calendar-year term ending approximately two hours after
+checkout; its dates cannot be edited or rebound to another order. Cancellation
+uses the existing owner-only acknowledgement and normal real-clock expiry worker.
+A passing first attempt requires successful service deletion, refreshed empty
+project deletion, confirmed provider absence and empty-workspace safe-delete,
+with the original hushline.foo state unchanged. A failed or recovered attempt
+does not count as uninterrupted success. The original controller and retired
+fixture remain protected; real billing and production policies are unchanged.

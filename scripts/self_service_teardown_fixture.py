@@ -14,7 +14,8 @@ from pathlib import Path
 from scripts import self_service_test_ownership as ownership
 from scripts.self_service_test_request import guard_plan
 
-ORDER = "d9a565c4b17aca835b1f23a0b69b482b"
+ORDER = "1c08c360da985ca24e9e246371ffc97f"
+RETIRED_ORDER = "d9a565c4b17aca835b1f23a0b69b482b"
 SNAPSHOT = Path(".retirement-original-snapshot.json")
 
 
