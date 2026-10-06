@@ -11,7 +11,7 @@ from pytest_mock import MockFixture
 
 from hushline.db import db
 from hushline.model import SingleTenantOrder, User
-from hushline.single_tenant import reconcile_cancellations
+from hushline.single_tenant import reconcile_cancellations, valid_customer_domain
 from hushline.single_tenant_client import ServiceUnavailable, validate_settings
 from hushline.user_deletion import delete_user_and_related
 
@@ -336,3 +336,31 @@ def test_oversized_annual_checkout_is_explained_without_charge_or_stage_advance(
     charge.assert_not_called()
     with client.session_transaction() as saved:
         assert any("Choose Unlimited licenses" in message for _, message in saved["_flashes"])
+
+
+@pytest.mark.parametrize("domain", ["hushline.foo", "tips.customer.org", "my-team.example.com"])
+def test_customer_domain_accepts_public_hostnames(domain: str) -> None:
+    assert valid_customer_domain(domain)
+
+
+@pytest.mark.parametrize(
+    "domain",
+    [
+        "0." * 10000,
+        "0." * 100 + "0",
+        "a" * 64 + ".org",
+        "hushline.app",
+        "tips.hushline.app",
+        "customer.onion",
+        "customer.local",
+        "customer.invalid",
+        "-customer.org",
+        "customer-.org",
+        "customer..org",
+        "https://customer.org",
+        "customer.org/path",
+        "127.0.0.1",
+    ],
+)
+def test_invalid_or_protected_domain_is_rejected(domain: str) -> None:
+    assert not valid_customer_domain(domain)

@@ -31,6 +31,23 @@ from hushline.model import SingleTenantOrder, User
 from hushline.single_tenant_client import ServiceUnavailable, call, validate_settings
 
 MAX_HOSTNAME_LENGTH = 253
+MIN_HOSTNAME_LABELS = 2
+
+
+def valid_customer_domain(domain: str) -> bool:
+    """Check bounded labels independently; never backtrack across dotted input."""
+    if not domain or len(domain) > MAX_HOSTNAME_LENGTH:
+        return False
+    labels = domain.split(".")
+    if len(labels) < MIN_HOSTNAME_LABELS or not re.fullmatch(r"[a-z]{2,63}", labels[-1]):
+        return False
+    if domain == "hushline.app" or domain.endswith(".hushline.app"):
+        return False
+    if labels[-1] in {"onion", "local", "localhost", "invalid", "example"}:
+        return False
+    return all(
+        re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label) is not None for label in labels
+    )
 
 
 def owned_order() -> SingleTenantOrder | None:
@@ -273,9 +290,7 @@ def init_app(app: Flask) -> None:
                         if request.form.get("fixture_action") != "provision":
                             abort(400)
                         domain = ""
-                    elif len(domain) > MAX_HOSTNAME_LENGTH or not re.fullmatch(
-                        r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}", domain
-                    ):
+                    elif not valid_customer_domain(domain):
                         abort(400)
                     call(order, "provision", domain=domain)
                     order.domain = domain

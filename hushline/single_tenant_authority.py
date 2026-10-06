@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import stripe
-from flask import Blueprint, Flask, request
+from flask import Blueprint, Flask, Response, jsonify, request
 from sqlalchemy.exc import IntegrityError
 
 from hushline import single_tenant_billing as billing
@@ -113,9 +113,9 @@ def init_app(app: Flask) -> None:
     bp = Blueprint("single_tenant_authority", __name__)
 
     @bp.route(PATH, methods=["POST"])
-    def fresh_billing_authority() -> tuple[dict[str, Any], int] | dict[str, Any]:
+    def fresh_billing_authority() -> tuple[Response, int] | Response:
         if request.content_length is None or request.content_length > MAX_BODY:
-            return {"error": "Invalid billing request"}, 413
+            return jsonify(error="Invalid billing request"), 413
         body = request.get_data()
         try:
             epoch = int(time.time())
@@ -142,13 +142,13 @@ def init_app(app: Flask) -> None:
                 raise ValueError("The account does not own this order")
             result = authorize(order, data["purpose"], datetime.now(UTC))
             db.session.commit()
-            return result
+            return jsonify(result)
         except (ValueError, KeyError, TypeError):
             db.session.rollback()
-            return {"error": "Billing ownership or eligibility verification failed"}, 409
+            return jsonify(error="Billing ownership or eligibility verification failed"), 409
         except (stripe.StripeError, ServiceUnavailable):
             db.session.rollback()
-            return {"error": "Fresh payment verification is temporarily unavailable"}, 503
+            return jsonify(error="Fresh payment verification is temporarily unavailable"), 503
 
     @bp.after_request
     def private(response: Any) -> Any:

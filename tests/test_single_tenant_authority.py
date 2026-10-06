@@ -185,3 +185,24 @@ def test_pending_withdrawal_prevents_retirement(mocker: MockFixture) -> None:
     api.checkout.sessions.retrieve.return_value = session
     with live_context(), pytest.raises(ValueError, match="terminal cancellation"):
         authorize(order, "retire", datetime(2027, 10, 6, tzinfo=UTC))
+
+
+def test_authority_is_explicit_private_json_never_html(
+    client: FlaskClient, user: User, mocker: MockFixture
+) -> None:
+    import time
+
+    order = SingleTenantOrder(id="a" * 32, user_id=user.id, owner_ref="b" * 64)
+    db.session.add(order)
+    db.session.commit()
+    body = json.dumps(
+        {"order_id": order.id, "owner": order.owner_ref, "purpose": "provision"}
+    ).encode()
+    payload = {"order_id": order.id, "owner": order.owner_ref, "value": "<script>alert(1)</script>"}
+    mocker.patch("hushline.single_tenant_authority.authorize", return_value=payload)
+    response = client.post(PATH, data=body, headers=headers(body, timestamp=int(time.time())))
+    assert response.status_code == 200
+    assert response.mimetype == "application/json"
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.get_json() == payload
