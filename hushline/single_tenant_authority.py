@@ -64,13 +64,21 @@ def authorize(order: SingleTenantOrder, purpose: str, now: datetime) -> dict[str
         or not order.stripe_session_id
         or not order.stripe_subscription_id
         or not order.stripe_customer_id
+        or not order.stripe_invoice_id
         or order.service_state == "retired"
     ):
         raise ValueError("A verified owned payment is required")
-    session = billing.client().checkout.sessions.retrieve(
+    api = billing.client()
+    session = api.checkout.sessions.retrieve(
         order.stripe_session_id, {"expand": ["subscription.latest_invoice"]}
     )
-    paid = billing.verified_invoice(order, session, live=True)
+    if purpose == "retire":
+        # A failed later renewal must not hide the independently verified paid year.
+        # Read the immutable recorded invoice; never infer payment from the new term.
+        session = dict(session)
+        session["subscription"] = dict(session["subscription"])
+        session["subscription"]["latest_invoice"] = api.invoices.retrieve(order.stripe_invoice_id)
+    paid = billing.verified_invoice(order, session, live=True, historical=purpose == "retire")
     if purpose == "provision":
         if order.user_id is None or session["subscription"].get("status") != "active":
             raise ValueError("An active owning account and subscription are required")
@@ -78,6 +86,7 @@ def authorize(order: SingleTenantOrder, purpose: str, now: datetime) -> dict[str
             raise ValueError("The paid year is not currently active")
         # Save a newly paid renewal before producing fresh immutable evidence.
         changed = order.period_end != paid.end.isoformat()
+        order.stripe_invoice_id = paid.invoice
         order.period_start = paid.start.isoformat()
         order.period_end = paid.end.isoformat()
         if changed and order.stage in {"dns", "provision", "ready"}:

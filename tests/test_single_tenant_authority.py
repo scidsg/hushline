@@ -5,6 +5,7 @@ import hmac
 import json
 import os
 from collections.abc import Callable
+from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -99,6 +100,7 @@ def paid_order() -> tuple[SingleTenantOrder, dict]:
     order.paid = True
     order.stripe_subscription_id = "sub_owned"
     order.stripe_customer_id = "cus_owned"
+    order.stripe_invoice_id = "in_owned"
     order.period_start = datetime(2026, 10, 6, tzinfo=UTC).isoformat()
     order.period_end = datetime(2027, 10, 6, tzinfo=UTC).isoformat()
     order.stage = "ready"
@@ -115,6 +117,7 @@ def test_fresh_provision_authority_preserves_order_and_license_allowance(
     order, session = paid_order()
     api = mocker.patch("hushline.single_tenant_billing.client").return_value
     api.checkout.sessions.retrieve.return_value = session
+    api.invoices.retrieve.return_value = session["subscription"]["latest_invoice"]
     with live_context():
         result = authorize(order, "provision", datetime(2026, 10, 6, 2, tzinfo=UTC))
     assert result["authorized"] == "provision"
@@ -131,6 +134,7 @@ def test_retirement_cannot_run_before_the_unmodified_paid_deadline(
     session["subscription"]["status"] = "canceled"
     api = mocker.patch("hushline.single_tenant_billing.client").return_value
     api.checkout.sessions.retrieve.return_value = session
+    api.invoices.retrieve.return_value = session["subscription"]["latest_invoice"]
     assert order.period_end is not None
     end = datetime.fromisoformat(order.period_end)
     with live_context(), pytest.raises(ValueError, match="unchanged expired"):
@@ -143,6 +147,7 @@ def test_retirement_requires_terminal_owned_subscription_at_actual_expiry(
     order, session = paid_order()
     api = mocker.patch("hushline.single_tenant_billing.client").return_value
     api.checkout.sessions.retrieve.return_value = session
+    api.invoices.retrieve.return_value = session["subscription"]["latest_invoice"]
     assert order.period_end is not None
     end = datetime.fromisoformat(order.period_end)
     with live_context(), pytest.raises(ValueError, match="terminal cancellation"):
@@ -173,6 +178,7 @@ def test_deleted_account_and_retired_order_cannot_authorize_provisioning(
     setattr(order, field, value)
     api = mocker.patch("hushline.single_tenant_billing.client").return_value
     api.checkout.sessions.retrieve.return_value = session
+    api.invoices.retrieve.return_value = session["subscription"]["latest_invoice"]
     with live_context(), pytest.raises(ValueError, match="required"):
         authorize(order, "provision", datetime(2026, 10, 6, 2, tzinfo=UTC))
 
@@ -183,6 +189,7 @@ def test_pending_withdrawal_prevents_retirement(mocker: MockFixture) -> None:
     session["subscription"]["status"] = "canceled"
     api = mocker.patch("hushline.single_tenant_billing.client").return_value
     api.checkout.sessions.retrieve.return_value = session
+    api.invoices.retrieve.return_value = session["subscription"]["latest_invoice"]
     with live_context(), pytest.raises(ValueError, match="terminal cancellation"):
         authorize(order, "retire", datetime(2027, 10, 6, tzinfo=UTC))
 
@@ -206,3 +213,48 @@ def test_authority_is_explicit_private_json_never_html(
     assert response.headers["X-Content-Type-Options"] == "nosniff"
     assert response.headers["Cache-Control"] == "no-store"
     assert response.get_json() == payload
+
+
+def test_failed_later_renewal_does_not_hide_the_owned_paid_invoice(mocker: MockFixture) -> None:
+    order, session = paid_order()
+    invoice = deepcopy(session["subscription"]["latest_invoice"])
+    subscription = session["subscription"]
+    subscription["status"] = "canceled"
+    subscription["current_period_start"] = int(datetime(2027, 10, 6, tzinfo=UTC).timestamp())
+    subscription["current_period_end"] = int(datetime(2028, 10, 6, tzinfo=UTC).timestamp())
+    subscription["latest_invoice"] = {"id": "in_unpaid", "status": "open", "amount_paid": 0}
+    api = mocker.patch("hushline.single_tenant_billing.client").return_value
+    api.checkout.sessions.retrieve.return_value = session
+    api.invoices.retrieve.return_value = invoice
+    with live_context():
+        result = authorize(order, "retire", datetime(2027, 10, 7, tzinfo=UTC))
+    api.invoices.retrieve.assert_called_once_with("in_owned")
+    assert result["payment"]["invoice_id"] == "in_owned"
+    assert result["payment"]["period_end"] == order.period_end
+    assert result["payment"]["period_end"] == "2027-10-06T00:00:00+00:00"
+
+
+def test_retirement_rejects_a_different_historical_invoice(mocker: MockFixture) -> None:
+    order, session = paid_order()
+    session["subscription"]["status"] = "canceled"
+    invoice = deepcopy(session["subscription"]["latest_invoice"])
+    invoice["id"] = "in_another"
+    api = mocker.patch("hushline.single_tenant_billing.client").return_value
+    api.checkout.sessions.retrieve.return_value = session
+    api.invoices.retrieve.return_value = invoice
+    with live_context(), pytest.raises(ValueError, match="annual payment"):
+        authorize(order, "retire", datetime(2027, 10, 7, tzinfo=UTC))
+
+
+def test_historical_paid_invoice_cannot_authorize_an_unpaid_current_year(
+    mocker: MockFixture,
+) -> None:
+    order, session = paid_order()
+    session["subscription"]["status"] = "active"
+    session["subscription"]["latest_invoice"]["status"] = "open"
+    session["subscription"]["latest_invoice"]["amount_paid"] = 0
+    api = mocker.patch("hushline.single_tenant_billing.client").return_value
+    api.checkout.sessions.retrieve.return_value = session
+    with live_context(), pytest.raises(ValueError, match="annual payment"):
+        authorize(order, "provision", datetime(2027, 10, 7, tzinfo=UTC))
+    api.invoices.retrieve.assert_not_called()

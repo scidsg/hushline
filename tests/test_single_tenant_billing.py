@@ -55,6 +55,7 @@ def evidence() -> tuple[SingleTenantOrder, dict]:
                 ]
             },
             "latest_invoice": {
+                "id": "in_owned",
                 "livemode": True,
                 "status": "paid",
                 "currency": "usd",
@@ -460,3 +461,61 @@ def test_failed_renewal_does_not_authorize_an_unpaid_year() -> None:
     session["subscription"]["latest_invoice"]["amount_paid"] = 0
     with pytest.raises(ValueError, match="annual payment"):
         verified_year(order, session, live=True, now=datetime(2026, 10, 6, 1, tzinfo=UTC))
+
+
+@pytest.mark.parametrize("foreign", [False, True])
+def test_missed_expiry_event_requires_exact_stripe_ownership(
+    mocker: MockFixture, foreign: bool
+) -> None:
+    from hushline.single_tenant_billing import refresh_expired_terms
+
+    order, session = evidence()
+    order.paid = True
+    order.stage = "ready"
+    order.stripe_customer_id = "cus_owned"
+    order.stripe_subscription_id = "sub_owned"
+    order.period_start = "2026-10-06T00:00:00+00:00"
+    order.period_end = "2027-10-06T00:00:00+00:00"
+    order.stripe_invoice_id = "in_owned"
+    order.cancelled = False
+    order.cancellation_pending = False
+    actual = session["subscription"]
+    actual.update(status="canceled", canceled_at=1791244800)
+    if foreign:
+        actual["customer"] = "cus_foreign"
+    api = mocker.Mock()
+    api.subscriptions.retrieve.return_value = actual
+    mocker.patch("hushline.single_tenant_billing.client", return_value=api)
+    database = mocker.patch("hushline.single_tenant_billing.db.session")
+    database.scalar.side_effect = [order, None]
+    with live_context():
+        assert refresh_expired_terms() == (0 if foreign else 1)
+    assert order.cancelled is (not foreign)
+    assert order.period_end == "2027-10-06T00:00:00+00:00"
+    assert order.stripe_invoice_id == "in_owned"
+    api.subscriptions.update.assert_not_called()
+    if foreign:
+        database.commit.assert_not_called()
+
+
+def test_missed_renewal_refresh_commits_verified_invoice_without_provisioning(
+    mocker: MockFixture,
+) -> None:
+    from hushline.single_tenant_billing import refresh_expired_terms
+
+    order, session = evidence()
+    order.paid = True
+    order.stripe_customer_id = "cus_owned"
+    order.stripe_subscription_id = "sub_owned"
+    api = mocker.Mock()
+    api.subscriptions.retrieve.return_value = session["subscription"]
+    mocker.patch("hushline.single_tenant_billing.client", return_value=api)
+    confirm = mocker.patch("hushline.single_tenant_billing.confirm")
+    database = mocker.patch("hushline.single_tenant_billing.db.session")
+    database.scalar.side_effect = [order, None]
+    provision = mocker.patch("hushline.single_tenant_client.call")
+    with live_context():
+        assert refresh_expired_terms() == 1
+    confirm.assert_called_once_with(order, "cs_live_owned", commit=False)
+    database.commit.assert_called_once()
+    provision.assert_not_called()

@@ -346,3 +346,24 @@ provider-assigned HTTPS endpoint. It creates real infrastructure only after the
 browser confirms sandbox payment and explicitly requests provisioning. Advancing
 that owned clock changes neither the paid year nor shared UTC expiry rules.
 Production activation remains a separately reviewed configuration change.
+
+### Automatic paid instance operations
+
+The general customer controller acknowledges a verified live annual payment into
+a separate encrypted ledger before publishing an immutable signed Git request.
+A healthy expiry worker and released default-branch workflows are required before
+Checkout can accept a new purchase. The cloud environment has no customer review
+step; payment is independently rechecked before each guarded apply. Credentials
+are verified against the explicitly configured HushLineDev team.
+
+If a status callback is lost, the worker retrieves the original first-attempt
+workflow's encrypted artifact and verifies its release, order, owner and request
+revision. It does not repeat provisioning. Successful deployment checks remain
+visible if a later check fails. Invitations are encrypted for the individual
+order and become available only after ownership, DNS and HTTPS checks pass.
+
+The billing worker independently rechecks expired terms to recover missed renewal
+or cancellation webhooks. A paid renewal retains the same instance. An unpaid
+year cannot extend service; a terminal cancelled subscription and the recorded
+paid invoice authorize normal year-end deletion. Retirement records prevent later
+callbacks or renewals from recreating a deleted instance.

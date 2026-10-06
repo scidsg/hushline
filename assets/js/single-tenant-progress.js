@@ -167,7 +167,14 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!response.ok) throw new Error("Status unavailable");
         const result = await response.json();
         rows.forEach((row, index) => {
-          const passed = index < 2 ? !!result.ingress : !!result.https_ok;
+          const name = ["infrastructure", "configuration", "tls", "health"][
+            index
+          ];
+          const passed = result.checks
+            ? result.checks[name] === true
+            : index < 2
+              ? !!result.ingress
+              : !!result.https_ok;
           setState(
             row,
             passed

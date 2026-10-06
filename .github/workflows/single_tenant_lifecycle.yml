@@ -1,0 +1,130 @@
+---
+name: Paid Single Tenant lifecycle
+run-name: Single Tenant ${{ github.event.workflow_run.head_branch }}
+permissions:
+  contents: read
+on:
+  workflow_run:
+    workflows: ["Validate paid Single Tenant request"]
+    types: [completed]
+concurrency:
+  group: single-tenant-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+jobs:
+  lifecycle:
+    if: >-
+      github.repository == 'scidsg/hushline' && github.run_attempt == 1 &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      startsWith(github.event.workflow_run.head_branch, 'single-tenant-request/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    environment: single-tenant-automation
+    permissions:
+      contents: write
+    steps:
+      - name: Independently verify the original request
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        env:
+          SOURCE_SHA: ${{ vars.SINGLE_TENANT_SOURCE_SHA }}
+          INFRA_SHA: ${{ vars.SINGLE_TENANT_INFRA_SHA }}
+        with:
+          script: |
+            const source = process.env.SOURCE_SHA;
+            const infra = process.env.INFRA_SHA;
+            if (![source, infra].every(value => /^[a-f0-9]{40}$/.test(value || ""))) {
+              throw new Error("Reviewed release commits are not configured");
+            }
+            const upstream = context.payload.workflow_run;
+            const sha = upstream ? upstream.head_sha : context.sha;
+            const branch = upstream ? upstream.head_branch : context.ref.replace(/^refs\/heads\//, "");
+            const {data: signed} = await github.rest.repos.getCommit({owner: "scidsg", repo: "hushline", ref: sha});
+            if (!signed.commit.verification.verified || signed.committer?.login !== "hushline-dev" ||
+                signed.parents.length !== 1 || signed.parents[0].sha !== source ||
+                signed.files.length !== 1 || signed.files[0].filename !== ".single-tenant-request.json" ||
+                signed.files[0].status !== "added") {
+              throw new Error("Request is not a signed create-only child of the reviewed source");
+            }
+            const {data: file} = await github.rest.repos.getContent({owner: "scidsg", repo: "hushline",
+              path: ".single-tenant-request.json", ref: sha});
+            if (file.type !== "file" || file.size > 4096 || file.encoding !== "base64") {
+              throw new Error("Invalid bounded request pointer");
+            }
+            const pointer = JSON.parse(Buffer.from(file.content, "base64").toString("utf8"));
+            if (Object.keys(pointer).sort().join(",") !== "config_ref,infra_ref,order_id,purpose,revision,source_ref" ||
+                !/^[a-f0-9]{32}$/.test(pointer.order_id) || !["provision", "retire"].includes(pointer.purpose) ||
+                !Number.isSafeInteger(pointer.revision) || pointer.revision < 1 || pointer.revision > 1000000 ||
+                pointer.source_ref !== source || pointer.infra_ref !== infra ||
+                !/^[a-f0-9]{40}$/.test(pointer.config_ref) ||
+                branch !== `single-tenant-request/${pointer.order_id}/${pointer.purpose}-${pointer.revision}`) {
+              throw new Error("Request coordinates escaped the exact customer order");
+            }
+      - name: Check out immutable reviewed application driver
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ vars.SINGLE_TENANT_SOURCE_SHA }}
+          persist-credentials: false
+          path: source
+      - name: Check out immutable isolated infrastructure root
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: scidsg/hushline-infra
+          ref: ${{ vars.SINGLE_TENANT_INFRA_SHA }}
+          token: ${{ secrets.SINGLE_TENANT_CONFIG_READ_TOKEN }}
+          persist-credentials: false
+          path: infra
+      - name: Build reviewed driver with Tor installed
+        working-directory: source
+        run: |
+          set -euo pipefail
+          docker build --tag hushline-single-tenant-base --file Dockerfile.dev .
+          docker build --tag hushline-single-tenant-driver --file Dockerfile.single-tenant-driver --build-arg BASE_IMAGE=hushline-single-tenant-base .
+      - name: Run paid-order lifecycle automatically
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SINGLE_TENANT_SOURCE_SHA: ${{ vars.SINGLE_TENANT_SOURCE_SHA }}
+          SINGLE_TENANT_INFRA_SHA: ${{ vars.SINGLE_TENANT_INFRA_SHA }}
+          SINGLE_TENANT_TF_ORGANIZATION: ${{ vars.SINGLE_TENANT_TF_ORGANIZATION }}
+          SINGLE_TENANT_TF_PROJECT: ${{ vars.SINGLE_TENANT_TF_PROJECT }}
+          SINGLE_TENANT_AUTHORITY_ORIGIN: ${{ vars.SINGLE_TENANT_AUTHORITY_ORIGIN }}
+          SINGLE_TENANT_CONTROL_ORIGIN: ${{ vars.SINGLE_TENANT_CONTROL_ORIGIN }}
+          SINGLE_TENANT_CONFIG_READ_TOKEN: ${{ secrets.SINGLE_TENANT_CONFIG_READ_TOKEN }}
+          SINGLE_TENANT_DO_TEAM_ID: ${{ vars.SINGLE_TENANT_DO_TEAM_ID }}
+          SINGLE_TENANT_DO_TOKEN: ${{ secrets.SINGLE_TENANT_DO_TOKEN }}
+          SINGLE_TENANT_TF_TOKEN: ${{ secrets.SINGLE_TENANT_TF_TOKEN }}
+          SINGLE_TENANT_PORTAL_KEY: ${{ secrets.SINGLE_TENANT_PORTAL_KEY }}
+          SINGLE_TENANT_WORKFLOW_KEY: ${{ secrets.SINGLE_TENANT_WORKFLOW_KEY }}
+          SINGLE_TENANT_SMTP_JSON: ${{ secrets.SINGLE_TENANT_SMTP_JSON }}
+        run: |
+          set -euo pipefail
+          mkdir -p single-tenant-results
+          chmod 700 single-tenant-results
+          docker run --rm \
+            -e GITHUB_TOKEN -e GITHUB_EVENT_NAME -e GITHUB_REF -e GITHUB_RUN_ATTEMPT \
+            -e GITHUB_REPOSITORY -e GITHUB_RUN_ID -e GITHUB_EVENT_PATH=/event.json \
+            -e SINGLE_TENANT_SOURCE_SHA -e SINGLE_TENANT_INFRA_SHA \
+            -e SINGLE_TENANT_TF_ORGANIZATION -e SINGLE_TENANT_TF_PROJECT \
+            -e SINGLE_TENANT_AUTHORITY_ORIGIN -e SINGLE_TENANT_CONTROL_ORIGIN \
+            -e SINGLE_TENANT_CONFIG_READ_TOKEN -e SINGLE_TENANT_DO_TOKEN -e SINGLE_TENANT_DO_TEAM_ID \
+            -e SINGLE_TENANT_TF_TOKEN -e SINGLE_TENANT_PORTAL_KEY \
+            -e SINGLE_TENANT_WORKFLOW_KEY -e SINGLE_TENANT_SMTP_JSON \
+            --mount "type=bind,src=${GITHUB_EVENT_PATH},dst=/event.json,readonly" \
+            --mount "type=bind,src=${PWD}/infra,dst=/infra,readonly" \
+            --mount "type=bind,src=${PWD}/single-tenant-results,dst=/results" \
+            hushline-single-tenant-driver /infra/hushline-single-tenant /results
+      - name: Make encrypted result readable for artifact upload
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -f single-tenant-results/single-tenant-result.json ]; then
+            sudo chown "$(id -u):$(id -g)" single-tenant-results/single-tenant-result.json
+          fi
+      - name: Retain only encrypted exact-order result
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: single-tenant-result-${{ github.run_id }}
+          path: single-tenant-results/single-tenant-result.json
+          retention-days: 7
+          if-no-files-found: ignore

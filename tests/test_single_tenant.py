@@ -364,3 +364,36 @@ def test_customer_domain_accepts_public_hostnames(domain: str) -> None:
 )
 def test_invalid_or_protected_domain_is_rejected(domain: str) -> None:
     assert not valid_customer_domain(domain)
+
+
+@pytest.mark.parametrize("state", ["retiring", "retired"])
+def test_withdrawal_cannot_change_intent_during_or_after_retirement(
+    app: Flask, client: FlaskClient, order: SingleTenantOrder, mocker: MockFixture, state: str
+) -> None:
+    order.service_state = state
+    order.cancelled = True
+    order.cancellation_pending = False
+    db.session.commit()
+    call = mocker.patch("hushline.single_tenant.call")
+    assert client.post("/single-tenant/manage", data={"action": "resume"}).status_code == 409
+    db.session.refresh(order)
+    assert order.cancelled is True
+    assert order.cancellation_pending is False
+    call.assert_not_called()
+
+
+def test_live_withdrawal_after_paid_year_is_rejected_before_intent_changes(
+    app: Flask, client: FlaskClient, order: SingleTenantOrder, mocker: MockFixture
+) -> None:
+    app.config["SINGLE_TENANT_TEST_MODE"] = False
+    order.paid = True
+    order.period_end = "2025-01-01T00:00:00+00:00"
+    order.cancelled = True
+    order.cancellation_pending = False
+    db.session.commit()
+    call = mocker.patch("hushline.single_tenant.call")
+    assert client.post("/single-tenant/manage", data={"action": "resume"}).status_code == 409
+    db.session.refresh(order)
+    assert order.cancelled is True
+    assert order.cancellation_pending is False
+    call.assert_not_called()

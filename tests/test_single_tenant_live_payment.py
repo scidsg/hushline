@@ -20,6 +20,7 @@ def response() -> tuple[dict, dict]:
         "session_id": "cs_owned",
         "subscription_id": "sub_owned",
         "customer_id": "cus_owned",
+        "invoice_id": "in_owned",
         "period_start": "2026-10-06T00:00:00+00:00",
         "period_end": "2027-10-06T00:00:00+00:00",
         "cancelled_at": None,

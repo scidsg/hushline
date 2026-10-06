@@ -32,6 +32,7 @@ PAYMENT_FIELDS = {
     "session_id",
     "subscription_id",
     "customer_id",
+    "invoice_id",
     "period_start",
     "period_end",
     "cancelled_at",

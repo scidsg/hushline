@@ -3,7 +3,7 @@
 import re
 import secrets
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from urllib.parse import urlsplit
@@ -96,6 +96,8 @@ def retain_cancellation_on_deletion(user: User) -> None:
 
 
 def reconcile_cancellations() -> int:
+    from hushline.single_tenant_billing import SubscriptionExpired
+
     count = 0
     attempted: set[str] = set()
     while True:
@@ -118,6 +120,14 @@ def reconcile_cancellations() -> int:
         desired = order.cancelled
         try:
             result = call(order, "cancel", cancelled=desired)
+        except SubscriptionExpired:
+            # Stripe ended the owned subscription while withdrawal was pending.
+            # Retain a cancellation intent for the next normal acknowledgement;
+            # never leave an impossible withdrawal blocking annual retirement.
+            order.cancelled = True
+            order.cancellation_pending = True
+            db.session.commit()
+            continue
         except ServiceUnavailable:
             db.session.rollback()
             continue
@@ -163,7 +173,10 @@ def init_app(app: Flask) -> None:
     @click.option("--once", is_flag=True, help="Run one durable cancellation reconciliation pass.")
     def reconcile(once: bool) -> None:
         validate_settings(app.config)
+        from hushline.single_tenant_billing import refresh_expired_terms
+
         while True:
+            refresh_expired_terms()
             reconcile_cancellations()
             reconcile_billing()
             if once:
@@ -416,6 +429,16 @@ def init_app(app: Flask) -> None:
                 abort(400)
             if action == "cancel" and request.form.get("confirm_deletion") != "yes":
                 abort(400)
+            if action == "resume" and (
+                order.service_state in {"retiring", "retired"}
+                or (
+                    not app.config.get("SINGLE_TENANT_TEST_MODE")
+                    and order.paid
+                    and order.period_end
+                    and datetime.fromisoformat(order.period_end) <= datetime.now(UTC)
+                )
+            ):
+                abort(409)
             order.cancelled = action == "cancel"
             order.cancellation_pending = True
             db.session.commit()

@@ -132,3 +132,57 @@ are test evidence, not confirmation that live sales are enabled.
 ![Account plan choices](screenshots/single-tenant/plan-selection.png)
 
 ![Full annual upfront quote](screenshots/single-tenant/annual-checkout.png)
+
+## General controller release
+
+The implementation is in `scripts/single_tenant_live_worker.py` and the signed
+API factory in `scripts/single_tenant_live_service.py`. It is not installed or
+activated by importing these modules. Use a physically new, owner-only encrypted
+SQLite ledger on the mounted external volume; initialization refuses any existing
+file. Keep its encryption key and distinct portal/workflow signing keys in the
+approved internal secret store. Persist those keys across restarts.
+
+Private controller configuration names its namespace (`hushline-single-tenant`),
+ledger and key paths, approved HTTPS billing authority, explicit `accepts_payments`
+flag, and publisher app/infra paths, immutable reviewed commit SHAs, external
+artifact directory and internal SSH signing identity. The API is a WSGI factory
+(`scripts.single_tenant_live_worker:create_app`); run the separate worker with
+`python -m scripts.single_tenant_live_worker` and an explicit
+`SINGLE_TENANT_CONTROL_CONFIG` path. Neither process creates a database implicitly.
+The worker checks release readiness every 30 seconds. Checkout also checks the
+controller's recent healthy heartbeat and explicit sales flag.
+
+Install both reviewed workflows on the default branch, with repository variables
+`SINGLE_TENANT_SOURCE_SHA`, `SINGLE_TENANT_INFRA_SHA`,
+`SINGLE_TENANT_TF_ORGANIZATION`, `SINGLE_TENANT_TF_PROJECT`,
+`SINGLE_TENANT_DO_TEAM_ID`, `SINGLE_TENANT_AUTHORITY_ORIGIN`, and
+`SINGLE_TENANT_CONTROL_ORIGIN`. The team UUID must match HushLineDev; the HCP
+project must be named `Hush Line Single Tenant`. There are no provider defaults.
+
+The isolated `single-tenant-automation` GitHub environment must allow only branch
+`main`, without required reviewers, wait timers or custom approval rules. Store
+only its dedicated `SINGLE_TENANT_CONFIG_READ_TOKEN`, `SINGLE_TENANT_DO_TOKEN`,
+`SINGLE_TENANT_TF_TOKEN`, `SINGLE_TENANT_PORTAL_KEY`,
+`SINGLE_TENANT_WORKFLOW_KEY`, and `SINGLE_TENANT_SMTP_JSON` there. The config token
+reads the private infrastructure repository; the cloud tokens must cover only the
+approved customer project/team. The DO token requires account-read permission
+for team verification. The HCP token requires plan JSON and owned-workspace
+operations. No Stripe key enters the controller, Git requests or cloud jobs.
+Retain the existing dedicated notification configuration; this release changes
+no sender addresses.
+
+The request-validation workflow handles only create-only signed pointer commits.
+The privileged lifecycle runs trusted default-branch code, independently checks
+the private signed request, and applies an exact saved guarded plan. It never
+executes code from a customer request branch. Result artifacts contain encrypted
+per-order envelopes; invitations, payment evidence and credentials are excluded
+from public commits and artifact plaintext. Lost callbacks are reconciled from
+those original artifacts. A stalled publication reuses its locally retained
+original signed commits with create-only remote leases. Neither path reruns a
+cloud operation.
+
+Release is incomplete until these source changes have passed final CI, their
+configuration is independently reviewed, and the customer controller has passed
+a full uninterrupted isolated lifecycle rehearsal. The current installed sandbox
+controller and existing instances remain unchanged. Production deployment and
+opening live sales remain outside this preparation step.

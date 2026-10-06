@@ -33,6 +33,7 @@ class SingleTenantOrder(Model):
     billing_receipt: Mapped[str | None] = mapped_column(db.String(32), unique=True)
     stripe_session_id: Mapped[str | None] = mapped_column(db.String(255), unique=True)
     stripe_subscription_id: Mapped[str | None] = mapped_column(db.String(255), unique=True)
+    stripe_invoice_id: Mapped[str | None] = mapped_column(db.String(255), unique=True)
     stripe_customer_id: Mapped[str | None] = mapped_column(db.String(255))
     billing_sync_pending: Mapped[bool] = mapped_column(default=False, nullable=False)
 

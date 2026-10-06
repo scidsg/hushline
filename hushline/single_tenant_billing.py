@@ -25,12 +25,17 @@ MAX_TOTAL_CENTS = 99999999
 API_VERSION = "2024-06-20"
 
 
+class SubscriptionExpired(ServiceUnavailable):
+    """The owned Stripe subscription ended before a withdrawal could complete."""
+
+
 @dataclass(frozen=True)
 class PaidYear:
     customer: str
     subscription: str
     start: datetime
     end: datetime
+    invoice: str
 
 
 def prices(quantity: int | None) -> list[tuple[str, int]]:
@@ -70,7 +75,9 @@ def annual_end(start: datetime) -> datetime:
     return start.replace(year=start.year + 1, day=day)
 
 
-def verified_invoice(order: SingleTenantOrder, session: Any, *, live: bool) -> PaidYear:
+def verified_invoice(
+    order: SingleTenantOrder, session: Any, *, live: bool, historical: bool = False
+) -> PaidYear:
     expected = metadata(order)
     subscription = session.get("subscription") or {}
     invoice = subscription.get("latest_invoice") if hasattr(subscription, "get") else None
@@ -89,6 +96,9 @@ def verified_invoice(order: SingleTenantOrder, session: Any, *, live: bool) -> P
         or any(subscription.get("metadata", {}).get(k) != v for k, v in expected.items())
         or session.get("currency") != "usd"
         or session.get("amount_total") != sum(value for _, value in prices(order.license_limit))
+        or not isinstance(invoice.get("id"), str)
+        or not invoice["id"].startswith("in_")
+        or (historical and invoice["id"] != order.stripe_invoice_id)
         or invoice.get("livemode") is not live
         or invoice.get("status") != "paid"
         or invoice.get("currency") != "usd"
@@ -102,8 +112,20 @@ def verified_invoice(order: SingleTenantOrder, session: Any, *, live: bool) -> P
         or (order.stripe_subscription_id and subscription.get("id") != order.stripe_subscription_id)
     ):
         raise ValueError("Stripe has not confirmed this account's complete annual payment")
-    start = datetime.fromtimestamp(subscription["current_period_start"], UTC)
-    end = datetime.fromtimestamp(subscription["current_period_end"], UTC)
+    if historical:
+        lines = invoice.get("lines", {}).get("data", [])
+        if len(lines) != COMPONENT_COUNT or any(
+            not isinstance(line.get("period", {}).get(field), int)
+            for line in lines
+            for field in ("start", "end")
+        ):
+            raise ValueError("Every paid component must cover the same complete annual term")
+        period = lines[0]["period"]
+        start = datetime.fromtimestamp(period["start"], UTC)
+        end = datetime.fromtimestamp(period["end"], UTC)
+    else:
+        start = datetime.fromtimestamp(subscription["current_period_start"], UTC)
+        end = datetime.fromtimestamp(subscription["current_period_end"], UTC)
     if annual_end(start) != end:
         raise ValueError("A complete calendar-year payment is required")
     items = subscription.get("items", {}).get("data", [])
@@ -132,7 +154,7 @@ def verified_invoice(order: SingleTenantOrder, session: Any, *, live: bool) -> P
         raise ValueError("The annual price components changed")
     if order.period_start and start < datetime.fromisoformat(order.period_start):
         raise ValueError("An older payment cannot replace the verified paid year")
-    return PaidYear(session["customer"], subscription["id"], start, end)
+    return PaidYear(session["customer"], subscription["id"], start, end, invoice["id"])
 
 
 def verified_year(order: SingleTenantOrder, session: Any, *, live: bool, now: datetime) -> PaidYear:
@@ -264,16 +286,29 @@ def confirm(order: SingleTenantOrder, session_id: str, *, commit: bool = True) -
         raise ServiceUnavailable(
             "Verification of the account's annual payment is pending"
         ) from None
-    changed = order.period_end != paid.end.isoformat()
+    previous = (order.period_end, order.stripe_invoice_id, order.cancelled_at)
     order.stripe_customer_id = paid.customer
     order.stripe_subscription_id = paid.subscription
+    order.stripe_invoice_id = paid.invoice
     order.period_start = paid.start.isoformat()
     order.period_end = paid.end.isoformat()
     order.paid = True
-    if changed and order.stage in {"dns", "provision", "ready"}:
-        order.billing_sync_pending = True
     if not order.cancellation_pending:
         order.cancelled = session["subscription"].get("cancel_at_period_end") is True
+        cancelled = session["subscription"].get("canceled_at")
+        order.cancelled_at = (
+            datetime.fromtimestamp(cancelled, UTC).isoformat()
+            if order.cancelled and cancelled
+            else (order.cancelled_at or datetime.now(UTC).isoformat())
+            if order.cancelled
+            else None
+        )
+    if previous != (
+        order.period_end,
+        order.stripe_invoice_id,
+        order.cancelled_at,
+    ) and order.stage in {"dns", "provision", "ready"}:
+        order.billing_sync_pending = True
     # The cancellation worker owns a row lock until both Stripe and the broker
     # acknowledge its intent. Payment confirmation must not release that lock.
     if commit:
@@ -310,7 +345,10 @@ def cancel(order: SingleTenantOrder, desired: bool) -> dict[str, Any]:
             raise ValueError("The subscription does not belong to this account")
         if subscription.get("status") == "canceled":
             if not desired:
-                raise ValueError("An expired subscription cannot be resumed")
+                order.cancelled_at = datetime.fromtimestamp(
+                    subscription.get("canceled_at") or int(datetime.now(UTC).timestamp()), UTC
+                ).isoformat()
+                raise SubscriptionExpired("The owned subscription cannot be resumed")
         else:
             if not order.period_end or datetime.fromisoformat(order.period_end) <= datetime.now(
                 UTC
@@ -347,6 +385,7 @@ def proof(order: SingleTenantOrder) -> dict[str, Any]:
             order.stripe_session_id,
             order.stripe_subscription_id,
             order.stripe_customer_id,
+            order.stripe_invoice_id,
             order.period_start,
             order.period_end,
         ]
@@ -359,6 +398,7 @@ def proof(order: SingleTenantOrder) -> dict[str, Any]:
         "session_id": order.stripe_session_id,
         "subscription_id": order.stripe_subscription_id,
         "customer_id": order.stripe_customer_id,
+        "invoice_id": order.stripe_invoice_id,
         "period_start": order.period_start,
         "period_end": order.period_end,
         "cancelled_at": order.cancelled_at,
@@ -421,3 +461,52 @@ def handle_event(event: Any) -> bool:
             order.billing_sync_pending = order.stage in {"dns", "provision", "ready"}
         db.session.commit()
     return True
+
+
+def refresh_expired_terms() -> int:
+    """Recover missed owned renewal/cancellation events without trusting callbacks."""
+    if current_app.config.get("SINGLE_TENANT_TEST_MODE"):
+        return 0
+    count = 0
+    attempted: set[str] = set()
+    while True:
+        order = db.session.scalar(
+            db.select(SingleTenantOrder)
+            .where(
+                SingleTenantOrder.paid.is_(True),
+                SingleTenantOrder.period_end <= datetime.now(UTC).isoformat(),
+                SingleTenantOrder.service_state != "retired",
+                SingleTenantOrder.id.not_in(attempted),
+            )
+            .with_for_update(skip_locked=True)
+            .limit(1)
+        )
+        if order is None:
+            db.session.rollback()
+            return count
+        attempted.add(order.id)
+        try:
+            actual = client().subscriptions.retrieve(order.stripe_subscription_id)
+            if (
+                actual.get("id") != order.stripe_subscription_id
+                or actual.get("customer") != order.stripe_customer_id
+                or actual.get("livemode") is not True
+                or any(
+                    actual.get("metadata", {}).get(key) != value
+                    for key, value in metadata(order).items()
+                )
+            ):
+                raise ValueError("Expired subscription failed exact ownership verification")
+            if actual.get("status") == "canceled":
+                if not order.cancellation_pending:
+                    order.cancelled = True
+                    order.cancelled_at = datetime.fromtimestamp(
+                        actual.get("canceled_at") or int(datetime.now(UTC).timestamp()), UTC
+                    ).isoformat()
+                    order.billing_sync_pending = order.stage in {"dns", "provision", "ready"}
+            else:
+                confirm(order, order.stripe_session_id or "", commit=False)
+            db.session.commit()
+            count += 1
+        except (stripe.StripeError, ServiceUnavailable, ValueError, KeyError, TypeError):
+            db.session.rollback()
