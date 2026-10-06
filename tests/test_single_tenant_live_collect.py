@@ -162,12 +162,15 @@ def test_release_gate_requires_review_free_default_branch_customer_environment(
 ) -> None:
     worker, documents = collector
     prefix = "repos/scidsg/hushline/environments/single-tenant-automation"
-    environment = {
+    environment: dict[str, Any] = {
         "name": "single-tenant-automation",
         "protection_rules": [],
         "deployment_branch_policy": {"protected_branches": False, "custom_branch_policies": True},
     }
-    branches = {"total_count": 1, "branch_policies": [{"id": 1, "name": "main", "type": "branch"}]}
+    branches: dict[str, Any] = {
+        "total_count": 1,
+        "branch_policies": [{"id": 1, "name": "main", "type": "branch"}],
+    }
     secret_names = [
         "SINGLE_TENANT_CONFIG_READ_TOKEN",
         "SINGLE_TENANT_DO_TOKEN",
@@ -179,7 +182,7 @@ def test_release_gate_requires_review_free_default_branch_customer_environment(
     if failure == "review":
         environment["protection_rules"] = [{"type": "required_reviewers"}]
     if failure == "branch":
-        branches["branch_policies"][0]["name"] = "*"  # type: ignore[index]
+        branches["branch_policies"][0]["name"] = "*"
     if failure == "secret":
         secret_names.pop()
     documents[prefix] = environment

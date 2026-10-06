@@ -366,4 +366,6 @@ The billing worker independently rechecks expired terms to recover missed renewa
 or cancellation webhooks. A paid renewal retains the same instance. An unpaid
 year cannot extend service; a terminal cancelled subscription and the recorded
 paid invoice authorize normal year-end deletion. Retirement records prevent later
-callbacks or renewals from recreating a deleted instance.
+callbacks or renewals from recreating a deleted instance. A fully verified
+retirement releases the hostname for a new separately paid order; the original
+order and payment tombstones remain permanent.

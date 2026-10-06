@@ -414,8 +414,14 @@ class Ledger:
             if purpose == "provision" and result["state"] == "failed":
                 # A later check failure never paints earlier successes as failed.
                 payload["checks"] = {**checks, **self.open(row[1]).get("checks", {})}
+            domain_tag = self.tag(
+                "retired:" + order + ":" + payload["domain"]
+                if result["state"] == "retired"
+                else payload["domain"]
+            )
             connection.execute(
-                "UPDATE orders SET payload=? WHERE id=?", (self.seal(payload), order)
+                "UPDATE orders SET payload=?, domain_tag=? WHERE id=?",
+                (self.seal(payload), domain_tag, order),
             )
 
     def observation(self, order: str, owner: str, *, dns: bool, https_ok: bool) -> None:

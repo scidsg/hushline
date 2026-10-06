@@ -154,3 +154,44 @@ def test_billing_cannot_replace_identity_or_shorten_term(
     with pytest.raises(ValueError, match="Billing|paid year"):
         ledger.billing(ORDER, OWNER, paid)
     assert ledger.get(ORDER, OWNER) == data
+
+
+def test_only_verified_retirement_releases_hostname_for_a_new_order(ledger: Ledger) -> None:
+    data = payload()
+    ledger.reserve(ORDER, OWNER, data)
+    payment = deepcopy(data["payment"])
+    payment["cancelled_at"] = "2026-10-06T01:00:00+00:00"
+    ledger.billing(ORDER, OWNER, payment)
+    assert ledger.expiry(now=datetime(2027, 10, 7, tzinfo=UTC)) == 1
+    request = next(row for row in ledger.pending() if row["purpose"] == "retire")
+    ledger.checkpoint(
+        ORDER, "retire", request["revision"], private_sha="3" * 40, public_sha="4" * 40
+    )
+    other = deepcopy(data)
+    other.update(order_id="e" * 32, owner="f" * 64)
+    other["payment"].update(receipt="e" * 32, subscription_id="sub_new", invoice_id="in_new")
+    with pytest.raises(ValueError, match="already belongs"):
+        ledger.reserve(other["order_id"], other["owner"], other)
+    ledger.event(
+        ORDER,
+        OWNER,
+        purpose="retire",
+        revision=request["revision"],
+        public_sha="4" * 40,
+        result={"state": "retiring"},
+    )
+    with pytest.raises(ValueError, match="already belongs"):
+        ledger.reserve(other["order_id"], other["owner"], other)
+    ledger.event(
+        ORDER,
+        OWNER,
+        purpose="retire",
+        revision=request["revision"],
+        public_sha="4" * 40,
+        result={"state": "retired"},
+    )
+    ledger.reserve(other["order_id"], other["owner"], other)
+    assert ledger.get(other["order_id"], other["owner"])["state"] == "queued"
+    assert ledger.get(ORDER, OWNER)["state"] == "retired"
+    with pytest.raises(ValueError, match="adopted or replaced"):
+        ledger.reserve(ORDER, OWNER, data)
