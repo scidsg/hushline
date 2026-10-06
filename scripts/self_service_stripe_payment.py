@@ -195,7 +195,7 @@ def validate(data: dict, session: dict, retiring: bool = False) -> None:
         retiring
         and not explicit_retirement(data)
         and (
-            datetime.now(UTC) < end
+            current < end
             or not (sub.get("cancel_at_period_end") or sub.get("status") == "canceled")
         )
     ):
