@@ -204,3 +204,39 @@ def test_pointer_locates_private_order_json(
     request.write_text(json.dumps({"order_id": "a" * 32, "config_ref": "b" * 40}))
     pointer(request)
     assert f"order_path=self-service-tests/orders/{'a' * 32}.json" in output.read_text()
+
+
+def test_paid_clock_smtp_plan_requires_approved_runtime_secrets(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from scripts.self_service_stripe_payment import CLOCK_FIXTURE_ORDER
+    from scripts.self_service_test_smtp import approved_smtp
+
+    monkeypatch.setenv("HUSHLINE_SINGLE_TENANT_SMTP_USERNAME", "test-fixture")
+    monkeypatch.setenv("HUSHLINE_SINGLE_TENANT_SMTP_PASSWORD", "test-only")
+    data = isolated_plan()
+    name = "hushline-self-service-test-" + CLOCK_FIXTURE_ORDER
+    for item in data["resource_changes"]:
+        value = item["change"]["after"]
+        if item["address"] == "digitalocean_app.staging":
+            value["spec"][0]["name"] = "hlst-" + CLOCK_FIXTURE_ORDER[:27]
+            value["spec"][0]["service"] = [
+                {
+                    "name": service,
+                    "env": [
+                        {"key": k, "value": v, "type": "SECRET", "scope": "RUN_TIME"}
+                        for k, v in approved_smtp().items()
+                    ],
+                }
+                for service in ("app", "app-onion")
+            ]
+        elif "name" in value:
+            value["name"] = name
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(data))
+    guard_plan(path, name)
+    app = next(i for i in data["resource_changes"] if i["address"] == "digitalocean_app.staging")
+    app["change"]["after"]["spec"][0]["service"][0]["env"][0]["type"] = "GENERAL"
+    path.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="SMTP"):
+        guard_plan(path, name)

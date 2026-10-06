@@ -122,3 +122,32 @@ def test_explicit_sandbox_retirement_preserves_term_and_verifies_payment(
     data["cancelled_at"] = datetime.now(UTC).isoformat()
     with pytest.raises(ValueError, match="not yet due"):
         retirement.validate(data, datetime.now(UTC))
+
+
+def test_owned_stripe_clock_expiry_passes_the_complete_retirement_validator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from scripts import self_service_stripe_payment as payment
+    from tests.test_self_service_stripe_payment import clock_evidence
+
+    data, session, customer, clock = clock_evidence()
+    start = datetime.fromisoformat(data["stripe_payment"]["period_start"])
+    data.update(
+        payment_mode="stripe_test",
+        receipt=data["stripe_payment"]["receipt"],
+        period_start=data["stripe_payment"]["period_start"],
+        period_end=data["stripe_payment"]["period_end"],
+        cancelled_at=(start + timedelta(seconds=30)).isoformat(),
+    )
+    session["subscription"]["cancel_at_period_end"] = True
+    monkeypatch.setattr(payment, "retrieve", lambda _: session)
+    monkeypatch.setattr(
+        payment, "stripe_get", lambda path: customer if path.startswith("customers/") else clock
+    )
+    with pytest.raises(ValueError, match="not cancelled and due"):
+        retirement.validate(data, datetime.now(UTC))
+    clock["frozen_time"] = session["subscription"]["current_period_end"] + 1
+    retirement.validate(data, datetime.now(UTC))
+    customer["test_clock"] = "clock_foreign"
+    with pytest.raises(ValueError, match="clock"):
+        retirement.validate(data, datetime.now(UTC))

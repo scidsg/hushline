@@ -81,9 +81,14 @@ def prepare(path: Path, destination: Path) -> None:
     validate_config(data)
     claim_code = secrets.token_urlsafe(16)
     print(f"::add-mask::{claim_code}")
-    destination.write_text(
-        json.dumps({"custom_domain": data["custom_domain"], "self_service_claim_code": claim_code})
-    )
+    values = {"custom_domain": data["custom_domain"], "self_service_claim_code": claim_code}
+    from scripts.self_service_stripe_payment import is_clock_order
+
+    if is_clock_order(data):
+        from scripts.self_service_test_smtp import approved_smtp
+
+        values.update(enable_paid_clock_smtp=True, single_tenant_smtp=approved_smtp())
+    destination.write_text(json.dumps(values))
     destination.chmod(0o600)
     public_key = destination.parent / "claim-public.pem"
     public_key.write_bytes(base64.b64decode(data["claim_public_key"], validate=True))
@@ -161,6 +166,30 @@ def guard_plan(path: Path, name: str) -> None:
             values.get("cluster_id") is not None or unknown.get("cluster_id") is not True
         ):
             raise ValueError("Plan cannot alter an existing database firewall")
+
+    from scripts.self_service_stripe_payment import CLOCK_FIXTURE_ORDER
+
+    if name == "hushline-self-service-test-" + CLOCK_FIXTURE_ORDER:
+        from scripts.self_service_test_smtp import approved_smtp
+
+        expected = approved_smtp()
+        app = next(item for item in changes if item["address"] == "digitalocean_app.staging")
+        services = app["change"]["after"]["spec"][0].get("service", [])
+        if {item.get("name") for item in services} != {"app", "app-onion"}:
+            raise ValueError("Paid clock plan requires exactly its two application services")
+        for service in services:
+            env = [item for item in service.get("env", []) if item.get("key") in expected]
+            if (
+                len(env) != len(expected)
+                or any(
+                    item.get("value") != expected.get(item.get("key"))
+                    or item.get("type") != "SECRET"
+                    or item.get("scope") != "RUN_TIME"
+                    for item in env
+                )
+                or {item.get("key") for item in env} != set(expected)
+            ):
+                raise ValueError("Paid clock SMTP plan differs from the approved configuration")
 
 
 def status(destination: Path) -> None:

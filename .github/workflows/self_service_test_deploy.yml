@@ -14,7 +14,7 @@ concurrency:
 
 env:
   INFRA_REPOSITORY: scidsg/hushline-infra
-  INFRA_REF: e4161b9b051468004da8ba3071711b530e721d49
+  INFRA_REF: 6409779dbbd947b8901541ad0829c34399c028a8
   STAGING_TF_PATH: hushline-self-service-test
 
 jobs:
@@ -442,6 +442,8 @@ jobs:
         id: customer
         env:
           STRIPE_TEST_SECRET_KEY: ${{ secrets.HUSHLINE_STRIPE_TEST_SECRET_KEY }}
+          HUSHLINE_SINGLE_TENANT_SMTP_USERNAME: ${{ secrets.HUSHLINE_SINGLE_TENANT_SMTP_USERNAME }}
+          HUSHLINE_SINGLE_TENANT_SMTP_PASSWORD: ${{ secrets.HUSHLINE_SINGLE_TENANT_SMTP_PASSWORD }}
           ORDER_PATH: ${{ steps.request.outputs.order_path }}
         run: |
           set -euo pipefail
@@ -635,6 +637,8 @@ jobs:
         if: steps.request.outputs.enabled == 'true'
         env:
           STRIPE_TEST_SECRET_KEY: ${{ secrets.HUSHLINE_STRIPE_TEST_SECRET_KEY }}
+          HUSHLINE_SINGLE_TENANT_SMTP_USERNAME: ${{ secrets.HUSHLINE_SINGLE_TENANT_SMTP_USERNAME }}
+          HUSHLINE_SINGLE_TENANT_SMTP_PASSWORD: ${{ secrets.HUSHLINE_SINGLE_TENANT_SMTP_PASSWORD }}
           ORDER_PATH: ${{ steps.request.outputs.order_path }}
           PLAN_PATH: ${{ steps.plan.outputs.json_plan_path }}
           STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
