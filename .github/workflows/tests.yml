@@ -36,6 +36,14 @@ jobs:
       - name: Install Python dependencies
         run: poetry install
 
+      - name: Retain sanitized sandbox UI evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: single-tenant-sandbox-ui
+          path: docs/screenshots/single-tenant/*.png
+          retention-days: 14
+          if-no-files-found: error
+
       - name: Lint
         run: poetry run make lint
 

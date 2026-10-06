@@ -317,3 +317,32 @@ project deletion, confirmed provider absence and empty-workspace safe-delete,
 with the original hushline.foo state unchanged. A failed or recovered attempt
 does not count as uninterrupted success. The original controller and retired
 fixture remain protected; real billing and production policies are unchanged.
+
+### Account-bound Single Tenant subscriptions
+
+Users create and authenticate a normal Hush Line account before choosing Free,
+Super User, or Single Tenant. Single Tenant uses the existing UI framework and
+requires a complete annual payment upfront. Pricing updates as the license count
+changes; Unlimited licenses cost $20,000/year before infrastructure and the three
+existing percentage charges. Verified Stripe payment authorizes provisioning.
+Customers do not approve deployment reviews.
+
+The account owns an opaque order reference. Only that account can monitor its
+instance, obtain its private administrator invitation, or change renewal intent.
+DNS verification and successful deployment checks never automatically advance
+either Continue screen. Payment redirects alone do not authorize infrastructure. If the customer misses
+the Checkout return, the payment-check action verifies the same owned session
+without creating another payment or provisioning request. Live workflows obtain
+fresh signed billing authority from the portal; Stripe keys remain there.
+
+Cancelling renewal preserves service until the recorded paid-through date. At
+that date the instance and stored messages are permanently deleted, with no
+export grace period. Withdrawing cancellation preserves the same annual term.
+Deleting the portal account retains a durable cancellation obligation separate
+from the account. Pausing new Single Tenant sales never stops reconciliation.
+
+The isolated launch rehearsal uses one reserved Stripe sandbox test clock and
+provider-assigned HTTPS endpoint. It creates real infrastructure only after the
+browser confirms sandbox payment and explicitly requests provisioning. Advancing
+that owned clock changes neither the paid year nor shared UTC expiry rules.
+Production activation remains a separately reviewed configuration change.

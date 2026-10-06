@@ -74,6 +74,9 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
     public_store.init_app(app)
 
     routes.init_app(app)
+    from hushline.single_tenant import init_app as init_single_tenant
+
+    init_single_tenant(app)
     for module in [admin, settings, storage]:
         app.register_blueprint(module.create_blueprint())
 
@@ -293,6 +296,10 @@ def configure_jinja(app: Flask) -> None:
             global_csrf_token=generate_csrf(),
             is_onion_service=request.host.lower().endswith(".onion"),
             is_premium_enabled=bool(app.config.get("STRIPE_SECRET_KEY", False)),
+            is_single_tenant_enabled=bool(app.config.get("SINGLE_TENANT_ENABLED", False)),
+            is_single_tenant_sales_open=bool(
+                app.config.get("SINGLE_TENANT_ACCEPT_PAYMENTS", False)
+            ),
             registration_settings_enabled=app.config["REGISTRATION_SETTINGS_ENABLED"],
             registration_enabled=data.get(OrganizationSetting.REGISTRATION_ENABLED, False),
             registration_codes_required=data.get(

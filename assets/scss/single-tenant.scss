@@ -1,0 +1,135 @@
+/* Only layout adaptations for the third existing app plan card and DNS records. */
+main.tier-select {
+  max-width: 1100px;
+}
+.demo-caption {
+  text-align: center;
+}
+#plan-wrapper > .plan {
+  min-width: 230px;
+}
+#plan-wrapper .plan > form {
+  margin-top: auto;
+  width: 100%;
+  padding-top: 1rem;
+}
+.demo-record {
+  border: var(--border);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+.demo-record h4 {
+  margin-top: 0;
+}
+.demo-record dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: start;
+  gap: 0.75rem;
+  margin: 0;
+  text-align: left;
+}
+.demo-record dt {
+  padding-top: 0.375rem;
+  font-weight: bold;
+}
+.demo-record dd {
+  min-width: 0;
+  margin: 0;
+}
+.demo-record code {
+  display: block;
+  margin: 0;
+  padding: 0.375rem 0.5rem;
+  line-height: 1.5;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.onboarding-wizard .feature-meta {
+  gap: 1rem;
+}
+.onboarding-wizard .feature-meta p:last-child {
+  text-align: right;
+}
+@media (max-width: 600px) {
+  #plan-wrapper {
+    flex-direction: column;
+  }
+  #plan-wrapper > .plan {
+    min-width: 0;
+  }
+}
+
+#license-selection .select-shell {
+  margin-bottom: 1rem;
+}
+#license-selection .select-shell > select {
+  display: block;
+  margin-bottom: 0;
+  height: 44px;
+  line-height: 42px;
+  padding: 0 2.5rem 0 0.75rem;
+}
+
+.onboarding-wizard > p.meta {
+  text-align: center;
+}
+
+h4:has(+ .meta) {
+  margin-bottom: 0;
+}
+
+.setup-checks {
+  margin: 1rem 0;
+}
+.setup-check {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 0;
+  border-bottom: var(--border);
+}
+.setup-check strong {
+  min-width: 0;
+}
+.check-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-shrink: 0;
+}
+.passed-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+}
+.setup-check[data-state="passed"] .check-state {
+  color: #187a39;
+  font-weight: bold;
+}
+.setup-check[data-state="failed"] .check-state {
+  color: var(--color-error);
+  font-weight: bold;
+}
+@media (prefers-color-scheme: dark) {
+  .setup-check[data-state="passed"] .check-state {
+    color: #83dfa0;
+  }
+}
+
+.onboarding-wizard form[hidden] {
+  display: none;
+}
+
+.subscription-confirmation {
+  align-items: flex-start;
+}
+.subscription-confirmation input[type="checkbox"] {
+  flex: 0 0 1.25rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+}
