@@ -119,3 +119,14 @@ changed. All live/test payment checks, immutable-proof comparisons, resource
 ownership checks, saved delete-only plans and absence/workspace checks remain.
 This is explicit sandbox retirement, not annual-expiry validation. No other order
 can use this exception.
+
+Stripe clock fixture `6368ab5a5987358f9a9083f8ec2707b7` has a separate
+controller database, session/cookie/key, and port 8776. Hosted sandbox Checkout
+creates its customer attached to one approved Stripe test clock before payment.
+It uses only its newly assigned provider hostname, requiring no DNS edits.
+The worker may use the authoritative ready clock only in that physical fixture
+controller. CI independently retrieves the customer and clock, verifies test mode,
+exact customer/clock/order binding, the full annual term, and cancellation before
+retirement. Other orders still use real UTC. No billing dates are edited and no
+explicit early-retirement proof is used. Actual clock-based lifecycle evidence
+will be recorded after an uninterrupted first attempt.

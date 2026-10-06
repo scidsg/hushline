@@ -37,9 +37,10 @@ def validate(data: dict, current: datetime) -> None:
         "period_end",
         "cancelled_at",
     }
-    from scripts.self_service_stripe_payment import explicit_retirement
+    from scripts.self_service_stripe_payment import explicit_retirement, is_clock_order
 
     explicit = explicit_retirement(data)
+    clock_order = is_clock_order(data)
     if explicit:
         expected.add("explicit_sandbox_retirement")
     stripe_order = data.get("payment_mode") == "stripe_test"
@@ -62,7 +63,9 @@ def validate(data: dict, current: datetime) -> None:
     day = min(start.day, calendar.monthrange(start.year + 1, start.month)[1])
     if end != start.replace(year=start.year + 1, day=day):
         raise ValueError("A full paid annual period is required")
-    if not explicit and (cancelled is None or not start <= cancelled < end or current < end):
+    if not explicit and (
+        cancelled is None or not start <= cancelled < end or (not clock_order and current < end)
+    ):
         raise ValueError("Cancellation is absent, invalid, or not yet due")
     if explicit and (
         data["cancelled_at"] is not None

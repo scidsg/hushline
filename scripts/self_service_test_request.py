@@ -47,7 +47,10 @@ def validate_config(data: dict) -> None:
     if not re.fullmatch(r"[a-f0-9]{32}", data["order_id"]):
         raise ValueError("Invalid order identifier")
     domain = data["custom_domain"]
-    if (
+    from scripts.self_service_stripe_payment import is_clock_order
+
+    clock_order = is_clock_order(data)
+    if not clock_order and (
         not isinstance(domain, str)
         or len(domain) > MAX_HOSTNAME_LENGTH
         or not DOMAIN.fullmatch(domain)

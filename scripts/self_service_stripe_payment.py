@@ -46,14 +46,15 @@ PROTECTED_ORDERS = {
 }
 
 
-def retrieve(session_id: str) -> dict:
+CLOCK_FIXTURE_ORDER = "6368ab5a5987358f9a9083f8ec2707b7"
+
+
+def stripe_get(path: str) -> dict:
     key = os.environ.get("STRIPE_TEST_SECRET_KEY", "")
     if not key.startswith(("sk_test_", "rk_test_")):
         raise ValueError("A dedicated Stripe test verification key is required")
-    if not re.fullmatch(r"cs_test_[A-Za-z0-9]+", session_id):
-        raise ValueError("Only a sandbox Checkout Session can authorize test resources")
     request = urllib.request.Request(  # noqa: S310 — fixed Stripe HTTPS endpoint
-        f"https://api.stripe.com/v1/checkout/sessions/{session_id}?expand[]=subscription.latest_invoice",
+        "https://api.stripe.com/v1/" + path,
         headers={"Authorization": f"Bearer {key}", "Stripe-Version": API_VERSION},
     )
 
@@ -65,17 +66,62 @@ def retrieve(session_id: str) -> dict:
         return json.load(response)
 
 
+def retrieve(session_id: str) -> dict:
+    if not re.fullmatch(r"cs_test_[A-Za-z0-9]+", session_id):
+        raise ValueError("Only a sandbox Checkout Session can authorize test resources")
+    return stripe_get(f"checkout/sessions/{session_id}?expand[]=subscription.latest_invoice")
+
+
+def is_clock_order(data: dict) -> bool:
+    clock_id = (data.get("stripe_payment") or {}).get("test_clock_id")
+    if clock_id is None:
+        return False
+    if (
+        data.get("order_id") != CLOCK_FIXTURE_ORDER
+        or data.get("custom_domain") != ""
+        or not isinstance(clock_id, str)
+        or not re.fullmatch(r"clock_[A-Za-z0-9]+", clock_id)
+    ):
+        raise ValueError("Stripe clock cannot alter another order or hostname")
+    return True
+
+
+def clock_current(data: dict, session: dict) -> datetime | None:
+    if not is_clock_order(data):
+        return None
+    customer_id = session.get("customer")
+    if not isinstance(customer_id, str) or not re.fullmatch(r"cus_[A-Za-z0-9]+", customer_id):
+        raise ValueError("Invalid clock-owned sandbox customer")
+    customer = stripe_get("customers/" + customer_id)
+    clock_id = data["stripe_payment"]["test_clock_id"]
+    clock = stripe_get("test_helpers/test_clocks/" + clock_id)
+    if (
+        customer.get("id") != customer_id
+        or customer.get("livemode") is not False
+        or customer.get("test_clock") != clock_id
+        or customer.get("metadata") != {"single_tenant_clock_order": CLOCK_FIXTURE_ORDER}
+        or clock.get("id") != clock_id
+        or clock.get("livemode") is not False
+        or clock.get("status") != "ready"
+    ):
+        raise ValueError("Stripe has not confirmed the exact fixture clock ownership")
+    return datetime.fromtimestamp(clock["frozen_time"], UTC)
+
+
 def validate(data: dict, session: dict, retiring: bool = False) -> None:
     if data.get("order_id") in PROTECTED_ORDERS:
         raise ValueError("Stripe cannot reuse a retired protected test order")
     proof = data.get("stripe_payment")
-    if not isinstance(proof, dict) or set(proof) != {
+    expected = {
         "receipt",
         "session_id",
         "subscription_id",
         "period_start",
         "period_end",
-    }:
+    }
+    if is_clock_order(data):
+        expected.add("test_clock_id")
+    if not isinstance(proof, dict) or set(proof) != expected:
         raise ValueError("A complete Stripe payment proof is required")
     if not re.fullmatch(r"[a-f0-9]{32}", proof["receipt"]):
         raise ValueError("Invalid sandbox payment receipt")
@@ -142,7 +188,8 @@ def validate(data: dict, session: dict, retiring: bool = False) -> None:
         for line in lines
     ):
         raise ValueError("Paid invoice must cover the exact annual subscription period")
-    if not retiring and not start <= datetime.now(UTC) < end:
+    current = clock_current(data, session) or datetime.now(UTC)
+    if not retiring and not start <= current < end:
         raise ValueError("Stripe payment is not currently valid")
     if (
         retiring

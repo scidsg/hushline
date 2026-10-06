@@ -217,3 +217,68 @@ def test_explicit_retirement_cannot_escape_order(field: str, value: object) -> N
     data[field] = value
     with pytest.raises(ValueError, match="exact authorized order"):
         payment.explicit_retirement(data)
+
+
+def clock_evidence() -> tuple[dict, dict, dict, dict]:
+    data, session = evidence()
+    data.update(order_id=payment.CLOCK_FIXTURE_ORDER, custom_domain="")
+    session["customer"] = "cus_owned"
+    session["subscription"]["customer"] = "cus_owned"
+    session["subscription"]["latest_invoice"]["customer"] = "cus_owned"
+    data["stripe_payment"]["test_clock_id"] = "clock_owned"
+    session["metadata"]["single_tenant_order"] = payment.CLOCK_FIXTURE_ORDER
+    session["subscription"]["metadata"]["single_tenant_order"] = payment.CLOCK_FIXTURE_ORDER
+    customer = {
+        "id": session["customer"],
+        "livemode": False,
+        "test_clock": "clock_owned",
+        "metadata": {"single_tenant_clock_order": payment.CLOCK_FIXTURE_ORDER},
+    }
+    clock = {
+        "id": "clock_owned",
+        "livemode": False,
+        "status": "ready",
+        "frozen_time": session["subscription"]["current_period_start"],
+    }
+    return data, session, customer, clock
+
+
+def test_clock_expiry_requires_authoritative_owned_clock_and_cancellation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    data, session, customer, clock = clock_evidence()
+    monkeypatch.setattr(
+        payment, "stripe_get", lambda path: customer if path.startswith("customers/") else clock
+    )
+    session["subscription"]["cancel_at_period_end"] = True
+    payment.validate(data, session)
+    with pytest.raises(ValueError, match="not cancelled and due"):
+        payment.validate(data, session, retiring=True)
+    clock["frozen_time"] = session["subscription"]["current_period_end"] + 1
+    payment.validate(data, session, retiring=True)
+    session["subscription"]["cancel_at_period_end"] = False
+    with pytest.raises(ValueError, match="not cancelled and due"):
+        payment.validate(data, session, retiring=True)
+
+
+@pytest.mark.parametrize(
+    ("target", "field", "value"),
+    [
+        ("data", "order_id", "b" * 32),
+        ("data", "custom_domain", "hushline.foo"),
+        ("customer", "test_clock", "clock_foreign"),
+        ("customer", "livemode", True),
+        ("clock", "livemode", True),
+        ("clock", "status", "advancing"),
+    ],
+)
+def test_clock_cannot_escape_fixture_scope(
+    target: str, field: str, value: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data, session, customer, clock = clock_evidence()
+    {"data": data, "customer": customer, "clock": clock}[target][field] = value
+    monkeypatch.setattr(
+        payment, "stripe_get", lambda path: customer if path.startswith("customers/") else clock
+    )
+    with pytest.raises(ValueError, match="clock|annual payment"):
+        payment.validate(data, session, retiring=True)
