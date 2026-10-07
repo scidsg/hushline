@@ -37,6 +37,7 @@ def pointer(path: Path) -> None:
         raise ValueError("A test config must reference an immutable Git commit")
     emit("enabled", "true")
     emit("config_ref", data["config_ref"])
+    emit("order_id", data["order_id"])
     emit("order_path", f"self-service-tests/orders/{data['order_id']}.json")
 
 

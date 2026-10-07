@@ -317,3 +317,73 @@ project deletion, confirmed provider absence and empty-workspace safe-delete,
 with the original hushline.foo state unchanged. A failed or recovered attempt
 does not count as uninterrupted success. The original controller and retired
 fixture remain protected; real billing and production policies are unchanged.
+
+### Account-bound Single Tenant subscriptions
+
+Users create and authenticate a normal Hush Line account before choosing Free,
+Super User, or Single Tenant. Single Tenant uses the existing UI framework and
+requires a complete annual payment upfront. Pricing updates as the license count
+changes; Unlimited licenses cost $20,000/year before infrastructure and the three
+existing percentage charges. Verified Stripe payment authorizes provisioning.
+Customers do not approve deployment reviews.
+
+The account owns an opaque order reference. Only that account can monitor its
+instance, obtain its private administrator invitation, or change renewal intent.
+DNS verification and successful deployment checks never automatically advance
+either Continue screen. Payment redirects alone do not authorize infrastructure. If the customer misses
+the Checkout return, the payment-check action verifies the same owned session
+without creating another payment or provisioning request. Live workflows obtain
+fresh signed billing authority from the portal; Stripe keys remain there.
+
+Cancelling renewal preserves service until the recorded paid-through date. At
+that date the instance and stored messages are permanently deleted, with no
+export grace period. Withdrawing cancellation preserves the same annual term.
+Deleting the portal account retains a durable cancellation obligation separate
+from the account. Pausing new Single Tenant sales never stops reconciliation.
+
+The isolated launch rehearsal uses one reserved Stripe sandbox test clock and
+provider-assigned HTTPS endpoint. It creates real infrastructure only after the
+browser confirms sandbox payment and explicitly requests provisioning. Advancing
+that owned clock changes neither the paid year nor shared UTC expiry rules.
+Production activation remains a separately reviewed configuration change.
+
+### Automatic paid instance operations
+
+The general customer controller acknowledges a verified live annual payment into
+a separate encrypted ledger before publishing an immutable signed Git request.
+A healthy expiry worker and released default-branch workflows are required before
+Checkout can accept a new purchase. The cloud environment has no customer review
+step; payment is independently rechecked before each guarded apply. Credentials
+are verified against the explicitly configured HushLineDev team.
+
+If a status callback is lost, the worker retrieves the original first-attempt
+workflow's encrypted artifact and verifies its release, order, owner and request
+revision. It does not repeat provisioning. Successful deployment checks remain
+visible if a later check fails. Invitations are encrypted for the individual
+order and become available only after ownership, DNS and HTTPS checks pass.
+
+The billing worker independently rechecks expired terms to recover missed renewal
+or cancellation webhooks. A paid renewal retains the same instance. An unpaid
+year cannot extend service; a terminal cancelled subscription and the recorded
+paid invoice authorize normal year-end deletion. Retirement records prevent later
+callbacks or renewals from recreating a deleted instance. A fully verified
+retirement releases the hostname for a new separately paid order; the original
+order and payment tombstones remain permanent.
+
+Customer workflow setup can use the approved development cloud and private-read
+GitHub secrets directly. It never falls back to production cloud credentials or
+repository signing keys; exact team, project, order and saved-plan guards remain
+required before any provider mutation.
+
+During installation, an operator can verify the approved development credentials
+and dedicated customer project using the read-only default-branch preflight.
+An ownership mismatch stops before querying infrastructure; a missing project
+is reported without creating or adopting resources.
+
+### Dedicated customer provider accounts
+
+Single Tenant automation uses a separate DigitalOcean account and Terraform
+organization, with explicit team and project IDs. Dedicated provider credentials
+must be configured in the customer environment before it can accept orders.
+The setup preflight rejects matching names with other IDs and cannot adopt or
+modify production, staging, or another project's infrastructure.

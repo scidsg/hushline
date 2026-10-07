@@ -313,3 +313,18 @@ def test_splash_screen_duration_defaults_to_two_seconds_and_parses_override() ->
     env[SPLASH_SCREEN_DURATION_MS] = "1250"
     cfg = load_config(env)
     assert cfg[SPLASH_SCREEN_DURATION_MS] == 1250
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "unlimited", "true", "1.5"])
+def test_single_tenant_license_limit_rejects_invalid_configuration(value: str) -> None:
+    env = dict(os.environ, SINGLE_TENANT_LICENSE_LIMIT=value)
+    with pytest.raises(ConfigParseError):
+        load_config(env)
+
+
+def test_single_tenant_unlimited_and_more_than_twelve_licenses() -> None:
+    env = dict(os.environ)
+    env.pop("SINGLE_TENANT_LICENSE_LIMIT", None)
+    assert load_config(env).get("SINGLE_TENANT_LICENSE_LIMIT") is None
+    env["SINGLE_TENANT_LICENSE_LIMIT"] = "13"
+    assert load_config(env)["SINGLE_TENANT_LICENSE_LIMIT"] == 13

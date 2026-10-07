@@ -1,0 +1,49 @@
+---
+name: Validate paid Single Tenant request
+permissions:
+  contents: read
+on:
+  push:
+    branches: ["single-tenant-request/**"]
+jobs:
+  validate:
+    if: github.repository == 'scidsg/hushline' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify signed immutable request
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        env:
+          SOURCE_SHA: ${{ vars.SINGLE_TENANT_SOURCE_SHA }}
+          INFRA_SHA: ${{ vars.SINGLE_TENANT_INFRA_SHA }}
+        with:
+          script: |
+            const source = process.env.SOURCE_SHA;
+            const infra = process.env.INFRA_SHA;
+            if (![source, infra].every(value => /^[a-f0-9]{40}$/.test(value || ""))) {
+              throw new Error("Reviewed release commits are not configured");
+            }
+            const upstream = context.payload.workflow_run;
+            const sha = upstream ? upstream.head_sha : context.sha;
+            const branch = upstream ? upstream.head_branch : context.ref.replace(/^refs\/heads\//, "");
+            const {data: signed} = await github.rest.repos.getCommit({owner: "scidsg", repo: "hushline", ref: sha});
+            if (!signed.commit.verification.verified || signed.committer?.login !== "hushline-dev" ||
+                signed.parents.length !== 1 || signed.parents[0].sha !== source ||
+                signed.files.length !== 1 || signed.files[0].filename !== ".single-tenant-request.json" ||
+                signed.files[0].status !== "added") {
+              throw new Error("Request is not a signed create-only child of the reviewed source");
+            }
+            const {data: file} = await github.rest.repos.getContent({owner: "scidsg", repo: "hushline",
+              path: ".single-tenant-request.json", ref: sha});
+            if (file.type !== "file" || file.size > 4096 || file.encoding !== "base64") {
+              throw new Error("Invalid bounded request pointer");
+            }
+            const pointer = JSON.parse(Buffer.from(file.content, "base64").toString("utf8"));
+            if (Object.keys(pointer).sort().join(",") !== "config_ref,infra_ref,order_id,purpose,revision,source_ref" ||
+                !/^[a-f0-9]{32}$/.test(pointer.order_id) || !["provision", "retire"].includes(pointer.purpose) ||
+                !Number.isSafeInteger(pointer.revision) || pointer.revision < 1 || pointer.revision > 1000000 ||
+                pointer.source_ref !== source || pointer.infra_ref !== infra ||
+                !/^[a-f0-9]{40}$/.test(pointer.config_ref) ||
+                branch !== `single-tenant-request/${pointer.order_id}/${pointer.purpose}-${pointer.revision}`) {
+              throw new Error("Request coordinates escaped the exact customer order");
+            }

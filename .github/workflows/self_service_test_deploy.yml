@@ -5,7 +5,7 @@ permissions:
   contents: read
 
 on:
-  pull_request:
+  pull_request_target:
     types: [labeled, unlabeled, synchronize, closed]
 
 concurrency:
@@ -13,6 +13,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
+  PYTHONPATH: ${{ github.workspace }}/trusted
   INFRA_REPOSITORY: scidsg/hushline-infra
   INFRA_REF: 6409779dbbd947b8901541ad0829c34399c028a8
   STAGING_TF_PATH: hushline-self-service-test
@@ -21,13 +22,13 @@ jobs:
   deploy:
     if: >-
       github.repository == 'scidsg/hushline' &&
+      github.ref == 'refs/heads/main' &&
       github.event.pull_request.number == 2447 &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
-      ((github.event.action == 'labeled' && github.event.label.name == 'self-service-resume') ||
-      (!contains(github.event.pull_request.labels.*.name, 'self-service-resume') &&
-      ((github.event.action == 'labeled' && github.event.label.name == 'self-service-test') ||
-      (github.event.action == 'synchronize' && contains(github.event.pull_request.labels.*.name, 'self-service-test')))))
+      github.event.action == 'labeled' &&
+      (github.event.label.name == 'self-service-resume' ||
+      github.event.label.name == 'self-service-test')
     runs-on: ubuntu-latest
     timeout-minutes: 90
     environment: self-service-test-2447
@@ -37,11 +38,18 @@ jobs:
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       RECOVERY_MODE: ${{ github.event.action == 'labeled' && github.event.label.name == 'self-service-resume' }}
     steps:
+      - name: Check out trusted privileged validators
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          path: trusted
+
       - name: Verify staging-only credentials are configured
         env:
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-          INFRA_READ_TOKEN: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
+          INFRA_READ_TOKEN: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
         run: |
           set -euo pipefail
           for required_name in STAGING_DO_TOKEN STAGING_TF_TOKEN INFRA_READ_TOKEN; do
@@ -56,31 +64,29 @@ jobs:
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
           ref: ${{ env.INFRA_REF }}
-          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          token: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
           persist-credentials: false
           path: infra
 
       - name: Check out the customer test request
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: ${{ env.PR_HEAD_SHA }}
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
           path: request
 
       - name: Validate customer request pointer
         id: request
         run: |
-          python3 request/scripts/self_service_test_request.py pointer request/.self-service-test.json
+          python3 trusted/scripts/self_service_test_request.py pointer request/.self-service-test.json
           test -f request/.self-service-test.json
 
-      - name: Check out immutable private customer config
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          repository: ${{ env.INFRA_REPOSITORY }}
-          ref: ${{ steps.request.outputs.config_ref }}
-          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
-          persist-credentials: false
-          path: customer-config
+      - name: Read immutable private customer order data
+        env:
+          GH_TOKEN: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
+          PRIVATE_ORDER_ID: ${{ steps.request.outputs.order_id }}
+          PRIVATE_CONFIG_REF: ${{ steps.request.outputs.config_ref }}
+        run: python3 trusted/scripts/self_service_private_order.py customer-config
 
       - name: Prepare isolated customer Terraform variables
         id: customer
@@ -88,7 +94,7 @@ jobs:
           ORDER_PATH: ${{ steps.request.outputs.order_path }}
         run: |
           set -euo pipefail
-          python3 request/scripts/self_service_test_request.py prepare \
+          python3 trusted/scripts/self_service_test_request.py prepare \
             "customer-config/${ORDER_PATH:-no-customer-request}" \
             "infra/${STAGING_TF_PATH}/self-service-request.tfvars.json"
 
@@ -106,7 +112,7 @@ jobs:
         run: |
           python3 - <<'PYCODE'
           import os
-          from request.scripts.self_service_test_ownership import identity
+          from scripts.self_service_test_ownership import identity
           name, _ = identity(os.environ["ORDER_ID"])
           with open(os.environ["GITHUB_ENV"], "a") as output:
               print(f"ORDER_ID={os.environ['ORDER_ID']}", file=output)
@@ -118,18 +124,18 @@ jobs:
       - name: Reject existing cloud names and hostnames
         if: env.RECOVERY_MODE != 'true'
         env:
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
           CUSTOM_DOMAIN: ${{ steps.customer.outputs.custom_domain }}
-        run: python3 request/scripts/self_service_test_ownership.py preflight "$ORDER_ID"
+        run: python3 trusted/scripts/self_service_test_ownership.py preflight "$ORDER_ID"
 
       - name: Verify original partial resource ownership
         id: recovery
         if: env.RECOVERY_MODE == 'true'
         env:
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
           CUSTOM_DOMAIN: ${{ steps.customer.outputs.custom_domain }}
-        run: python3 request/scripts/self_service_test_ownership.py recover-check "$ORDER_ID"
+        run: python3 trusted/scripts/self_service_test_ownership.py recover-check "$ORDER_ID"
 
       - name: Set up Terraform for original failed app state repair
         if: steps.recovery.outputs.needs_state_repair == 'true'
@@ -137,26 +143,26 @@ jobs:
         with:
           terraform_version: 1.13.5
           terraform_wrapper: false
-          cli_config_credentials_token: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          cli_config_credentials_token: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
 
       - name: Preserve the original failed app instead of replacing it
         if: steps.recovery.outputs.needs_state_repair == 'true'
         working-directory: infra/hushline-self-service-test
         env:
           TF_WORKSPACE: ${{ env.WORKSPACE_NAME }}
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
           CUSTOM_DOMAIN: ${{ steps.customer.outputs.custom_domain }}
         run: |
           set -euo pipefail
           terraform init -input=false
-          python3 ../../request/scripts/self_service_test_ownership.py repair-app-state "$ORDER_ID"
+          python3 ../../trusted/scripts/self_service_test_ownership.py repair-app-state "$ORDER_ID"
 
       - name: Create a new order-owned workspace
         if: env.RECOVERY_MODE != 'true'
         env:
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-        run: python3 request/scripts/self_service_test_ownership.py create "$ORDER_ID"
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
+        run: python3 trusted/scripts/self_service_test_ownership.py create "$ORDER_ID"
 
       - name: Create the order-only build branch
         if: env.RECOVERY_MODE != 'true'
@@ -235,14 +241,14 @@ jobs:
         id: plan
         uses: dflook/terraform-plan@d9df4f6c2484e709ba7ffaa16c98a6906f4760cd
         env:
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
         with:
           path: infra/${{ env.STAGING_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
           var_file: infra/${{ env.STAGING_TF_PATH }}/self-service-request.tfvars.json
           add_github_comment: false
           variables: |
-            DO_TOKEN = "${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}"
+            DO_TOKEN = "${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}"
             name = "${{ env.STAGING_NAME }}"
             branch = "${{ env.STAGING_BRANCH }}"
             SECRET_KEY = "${{ steps.app-secrets.outputs.secret_key }}"
@@ -255,22 +261,22 @@ jobs:
       - name: Guard the test-only Terraform plan
         env:
           PLAN_PATH: ${{ steps.plan.outputs.json_plan_path }}
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
           CUSTOM_DOMAIN: ${{ steps.customer.outputs.custom_domain }}
         run: |
           test -n "${{ steps.plan.outputs.plan_path }}"
           if [ "$RECOVERY_MODE" = "true" ]; then
-            python3 request/scripts/self_service_test_ownership.py recover-plan "$ORDER_ID" "$PLAN_PATH"
+            python3 trusted/scripts/self_service_test_ownership.py recover-plan "$ORDER_ID" "$PLAN_PATH"
           else
-            python3 request/scripts/self_service_test_request.py guard "$PLAN_PATH" "$STAGING_NAME"
+            python3 trusted/scripts/self_service_test_request.py guard "$PLAN_PATH" "$STAGING_NAME"
           fi
 
       - name: Apply isolated staging infrastructure
         id: apply
         uses: dflook/terraform-apply@dcda97d729f1843ede471d2fac989cb946f5622a
         env:
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
         with:
           path: infra/${{ env.STAGING_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
@@ -279,14 +285,14 @@ jobs:
 
       - name: Record IDs created by this order
         env:
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-        run: python3 request/scripts/self_service_test_ownership.py record "$ORDER_ID"
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
+        run: python3 trusted/scripts/self_service_test_ownership.py record "$ORDER_ID"
 
       - name: Read staging outputs
         id: tf-outputs
         uses: dflook/terraform-output@115959bea4cc9e0ccc7a7fa0a85528cef1ec4350
         env:
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
         with:
           path: infra/${{ env.STAGING_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
@@ -297,7 +303,7 @@ jobs:
           APP_ID: ${{ steps.tf-outputs.outputs.app_id }}
           ORDER_ID: ${{ steps.customer.outputs.order_id }}
           CUSTOM_DOMAIN: ${{ steps.customer.outputs.custom_domain }}
-        run: python3 request/scripts/self_service_test_request.py status self-service-status/status.json
+        run: python3 trusted/scripts/self_service_test_request.py status self-service-status/status.json
 
       - name: Upload safe customer deployment outputs
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -371,6 +377,7 @@ jobs:
   stripe-deploy:
     if: >-
       github.repository == 'scidsg/hushline' &&
+      github.ref == 'refs/heads/main' &&
       github.event.pull_request.number == 2447 &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
@@ -383,12 +390,20 @@ jobs:
     env:
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       RECOVERY_MODE: "false"
-      PYTHONPATH: request
+      HUSHLINE_SINGLE_TENANT_SMTP_USERNAME: ${{ secrets.HUSHLINE_SINGLE_TENANT_SMTP_USERNAME }}
+      HUSHLINE_SINGLE_TENANT_SMTP_PASSWORD: ${{ secrets.HUSHLINE_SINGLE_TENANT_SMTP_PASSWORD }}
     steps:
+      - name: Check out trusted privileged validators
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          path: trusted
+
       - name: Check out the customer test request
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: ${{ env.PR_HEAD_SHA }}
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 2
           persist-credentials: false
           path: request
@@ -399,15 +414,15 @@ jobs:
           if [ ! -f request/.self-service-stripe.json ] || git -C request diff --quiet HEAD^ HEAD -- .self-service-stripe.json; then
             echo "enabled=false" >> "$GITHUB_OUTPUT"
           else
-            python3 request/scripts/self_service_test_request.py pointer request/.self-service-stripe.json
+            python3 trusted/scripts/self_service_test_request.py pointer request/.self-service-stripe.json
           fi
 
       - name: Verify staging-only credentials are configured
         if: steps.request.outputs.enabled == 'true'
         env:
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-          INFRA_READ_TOKEN: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
+          INFRA_READ_TOKEN: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
         run: |
           set -euo pipefail
           for required_name in STAGING_DO_TOKEN STAGING_TF_TOKEN INFRA_READ_TOKEN; do
@@ -423,17 +438,17 @@ jobs:
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
           ref: ${{ env.INFRA_REF }}
-          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          token: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
           persist-credentials: false
           path: infra
 
-      - name: Check out immutable private customer config
+      - name: Read immutable private customer order data
         if: steps.request.outputs.enabled == 'true'
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
           ref: ${{ steps.request.outputs.config_ref }}
-          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          token: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
           persist-credentials: false
           path: customer-config
 
@@ -441,9 +456,7 @@ jobs:
         if: steps.request.outputs.enabled == 'true'
         id: customer
         env:
-          STRIPE_TEST_SECRET_KEY: ${{ secrets.HUSHLINE_STRIPE_TEST_SECRET_KEY }}
-          HUSHLINE_SINGLE_TENANT_SMTP_USERNAME: ${{ secrets.HUSHLINE_SINGLE_TENANT_SMTP_USERNAME }}
-          HUSHLINE_SINGLE_TENANT_SMTP_PASSWORD: ${{ secrets.HUSHLINE_SINGLE_TENANT_SMTP_PASSWORD }}
+          STRIPE_TEST_SECRET_KEY: ${{ secrets.SELF_SERVICE_TEST_STRIPE_KEY }}
           ORDER_PATH: ${{ steps.request.outputs.order_path }}
         run: |
           set -euo pipefail
@@ -453,7 +466,7 @@ jobs:
           from scripts.self_service_stripe_payment import verify
           verify(json.loads(Path("customer-config/" + os.environ["ORDER_PATH"]).read_text()))
           PY
-          python3 request/scripts/self_service_test_request.py prepare \
+          python3 trusted/scripts/self_service_test_request.py prepare \
             "customer-config/${ORDER_PATH:-no-customer-request}" \
             "infra/${STAGING_TF_PATH}/self-service-request.tfvars.json"
 
@@ -473,7 +486,7 @@ jobs:
         run: |
           python3 - <<'PYCODE'
           import os
-          from request.scripts.self_service_test_ownership import identity
+          from scripts.self_service_test_ownership import identity
           name, _ = identity(os.environ["ORDER_ID"])
           with open(os.environ["GITHUB_ENV"], "a") as output:
               print(f"ORDER_ID={os.environ['ORDER_ID']}", file=output)
@@ -485,18 +498,18 @@ jobs:
       - name: Reject existing cloud names and hostnames
         if: steps.request.outputs.enabled == 'true' && (env.RECOVERY_MODE != 'true')
         env:
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
           CUSTOM_DOMAIN: ${{ steps.customer.outputs.custom_domain }}
-        run: python3 request/scripts/self_service_test_ownership.py preflight "$ORDER_ID"
+        run: python3 trusted/scripts/self_service_test_ownership.py preflight "$ORDER_ID"
 
       - name: Verify original partial resource ownership
         id: recovery
         if: steps.request.outputs.enabled == 'true' && (env.RECOVERY_MODE == 'true')
         env:
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
           CUSTOM_DOMAIN: ${{ steps.customer.outputs.custom_domain }}
-        run: python3 request/scripts/self_service_test_ownership.py recover-check "$ORDER_ID"
+        run: python3 trusted/scripts/self_service_test_ownership.py recover-check "$ORDER_ID"
 
       - name: Set up Terraform for original failed app state repair
         if: steps.request.outputs.enabled == 'true' && (steps.recovery.outputs.needs_state_repair == 'true')
@@ -504,26 +517,26 @@ jobs:
         with:
           terraform_version: 1.13.5
           terraform_wrapper: false
-          cli_config_credentials_token: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          cli_config_credentials_token: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
 
       - name: Preserve the original failed app instead of replacing it
         if: steps.request.outputs.enabled == 'true' && (steps.recovery.outputs.needs_state_repair == 'true')
         working-directory: infra/hushline-self-service-test
         env:
           TF_WORKSPACE: ${{ env.WORKSPACE_NAME }}
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
           CUSTOM_DOMAIN: ${{ steps.customer.outputs.custom_domain }}
         run: |
           set -euo pipefail
           terraform init -input=false
-          python3 ../../request/scripts/self_service_test_ownership.py repair-app-state "$ORDER_ID"
+          python3 ../../trusted/scripts/self_service_test_ownership.py repair-app-state "$ORDER_ID"
 
       - name: Create a new order-owned workspace
         if: steps.request.outputs.enabled == 'true' && (env.RECOVERY_MODE != 'true')
         env:
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-        run: python3 request/scripts/self_service_test_ownership.py create "$ORDER_ID"
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
+        run: python3 trusted/scripts/self_service_test_ownership.py create "$ORDER_ID"
 
       - name: Create the order-only build branch
         if: steps.request.outputs.enabled == 'true' && (env.RECOVERY_MODE != 'true')
@@ -606,14 +619,14 @@ jobs:
         id: plan
         uses: dflook/terraform-plan@d9df4f6c2484e709ba7ffaa16c98a6906f4760cd
         env:
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
         with:
           path: infra/${{ env.STAGING_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
           var_file: infra/${{ env.STAGING_TF_PATH }}/self-service-request.tfvars.json
           add_github_comment: false
           variables: |
-            DO_TOKEN = "${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}"
+            DO_TOKEN = "${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}"
             name = "${{ env.STAGING_NAME }}"
             branch = "${{ env.STAGING_BRANCH }}"
             SECRET_KEY = "${{ steps.app-secrets.outputs.secret_key }}"
@@ -629,20 +642,18 @@ jobs:
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
           ref: feat/self-service-test-provisioning-verified
-          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          token: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
           persist-credentials: false
           path: current-stripe-order
 
       - name: Guard the test-only Terraform plan
         if: steps.request.outputs.enabled == 'true'
         env:
-          STRIPE_TEST_SECRET_KEY: ${{ secrets.HUSHLINE_STRIPE_TEST_SECRET_KEY }}
-          HUSHLINE_SINGLE_TENANT_SMTP_USERNAME: ${{ secrets.HUSHLINE_SINGLE_TENANT_SMTP_USERNAME }}
-          HUSHLINE_SINGLE_TENANT_SMTP_PASSWORD: ${{ secrets.HUSHLINE_SINGLE_TENANT_SMTP_PASSWORD }}
+          STRIPE_TEST_SECRET_KEY: ${{ secrets.SELF_SERVICE_TEST_STRIPE_KEY }}
           ORDER_PATH: ${{ steps.request.outputs.order_path }}
           PLAN_PATH: ${{ steps.plan.outputs.json_plan_path }}
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
           CUSTOM_DOMAIN: ${{ steps.customer.outputs.custom_domain }}
         run: |
           test -n "${{ steps.plan.outputs.plan_path }}"
@@ -653,9 +664,9 @@ jobs:
           unchanged(Path("customer-config/" + os.environ["ORDER_PATH"]), Path("current-stripe-order/" + os.environ["ORDER_PATH"]))
           PY
           if [ "$RECOVERY_MODE" = "true" ]; then
-            python3 request/scripts/self_service_test_ownership.py recover-plan "$ORDER_ID" "$PLAN_PATH"
+            python3 trusted/scripts/self_service_test_ownership.py recover-plan "$ORDER_ID" "$PLAN_PATH"
           else
-            python3 request/scripts/self_service_test_request.py guard "$PLAN_PATH" "$STAGING_NAME"
+            python3 trusted/scripts/self_service_test_request.py guard "$PLAN_PATH" "$STAGING_NAME"
           fi
 
       - name: Apply isolated staging infrastructure
@@ -663,7 +674,7 @@ jobs:
         id: apply
         uses: dflook/terraform-apply@dcda97d729f1843ede471d2fac989cb946f5622a
         env:
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
         with:
           path: infra/${{ env.STAGING_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
@@ -673,15 +684,15 @@ jobs:
       - name: Record IDs created by this order
         if: steps.request.outputs.enabled == 'true'
         env:
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-        run: python3 request/scripts/self_service_test_ownership.py record "$ORDER_ID"
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
+        run: python3 trusted/scripts/self_service_test_ownership.py record "$ORDER_ID"
 
       - name: Read staging outputs
         if: steps.request.outputs.enabled == 'true'
         id: tf-outputs
         uses: dflook/terraform-output@115959bea4cc9e0ccc7a7fa0a85528cef1ec4350
         env:
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
         with:
           path: infra/${{ env.STAGING_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
@@ -693,7 +704,7 @@ jobs:
           APP_ID: ${{ steps.tf-outputs.outputs.app_id }}
           ORDER_ID: ${{ steps.customer.outputs.order_id }}
           CUSTOM_DOMAIN: ${{ steps.customer.outputs.custom_domain }}
-        run: python3 request/scripts/self_service_test_request.py status self-service-status/status.json
+        run: python3 trusted/scripts/self_service_test_request.py status self-service-status/status.json
 
       - name: Upload safe customer deployment outputs
         if: steps.request.outputs.enabled == 'true'
@@ -774,6 +785,7 @@ jobs:
   finalize:
     if: >-
       github.repository == 'scidsg/hushline' &&
+      github.ref == 'refs/heads/main' &&
       github.event.pull_request.number == 2447 &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
@@ -785,11 +797,19 @@ jobs:
       contents: read
       actions: read
     steps:
+      - name: Check out trusted privileged validators
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          path: trusted
+
       - name: Check out signed finalization code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
+          path: trusted
 
       - name: Verify the original successful apply and encrypted claim
         id: original
@@ -838,10 +858,10 @@ jobs:
       - name: Finalize original ownership and read DNS outputs
         id: finalized
         env:
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
           CUSTOM_DOMAIN: hushline.foo
-        run: python3 scripts/self_service_test_ownership.py finalize-original de44b913bbc22b3ac75d8e5b114bdc45
+        run: python3 trusted/scripts/self_service_test_ownership.py finalize-original de44b913bbc22b3ac75d8e5b114bdc45
 
       - name: Publish customer DNS target
         env:
@@ -850,7 +870,7 @@ jobs:
           ORDER_ID: de44b913bbc22b3ac75d8e5b114bdc45
           WORKSPACE_NAME: hushline-self-service-test-de44b913bbc22b3ac75d8e5b114bdc45
           CUSTOM_DOMAIN: hushline.foo
-        run: python3 scripts/self_service_test_request.py status self-service-status/status.json
+        run: python3 trusted/scripts/self_service_test_request.py status self-service-status/status.json
 
       - name: Upload safe customer deployment outputs
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -929,6 +949,7 @@ jobs:
   repair-claim:
     if: >-
       github.repository == 'scidsg/hushline' &&
+      github.ref == 'refs/heads/main' &&
       github.event.pull_request.number == 2447 &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
@@ -944,17 +965,25 @@ jobs:
       WORKSPACE_NAME: hushline-self-service-test-de44b913bbc22b3ac75d8e5b114bdc45
       CUSTOM_DOMAIN: hushline.foo
     steps:
+      - name: Check out trusted privileged validators
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          path: trusted
+
       - name: Check out signed original-order repair code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
+          path: trusted
       - name: Check out pinned test-only Terraform root
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
           ref: ${{ env.INFRA_REF }}
-          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          token: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
           persist-credentials: false
           path: infra
       - name: Verify the original successful apply and encrypted claim
@@ -1003,14 +1032,14 @@ jobs:
 
       - name: Preserve original runtime secrets and invitation
         env:
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-        run: python3 scripts/self_service_test_ownership.py claim-repair-vars "$ORDER_ID" infra/hushline-self-service-test/original-claim.tfvars.json
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
+        run: python3 trusted/scripts/self_service_test_ownership.py claim-repair-vars "$ORDER_ID" infra/hushline-self-service-test/original-claim.tfvars.json
       - name: Plan original initializer repair
         id: plan
         uses: dflook/terraform-plan@d9df4f6c2484e709ba7ffaa16c98a6906f4760cd
         env:
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
         with:
           path: infra/hushline-self-service-test
           workspace: ${{ env.WORKSPACE_NAME }}
@@ -1018,13 +1047,13 @@ jobs:
           add_github_comment: false
       - name: Require only original initializer command update
         env:
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-        run: python3 scripts/self_service_test_ownership.py claim-repair-plan "$ORDER_ID" "${{ steps.plan.outputs.json_plan_path }}"
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
+        run: python3 trusted/scripts/self_service_test_ownership.py claim-repair-plan "$ORDER_ID" "${{ steps.plan.outputs.json_plan_path }}"
       - name: Apply guarded initializer repair
         uses: dflook/terraform-apply@dcda97d729f1843ede471d2fac989cb946f5622a
         env:
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
         with:
           path: infra/hushline-self-service-test
           workspace: ${{ env.WORKSPACE_NAME }}
@@ -1033,10 +1062,10 @@ jobs:
       - name: Finalize original ownership and read DNS outputs
         id: finalized
         env:
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
           CUSTOM_DOMAIN: hushline.foo
-        run: python3 scripts/self_service_test_ownership.py finalize-original de44b913bbc22b3ac75d8e5b114bdc45
+        run: python3 trusted/scripts/self_service_test_ownership.py finalize-original de44b913bbc22b3ac75d8e5b114bdc45
 
       - name: Publish customer DNS target
         env:
@@ -1045,7 +1074,7 @@ jobs:
           ORDER_ID: de44b913bbc22b3ac75d8e5b114bdc45
           WORKSPACE_NAME: hushline-self-service-test-de44b913bbc22b3ac75d8e5b114bdc45
           CUSTOM_DOMAIN: hushline.foo
-        run: python3 scripts/self_service_test_request.py status self-service-status/status.json
+        run: python3 trusted/scripts/self_service_test_request.py status self-service-status/status.json
 
       - name: Upload safe customer deployment outputs
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -1124,24 +1153,32 @@ jobs:
   destroy:
     if: >-
       github.repository == 'scidsg/hushline' &&
+      github.ref == 'refs/heads/main' &&
       github.event.pull_request.number == 2447 &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
-      ((github.event.action == 'unlabeled' && github.event.label.name == 'self-service-test') ||
-      (github.event.action == 'closed' && contains(github.event.pull_request.labels.*.name, 'self-service-test')))
+      github.event.action == 'unlabeled' &&
+      github.event.label.name == 'self-service-test'
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    environment: ephemeral-staging
+    environment: self-service-test-2447
     permissions:
       contents: write
     env:
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
+      - name: Check out trusted privileged validators
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          path: trusted
+
       - name: Verify staging-only credentials are configured
         env:
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-          INFRA_READ_TOKEN: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
+          INFRA_READ_TOKEN: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
         run: |
           set -euo pipefail
           for required_name in STAGING_DO_TOKEN STAGING_TF_TOKEN INFRA_READ_TOKEN; do
@@ -1156,31 +1193,29 @@ jobs:
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
           ref: ${{ env.INFRA_REF }}
-          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          token: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
           persist-credentials: false
           path: infra
 
       - name: Check out the customer test request
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: ${{ env.PR_HEAD_SHA }}
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
           path: request
 
       - name: Validate customer request pointer
         id: request
         run: |
-          python3 request/scripts/self_service_test_request.py pointer request/.self-service-test.json
+          python3 trusted/scripts/self_service_test_request.py pointer request/.self-service-test.json
           test -f request/.self-service-test.json
 
       - name: Check out immutable private customer config
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          repository: ${{ env.INFRA_REPOSITORY }}
-          ref: ${{ steps.request.outputs.config_ref }}
-          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
-          persist-credentials: false
-          path: customer-config
+        env:
+          GH_TOKEN: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
+          PRIVATE_ORDER_ID: ${{ steps.request.outputs.order_id }}
+          PRIVATE_CONFIG_REF: ${{ steps.request.outputs.config_ref }}
+        run: python3 trusted/scripts/self_service_private_order.py customer-config
 
       - name: Prepare isolated customer Terraform variables
         id: customer
@@ -1188,7 +1223,7 @@ jobs:
           ORDER_PATH: ${{ steps.request.outputs.order_path }}
         run: |
           set -euo pipefail
-          python3 request/scripts/self_service_test_request.py prepare \
+          python3 trusted/scripts/self_service_test_request.py prepare \
             "customer-config/${ORDER_PATH:-no-customer-request}" \
             "infra/${STAGING_TF_PATH}/self-service-request.tfvars.json"
 
@@ -1206,7 +1241,7 @@ jobs:
         run: |
           python3 - <<'PYCODE'
           import os
-          from request.scripts.self_service_test_ownership import identity
+          from scripts.self_service_test_ownership import identity
           name, _ = identity(os.environ["ORDER_ID"])
           with open(os.environ["GITHUB_ENV"], "a") as output:
               print(f"ORDER_ID={os.environ['ORDER_ID']}", file=output)
@@ -1217,15 +1252,15 @@ jobs:
 
       - name: Verify original workspace and resource ownership
         env:
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
-        run: python3 request/scripts/self_service_test_ownership.py owned "$ORDER_ID"
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
+        run: python3 trusted/scripts/self_service_test_ownership.py owned "$ORDER_ID"
 
       - name: Plan deletion of the owned test resources
         id: plan
         uses: dflook/terraform-plan@d9df4f6c2484e709ba7ffaa16c98a6906f4760cd
         env:
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
         with:
           path: infra/${{ env.STAGING_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
@@ -1233,7 +1268,7 @@ jobs:
           add_github_comment: false
           var_file: infra/${{ env.STAGING_TF_PATH }}/self-service-request.tfvars.json
           variables: |
-            DO_TOKEN = "${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}"
+            DO_TOKEN = "${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}"
             name = "${{ env.STAGING_NAME }}"
             branch = "${{ env.STAGING_BRANCH }}"
             SECRET_KEY = "unused-during-destroy"
@@ -1245,17 +1280,17 @@ jobs:
 
       - name: Verify every deletion ID belongs to this order
         env:
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
           PLAN_PATH: ${{ steps.plan.outputs.json_plan_path }}
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
         run: |
           test -n "${{ steps.plan.outputs.plan_path }}"
-          python3 request/scripts/self_service_test_ownership.py destroy-plan "$ORDER_ID" "$PLAN_PATH"
+          python3 trusted/scripts/self_service_test_ownership.py destroy-plan "$ORDER_ID" "$PLAN_PATH"
 
       - name: Apply the exact guarded deletion plan
         uses: dflook/terraform-apply@dcda97d729f1843ede471d2fac989cb946f5622a
         env:
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
         with:
           path: infra/${{ env.STAGING_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
@@ -1264,12 +1299,13 @@ jobs:
 
       - name: Delete only the verified empty workspace
         env:
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-        run: python3 request/scripts/self_service_test_ownership.py remove "$ORDER_ID"
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
+        run: python3 trusted/scripts/self_service_test_ownership.py remove "$ORDER_ID"
 
   fixture-create:
     if: >-
       github.repository == 'scidsg/hushline' &&
+      github.ref == 'refs/heads/main' &&
       github.event.pull_request.number == 2447 &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
@@ -1284,6 +1320,13 @@ jobs:
       WORKSPACE_NAME: hushline-self-service-test-1c08c360da985ca24e9e246371ffc97f
       STAGING_BRANCH: self-service-test/1c08c360da985ca24e9e246371ffc97f
     steps:
+      - name: Check out trusted privileged validators
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          path: trusted
+
       - name: Check out the signed fixture guards
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
@@ -1298,7 +1341,7 @@ jobs:
           if git -C request diff --quiet HEAD^ HEAD -- .self-service-lifecycle-fixture.json; then
             echo "enabled=false" >> "$GITHUB_OUTPUT"
           else
-            PYTHONPATH=request python3 request/scripts/self_service_fixture_checkout.py pointer request/.self-service-lifecycle-fixture.json
+            PYTHONPATH="${GITHUB_WORKSPACE}/trusted" python3 trusted/scripts/self_service_fixture_checkout.py pointer request/.self-service-lifecycle-fixture.json
           fi
 
       - name: Check out the immutable private fixture payment
@@ -1307,13 +1350,13 @@ jobs:
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
           ref: ${{ steps.request.outputs.config_ref }}
-          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          token: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
           persist-credentials: false
           path: fixture-payment
 
       - name: Verify simulated payment before any fixture creation
         if: steps.request.outputs.enabled == 'true'
-        run: PYTHONPATH=request python3 request/scripts/self_service_fixture_checkout.py validate fixture-payment/self-service-tests/lifecycle-orders/1c08c360da985ca24e9e246371ffc97f.json
+        run: PYTHONPATH="${GITHUB_WORKSPACE}/trusted" python3 trusted/scripts/self_service_fixture_checkout.py validate fixture-payment/self-service-tests/lifecycle-orders/1c08c360da985ca24e9e246371ffc97f.json
 
       - name: Check out the immutable test-only Terraform root
         if: steps.request.outputs.enabled == 'true'
@@ -1321,17 +1364,17 @@ jobs:
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
           ref: 659c4550a936b91f0096247185b35a4b32bf7423
-          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          token: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
           persist-credentials: false
           path: infra
 
       - name: Preserve original state and refuse existing fixture resources
         if: steps.request.outputs.enabled == 'true'
         env:
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
         run: |
-          PYTHONPATH=request python3 - <<'PY'
+          PYTHONPATH="${GITHUB_WORKSPACE}/trusted" python3 - <<'PY'
           from scripts import self_service_test_ownership as ownership
           from scripts.self_service_teardown_fixture import ORDER, preserve_original, check_original
           preserve_original()
@@ -1354,8 +1397,8 @@ jobs:
       - name: Create the fresh isolated fixture workspace
         if: steps.request.outputs.enabled == 'true'
         env:
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-        run: python3 request/scripts/self_service_test_ownership.py create "$ORDER_ID"
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
+        run: python3 trusted/scripts/self_service_test_ownership.py create "$ORDER_ID"
 
       - name: Install Tor
         if: steps.request.outputs.enabled == 'true'
@@ -1397,12 +1440,12 @@ jobs:
       - name: Generate inputs belonging only to the fresh fixture
         if: steps.request.outputs.enabled == 'true'
         env:
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
           ONION_HOSTNAME: ${{ steps.onion.outputs.hostname }}
           ONION_PUBLIC_KEY_B64: ${{ steps.onion.outputs.public_key }}
           ONION_SECRET_KEY_B64: ${{ steps.onion.outputs.secret_key }}
         run: |
-          PYTHONPATH=request python3 - <<'PY'
+          PYTHONPATH="${GITHUB_WORKSPACE}/trusted" python3 - <<'PY'
           from pathlib import Path
           from scripts.self_service_teardown_fixture import prepare
           prepare(Path("infra/hushline-self-service-test/self-service-request.tfvars.json"))
@@ -1413,7 +1456,7 @@ jobs:
         if: steps.request.outputs.enabled == 'true'
         uses: dflook/terraform-plan@d9df4f6c2484e709ba7ffaa16c98a6906f4760cd
         env:
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
         with:
           path: infra/${{ env.STAGING_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
@@ -1426,7 +1469,7 @@ jobs:
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
           ref: feat/self-service-test-provisioning-verified
-          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          token: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
           persist-credentials: false
           path: current-fixture-payment
 
@@ -1434,11 +1477,11 @@ jobs:
         if: steps.request.outputs.enabled == 'true'
         env:
           PLAN_PATH: ${{ steps.plan.outputs.json_plan_path }}
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
         run: |
           test -n "${{ steps.plan.outputs.plan_path }}"
-          PYTHONPATH=request python3 - <<'PY'
+          PYTHONPATH="${GITHUB_WORKSPACE}/trusted" python3 - <<'PY'
           import os
           from pathlib import Path
           from scripts.self_service_teardown_fixture import guard_create
@@ -1451,7 +1494,7 @@ jobs:
         if: steps.request.outputs.enabled == 'true'
         uses: dflook/terraform-apply@dcda97d729f1843ede471d2fac989cb946f5622a
         env:
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
         with:
           path: infra/${{ env.STAGING_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
@@ -1461,10 +1504,10 @@ jobs:
       - name: Record fixture IDs and verify original state unchanged
         if: steps.request.outputs.enabled == 'true'
         env:
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
         run: |
-          PYTHONPATH=request python3 - <<'PY'
+          PYTHONPATH="${GITHUB_WORKSPACE}/trusted" python3 - <<'PY'
           from pathlib import Path
           from scripts.self_service_teardown_fixture import created
           from scripts.self_service_fixture_checkout import healthy
@@ -1484,6 +1527,7 @@ jobs:
   retire:
     if: >-
       github.repository == 'scidsg/hushline' &&
+      github.ref == 'refs/heads/main' &&
       github.event.pull_request.number == 2447 &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
@@ -1496,10 +1540,17 @@ jobs:
     env:
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
+      - name: Check out trusted privileged validators
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          path: trusted
+
       - name: Check out the customer test request
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: ${{ env.PR_HEAD_SHA }}
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
           path: request
           fetch-depth: 2
@@ -1510,7 +1561,7 @@ jobs:
           if git -C request diff --quiet HEAD^ HEAD -- .self-service-retirement.json; then
             echo "enabled=false" >> "$GITHUB_OUTPUT"
           else
-            PYTHONPATH=request python3 request/scripts/self_service_test_retirement.py pointer request/.self-service-retirement.json
+            PYTHONPATH="${GITHUB_WORKSPACE}/trusted" python3 trusted/scripts/self_service_test_retirement.py pointer request/.self-service-retirement.json
           fi
 
       - name: Check out immutable staging infrastructure
@@ -1519,7 +1570,7 @@ jobs:
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
           ref: 659c4550a936b91f0096247185b35a4b32bf7423
-          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          token: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
           persist-credentials: false
           path: infra
 
@@ -1529,7 +1580,7 @@ jobs:
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
           ref: ${{ steps.request.outputs.config_ref }}
-          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          token: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
           persist-credentials: false
           path: customer-config
 
@@ -1537,12 +1588,12 @@ jobs:
         if: steps.request.outputs.enabled == 'true'
         id: customer
         env:
-          STRIPE_TEST_SECRET_KEY: ${{ secrets.HUSHLINE_STRIPE_TEST_SECRET_KEY }}
+          STRIPE_TEST_SECRET_KEY: ${{ secrets.SELF_SERVICE_TEST_STRIPE_KEY }}
           PROOF_PATH: ${{ steps.request.outputs.proof_path }}
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
         run: |
-          PYTHONPATH=request python3 request/scripts/self_service_test_retirement.py prepare \
+          PYTHONPATH="${GITHUB_WORKSPACE}/trusted" python3 trusted/scripts/self_service_test_retirement.py prepare \
             "customer-config/$PROOF_PATH" \
             "infra/${STAGING_TF_PATH}/self-service-request.tfvars.json"
       - name: Assign verified order identity
@@ -1560,7 +1611,7 @@ jobs:
         id: plan_services
         uses: dflook/terraform-plan@d9df4f6c2484e709ba7ffaa16c98a6906f4760cd
         env:
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
         with:
           path: infra/${{ env.STAGING_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
@@ -1572,7 +1623,7 @@ jobs:
           add_github_comment: false
           var_file: infra/${{ env.STAGING_TF_PATH }}/self-service-request.tfvars.json
           variables: |
-            DO_TOKEN = "${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}"
+            DO_TOKEN = "${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}"
             name = "${{ env.STAGING_NAME }}"
             branch = "${{ env.STAGING_BRANCH }}"
             SECRET_KEY = "unused-during-destroy"
@@ -1588,21 +1639,21 @@ jobs:
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
           ref: feat/self-service-test-provisioning-verified
-          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          token: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
           persist-credentials: false
           path: current-services-cancellation
 
       - name: Verify service deletion ownership
         if: steps.customer.outputs.services == 'true'
         env:
-          STRIPE_TEST_SECRET_KEY: ${{ secrets.HUSHLINE_STRIPE_TEST_SECRET_KEY }}
+          STRIPE_TEST_SECRET_KEY: ${{ secrets.SELF_SERVICE_TEST_STRIPE_KEY }}
           RETIREMENT_PHASE: services
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
           PLAN_PATH: ${{ steps.plan_services.outputs.json_plan_path }}
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
         run: |
           test -n "${{ steps.plan_services.outputs.plan_path }}"
-          PYTHONPATH=request python3 request/scripts/self_service_test_retirement.py guard \
+          PYTHONPATH="${GITHUB_WORKSPACE}/trusted" python3 trusted/scripts/self_service_test_retirement.py guard \
             "customer-config/${{ steps.request.outputs.proof_path }}" \
             "current-services-cancellation/${{ steps.request.outputs.proof_path }}" "$PLAN_PATH"
 
@@ -1610,7 +1661,7 @@ jobs:
         if: steps.customer.outputs.services == 'true'
         uses: dflook/terraform-apply@dcda97d729f1843ede471d2fac989cb946f5622a
         env:
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
         with:
           path: infra/${{ env.STAGING_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
@@ -1620,10 +1671,10 @@ jobs:
       - name: Confirm the recorded project is empty
         if: steps.customer.outputs.project == 'true'
         env:
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
         run: |
-          PYTHONPATH=request python3 - <<'PY'
+          PYTHONPATH="${GITHUB_WORKSPACE}/trusted" python3 - <<'PY'
           import os
           from scripts.self_service_test_retirement import remaining_project
           remaining_project(os.environ["ORDER_ID"])
@@ -1634,7 +1685,7 @@ jobs:
         id: plan_project
         uses: dflook/terraform-plan@d9df4f6c2484e709ba7ffaa16c98a6906f4760cd
         env:
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
         with:
           path: infra/${{ env.STAGING_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
@@ -1643,7 +1694,7 @@ jobs:
           add_github_comment: false
           var_file: infra/${{ env.STAGING_TF_PATH }}/self-service-request.tfvars.json
           variables: |
-            DO_TOKEN = "${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}"
+            DO_TOKEN = "${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}"
             name = "${{ env.STAGING_NAME }}"
             branch = "${{ env.STAGING_BRANCH }}"
             SECRET_KEY = "unused-during-destroy"
@@ -1659,21 +1710,21 @@ jobs:
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
           ref: feat/self-service-test-provisioning-verified
-          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          token: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
           persist-credentials: false
           path: current-project-cancellation
 
       - name: Verify empty-project deletion ownership
         if: steps.customer.outputs.project == 'true'
         env:
-          STRIPE_TEST_SECRET_KEY: ${{ secrets.HUSHLINE_STRIPE_TEST_SECRET_KEY }}
+          STRIPE_TEST_SECRET_KEY: ${{ secrets.SELF_SERVICE_TEST_STRIPE_KEY }}
           RETIREMENT_PHASE: project
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
           PLAN_PATH: ${{ steps.plan_project.outputs.json_plan_path }}
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
         run: |
           test -n "${{ steps.plan_project.outputs.plan_path }}"
-          PYTHONPATH=request python3 request/scripts/self_service_test_retirement.py guard \
+          PYTHONPATH="${GITHUB_WORKSPACE}/trusted" python3 trusted/scripts/self_service_test_retirement.py guard \
             "customer-config/${{ steps.request.outputs.proof_path }}" \
             "current-project-cancellation/${{ steps.request.outputs.proof_path }}" "$PLAN_PATH"
 
@@ -1681,7 +1732,7 @@ jobs:
         if: steps.customer.outputs.project == 'true'
         uses: dflook/terraform-apply@dcda97d729f1843ede471d2fac989cb946f5622a
         env:
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
         with:
           path: infra/${{ env.STAGING_TF_PATH }}
           workspace: ${{ env.WORKSPACE_NAME }}
@@ -1691,10 +1742,10 @@ jobs:
       - name: Verify all recorded resources are absent
         if: steps.request.outputs.enabled == 'true'
         env:
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
         run: |
-          PYTHONPATH=request python3 - <<'PY'
+          PYTHONPATH="${GITHUB_WORKSPACE}/trusted" python3 - <<'PY'
           import os
           from scripts.self_service_test_retirement import all_absent
           all_absent(os.environ["ORDER_ID"])
@@ -1703,16 +1754,16 @@ jobs:
       - name: Delete only the verified empty workspace
         if: steps.request.outputs.enabled == 'true'
         env:
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-        run: python3 request/scripts/self_service_test_ownership.py remove "$ORDER_ID"
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
+        run: python3 trusted/scripts/self_service_test_ownership.py remove "$ORDER_ID"
 
       - name: Verify fixture absence and protected original configuration
         if: steps.request.outputs.enabled == 'true' && steps.customer.outputs.order_id == '1c08c360da985ca24e9e246371ffc97f'
         env:
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
         run: |
-          PYTHONPATH=request python3 - <<'PY'
+          PYTHONPATH="${GITHUB_WORKSPACE}/trusted" python3 - <<'PY'
           from scripts.self_service_teardown_fixture import deleted
           deleted()
           PY
@@ -1720,6 +1771,7 @@ jobs:
   inspect:
     if: >-
       github.repository == 'scidsg/hushline' &&
+      github.ref == 'refs/heads/main' &&
       github.event.pull_request.number == 2447 &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
@@ -1730,17 +1782,25 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Check out trusted privileged validators
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          path: trusted
+
       - name: Check out the signed test diagnostics
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
+          path: trusted
       - name: Read only the original owned deployment status
         env:
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
           CUSTOM_DOMAIN: hushline.foo
-        run: python3 scripts/self_service_test_ownership.py inspect de44b913bbc22b3ac75d8e5b114bdc45 > owned-diagnostics.json
+        run: python3 trusted/scripts/self_service_test_ownership.py inspect de44b913bbc22b3ac75d8e5b114bdc45 > owned-diagnostics.json
       - name: Retain sanitized original-order diagnostics
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -1752,6 +1812,7 @@ jobs:
   smtp-inspect:
     if: >-
       github.repository == 'scidsg/hushline' &&
+      github.ref == 'refs/heads/main' &&
       github.event.pull_request.number == 2447 &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
@@ -1764,15 +1825,23 @@ jobs:
     env:
       CUSTOM_DOMAIN: hushline.foo
     steps:
+      - name: Check out trusted privileged validators
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          path: trusted
+
       - name: Check out signed original-order SMTP safeguards
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
+          path: trusted
       - name: Verify original ownership and read SMTP presence only
         env:
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
         run: python3 -m scripts.self_service_test_smtp inspect de44b913bbc22b3ac75d8e5b114bdc45 > smtp-presence.json
       - name: Retain only sanitized SMTP presence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -1785,6 +1854,7 @@ jobs:
   smtp-configure:
     if: >-
       github.repository == 'scidsg/hushline' &&
+      github.ref == 'refs/heads/main' &&
       github.event.pull_request.number == 2447 &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
@@ -1801,11 +1871,26 @@ jobs:
       ORDER_ID: de44b913bbc22b3ac75d8e5b114bdc45
       WORKSPACE_NAME: hushline-self-service-test-de44b913bbc22b3ac75d8e5b114bdc45
     steps:
+      - name: Check out trusted privileged validators
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          path: trusted
+
       - name: Check out signed original-order SMTP safeguards
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          path: trusted
+      - name: Check out original request data
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
+          path: request
+
       - name: Verify immutable original request and build source
         env:
           GH_TOKEN: ${{ github.token }}
@@ -1813,7 +1898,7 @@ jobs:
           python3 - <<'PY'
           import json, subprocess
           from pathlib import Path
-          pointer = json.loads(Path('.self-service-test.json').read_text())
+          pointer = json.loads(Path('request/.self-service-test.json').read_text())
           if pointer != {'order_id': 'de44b913bbc22b3ac75d8e5b114bdc45', 'config_ref': '444e8341cff8ae57361d9e8ab643692559045a3a'}:
               raise SystemExit('Original request pointer changed')
           result = subprocess.run(['gh', 'api', 'repos/scidsg/hushline/git/ref/heads/self-service-test/de44b913bbc22b3ac75d8e5b114bdc45'], capture_output=True, text=True, check=False)
@@ -1825,13 +1910,13 @@ jobs:
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
           ref: ${{ env.INFRA_REF }}
-          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          token: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
           persist-credentials: false
           path: infra
       - name: Verify original ownership and preserve unrelated runtime settings
         env:
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
           HUSHLINE_SINGLE_TENANT_SMTP_USERNAME: ${{ secrets.HUSHLINE_SINGLE_TENANT_SMTP_USERNAME }}
           HUSHLINE_SINGLE_TENANT_SMTP_PASSWORD: ${{ secrets.HUSHLINE_SINGLE_TENANT_SMTP_PASSWORD }}
         run: python3 -m scripts.self_service_test_smtp prepare "$ORDER_ID" infra/hushline-self-service-test/single-tenant-smtp.tfvars.json
@@ -1839,7 +1924,7 @@ jobs:
         id: plan
         uses: dflook/terraform-plan@d9df4f6c2484e709ba7ffaa16c98a6906f4760cd
         env:
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
         with:
           path: infra/hushline-self-service-test
           workspace: ${{ env.WORKSPACE_NAME }}
@@ -1847,15 +1932,15 @@ jobs:
           add_github_comment: false
       - name: Reject every change outside original service SMTP fields
         env:
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
           HUSHLINE_SINGLE_TENANT_SMTP_USERNAME: ${{ secrets.HUSHLINE_SINGLE_TENANT_SMTP_USERNAME }}
           HUSHLINE_SINGLE_TENANT_SMTP_PASSWORD: ${{ secrets.HUSHLINE_SINGLE_TENANT_SMTP_PASSWORD }}
         run: python3 -m scripts.self_service_test_smtp guard "$ORDER_ID" "${{ steps.plan.outputs.json_plan_path }}"
       - name: Apply the exact guarded SMTP configuration plan
         uses: dflook/terraform-apply@dcda97d729f1843ede471d2fac989cb946f5622a
         env:
-          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          TERRAFORM_CLOUD_TOKENS: app.terraform.io=${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
         with:
           path: infra/hushline-self-service-test
           workspace: ${{ env.WORKSPACE_NAME }}
@@ -1863,8 +1948,8 @@ jobs:
           auto_approve: true
       - name: Verify original ownership and active SMTP configuration
         env:
-          STAGING_DO_TOKEN: ${{ secrets.HUSHLINE_STAGING_DO_TOKEN }}
-          STAGING_TF_TOKEN: ${{ secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
+          STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
         run: python3 -m scripts.self_service_test_smtp inspect "$ORDER_ID" > smtp-presence.json
       - name: Verify existing HTTPS health
         run: curl --fail --silent --show-error --max-time 30 https://hushline.foo/health.json >/dev/null

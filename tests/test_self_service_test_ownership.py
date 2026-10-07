@@ -240,10 +240,11 @@ def test_nonempty_workspace_is_never_deleted(monkeypatch: pytest.MonkeyPatch) ->
 
 def test_workflow_cannot_sweep_other_instances() -> None:
     text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
-    assert "secrets.HUSHLINE_INFRA_STAGING_PAT" in text
+    assert "secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN" in text
+    assert "secrets.HUSHLINE_INFRA_STAGING_PAT" not in text
     assert "secrets.HUSHLINE_INFRA_TOKEN" not in text
-    assert text.count("environment: self-service-test-2447") == 9
-    assert text.count("environment: ephemeral-staging") == 1
+    assert text.count("environment: self-service-test-2447") == 10
+    assert "environment: ephemeral-staging" not in text
     assert "schedule:" not in text
     assert "number == 2447" in text
     assert "head.ref == 'feat/self-service-test-runner'" in text

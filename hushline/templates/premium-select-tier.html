@@ -3,6 +3,8 @@
 {% block title %}Select a Tier{% endblock %}
 {% block main_class %}tier-select{% endblock %}
 
+{% block scripts %}{% if is_single_tenant_enabled %}<link rel="stylesheet" href="{{ url_for('static', filename='css/single-tenant.css') }}">{% endif %}{% endblock %}
+
 {% block content %}
   <h2 class="centered-heading">Choose a Hush&nbsp;Line&nbsp;Plan</h2>
 
@@ -29,5 +31,18 @@
         <button class="btn">Upgrade to Super User</button>
       </form>
     </div>
+    {% if is_single_tenant_enabled %}
+    <div class="plan">
+      <p class="plan-status badge">Your own instance</p>
+      <h3>Single Tenant</h3>
+      <p>Isolated infrastructure on your domain, with the licenses you need.</p>
+      <p>Pay for the whole year upfront. Choose a license count or Unlimited.</p>
+      <form action="{{ url_for('single_tenant.select') }}" method="post">
+        <input type="hidden" name="csrf_token" value="{{ global_csrf_token }}">
+        <button class="btn"{% if not is_single_tenant_sales_open %} disabled{% endif %}>Choose Single Tenant</button>
+        {% if not is_single_tenant_sales_open %}<p>New Single Tenant subscriptions are temporarily unavailable.</p>{% endif %}
+      </form>
+    </div>
+    {% endif %}
   </div>
 {% endblock %}

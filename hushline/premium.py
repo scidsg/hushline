@@ -627,6 +627,8 @@ def create_blueprint(app: Flask) -> Blueprint:
             session.clear()
             return redirect(url_for("login"))
 
+        if current_app.config.get("SINGLE_TENANT_ENABLED"):
+            return redirect(url_for("single_tenant.plans"))
         if not user.onboarding_complete:
             return redirect(url_for("onboarding"))
 
@@ -647,6 +649,8 @@ def create_blueprint(app: Flask) -> Blueprint:
             db.session.add(user)
             db.session.commit()
 
+        if current_app.config.get("SINGLE_TENANT_ENABLED") and not user.onboarding_complete:
+            return redirect(url_for("onboarding"))
         return redirect(url_for("inbox"))
 
     @bp.route("/waiting")
@@ -872,7 +876,25 @@ def create_blueprint(app: Flask) -> Blueprint:
             db.select(StripeEvent).filter_by(event_id=event.id)
         ).one_or_none()
         if stripe_event:
-            current_app.logger.info(f"Event already seen: {event}")
+            current_app.logger.info("Stripe event already seen: %s", event.id)
+            return jsonify(success=True)
+
+        from hushline import single_tenant_billing
+        from hushline.single_tenant_client import ServiceUnavailable
+
+        try:
+            handled = single_tenant_billing.handle_event(event)
+        except ServiceUnavailable:
+            db.session.rollback()
+            return jsonify(success=False), 503
+        if handled:
+            # Keep only delivery deduplication identifiers. Never put private
+            # account/order payment proofs into the premium event worker/logs.
+            stripe_event = StripeEvent(event)
+            stripe_event.event_data = REDACTED_STRIPE_EVENT_DATA
+            stripe_event.status = StripeEventStatusEnum.FINISHED
+            db.session.add(stripe_event)
+            db.session.commit()
             return jsonify(success=True)
 
         # Log it

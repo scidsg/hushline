@@ -1,0 +1,27 @@
+name: Single Tenant read-only preflight
+permissions:
+  contents: read
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/single_tenant_preflight.yml
+      - scripts/single_tenant_preflight.py
+      - scripts/single_tenant_identity.py
+  workflow_dispatch:
+jobs:
+  inspect:
+    if: github.repository == 'scidsg/hushline' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: single-tenant-automation
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify development team and discover dedicated customer project
+        env:
+          SINGLE_TENANT_DO_TOKEN: ${{ secrets.SINGLE_TENANT_DO_TOKEN }}
+          SINGLE_TENANT_TF_TOKEN: ${{ secrets.SINGLE_TENANT_TF_TOKEN }}
+        run: python3 -m scripts.single_tenant_preflight

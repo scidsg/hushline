@@ -1,0 +1,8 @@
+# Built only from the reviewed local Dockerfile.dev image in the trusted workflow.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+RUN apt-get update && apt-get install --yes --no-install-recommends tor && \
+    rm -rf /var/lib/apt/lists/*
+COPY scripts/ /app/scripts/
+COPY hushline/ /app/hushline/
+CMD ["poetry", "run", "python", "-m", "scripts.single_tenant_live_run"]
