@@ -158,7 +158,17 @@ def test_failed_foreign_job_cannot_change_saved_order(collector: tuple[Collector
 
 @pytest.mark.parametrize(
     "failure",
-    [None, "review", "branch", "secret", "development", "production", "partial", "controller-key"],
+    [
+        None,
+        "review",
+        "branch",
+        "secret",
+        "development",
+        "production",
+        "partial",
+        "controller-key",
+        "infra-development",
+    ],
 )
 def test_release_gate_requires_review_free_default_branch_customer_environment(
     collector: tuple[Collector, dict], failure: str | None
@@ -205,6 +215,11 @@ def test_release_gate_requires_review_free_default_branch_customer_environment(
         documents["repos/scidsg/hushline/actions/secrets"] = {
             "secrets": [{"name": name} for name in approved]
         }
+    if failure == "infra-development":
+        secret_names.remove("SINGLE_TENANT_CONFIG_READ_TOKEN")
+        documents["repos/scidsg/hushline/actions/secrets"] = {
+            "secrets": [{"name": "HUSHLINE_INFRA_STAGING_PAT"}]
+        }
     documents[prefix] = environment
     documents[prefix + "/deployment-branch-policies"] = branches
     documents[prefix + "/secrets"] = {"secrets": [{"name": name} for name in secret_names]}
@@ -216,7 +231,7 @@ def test_release_gate_requires_review_free_default_branch_customer_environment(
         "SINGLE_TENANT_CONTROL_ORIGIN",
     ):
         documents["repos/scidsg/hushline/actions/variables/" + name] = {"value": "configured"}
-    if failure and failure != "development":
+    if failure and failure != "infra-development":
         with pytest.raises(ValueError, match="environment|branch|credentials"):
             worker.environment()
     else:

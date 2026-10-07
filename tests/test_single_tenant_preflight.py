@@ -11,7 +11,9 @@ import pytest
 from scripts.single_tenant_preflight import (
     DO_ACCOUNT,
     ORGANIZATION,
+    PROJECT_ID,
     PROJECT_NAME,
+    TEAM_ID,
     TF_ROOT,
     NoRedirect,
     PreflightError,
@@ -19,11 +21,16 @@ from scripts.single_tenant_preflight import (
     get,
 )
 
-TEAM = "12345678-1234-1234-1234-123456789abc"
+TEAM = TEAM_ID
 
 
 def provider(
-    *, team: str = "HushLineDev", project: bool = True, organization: str = ORGANIZATION
+    *,
+    team: str = "HushLineDev",
+    team_id: str = TEAM,
+    project: bool = True,
+    project_id: str = PROJECT_ID,
+    organization: str = ORGANIZATION,
 ) -> tuple[Any, list[str]]:
     calls: list[str] = []
 
@@ -31,15 +38,15 @@ def provider(
         assert token
         calls.append(url)
         if url == DO_ACCOUNT:
-            return {"account": {"status": "active", "team": {"uuid": TEAM, "name": team}}}
+            return {"account": {"status": "active", "team": {"uuid": team_id, "name": team}}}
         value = {
-            "id": "prj-customer",
+            "id": project_id,
             "attributes": {"name": PROJECT_NAME},
             "relationships": {"organization": {"data": {"id": organization}}},
         }
         if "/projects?" in url:
             return {"data": [value] if project else [], "links": {"next": None}}
-        assert url == TF_ROOT + "/projects/prj-customer"
+        assert url == TF_ROOT + "/projects/prj-o3XPaT8P9Q4GBZ1c"
         return {"data": value}
 
     return fetch, calls
@@ -54,7 +61,7 @@ def test_read_only_discovery_returns_only_customer_metadata() -> None:
         "team_verified": True,
         "team_id": TEAM,
         "organization": ORGANIZATION,
-        "project_id": "prj-customer",
+        "project_id": "prj-o3XPaT8P9Q4GBZ1c",
     }
     assert len(calls) == 3
 
@@ -107,3 +114,26 @@ def test_http_failure_never_exposes_authentication(monkeypatch: pytest.MonkeyPat
         get(DO_ACCOUNT, token)
     assert str(failure.value) == "digitalocean-account-http-401"
     assert token not in str(failure.value)
+
+
+def test_matching_team_name_with_other_id_stops_before_terraform() -> None:
+    fetch, calls = provider(team_id="12345678-1234-1234-1234-123456789abc")
+    with pytest.raises(PreflightError, match="ownership-mismatch"):
+        check(fetch, secrets.token_hex(16), secrets.token_hex(16))
+    assert calls == [DO_ACCOUNT]
+
+
+def test_matching_project_name_with_other_id_is_not_adopted() -> None:
+    fetch, calls = provider(project_id="prj-other")
+    with pytest.raises(PreflightError, match="ownership-mismatch"):
+        check(fetch, secrets.token_hex(16), secrets.token_hex(16))
+    assert len(calls) == 2
+
+
+def test_previous_shared_organization_endpoint_is_rejected() -> None:
+    with pytest.raises(PreflightError, match="endpoint-rejected"):
+        get(
+            TF_ROOT
+            + "/organizations/science-and-design/projects?page%5Bsize%5D=100&page%5Bnumber%5D=1",
+            secrets.token_hex(16),
+        )

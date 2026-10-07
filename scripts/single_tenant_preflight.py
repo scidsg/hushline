@@ -12,7 +12,9 @@ from typing import Any
 
 DO_ACCOUNT = "https://api.digitalocean.com/v2/account"
 TF_ROOT = "https://app.terraform.io/api/v2"
-ORGANIZATION = "science-and-design"
+ORGANIZATION = "hushline-single-tenant"
+TEAM_ID = "dfa95e0b-9384-48b1-8711-95a3e3eafb48"
+PROJECT_ID = "prj-o3XPaT8P9Q4GBZ1c"
 PROJECT_NAME = "Hush Line Single Tenant"
 MAX_BYTES = 1048576
 
@@ -31,7 +33,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 def get(url: str, token: str) -> dict[str, Any]:
     if url != DO_ACCOUNT and not re.fullmatch(
         re.escape(TF_ROOT)
-        + r"/(?:organizations/science-and-design/projects\?page%5Bsize%5D=100"
+        + r"/(?:organizations/hushline-single-tenant/projects\?page%5Bsize%5D=100"
         + r"&page%5Bnumber%5D=[1-9][0-9]?|projects/prj-[A-Za-z0-9]+)",
         url,
     ):
@@ -79,6 +81,7 @@ def check(
     if (
         account.get("status") != "active"
         or team.get("name") != "HushLineDev"
+        or identifier != TEAM_ID
         or not isinstance(identifier, str)
         or not re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", identifier)
     ):
@@ -108,6 +111,8 @@ def check(
     if len(matches) != 1 or not re.fullmatch(r"prj-[A-Za-z0-9]+", matches[0].get("id", "")):
         raise PreflightError("customer-project-ambiguous")
     project_id = matches[0]["id"]
+    if project_id != PROJECT_ID:
+        raise PreflightError("customer-project-ownership-mismatch")
     project = fetch(TF_ROOT + "/projects/" + project_id, tf_token).get("data", {})
     if (
         project.get("id") != project_id
