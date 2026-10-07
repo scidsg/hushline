@@ -163,7 +163,12 @@ The isolated `single-tenant-automation` GitHub environment must allow only branc
 `main`, without required reviewers, wait timers or custom approval rules. Store
 only its dedicated `SINGLE_TENANT_CONFIG_READ_TOKEN`, `SINGLE_TENANT_DO_TOKEN`,
 `SINGLE_TENANT_TF_TOKEN`, `SINGLE_TENANT_PORTAL_KEY`,
-`SINGLE_TENANT_WORKFLOW_KEY`, and `SINGLE_TENANT_SMTP_JSON` there. The config token
+`SINGLE_TENANT_WORKFLOW_KEY`, and `SINGLE_TENANT_SMTP_JSON` there. Cloud and private-read roles may instead use the existing approved
+repository secrets `HUSHLINE_STAGING_DO_TOKEN`, `HUSHLINE_STAGING_TF_TOKEN`, and
+`HUSHLINE_INFRA_STAGING_PAT` without extracting or copying their values. Dedicated
+environment roles take precedence. Production token names are never accepted as
+fallbacks; controller signing keys and SMTP must remain in the customer environment.
+The config token
 reads the private infrastructure repository; the cloud tokens must cover only the
 approved customer project/team. The DO token requires account-read permission
 for team verification. The HCP token requires plan JSON and owned-workspace
