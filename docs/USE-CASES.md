@@ -264,3 +264,108 @@ These are use-case themes already implied by the mission, even when the current 
 - More explicit vulnerable-user accommodations in the sender flow
 - Stronger evidence-review workflows that connect inbox, OCR, and authenticity checks more tightly
 - Richer organizational case-management needs beyond status labels and inbox filtering
+
+### Disposable Single Tenant provisioning test
+
+An operator uses the app-style account and plan flow, confirms a simulated annual
+payment, and enters a customer-controlled hostname. Confirmed payment authorizes
+automatic provisioning without a customer deployment review. The isolated workflow
+reads that order from private Git configuration and provisions a separate app and
+database with staging-only credentials. One pre-deploy job initializes the schema
+and private invitation before either app service starts, using lowercase boolean
+configuration accepted by the app. The DNS screen displays the assigned CNAME
+and ownership TXT records. Successful checks enable Continue without navigating;
+the deployment screen separately verifies HTTPS and application health before its
+own Continue action. A short-lived one-use invitation allows the operator to claim
+the first administrator. This test is limited to one instance and does not implement
+production billing or license enforcement. It uses a separate, order-scoped
+Terraform root and workflow; shared staging and production workflows are unchanged.
+Deployment refuses existing workspaces and cloud names, accepts only four resource
+creations, and applies the exact checked plan. Cleanup requires the original order
+manifest, recorded IDs, matching live cloud resources, and a checked saved deletion
+plan. Recovery of the original test order can preserve its verified project and
+database and repair its never-live failed app in place. Its exact app ID, hostname,
+build branch, workspace, state lineage, and project membership must match; no
+replacement, deletion, import, or database update is accepted. Fresh orders still
+refuse every existing workspace. An incomplete apply or ownership mismatch stops
+cleanup for operator review;
+there is no unguarded scheduled or HCP automatic destruction. Remove the
+`self-service-test` label on the controller PR to request guarded cleanup.
+
+### Annual Single Tenant cancellation
+
+A Single Tenant owner can cancel renewal while retaining service through the
+prepaid annual period. The app shows the paid-through UTC date and asks the owner
+to confirm permanent deletion of the instance and stored messages at that date.
+There is no grace period. Cancellation can be withdrawn before expiry. Teardown
+requires an authoritative annual billing record and exact tenant resource
+ownership; an absent record or failed safeguard blocks deletion. The current
+controller uses simulated payment terms and is restricted to the disposable test
+instance; real checkout and production retirement policies remain separate work.
+
+### Isolated full-lifecycle test
+
+One new authorized disposable order uses a separate controller database and port.
+The existing onboarding UI creates a simulated payment receipt, then a browser
+provisioning action requests real, strictly isolated HushLineDev infrastructure.
+A provider-assigned HTTPS hostname avoids any existing DNS changes. The fixture
+has a complete synthetic calendar-year term ending approximately two hours after
+checkout; its dates cannot be edited or rebound to another order. Cancellation
+uses the existing owner-only acknowledgement and normal real-clock expiry worker.
+A passing first attempt requires successful service deletion, refreshed empty
+project deletion, confirmed provider absence and empty-workspace safe-delete,
+with the original hushline.foo state unchanged. A failed or recovered attempt
+does not count as uninterrupted success. The original controller and retired
+fixture remain protected; real billing and production policies are unchanged.
+
+### Account-bound Single Tenant subscriptions
+
+Users create and authenticate a normal Hush Line account before choosing Free,
+Super User, or Single Tenant. Single Tenant uses the existing UI framework and
+requires a complete annual payment upfront. Pricing updates as the license count
+changes; Unlimited licenses cost $20,000/year before infrastructure and the three
+existing percentage charges. Verified Stripe payment authorizes provisioning.
+Customers do not approve deployment reviews.
+
+The account owns an opaque order reference. Only that account can monitor its
+instance, obtain its private administrator invitation, or change renewal intent.
+DNS verification and successful deployment checks never automatically advance
+either Continue screen. Payment redirects alone do not authorize infrastructure. If the customer misses
+the Checkout return, the payment-check action verifies the same owned session
+without creating another payment or provisioning request. Live workflows obtain
+fresh signed billing authority from the portal; Stripe keys remain there.
+
+Cancelling renewal preserves service until the recorded paid-through date. At
+that date the instance and stored messages are permanently deleted, with no
+export grace period. Withdrawing cancellation preserves the same annual term.
+Deleting the portal account retains a durable cancellation obligation separate
+from the account. Pausing new Single Tenant sales never stops reconciliation.
+
+The isolated launch rehearsal uses one reserved Stripe sandbox test clock and
+provider-assigned HTTPS endpoint. It creates real infrastructure only after the
+browser confirms sandbox payment and explicitly requests provisioning. Advancing
+that owned clock changes neither the paid year nor shared UTC expiry rules.
+Production activation remains a separately reviewed configuration change.
+
+### Automatic paid instance operations
+
+The general customer controller acknowledges a verified live annual payment into
+a separate encrypted ledger before publishing an immutable signed Git request.
+A healthy expiry worker and released default-branch workflows are required before
+Checkout can accept a new purchase. The cloud environment has no customer review
+step; payment is independently rechecked before each guarded apply. Credentials
+are verified against the explicitly configured HushLineDev team.
+
+If a status callback is lost, the worker retrieves the original first-attempt
+workflow's encrypted artifact and verifies its release, order, owner and request
+revision. It does not repeat provisioning. Successful deployment checks remain
+visible if a later check fails. Invitations are encrypted for the individual
+order and become available only after ownership, DNS and HTTPS checks pass.
+
+The billing worker independently rechecks expired terms to recover missed renewal
+or cancellation webhooks. A paid renewal retains the same instance. An unpaid
+year cannot extend service; a terminal cancelled subscription and the recorded
+paid invoice authorize normal year-end deletion. Retirement records prevent later
+callbacks or renewals from recreating a deleted instance. A fully verified
+retirement releases the hostname for a new separately paid order; the original
+order and payment tombstones remain permanent.

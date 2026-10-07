@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}Single Tenant subscription{% endblock %}
+{% block scripts %}<link rel="stylesheet" href="{{ url_for('static', filename='css/single-tenant.css') }}">{% endblock %}
+{% block content %}
+<h2>Single Tenant subscription</h2>
+<p><strong>{{ domain }}</strong></p>{% if cancellation_pending %}<p role="status">Your renewal change is saved and awaiting service confirmation. We will retry automatically.</p>{% endif %}
+{% if notice %}<p role="status">{{ notice }}</p>{% endif %}
+{% if not term %}
+<p>Billing status is temporarily unavailable. Your existing paid term remains in effect.</p>
+{% elif term.state != 'active' %}
+<p>{% if term.state == 'retired' %}Your instance and stored messages have been deleted.{% elif term.state == 'blocked' %}We couldn’t complete deletion. Your cancellation is saved, but deletion has not been confirmed.{% else %}{% if explicit_retirement %}Explicit sandbox retirement is in progress. Your recorded billing dates have not changed.{% else %}Your paid year has ended. Teardown is in progress.{% endif %}{% endif %}</p>
+{% else %}
+<p>Paid through <strong><time datetime="{{ term.period_end }}">{{ paid_through }}</time></strong>.</p>
+<p class="meta">{% if clock_test %}Stripe sandbox payment confirmed — no real charge. This isolated fixture uses its verified Stripe test clock to test a complete annual expiry.{% elif stripe_test %}Stripe sandbox payment confirmed — no real charge.{% elif fixture_test %}Isolated lifecycle test: this complete synthetic annual term expires approximately two hours after simulated payment. The real expiry clock is unchanged.{% else %}Your annual payment is confirmed.{% endif %}</p>
+{% if term.cancelled_at %}
+<p>Renewal cancelled. Your instance stays available until the date above. At that time, the instance and all stored messages will be permanently deleted. There is no grace period.</p>
+<form method="post" class="formBody">{{ demo_form.hidden_tag() }}<input type="hidden" name="action" value="resume"><button>Keep my subscription</button></form>
+{% else %}
+<p>Cancel renewal to keep service for the remainder of your paid year. At the end of that year, the instance and all stored messages will be permanently deleted. Download anything you need before then.</p>
+<form method="post" class="formBody">{{ demo_form.hidden_tag() }}<input type="hidden" name="action" value="cancel"><div class="field-checkbox subscription-confirmation"><input type="checkbox" id="confirm-deletion" name="confirm_deletion" value="yes" required><label for="confirm-deletion">I understand that my instance and stored messages will be deleted when the paid year ends.</label></div><button>Cancel renewal</button></form>
+{% endif %}
+{% endif %}
+<p><a href="{{ url_for('single_tenant.setup') }}">Back to instance setup</a></p>
+{% endblock %}

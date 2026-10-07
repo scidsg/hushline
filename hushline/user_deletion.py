@@ -273,6 +273,9 @@ def _redact_processed_stripe_subscription_events(
 
 
 def delete_user_and_related(user: User) -> None:
+    from hushline.single_tenant import retain_cancellation_on_deletion
+
+    retain_cancellation_on_deletion(user)
     # Delete field values and definitions
     usernames = db.session.scalars(db.select(Username).filter_by(user_id=user.id)).all()
     username_ids = [username.id for username in usernames]

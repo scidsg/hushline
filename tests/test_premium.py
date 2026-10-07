@@ -4,6 +4,7 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+import stripe
 from flask import Flask, get_flashed_messages, url_for
 from flask.testing import FlaskClient
 from pytest_mock import MockFixture
@@ -1826,3 +1827,62 @@ async def test_worker_processes_invoice_payment_succeeded_event(
     handle_invoice_updated_mock.assert_called_once()
     assert handle_invoice_updated_mock.call_args.args[0] is invoice_obj
     assert isinstance(handle_invoice_updated_mock.call_args.args[1], StripeEvent)
+
+
+def test_single_tenant_webhook_redacts_payload_and_does_not_enter_premium_queue(
+    client: FlaskClient, mocker: MockFixture
+) -> None:
+    event = stripe.Event.construct_from(
+        {
+            "id": "evt_single_tenant_unknown",
+            "created": 1791244800,
+            "type": "checkout.session.completed",
+            "livemode": True,
+            "data": {
+                "object": {
+                    "metadata": {
+                        "single_tenant_kind": "paid-instance",
+                        "single_tenant_order": "e" * 32,
+                        "single_tenant_owner": "f" * 64,
+                    }
+                }
+            },
+        },
+        None,
+    )
+    mocker.patch("hushline.premium.stripe.Webhook.construct_event", return_value=event)
+    response = client.post(
+        url_for("premium.webhook"), data=b"{}", headers={"STRIPE_SIGNATURE": "sig"}
+    )
+    assert response.status_code == 200
+    saved = db.session.scalar(db.select(StripeEvent).filter_by(event_id=event.id))
+    assert saved is not None
+    assert saved.status is StripeEventStatusEnum.FINISHED
+    assert saved.event_data == "{}"
+    assert "single_tenant_owner" not in saved.event_data
+
+
+def test_single_tenant_webhook_retries_failed_reconciliation_without_storing_proof(
+    client: FlaskClient, mocker: MockFixture
+) -> None:
+    from hushline.single_tenant_client import ServiceUnavailable
+
+    event = stripe.Event.construct_from(
+        {
+            "id": "evt_single_tenant_pending",
+            "created": 1791244800,
+            "type": "invoice.paid",
+            "livemode": True,
+            "data": {"object": {}},
+        },
+        None,
+    )
+    mocker.patch("hushline.premium.stripe.Webhook.construct_event", return_value=event)
+    mocker.patch(
+        "hushline.single_tenant_billing.handle_event", side_effect=ServiceUnavailable("pending")
+    )
+    response = client.post(
+        url_for("premium.webhook"), data=b"{}", headers={"STRIPE_SIGNATURE": "sig"}
+    )
+    assert response.status_code == 503
+    assert db.session.scalar(db.select(StripeEvent).filter_by(event_id=event.id)) is None

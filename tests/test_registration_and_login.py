@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
 from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
@@ -37,7 +38,7 @@ def test_user_registration_disabled(client: FlaskClient, user: User) -> None:
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "Register" not in response.text
+    assert BeautifulSoup(response.text, "html.parser").select_one('a[href="/register"]') is None
 
 
 def test_user_registration_disabled_first_user(client: FlaskClient) -> None:
@@ -506,3 +507,30 @@ def test_user_login_handles_case_insensitive_duplicate_rows(
 
     assert response.status_code == 200
     flash_mock.assert_called_with("⛔️ Invalid username or password.")
+
+
+@pytest.mark.parametrize(
+    ("limit", "allowed"), [(1, False), (2, True), (13, True), (None, True), (False, False)]
+)
+def test_single_tenant_registration_enforces_paid_license_limit(
+    app: Flask, client: FlaskClient, user: User, limit: int | None, allowed: bool
+) -> None:
+    app.config["SINGLE_TENANT_LICENSE_LIMIT"] = limit
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_ENABLED, True)
+    OrganizationSetting.upsert(OrganizationSetting.REGISTRATION_CODES_REQUIRED, False)
+    db.session.commit()
+    before = db.session.query(User).count()
+    response = client.post(
+        url_for("register"),
+        data={
+            "username": "licensed_second_account",
+            "password": "SecurePassword123!",
+            "captcha_answer": get_captcha_from_session_register(client),
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert db.session.query(User).count() == before + int(allowed)
+    assert ("Registration successful" in response.text) is allowed
+    if not allowed:
+        assert "licensed account limit" in response.text

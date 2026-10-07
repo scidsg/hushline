@@ -401,6 +401,13 @@ def _complete_pending_login(
             success=True,
         )
 
+    if current_app.config.get("SINGLE_TENANT_ENABLED"):
+        from hushline.single_tenant import pending_setup
+
+        if user.tier_id is None:
+            return url_for("single_tenant.plans")
+        if pending_setup(user):
+            return url_for("single_tenant.setup")
     if not user.onboarding_complete:
         return url_for("onboarding")
     if current_app.config.get("STRIPE_SECRET_KEY") and user.tier_id is None:
@@ -513,7 +520,18 @@ def register_auth_routes(app: Flask) -> None:
                 )
 
             _lock_first_user_registration()
-            first_user = db.session.query(User).count() == 0
+            registered_users = db.session.query(User).count()
+            license_limit = current_app.config.get("SINGLE_TENANT_LICENSE_LIMIT")
+            if license_limit is not None and (
+                isinstance(license_limit, bool)
+                or not isinstance(license_limit, int)
+                or license_limit < 1
+                or registered_users >= license_limit
+            ):
+                db.session.rollback()
+                flash("This instance has reached its licensed account limit.")
+                return redirect(url_for("register"))
+            first_user = registered_users == 0
             if not registration_enabled and not first_user:
                 flash("⛔️ Registration is disabled.")
                 return redirect(url_for("index"))
@@ -652,6 +670,13 @@ def register_auth_routes(app: Flask) -> None:
                         success=True,
                     )
 
+                if app.config.get("SINGLE_TENANT_ENABLED"):
+                    from hushline.single_tenant import pending_setup
+
+                    if user.tier_id is None:
+                        return redirect(url_for("single_tenant.plans"))
+                    if pending_setup(user):
+                        return redirect(url_for("single_tenant.setup"))
                 if not user.onboarding_complete:
                     return redirect(url_for("onboarding"))
 

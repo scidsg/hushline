@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block body_class %}onboarding-body{% endblock %}
+{% block main_class %}onboarding-main{% endblock %}
+{% block scripts %}<script defer src="{{ url_for('static', filename='js/single-tenant-price.js') }}"></script><script defer src="{{ url_for('static', filename='js/single-tenant-progress.js') }}"></script><link rel="stylesheet" href="{{ url_for('static', filename='css/single-tenant.css') }}">{% endblock %}
+{% block content %}
+<div class="onboarding-wizard">
+<img class="onboarding" src="{{ url_for('static', filename='img/onboarding.png') }}" alt="">
+<h2>{{ title }}</h2>
+<p class="meta demo-caption">{% if clock_test %}Stripe test-clock fixture · Real infrastructure · No real charges{% elif stripe_test %}Stripe sandbox · No real charges{% elif fixture_test %}Disposable lifecycle fixture · Real infrastructure · One year paid upfront{% elif real_test %}Single Tenant · Annual billing{% else %}Demo only · No real charges, DNS checks or deployments.{% endif %}</p>
+{% if stage == 'licenses' %}
+<p class="meta">Step 1 of 6</p><h3>How many licenses do you need?</h3>
+<p>A license covers one user. Choose any positive number, or Unlimited. Single Tenant is billed for the whole year upfront.</p>
+<form method="post" class="formBody" id="license-selection" data-unlimited-annual-license-price="{{ unlimited_annual_license_price }}">{{ demo_form.hidden_tag() }}
+<label for="license_type">License plan</label><span class="select-shell"><select name="license_type" id="license_type"><option value="numbered">Number of licenses</option><option value="unlimited">Unlimited licenses — $20,000/year + charges</option></select></span>
+<label for="quantity">Number of licenses</label><input id="quantity" name="quantity" type="number" min="1" step="1" value="13" required>
+<div id="license-price" role="status" aria-live="polite" aria-atomic="true">
+<div id="license-breakdown">
+<div class="feature-meta"><p>Infrastructure</p><p>$1,282.80/year</p></div>
+<div class="feature-meta"><p>Licenses</p><p id="license-cost">$3,120.00/year</p></div>
+{% for label in ['Donation', 'Administration', 'Support'] %}<div class="feature-meta"><p>{{ label }}</p><p class="license-fee">$440.28/year</p></div>{% endfor %}
+</div>
+<div class="feature-meta"><p><strong>Annual total, due upfront</strong></p><p><strong id="license-total">$5,723.64</strong></p></div>
+<p id="license-price-message" class="meta">The whole year is paid upfront.</p>
+</div>
+<button id="license-checkout">Continue to checkout</button></form>
+{% elif stage == 'payment' %}
+<p class="meta">Step 2 of 6</p><h3>Pay for your first year</h3>
+{% set license_label = 'Unlimited licenses' if quantity is none else 'Licenses (' ~ quantity ~ ' × $240/year)' %}
+{% for label, value in [('Infrastructure', infrastructure), (license_label, license_total), ('Donation', fee), ('Administration', fee), ('Support', fee)] %}<div class="feature-meta"><p>{{ label }}</p><p>${{ value }}</p></div>{% endfor %}
+<div class="feature-meta"><p><strong>Annual total, due upfront</strong></p><p><strong>${{ annual }}</strong></p></div>
+<p>The entire first year is paid before your instance is provisioned.</p>
+
+<p class="meta">{% if stripe_test %}Stripe sandbox · Use a test card. No real charge will occur.{% else %}Your annual payment will be processed by Stripe.{% endif %}</p><form method="post" class="formBody">{{ demo_form.hidden_tag() }}<button>{{ 'Pay annual total with Stripe (test)' if stripe_test else 'Pay annual total with Stripe' }}</button></form><form method="post" class="formBody">{{ demo_form.hidden_tag() }}<input type="hidden" name="payment_action" value="check"><button>Check payment status</button></form>
+{% elif stage == 'domain' %}
+<p class="meta">Step 3 of 6</p><h3>Where will your instance live?</h3><p>{% if stripe_test %}Stripe sandbox payment confirmed — no real charge. {% if clock_test %}Provision a new isolated instance using its provider hostname.{% else %}Enter a hostname you control.{% endif %}{% elif fixture_test %}Your simulated payment is confirmed. Use a new provider-assigned HTTPS hostname; this test does not require DNS changes. The test term expires approximately two hours after checkout.{% else %}Your annual payment is confirmed. Enter a hostname you control.{% endif %}</p>
+<form method="post" class="formBody">{{ demo_form.hidden_tag() }}{% if fixture_test %}<input type="hidden" name="fixture_action" value="provision"><button>Provision your test instance</button>{% else %}<label for="domain">Your instance URL</label><input name="domain" id="domain" placeholder="tips.example.org" required><button>Get DNS instructions</button>{% endif %}</form>
+{% elif stage == 'dns' %}
+{% if fixture_test %}
+<p class="meta">Step 4 of 6</p><h3>Your provider hostname</h3>
+<p>A new isolated instance is being created. Its provider-assigned HTTPS hostname needs no DNS changes.</p>
+<p id="fixture-progress" class="meta" role="status">{{ order.message }}</p>
+<p id="fixture-endpoint">{{ order.ingress or 'Hostname available after provisioning.' }}</p>
+<form method="post" class="formBody" id="fixture-continue" {% if not order.ready %}hidden{% endif %}>{{ demo_form.hidden_tag() }}<input type="hidden" name="dns_action" value="continue"><button>Continue to deployment checks</button></form>
+{% else %}
+<p class="meta">Step 4 of 6</p><h3>Connect your domain</h3><p>{% if real_test %}Add these records for <strong>{{ domain }}</strong>.{% else %}Example records for <strong>{{ domain }}</strong>. These demo records do not connect a real service.{% endif %}</p>
+{% if real_test %}<p id="infrastructure-status" class="meta" role="status">{{ order.message }}</p>{% endif %}
+<div class="demo-record"><h4>CNAME</h4><dl><dt>Name:</dt><dd><code>{{ domain }}</code></dd><dt>Value:</dt><dd><code>{% if real_test %}<span id="dns-target">{{ order.ingress or 'Waiting for infrastructure…' }}</span>{% else %}tenant-demo.instances.example{% endif %}</code></dd></dl></div>
+{% if real_test %}<details><summary>Using a root domain?</summary><p>If your DNS provider does not support a CNAME at the root domain, add both A records below instead. Use either the CNAME or these A records.</p>{% for ip in routing_ips %}<div class="demo-record"><h4>A</h4><dl><dt>Name:</dt><dd><code>{{ domain }}</code></dd><dt>Value:</dt><dd><code>{{ ip }}</code></dd></dl></div>{% endfor %}</details>{% endif %}
+<div class="demo-record"><h4>TXT</h4><p class="meta">Ownership verification</p><dl><dt>Name:</dt><dd><code>_hushline.{{ domain }}</code></dd><dt>Value:</dt><dd><code>hushline-verification={{ verification }}</code></dd></dl></div>
+<div id="dns-checks" data-real="{{ 'true' if real_test else 'false' }}" data-verified="{{ 'true' if dns_verified else 'false' }}" class="setup-checks" aria-live="polite" data-failed="{{ 'true' if dns_failed else 'false' }}">
+{% for label in ['Domain ownership', 'DNS routing'] %}<div class="setup-check" data-state="pending"><strong>{{ label }}</strong><span class="check-state">○ Not checked</span></div>{% endfor %}
+</div><form method="post" class="formBody" id="dns-verification">{{ demo_form.hidden_tag() }}<input type="hidden" name="dns_action" value="check"><button>{{ 'Recheck DNS records' if dns_verified else 'Check DNS records' }}</button></form>
+{% if dns_verified %}<p class="meta">DNS checks passed. Continue when you're ready to deploy.</p><form method="post" class="formBody" id="dns-continue">{{ demo_form.hidden_tag() }}<input type="hidden" name="dns_action" value="continue"><button>Continue to deployment</button></form>{% endif %}
+{% endif %}
+{% elif stage == 'provision' %}
+<p class="meta">Step 5 of 6</p><h3>Deploying your instance</h3><p>{% if fixture_test %}Your provider hostname is assigned. We’re checking the owned instance and verified HTTPS health.{% elif real_test %}DNS is verified. We’re finishing certificate setup and checking your instance.{% else %}DNS is verified. Deployment starts automatically—there's nothing for you to do here.{% endif %}</p>
+<div id="deployment-checks" data-retry="false" class="setup-checks" aria-live="polite" data-real="{{ 'true' if real_test else 'false' }}" data-failed="{{ 'true' if provision_failed else 'false' }}">
+{% for label in ['Isolated infrastructure', ('Instance configuration' if real_test else 'License entitlement'), 'HTTPS certificate', 'Application health'] %}<div class="setup-check" data-state="pending"><strong>{{ label }}</strong><span class="check-state">○ Pending</span></div>{% endfor %}
+</div>
+<p id="deployment-status" class="meta" role="status">{% if real_test %}Checking deployment status…{% else %}Starting demo deployment…{% endif %}</p>
+
+<form method="post" id="deployment-complete" class="formBody" hidden>{{ demo_form.hidden_tag() }}<input type="hidden" name="deployment_complete" value="yes"><button>Continue</button></form>
+<noscript><p>Enable JavaScript to view this simulated deployment progress.</p></noscript>
+{% elif stage == 'ready' %}
+<p class="meta">Step 6 of 6</p><h3>Your {% if stripe_test %}test {% endif %}instance is ready</h3><p><strong>{{ domain }}</strong></p><p>{{ quantity if quantity is not none else 'Unlimited' }} licenses · {% if stripe_test %}Stripe sandbox payment confirmed — no real charge{% elif real_test %}One year paid upfront{% else %}One year paid upfront{% endif %}</p><p>{% if fixture_test %}Next, cancel renewal on the subscription page and leave it cancelled for the automatic expiry test.{% elif real_test %}Next, claim your instance administrator with a private one-use invitation.{% else %}Your existing account will become the instance administrator through a secure claim in the wired flow. Next, use the app's account setup.{% endif %}</p><form method="post" class="formBody">{{ demo_form.hidden_tag() }}<button>{{ 'Manage subscription' if fixture_test and not clock_test else 'Set up my account' }}</button></form>{% if real_test %}<p><a href="{{ url_for('single_tenant.manage') }}">Manage instance subscription</a></p>{% endif %}
+{% elif stage == 'super' %}
+<h3>Super User · ${{ business_price }}/month</h3><p>Unlock the existing Super User features, then continue to account setup.</p><p class="meta">This is a simulated checkout. No payment details needed.</p><form method="post" class="formBody">{{ demo_form.hidden_tag() }}<button>Confirm Super User demo payment</button></form>
+{% endif %}
+{% if not real_test and stage in ['payment', 'dns', 'provision'] %}<details><summary>Test a failure</summary><form method="post">{{ demo_form.hidden_tag() }}<input type="hidden" name="simulate_failure" value="yes"><button>Simulate {{ stage }} failure</button></form></details>{% endif %}
+
+<p class="meta"><a href="{{ url_for('single_tenant.plans') }}">Back to plans</a></p>
+</div>
+{% endblock %}

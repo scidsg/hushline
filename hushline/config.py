@@ -184,6 +184,7 @@ def load_config(env: Optional[Mapping[str, str]] = None) -> Mapping[str, Any]:
         _load_sqlalchemy,
         _load_smtp,
         _load_stripe,
+        _load_single_tenant,
         _load_blob_storage,
         _load_hushline_misc,
         _load_webauthn,
@@ -440,4 +441,26 @@ def _load_json(env: Mapping[str, str]) -> Mapping[str, Any]:
         except JSONDecodeError:
             raise ConfigParseError(f"Env var {k!r} could not be parsed as JSON")
 
+    return data
+
+
+def _load_single_tenant(env: Mapping[str, str]) -> Mapping[str, Any]:
+    data: dict[str, Any] = {
+        "SINGLE_TENANT_ENABLED": parse_bool(env.get("SINGLE_TENANT_ENABLED", "false")),
+        "SINGLE_TENANT_ACCEPT_PAYMENTS": parse_bool(
+            env.get("SINGLE_TENANT_ACCEPT_PAYMENTS", "false")
+        ),
+        "SINGLE_TENANT_TEST_MODE": parse_bool(env.get("SINGLE_TENANT_TEST_MODE", "false")),
+    }
+    if value := env.get("SINGLE_TENANT_LICENSE_LIMIT"):
+        if not value.isdecimal() or int(value) < 1:
+            raise ConfigParseError("Single Tenant license limit must be a positive integer")
+        data["SINGLE_TENANT_LICENSE_LIMIT"] = int(value)
+    for key in (
+        "SINGLE_TENANT_SERVICE_URL",
+        "SINGLE_TENANT_SERVICE_KEY",
+        "SINGLE_TENANT_TEST_ORDER",
+    ):
+        if value := env.get(key):
+            data[key] = value
     return data

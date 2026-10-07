@@ -34,6 +34,9 @@ modules = [
   "vision",
   // dummies for css
   "style",
+  "single-tenant",
+  "single-tenant-price",
+  "single-tenant-progress",
   "images",
 ];
 
