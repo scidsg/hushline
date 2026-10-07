@@ -11,16 +11,16 @@
   "prerequisites": [
     {
       "gate": "G12",
-      "issue": "scidsg/hushline#2377",
+      "issue": "scidsg/hushline#2407",
       "artifact_commit": "21b356c81e488b6a47c185a6b4788b3a0ba9a0b4",
       "required_result": "approved",
-      "observed_result": "blocked-prerequisite",
+      "observed_result": "validation-harness-implemented-results-pending",
       "satisfied": false,
       "evidence": [
         "adr-0011-release-validation-readiness.md",
         "g12-validation-report.json"
       ],
-      "blocker": "G12 records no accepted integrated release candidate, pinned dependency set, passing validation matrix, or independent review evidence."
+      "blocker": "G12 records an implemented harness but no accepted exact-candidate validation matrix or independent review evidence."
     }
   ],
   "review_engagement": {

@@ -3,12 +3,14 @@ name: Dependency Security Audit
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, codex/epic-2365]
     paths:
       - "pyproject.toml"
       - "poetry.lock"
       - "package.json"
       - "package-lock.json"
+      - "prototypes/pq-ratchet/package.json"
+      - "prototypes/pq-ratchet/package-lock.json"
       - ".github/workflows/dependency-security-audit.yml"
   push:
     branches: [main]

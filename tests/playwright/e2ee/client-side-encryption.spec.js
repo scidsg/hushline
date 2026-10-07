@@ -58,6 +58,26 @@ function formValueFromPostBody(postBody, name) {
   return postBody.slice(valueStart + 4, valueEnd);
 }
 
+function contextOptionsForProject(testInfo) {
+  const allowed = [
+    "baseURL",
+    "colorScheme",
+    "deviceScaleFactor",
+    "hasTouch",
+    "isMobile",
+    "locale",
+    "screen",
+    "timezoneId",
+    "userAgent",
+    "viewport",
+  ];
+  return Object.fromEntries(
+    allowed
+      .filter((name) => testInfo.project.use[name] !== undefined)
+      .map((name) => [name, testInfo.project.use[name]]),
+  );
+}
+
 async function suppressGuidanceModal(page) {
   await page.evaluate(() => {
     localStorage.setItem("hasFinishedGuidance", "true");
@@ -583,13 +603,16 @@ test("protected delivery retries exact bytes after a lost acknowledgement", asyn
   browser,
 }) => {
   test.setTimeout(90000);
+  const testInfo = test.info();
+  const contextOptions = contextOptionsForProject(testInfo);
 
   const initialPlaintext = `PQ opening message ${Date.now()}`;
   const replyPlaintext = `PQ reply message ${Date.now()}`;
-  const senderContext = await browser.newContext();
-  const recipientContext = await browser.newContext();
+  const senderContext = await browser.newContext(contextOptions);
+  const recipientContext = await browser.newContext(contextOptions);
   const senderPage = await senderContext.newPage();
   const recipientPage = await recipientContext.newPage();
+  let freshContext = null;
 
   try {
     await login(recipientPage, "not_newman");
@@ -715,7 +738,46 @@ test("protected delivery retries exact bytes after a lost acknowledgement", asyn
 
     await senderPage.reload({ waitUntil: "networkidle" });
     await expectConversationMessage(senderPage, replyPlaintext);
+    await expect(
+      senderPage.locator(".conversation-message-body", {
+        hasText: replyPlaintext,
+      }),
+    ).toHaveCount(1);
+    await expect(
+      recipientPage.locator(".conversation-message-body", {
+        hasText: replyPlaintext,
+      }),
+    ).toHaveCount(1);
+
+    const secondSenderTab = await senderContext.newPage();
+    await secondSenderTab.goto(conversationUrl, { waitUntil: "networkidle" });
+    await expectConversationMessage(secondSenderTab, initialPlaintext);
+    await expectConversationMessage(secondSenderTab, replyPlaintext);
+    await secondSenderTab.close();
+
+    if (testInfo.project.name === "chromium") {
+      freshContext = await browser.newContext(contextOptions);
+      const freshPage = await freshContext.newPage();
+      await login(freshPage, "artvandelay");
+      await freshPage.goto(conversationUrl, { waitUntil: "networkidle" });
+      await expectConversationMessage(freshPage, initialPlaintext);
+      await expectConversationMessage(freshPage, replyPlaintext);
+      await testInfo.attach("protected-fresh-browser-history", {
+        body: await freshPage.screenshot({ fullPage: true }),
+        contentType: "image/png",
+      });
+    }
+
+    await testInfo.attach("protected-sender-timeline", {
+      body: await senderPage.screenshot({ fullPage: true }),
+      contentType: "image/png",
+    });
+    await testInfo.attach("protected-recipient-timeline", {
+      body: await recipientPage.screenshot({ fullPage: true }),
+      contentType: "image/png",
+    });
   } finally {
+    await freshContext?.close();
     await senderContext.close();
     await recipientContext.close();
   }

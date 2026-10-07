@@ -6,7 +6,7 @@ else
 CMD :=
 endif
 PRETTIER_STATIC_JS_TARGETS := ./hushline/static/js/directory_verified.js ./hushline/static/js/settings-location.js
-PRETTIER_TARGETS := ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./package.json ./playwright.e2ee.config.js ./playwright.pq-state.config.js ./playwright.staging.config.js ./prototypes/pq-ratchet ./tests/playwright $(PRETTIER_STATIC_JS_TARGETS)
+PRETTIER_TARGETS := ./*.md ./docs ./.github/workflows/* ./hushline/data/*.json ./hushline/static/manifest.json ./hushline/static/no-js.js ./package.json ./playwright.e2ee.config.js ./playwright.pq-delivery.config.js ./playwright.pq-state.config.js ./playwright.staging.config.js ./prototypes/pq-ratchet ./scripts/pq_validation_manifest.mjs ./tests/playwright $(PRETTIER_STATIC_JS_TARGETS)
 PRETTIER_FLAGS := --ignore-path /dev/null
 PRETTIER_TARGETS += ./assets/js/pq-protocol.js ./assets/js/pq-protocol-worker.js ./playwright.pq-protocol.config.js
 RUNNER_APP_URL ?= http://localhost:8080
@@ -286,8 +286,8 @@ lighthouse-accessibility: runner-wait-for-app ## Run Lighthouse accessibility ch
 	  sleep $$((i * 5)); \
 	done; \
 	SCORE=$$(python3 -c "import json,sys; from pathlib import Path; data=json.loads(Path(sys.argv[1]).read_text()); print(round(data['categories']['accessibility']['score'] * 100))" "$$report_file"); \
-	if [ "$$SCORE" -lt 95 ]; then \
-	  echo "Accessibility score must be at least 95, got $$SCORE"; \
+	if [ "$$SCORE" -ne 100 ]; then \
+	  echo "Accessibility score must be 100, got $$SCORE"; \
 	  exit 1; \
 	fi
 
@@ -339,6 +339,10 @@ playwright-e2ee: runner-wait-for-app ## Run browser E2EE submission checks again
 .PHONY: playwright-pq-state
 playwright-pq-state: ## Run encrypted PQ browser-state checks in all supported engines
 	npm run playwright:pq-state
+
+.PHONY: playwright-pq-delivery
+playwright-pq-delivery: runner-wait-for-app ## Run integrated PQ delivery checks in browser engines
+	npm run playwright:pq-delivery
 
 .PHONY: playwright-visual-update
 playwright-visual-update: runner-wait-for-app ## Update Playwright visual regression baselines

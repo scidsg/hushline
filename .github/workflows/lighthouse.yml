@@ -75,7 +75,16 @@ jobs:
       - name: Extract score
         run: |
           SCORE=$(python3 -c "import json; from pathlib import Path; data=json.loads(Path('lighthouse.json').read_text()); print(round(data['categories']['accessibility']['score'] * 100))")
-          if [ "$SCORE" -lt 95 ]; then
-            echo "Accessibility score must be at least 95, got $SCORE"
+          if [ "$SCORE" -ne 100 ]; then
+            echo "Accessibility score must be 100, got $SCORE"
             exit 1
           fi
+
+      - name: Upload accessibility evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: lighthouse-accessibility-${{ github.sha }}
+          path: lighthouse.json
+          if-no-files-found: error
+          retention-days: 14

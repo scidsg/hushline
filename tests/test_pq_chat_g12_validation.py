@@ -19,20 +19,21 @@ def _assert_blocked_without_evidence(items: list[dict[str, Any]]) -> None:
     assert all(item["evidence"] is None for item in items)
 
 
-def test_g12_report_is_linked_and_records_no_release_or_production_change() -> None:
+def test_g12_report_is_linked_and_records_pending_release_evidence() -> None:
     index = (PQ_CHAT_DOCS / "README.md").read_text(encoding="utf-8")
     adr = ADR_PATH.read_text(encoding="utf-8")
     report = _report()
 
     assert "g12-validation-report.json" in index
     assert "adr-0011-release-validation-readiness.md" in index
-    assert "Status: **Blocked before validation**" in adr
-    assert report["decision"] == "blocked-prerequisite"
+    assert "Status: **Validation harness implemented; execution and review pending**" in adr
+    assert report["issue"] == "scidsg/hushline#2407"
+    assert report["decision"] == "validation-harness-implemented-results-pending"
     assert report["release_approved"] is False
     assert report["production_changes"] is False
 
 
-def test_g12_cannot_advance_until_g11_is_approved() -> None:
+def test_g12_uses_the_implemented_g11_candidate_without_claiming_approval() -> None:
     report = _report()
     prerequisite = report["prerequisites"][0]
     observed = _report(PREREQUISITE_PATH)
@@ -41,9 +42,10 @@ def test_g12_cannot_advance_until_g11_is_approved() -> None:
     assert prerequisite["gate"] == "G11"
     assert prerequisite["artifact_commit"] == report["repository_baseline"]
     assert prerequisite["observed_result"] == observed["decision"]
-    assert prerequisite["required_result"] == "approved"
-    assert prerequisite["satisfied"] is False
-    assert observed["decision"] != prerequisite["required_result"]
+    assert prerequisite["required_result"] == "implemented"
+    assert prerequisite["satisfied"] is True
+    assert prerequisite["blocker"] is None
+    assert observed["decision"].startswith(prerequisite["required_result"])
     assert report["decision"] != "approved"
 
 
@@ -51,8 +53,13 @@ def test_g12_does_not_invent_an_integrated_build_or_result() -> None:
     report = _report()
     build = report["build_identity"]
 
-    assert build["status"] == "blocked"
-    assert build["evidence"] is None
+    assert build["status"] == "candidate-awaiting-ci-identity"
+    assert build["evidence"] == [
+        "playwright.pq-delivery.config.js",
+        "tests/playwright/e2ee/client-side-encryption.spec.js",
+        "scripts/pq_validation_manifest.mjs",
+        ".github/workflows/tests.yml",
+    ]
     assert all(
         build[field] is None
         for field in (
@@ -75,26 +82,26 @@ def test_g12_does_not_invent_an_integrated_build_or_result() -> None:
             "network_profile",
             "synthetic_corpus",
             "measured_at_utc",
-            "reproduction_instructions",
             "ci_run",
         )
     )
     assert build["timing_runs_per_case"] == 0
+    assert build["reproduction_instructions"].startswith("make playwright-pq-delivery")
 
 
 def test_g12_inventory_covers_interoperability_and_adversarial_cases() -> None:
     report = _report()
-    interoperability = {item["id"] for item in report["interoperability"]}
-    adversarial = {item["id"] for item in report["adversarial_cases"]}
+    interoperability = {item["id"]: item for item in report["interoperability"]}
+    adversarial = {item["id"]: item for item in report["adversarial_cases"]}
 
-    assert interoperability == {
+    assert interoperability.keys() == {
         "official-vectors-and-pinned-reference-peer-handshake",
         "bidirectional-traffic-and-multiple-observed-pq-epochs",
         "bounded-out-of-order-delayed-and-duplicate-traffic",
         "long-offline-gap-and-fresh-session-recovery",
         "prekey-depletion-replenishment-and-concurrent-claim",
     }
-    assert adversarial == {
+    assert adversarial.keys() == {
         "forged-substituted-and-stale-identity-device-membership",
         "context-purpose-direction-participant-and-conversation-substitution",
         "ciphertext-transcript-epoch-and-archive-wrapper-substitution",
@@ -105,8 +112,23 @@ def test_g12_inventory_covers_interoperability_and_adversarial_cases() -> None:
         "device-enrollment-revocation-and-churn",
         "malformed-boundary-and-oversized-payloads-without-truncation",
     }
-    _assert_blocked_without_evidence(report["interoperability"])
-    _assert_blocked_without_evidence(report["adversarial_cases"])
+    assert interoperability["official-vectors-and-pinned-reference-peer-handshake"] == {
+        "id": "official-vectors-and-pinned-reference-peer-handshake",
+        "status": "blocked",
+        "evidence": None,
+    }
+    assert interoperability["long-offline-gap-and-fresh-session-recovery"] == {
+        "id": "long-offline-gap-and-fresh-session-recovery",
+        "status": "blocked",
+        "evidence": None,
+    }
+    executable_interop = [
+        item for item in interoperability.values() if item["status"] == "pending-ci"
+    ]
+    assert len(executable_interop) == 3
+    assert all(item["evidence"] for item in executable_interop)
+    assert all(item["status"] == "pending-ci" for item in adversarial.values())
+    assert all(item["evidence"] for item in adversarial.values())
 
 
 def test_g12_fault_matrix_requires_safe_acknowledged_retry_behavior() -> None:
@@ -143,8 +165,12 @@ def test_g12_fault_matrix_requires_safe_acknowledged_retry_behavior() -> None:
         "exact-operation-and-ciphertext-byte-reuse-on-ambiguous-retry",
         "collision-or-mismatched-retry-rejected",
     }
-    assert fault["status"] == "blocked"
-    assert fault["evidence"] is None
+    assert fault["status"] == "pending-ci"
+    assert fault["evidence"] == [
+        "tests/playwright/pq-state/pq-browser-state.spec.js",
+        "tests/playwright/e2ee/client-side-encryption.spec.js",
+        "tests/test_pq_message_storage.py",
+    ]
 
 
 def test_g12_audits_every_content_copy_path() -> None:
@@ -194,9 +220,64 @@ def test_g12_browser_matrix_and_quality_budgets_are_explicit() -> None:
     assert budgets["lighthouse-performance"]["required"] == "score-at-least-95"
     assert budgets["login-send-reply-and-thread-open-p95"]["minimum_runs_per_case"] == 30
     assert "50ms" in budgets["main-thread-responsiveness"]["required"]
-    _assert_blocked_without_evidence(report["browser_matrix"])
-    _assert_blocked_without_evidence(report["browser_regressions"])
-    _assert_blocked_without_evidence(report["quality_budgets"])
+    assert all(item["status"] == "pending-ci" for item in report["browser_matrix"])
+    assert all(item["evidence"] for item in report["browser_matrix"])
+    csp = next(
+        item
+        for item in report["browser_regressions"]
+        if item["id"] == "csp-unchanged-or-approved-minimal-policy-and-regression"
+    )
+    assert csp["status"] == "pending-ci"
+    assert csp["evidence"] == "tests/test_security_headers.py"
+    fresh_browser = next(
+        item
+        for item in report["browser_regressions"]
+        if item["id"] == "fresh-browser-retained-history-without-extra-credential-or-pairing"
+    )
+    assert fresh_browser["status"] == "pending-ci"
+    assert fresh_browser["evidence"] == ("tests/playwright/e2ee/client-side-encryption.spec.js")
+    _assert_blocked_without_evidence(
+        [
+            item
+            for item in report["browser_regressions"]
+            if item is not csp and item is not fresh_browser
+        ]
+    )
+    interaction_budget = next(
+        item for item in report["quality_budgets"] if item["id"] == "normal-path-interactions"
+    )
+    assert interaction_budget["status"] == "pending-ci"
+    assert interaction_budget["evidence"] == (
+        "tests/playwright/e2ee/client-side-encryption.spec.js"
+    )
+    crypto_budget = next(
+        item
+        for item in report["quality_budgets"]
+        if item["id"] == "approved-crypto-payload-storage-memory-and-amplification-budgets"
+    )
+    assert crypto_budget["status"] == "pending-ci-and-human-thresholds"
+    assert crypto_budget["evidence"] == "prototypes/pq-ratchet/tests/prototype.spec.mjs"
+    main_thread_budget = next(
+        item for item in report["quality_budgets"] if item["id"] == "main-thread-responsiveness"
+    )
+    assert main_thread_budget["status"] == "pending-ci"
+    assert main_thread_budget["evidence"] == ("prototypes/pq-ratchet/tests/prototype.spec.mjs")
+    lighthouse_budgets = [
+        budgets["lighthouse-accessibility"],
+        budgets["lighthouse-performance"],
+    ]
+    assert all(item["status"] == "pending-ci" for item in lighthouse_budgets)
+    assert all(item["evidence"] for item in lighthouse_budgets)
+    _assert_blocked_without_evidence(
+        [
+            item
+            for item in report["quality_budgets"]
+            if item is not interaction_budget
+            and item is not crypto_budget
+            and item is not main_thread_budget
+            and item not in lighthouse_budgets
+        ]
+    )
 
 
 def test_g12_requires_ci_supply_chain_safety_and_human_review() -> None:
@@ -218,24 +299,22 @@ def test_g12_requires_ci_supply_chain_safety_and_human_review() -> None:
         "node-runtime-and-full-when-changed-dependency-audits",
         "rust-wasm-advisory-license-sbom-integrity-and-reproducible-build",
     }
-    _assert_blocked_without_evidence(report["required_checks"])
-    assert limits["status"] == "blocked"
-    assert limits["evidence"] is None
-    assert all(
-        limits[field] is None
-        for field in (
-            "maximum_plaintext_bytes",
-            "maximum_ciphertext_bytes",
-            "maximum_devices_per_account",
-            "prekey_low_watermark",
-            "prekey_batch_and_retention",
-            "maximum_skipped_keys",
-            "maximum_pending_epochs",
-            "maximum_history_corpus",
-            "maximum_retry_age_and_attempts",
-            "failure_and_recovery_behavior",
-        )
-    )
+    codeql = next(item for item in report["required_checks"] if item["id"] == "codeql")
+    assert codeql["status"] == "blocked"
+    assert codeql["evidence"] is None
+    executable_checks = [item for item in report["required_checks"] if item is not codeql]
+    assert all(item["status"] == "pending-ci" for item in executable_checks)
+    assert all(item["evidence"] for item in executable_checks)
+    assert limits["status"] == "implemented-pending-review"
+    assert limits["maximum_plaintext_bytes"] == 50_000
+    assert limits["maximum_ciphertext_bytes"] == 200_000
+    assert limits["maximum_devices_per_account"] == 5
+    assert limits["prekey_low_watermark"] == 20
+    assert limits["maximum_skipped_keys"] == 2_000
+    assert limits["maximum_pending_epochs"] == 32
+    assert limits["maximum_history_corpus"] is None
+    assert limits["maximum_retry_age_and_attempts"] is None
+    assert limits["evidence"]
     assert report["evidence_safety"]["synthetic_only"] is True
     assert "production-data" in report["evidence_safety"]["forbidden"]
     assert "no-human-approved-threat-matrix-or-complete-copy-inventory-exists" in (limitations)
@@ -262,3 +341,92 @@ def test_g12_requires_ci_supply_chain_safety_and_human_review() -> None:
     assert all(reviewer["reviewer"] is None for reviewer in report["reviewers"])
     assert all(reviewer["disposition"] == "pending" for reviewer in report["reviewers"])
     assert all(reviewer["evidence"] is None for reviewer in report["reviewers"])
+
+
+def test_g12_integrated_browser_harness_retains_synthetic_evidence() -> None:
+    config = (REPO_ROOT / "playwright.pq-delivery.config.js").read_text(encoding="utf-8")
+    scenario = (
+        REPO_ROOT / "tests" / "playwright" / "e2ee" / "client-side-encryption.spec.js"
+    ).read_text(encoding="utf-8")
+    package = json.loads((REPO_ROOT / "package.json").read_text(encoding="utf-8"))
+
+    assert package["scripts"]["playwright:pq-delivery"] == (
+        "playwright test --config=playwright.pq-delivery.config.js"
+    )
+    assert 'testMatch: "client-side-encryption.spec.js"' in config
+    assert 'name: "chromium"' in config
+    assert 'name: "firefox"' in config
+    assert 'name: "webkit"' in config
+    assert 'name: "webkit-mobile-emulation"' in config
+    assert 'trace: "retain-on-failure"' in config
+    assert "test-results/pq-delivery/results.json" in config
+    assert 'testInfo.attach("protected-sender-timeline"' in scenario
+    assert 'testInfo.attach("protected-recipient-timeline"' in scenario
+    assert "contextOptionsForProject(testInfo)" in scenario
+    assert "browser.newContext(contextOptions)" in scenario
+    assert "expect(initialRequests[1]).toBe(initialRequests[0])" in scenario
+    assert "expect(replyRequests[1]).toBe(replyRequests[0])" in scenario
+
+
+def test_g12_ci_runs_candidate_matrix_and_records_exact_identity() -> None:
+    workflow_directory = REPO_ROOT / ".github" / "workflows"
+    workflow = (workflow_directory / "tests.yml").read_text(encoding="utf-8")
+    audit_workflow = (workflow_directory / "dependency-security-audit.yml").read_text(
+        encoding="utf-8"
+    )
+    manifest = (REPO_ROOT / "scripts" / "pq_validation_manifest.mjs").read_text(encoding="utf-8")
+
+    assert "pq-delivery:" in workflow
+    assert "codex/epic-2365" in workflow
+    assert "playwright install --with-deps chromium firefox webkit" in workflow
+    assert "npm run playwright:pq-delivery" in workflow
+    assert "node scripts/pq_validation_manifest.mjs" in workflow
+    assert "pq-ratchet-evidence:" in workflow
+    assert "npm run provenance > artifacts/provenance.json" in workflow
+    assert "npm sbom --sbom-format cyclonedx" in workflow
+    assert "npm audit --package-lock-only --json" in workflow
+    assert "Measure synthetic PQ ratchet behavior and budgets" in workflow
+    assert "branches: [main, codex/epic-2365]" in audit_workflow
+    assert '"prototypes/pq-ratchet/package-lock.json"' in audit_workflow
+    assert "python-audit:" in audit_workflow
+    assert "needs: detect-python-lockfile-change" in audit_workflow
+    assert "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02" in workflow
+    assert "process.env.GITHUB_SHA ||" in manifest
+    assert "dependency: `@getmaapp/signal-wasm@${protocolDependency.version}`" in manifest
+    assert 'wrapper_source_revision: "0a5e3cb8bf282efb3521d7cdac5476caf3fb1acd"' in manifest
+    assert 'libsignal_source_revision: "b056faa6dd02961cff24064c54c089c52e1a0753"' in manifest
+    assert '"package-lock.json"' in manifest
+    assert "browser.version()" in manifest
+    assert "synthetic_data_only: true" in manifest
+    assert "Playwright WebKit is not branded Safari" in manifest
+    assert "Firefox automation is not a Tor Browser result" in manifest
+
+
+def test_g12_accessibility_gate_requires_a_perfect_score() -> None:
+    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    workflow_directory = REPO_ROOT / ".github" / "workflows"
+    workflow = (workflow_directory / "lighthouse.yml").read_text(encoding="utf-8")
+    performance_workflow = (workflow_directory / "lighthouse-performance.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'if [ "$$SCORE" -ne 100 ]' in makefile
+    assert "Accessibility score must be 100" in makefile
+    assert 'if [ "$SCORE" -ne 100 ]' in workflow
+    assert "Accessibility score must be 100" in workflow
+    assert "lighthouse-accessibility-${{ github.sha }}" in workflow
+    assert "codex/epic-2365" in performance_workflow
+    assert 'if [ "$SCORE" -lt 95 ]' in performance_workflow
+    assert "lighthouse-performance-${{ github.sha }}" in performance_workflow
+
+
+def test_g12_separates_engine_coverage_from_external_browser_results() -> None:
+    external = {item["browser"]: item for item in _report()["external_browser_matrix"]}
+
+    assert external.keys() == {
+        "Safari on macOS",
+        "Safari on iOS hardware",
+        "Tor Browser",
+    }
+    assert all(item["status"] == "pending-external-run" for item in external.values())
+    assert all(item["evidence"] is None for item in external.values())

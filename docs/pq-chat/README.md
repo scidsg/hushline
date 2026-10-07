@@ -62,11 +62,11 @@ The PQ chat discovery work is split into independently reviewable gates:
   monotonic versions, mixed-history truth, stale-client refusal, draft safety,
   and rollout controls. Browser, quality, and independent review evidence is
   still pending.
-- **G12:** the [release-validation readiness ADR](adr-0011-release-validation-readiness.md)
-  and [versioned validation report](g12-validation-report.json) preserve G11
-  as a hard prerequisite for `scidsg/hushline#2377` and inventory the
-  interoperability, adversarial, fault, persisted-copy, real-browser,
-  quality-budget, CI, audit, and human-review evidence that remains blocked.
+- **G12:** the [release-validation ADR](adr-0011-release-validation-readiness.md)
+  and [versioned validation report](g12-validation-report.json) define the
+  executable integration and evidence contract for `scidsg/hushline#2407`.
+  Automated multi-engine coverage is implemented; branded Safari/iOS, Tor,
+  measured budgets, complete CI/audit results, and human review remain pending.
 - **G13:** the [independent-review readiness ADR](adr-0012-independent-review-readiness.md)
   and [versioned review record](g13-independent-review.json) preserve G12 as a
   hard prerequisite for `scidsg/hushline#2378` and define the human reviewer
@@ -148,12 +148,14 @@ write, upgraded floors remain monotonic, mixed history retains per-message
 truth, old writers fail closed, and deployment controls cannot reactivate a
 classical writer. No merge or production-release approval is asserted.
 
-G12 is **pending validation**. G11 now supplies an integrated build, but the
-versioned report still needs the required browser, adversarial, quality,
-rollback, audit, and human-review results at the final revision. Existing
-readiness entries do not become release evidence automatically.
+G12 has an **implemented validation harness with results pending**. The exact
+CI candidate runs protected send, read, and exact-byte acknowledgement retry in
+Chromium, Firefox, desktop WebKit, and mobile-WebKit emulation, and retains
+synthetic screenshots and a version/hash manifest. These automated projects do
+not replace branded Safari/iOS, Tor Browser, measured budgets, audits, or human
+review at the final revision.
 
-G13 is **blocked before independent review** because G12 is blocked and
+G13 is **blocked before independent review** because G12 remains incomplete and
 supplies no accepted release candidate, pinned dependency identity, or passing
 validation evidence. Reviewer booking remains a human action, and every review,
 finding, retest, risk disposition, wording reconciliation, and release decision
