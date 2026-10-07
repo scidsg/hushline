@@ -114,15 +114,15 @@ class Collector:
             "SINGLE_TENANT_PORTAL_KEY",
             "SINGLE_TENANT_WORKFLOW_KEY",
             "SINGLE_TENANT_SMTP_JSON",
+            "SINGLE_TENANT_DO_TOKEN",
+            "SINGLE_TENANT_TF_TOKEN",
         }
         if not required.issubset(names):
             raise ValueError("Dedicated customer automation credentials are not configured")
-        # Only these existing approved development credentials can provide a
-        # cloud/read role. Production names and controller-key fallbacks are absent.
+        # Only private infrastructure configuration reads may use the approved
+        # development PAT. Provider and controller credentials are dedicated.
         development = {
             "SINGLE_TENANT_CONFIG_READ_TOKEN": "HUSHLINE_INFRA_STAGING_PAT",
-            "SINGLE_TENANT_DO_TOKEN": "HUSHLINE_STAGING_DO_TOKEN",
-            "SINGLE_TENANT_TF_TOKEN": "HUSHLINE_STAGING_TF_TOKEN",
         }
         missing = set(development) - names
         if missing:

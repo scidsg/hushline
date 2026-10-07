@@ -21,6 +21,6 @@ jobs:
           persist-credentials: false
       - name: Verify development team and discover dedicated customer project
         env:
-          SINGLE_TENANT_DO_TOKEN: ${{ secrets.SINGLE_TENANT_DO_TOKEN || secrets.HUSHLINE_STAGING_DO_TOKEN }}
-          SINGLE_TENANT_TF_TOKEN: ${{ secrets.SINGLE_TENANT_TF_TOKEN || secrets.HUSHLINE_STAGING_TF_TOKEN }}
+          SINGLE_TENANT_DO_TOKEN: ${{ secrets.SINGLE_TENANT_DO_TOKEN }}
+          SINGLE_TENANT_TF_TOKEN: ${{ secrets.SINGLE_TENANT_TF_TOKEN }}
         run: python3 scripts/single_tenant_preflight.py

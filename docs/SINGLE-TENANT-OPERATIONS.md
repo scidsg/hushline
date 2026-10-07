@@ -163,11 +163,11 @@ The isolated `single-tenant-automation` GitHub environment must allow only branc
 `main`, without required reviewers, wait timers or custom approval rules. Store
 only its dedicated `SINGLE_TENANT_CONFIG_READ_TOKEN`, `SINGLE_TENANT_DO_TOKEN`,
 `SINGLE_TENANT_TF_TOKEN`, `SINGLE_TENANT_PORTAL_KEY`,
-`SINGLE_TENANT_WORKFLOW_KEY`, and `SINGLE_TENANT_SMTP_JSON` there. Cloud and private-read roles may instead use the existing approved
-repository secrets `HUSHLINE_STAGING_DO_TOKEN`, `HUSHLINE_STAGING_TF_TOKEN`, and
-`HUSHLINE_INFRA_STAGING_PAT` without extracting or copying their values. Dedicated
-environment roles take precedence. Production token names are never accepted as
-fallbacks; controller signing keys and SMTP must remain in the customer environment.
+`SINGLE_TENANT_WORKFLOW_KEY`, and `SINGLE_TENANT_SMTP_JSON` there. Only the
+private configuration-read role may use the existing approved repository secret
+`HUSHLINE_INFRA_STAGING_PAT` without extracting or copying its value. Provider
+tokens, controller signing keys and SMTP must remain in the customer environment;
+shared staging and production provider token fallbacks are rejected.
 The config token
 reads the private infrastructure repository; the cloud tokens must cover only the
 approved customer project/team. The DO token requires account-read permission
@@ -196,10 +196,21 @@ opening live sales remain outside this preparation step.
 
 `Single Tenant read-only preflight` runs only trusted default-branch code in the
 customer environment, using the approved development credentials directly. It
-checks the DigitalOcean account is active and belongs to HushLineDev before any
-Terraform query. It discovers only the dedicated HCP customer project in
-science-and-design and verifies its organization. Output contains sanitized
+checks the DigitalOcean account is active and belongs to the dedicated
+HushLineDev team ID before any Terraform query. It discovers only the dedicated HCP customer project in
+hushline-single-tenant and verifies its exact project ID and organization. Output contains sanitized
 team/project metadata or an exact failure stage. It never creates a project,
 workspace or customer resource, submits a payment, enables checkout, or exposes
 credentials. Manual dispatch is an operator diagnostic, not a customer approval
 or a provisioning retry. A missing project remains a setup blocker.
+
+## Dedicated provider accounts
+
+Customer automation is pinned to the independently created HushLineDev team
+and hushline-single-tenant HCP organization, with project Hush Line Single
+Tenant. The read-only preflight verifies the exact team and project IDs, so
+matching names cannot authorize another account or adopt another project.
+Both provider tokens must be dedicated environment secrets; shared staging
+provider tokens cannot substitute. The existing approved development GitHub
+PAT may only supply private infrastructure-configuration read access.
+Customer resources are still created only after verified annual payment.

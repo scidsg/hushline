@@ -379,3 +379,11 @@ During installation, an operator can verify the approved development credentials
 and dedicated customer project using the read-only default-branch preflight.
 An ownership mismatch stops before querying infrastructure; a missing project
 is reported without creating or adopting resources.
+
+### Dedicated customer provider accounts
+
+Single Tenant automation uses a separate DigitalOcean account and Terraform
+organization, with explicit team and project IDs. Dedicated provider credentials
+must be configured in the customer environment before it can accept orders.
+The setup preflight rejects matching names with other IDs and cannot adopt or
+modify production, staging, or another project's infrastructure.
