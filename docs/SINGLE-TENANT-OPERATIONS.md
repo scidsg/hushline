@@ -175,6 +175,13 @@ Retain the existing dedicated notification configuration; this release changes
 no sender addresses.
 
 The legacy PR #2447 workflow is disabled during credential-boundary remediation.
+Label-driven legacy deployment requires a fresh label action for the current
+immutable PR head; an old label cannot authorize subsequent pushes. Closing the
+PR does not delete resources. Legacy cleanup requires explicit removal of the
+test label and the existing exact-order retirement guards. These two jobs read
+only their immutable private JSON order through the GitHub API, never check out
+private repository code. The paid customer lifecycle uses its independent
+payment authority and dedicated Single Tenant provider credentials.
 Before enabling it, restrict `self-service-test-2447` to branch `main` and install
 dedicated `SELF_SERVICE_TEST_DO_TOKEN`, `SELF_SERVICE_TEST_TF_TOKEN`,
 `SELF_SERVICE_TEST_CONFIG_READ_TOKEN`, and `SELF_SERVICE_TEST_STRIPE_KEY` in that

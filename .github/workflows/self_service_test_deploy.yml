@@ -26,10 +26,9 @@ jobs:
       github.event.pull_request.number == 2447 &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
-      ((github.event.action == 'labeled' && github.event.label.name == 'self-service-resume') ||
-      (!contains(github.event.pull_request.labels.*.name, 'self-service-resume') &&
-      ((github.event.action == 'labeled' && github.event.label.name == 'self-service-test') ||
-      (github.event.action == 'synchronize' && contains(github.event.pull_request.labels.*.name, 'self-service-test')))))
+      github.event.action == 'labeled' &&
+      (github.event.label.name == 'self-service-resume' ||
+      github.event.label.name == 'self-service-test')
     runs-on: ubuntu-latest
     timeout-minutes: 90
     environment: self-service-test-2447
@@ -72,7 +71,7 @@ jobs:
       - name: Check out the customer test request
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: ${{ env.PR_HEAD_SHA }}
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
           path: request
 
@@ -82,14 +81,12 @@ jobs:
           python3 trusted/scripts/self_service_test_request.py pointer request/.self-service-test.json
           test -f request/.self-service-test.json
 
-      - name: Check out immutable private customer config
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          repository: ${{ env.INFRA_REPOSITORY }}
-          ref: ${{ steps.request.outputs.config_ref }}
-          token: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
-          persist-credentials: false
-          path: customer-config
+      - name: Read immutable private customer order data
+        env:
+          GH_TOKEN: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
+          PRIVATE_ORDER_ID: ${{ steps.request.outputs.order_id }}
+          PRIVATE_CONFIG_REF: ${{ steps.request.outputs.config_ref }}
+        run: python3 trusted/scripts/self_service_private_order.py customer-config
 
       - name: Prepare isolated customer Terraform variables
         id: customer
@@ -404,7 +401,7 @@ jobs:
       - name: Check out the customer test request
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: ${{ env.PR_HEAD_SHA }}
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 2
           persist-credentials: false
           path: request
@@ -443,7 +440,7 @@ jobs:
           persist-credentials: false
           path: infra
 
-      - name: Check out immutable private customer config
+      - name: Read immutable private customer order data
         if: steps.request.outputs.enabled == 'true'
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
@@ -1158,8 +1155,8 @@ jobs:
       github.event.pull_request.number == 2447 &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.head.ref == 'feat/self-service-test-runner' &&
-      ((github.event.action == 'unlabeled' && github.event.label.name == 'self-service-test') ||
-      (github.event.action == 'closed' && contains(github.event.pull_request.labels.*.name, 'self-service-test')))
+      github.event.action == 'unlabeled' &&
+      github.event.label.name == 'self-service-test'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: self-service-test-2447
@@ -1201,7 +1198,7 @@ jobs:
       - name: Check out the customer test request
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: ${{ env.PR_HEAD_SHA }}
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
           path: request
 
@@ -1212,13 +1209,11 @@ jobs:
           test -f request/.self-service-test.json
 
       - name: Check out immutable private customer config
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          repository: ${{ env.INFRA_REPOSITORY }}
-          ref: ${{ steps.request.outputs.config_ref }}
-          token: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
-          persist-credentials: false
-          path: customer-config
+        env:
+          GH_TOKEN: ${{ secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN }}
+          PRIVATE_ORDER_ID: ${{ steps.request.outputs.order_id }}
+          PRIVATE_CONFIG_REF: ${{ steps.request.outputs.config_ref }}
+        run: python3 trusted/scripts/self_service_private_order.py customer-config
 
       - name: Prepare isolated customer Terraform variables
         id: customer
@@ -1553,7 +1548,7 @@ jobs:
       - name: Check out the customer test request
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: ${{ env.PR_HEAD_SHA }}
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
           path: request
           fetch-depth: 2
