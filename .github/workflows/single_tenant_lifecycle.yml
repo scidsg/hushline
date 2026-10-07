@@ -71,7 +71,7 @@ jobs:
         with:
           repository: scidsg/hushline-infra
           ref: ${{ vars.SINGLE_TENANT_INFRA_SHA }}
-          token: ${{ secrets.SINGLE_TENANT_CONFIG_READ_TOKEN || secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          token: ${{ secrets.SINGLE_TENANT_CONFIG_READ_TOKEN }}
           persist-credentials: false
           path: infra
       - name: Build reviewed driver with Tor installed
@@ -89,7 +89,7 @@ jobs:
           SINGLE_TENANT_TF_PROJECT: ${{ vars.SINGLE_TENANT_TF_PROJECT }}
           SINGLE_TENANT_AUTHORITY_ORIGIN: ${{ vars.SINGLE_TENANT_AUTHORITY_ORIGIN }}
           SINGLE_TENANT_CONTROL_ORIGIN: ${{ vars.SINGLE_TENANT_CONTROL_ORIGIN }}
-          SINGLE_TENANT_CONFIG_READ_TOKEN: ${{ secrets.SINGLE_TENANT_CONFIG_READ_TOKEN || secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          SINGLE_TENANT_CONFIG_READ_TOKEN: ${{ secrets.SINGLE_TENANT_CONFIG_READ_TOKEN }}
           SINGLE_TENANT_DO_TEAM_ID: ${{ vars.SINGLE_TENANT_DO_TEAM_ID }}
           SINGLE_TENANT_DO_TOKEN: ${{ secrets.SINGLE_TENANT_DO_TOKEN }}
           SINGLE_TENANT_TF_TOKEN: ${{ secrets.SINGLE_TENANT_TF_TOKEN }}

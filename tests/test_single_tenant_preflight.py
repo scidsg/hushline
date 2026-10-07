@@ -8,6 +8,7 @@ from typing import Any
 
 import pytest
 
+from scripts.single_tenant_identity import valid_team_id
 from scripts.single_tenant_preflight import (
     DO_ACCOUNT,
     ORGANIZATION,
@@ -22,6 +23,20 @@ from scripts.single_tenant_preflight import (
 )
 
 TEAM = TEAM_ID
+
+
+@pytest.mark.parametrize("identifier", [TEAM, "a" * 40])
+def test_preflight_accepts_both_reviewed_provider_identity_formats(
+    monkeypatch: pytest.MonkeyPatch, identifier: str
+) -> None:
+    monkeypatch.setattr("scripts.single_tenant_preflight.TEAM_ID", identifier)
+    fetch, _ = provider(team_id=identifier)
+    assert check(fetch, "do-test-token", "tf-test-token")["ready"] is True
+
+
+@pytest.mark.parametrize("identifier", [None, "", "a" * 39, "g" * 40, "A" * 40, TEAM + "\n"])
+def test_invalid_team_identity_formats_are_rejected(identifier: object) -> None:
+    assert not valid_team_id(identifier)
 
 
 def provider(
