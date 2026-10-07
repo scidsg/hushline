@@ -352,7 +352,9 @@ Production activation remains a separately reviewed configuration change.
 The general customer controller acknowledges a verified live annual payment into
 a separate encrypted ledger before publishing an immutable signed Git request.
 A healthy expiry worker and released default-branch workflows are required before
-Checkout can accept a new purchase. The cloud environment has no customer review
+Checkout can accept a new purchase. The shared Linux controller requires its
+dedicated mounted data volume and private service-user ownership; losing that
+mount blocks ledger reads and writes without creating a replacement database. The cloud environment has no customer review
 step; payment is independently rechecked before each guarded apply. Credentials
 are verified against the explicitly configured HushLineDev team.
 

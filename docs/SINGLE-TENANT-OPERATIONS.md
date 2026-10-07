@@ -229,3 +229,24 @@ Both provider tokens must be dedicated environment secrets; shared staging
 provider tokens cannot substitute. The existing approved development GitHub
 PAT may only supply private infrastructure-configuration read access.
 Customer resources are still created only after verified annual payment.
+
+### Linux controller runtime
+
+The dedicated Terraform controller host explicitly selects
+`SINGLE_TENANT_CONTROL_STORAGE_PROFILE=linux-controller-v1`. Only Linux with the
+mounted `/srv/hushline/controller` volume is accepted. The volume root must be
+owned by the service user and inaccessible to other users. Ledger, publisher
+repositories and publication artifacts stay below that volume; paths cannot use
+the volume root or escape through symlinks. Ledger creation and every transaction
+recheck the storage guard, so mount loss fails closed without creating or writing
+a replacement ledger on the root disk. Restart uses the same encrypted ledger.
+
+Local development defaults to `mac-external-v1` and still requires the mounted
+external development volume. The profile is an approved layout name, never an
+arbitrary filesystem-root override. SSH authentication/signing material remains
+in the service user's private home, while private controller/application signing
+keys and configuration stay in the internal secret store. Do not copy developer
+private keys to the host. Install the reviewed runtime and locked dependencies;
+Terraform must set this profile for both API and worker units before starting them.
+Sales remain closed pending signing/publishing and backup/restore proof, HTTPS
+verification, both customer rehearsal plans and live financial integration checks.

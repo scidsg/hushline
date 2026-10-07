@@ -16,6 +16,7 @@ from typing import Any
 
 from scripts.single_tenant_live_ledger import Ledger
 from scripts.single_tenant_live_plan import identity
+from scripts.single_tenant_live_storage import require_storage_path
 
 TRUSTED_PATH = "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 PUBLIC_REMOTE = "git@github.com:scidsg/hushline.git"
@@ -36,15 +37,10 @@ class Publisher:
     ) -> None:
         if any(not re.fullmatch(r"[a-f0-9]{40}", sha) for sha in (app_sha, infra_sha)):
             raise ValueError("Reviewed immutable source commits are required")
-        external = Path("/Volumes/Storage B/hushline-dev/projects")
-        if not Path("/Volumes/Storage B").is_mount() or any(
-            not path.resolve().is_relative_to(external) for path in (app, infra)
-        ):
-            raise ValueError("Publisher repositories require mounted external storage")
-        if not artifacts.is_dir() or not str(artifacts.resolve()).startswith(
-            "/Volumes/Storage B/hushline-dev/projects/"
-        ):
-            raise ValueError("Publisher artifacts require mounted external storage")
+        for path in (app, infra, artifacts):
+            require_storage_path(path)
+        if not artifacts.is_dir():
+            raise ValueError("Publisher artifacts require an existing private directory")
         if not signing_key.is_file() or not signing_key.resolve().is_relative_to(
             Path.home() / ".ssh"
         ):
