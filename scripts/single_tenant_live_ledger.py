@@ -14,7 +14,7 @@ import json
 import os
 import re
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -30,7 +30,10 @@ HEARTBEAT_SECONDS = 90
 
 
 class Ledger:
-    def __init__(self, path: Path, key: bytes) -> None:
+    def __init__(
+        self, path: Path, key: bytes, *, storage_guard: Callable[[], None] | None = None
+    ) -> None:
+        self.storage_guard = storage_guard
         self.path = path
         self.cipher = Fernet(key)
         self.index_key = hashlib.sha256(key + b"ledger-index-v1").digest()
@@ -44,7 +47,11 @@ class Ledger:
                 raise ValueError("Ledger encryption identity is not owned")
 
     @classmethod
-    def create(cls, path: Path, key: bytes) -> Ledger:
+    def create(
+        cls, path: Path, key: bytes, *, storage_guard: Callable[[], None] | None = None
+    ) -> Ledger:
+        if storage_guard:
+            storage_guard()
         # Exclusive creation prevents adopting another instance or a retired ledger.
         cipher = Fernet(key)
         descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
@@ -84,10 +91,12 @@ class Ledger:
             connection.execute(
                 "INSERT INTO identity VALUES (?, ?, ?)", (NAMESPACE, SCHEMA_VERSION, seal)
             )
-        return cls(path, key)
+        return cls(path, key, storage_guard=storage_guard)
 
     @contextlib.contextmanager
     def transaction(self) -> Iterator[sqlite3.Connection]:
+        if self.storage_guard:
+            self.storage_guard()
         with (
             contextlib.closing(
                 sqlite3.connect(self.path.as_uri() + "?mode=rw", uri=True, timeout=30)

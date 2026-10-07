@@ -22,9 +22,9 @@ from scripts.single_tenant_live_collect import Collector
 from scripts.single_tenant_live_ledger import Ledger
 from scripts.single_tenant_live_publish import Publisher
 from scripts.single_tenant_live_service import create_service
+from scripts.single_tenant_live_storage import require_storage_path
 
 MAX_CONFIG_BYTES = 16384
-EXTERNAL_ROOT = Path("/Volumes/Storage B/hushline-dev/projects")
 
 
 def private_file(path: Path) -> bytes:
@@ -58,17 +58,15 @@ def configuration() -> dict[str, Any]:
         or not isinstance(values["accepts_payments"], bool)
     ):
         raise ValueError("Controller configuration is not the isolated customer namespace")
-    if not Path("/Volumes/Storage B").is_mount() or not EXTERNAL_ROOT.is_dir():
-        raise ValueError("External development volume is disconnected; no fallback permitted")
-    path = Path(values["ledger_path"])
-    if not path.resolve().is_relative_to(EXTERNAL_ROOT.resolve()):
-        raise ValueError("Customer ledger must remain on external storage")
+    require_storage_path(Path(values["ledger_path"]))
     return values
 
 
 def ledger(values: dict[str, Any]) -> Ledger:
     return Ledger(
-        Path(values["ledger_path"]), private_file(Path(values["ledger_key_path"])).strip()
+        Path(values["ledger_path"]),
+        private_file(Path(values["ledger_key_path"])).strip(),
+        storage_guard=lambda: require_storage_path(Path(values["ledger_path"])),
     )
 
 
@@ -131,7 +129,9 @@ def main() -> None:
         values = configuration()
         if args.initialize:
             Ledger.create(
-                Path(values["ledger_path"]), private_file(Path(values["ledger_key_path"])).strip()
+                Path(values["ledger_path"]),
+                private_file(Path(values["ledger_key_path"])).strip(),
+                storage_guard=lambda: require_storage_path(Path(values["ledger_path"])),
             )
             return
         store = ledger(values)
