@@ -231,7 +231,7 @@ def test_release_gate_requires_review_free_default_branch_customer_environment(
         "SINGLE_TENANT_CONTROL_ORIGIN",
     ):
         documents["repos/scidsg/hushline/actions/variables/" + name] = {"value": "configured"}
-    if failure and failure != "infra-development":
+    if failure:
         with pytest.raises(ValueError, match="environment|branch|credentials"):
             worker.environment()
     else:

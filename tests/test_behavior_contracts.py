@@ -468,8 +468,8 @@ def test_contract_authenticated_settings_profile_and_auth_round_trip(
 ) -> None:
     display_name = "Contract Display"
     profile_bio = "Contract Bio"
-    username_suffix = "-ct"
-    new_username = f"{user.primary_username.username}{username_suffix}"
+    # Random UUID fragments can match the content filter's leetspeak wordlist.
+    new_username = "contract-renamed"
     new_password = "ContractPassword123!"
 
     response = client.post(

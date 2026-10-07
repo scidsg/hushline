@@ -10,6 +10,8 @@ import urllib.request
 from collections.abc import Callable
 from typing import Any
 
+from scripts.single_tenant_identity import valid_team_id
+
 DO_ACCOUNT = "https://api.digitalocean.com/v2/account"
 TF_ROOT = "https://app.terraform.io/api/v2"
 ORGANIZATION = "hushline-single-tenant"
@@ -82,8 +84,7 @@ def check(
         account.get("status") != "active"
         or team.get("name") != "HushLineDev"
         or identifier != TEAM_ID
-        or not isinstance(identifier, str)
-        or not re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", identifier)
+        or not valid_team_id(identifier)
     ):
         raise PreflightError("development-team-ownership-mismatch")
     matches: list[dict[str, Any]] = []

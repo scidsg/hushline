@@ -116,20 +116,10 @@ class Collector:
             "SINGLE_TENANT_SMTP_JSON",
             "SINGLE_TENANT_DO_TOKEN",
             "SINGLE_TENANT_TF_TOKEN",
+            "SINGLE_TENANT_CONFIG_READ_TOKEN",
         }
         if not required.issubset(names):
             raise ValueError("Dedicated customer automation credentials are not configured")
-        # Only private infrastructure configuration reads may use the approved
-        # development PAT. Provider and controller credentials are dedicated.
-        development = {
-            "SINGLE_TENANT_CONFIG_READ_TOKEN": "HUSHLINE_INFRA_STAGING_PAT",
-        }
-        missing = set(development) - names
-        if missing:
-            repository = self.document("repos/scidsg/hushline/actions/secrets")
-            approved = {item["name"] for item in repository.get("secrets", [])}
-            if any(development[name] not in approved for name in missing):
-                raise ValueError("Approved development automation credentials are not configured")
         for name in (
             "SINGLE_TENANT_TF_ORGANIZATION",
             "SINGLE_TENANT_TF_PROJECT",

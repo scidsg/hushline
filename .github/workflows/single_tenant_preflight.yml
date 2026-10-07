@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/single_tenant_preflight.yml
       - scripts/single_tenant_preflight.py
+      - scripts/single_tenant_identity.py
   workflow_dispatch:
 jobs:
   inspect:
@@ -23,4 +24,4 @@ jobs:
         env:
           SINGLE_TENANT_DO_TOKEN: ${{ secrets.SINGLE_TENANT_DO_TOKEN }}
           SINGLE_TENANT_TF_TOKEN: ${{ secrets.SINGLE_TENANT_TF_TOKEN }}
-        run: python3 scripts/single_tenant_preflight.py
+        run: python3 -m scripts.single_tenant_preflight

@@ -15,6 +15,7 @@ from typing import Any
 
 import requests
 
+from scripts.single_tenant_identity import valid_team_id
 from scripts.single_tenant_live_plan import RESOURCES, identity
 
 DIRECTORY = "hushline-single-tenant"
@@ -99,7 +100,7 @@ class CloudAPI:
 
 def verify_team(request: Callable[..., dict[str, Any]], expected: str) -> None:
     """Reject credentials for production or any unreviewed provider team."""
-    if not re.fullmatch(r"[a-f0-9]{40}|[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}", expected):
+    if not valid_team_id(expected):
         raise ValueError("An explicit reviewed development team identity is required")
     account = request("GET", "https://api.digitalocean.com/v2/account", None).get("account", {})
     if (

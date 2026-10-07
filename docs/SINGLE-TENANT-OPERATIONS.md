@@ -163,11 +163,9 @@ The isolated `single-tenant-automation` GitHub environment must allow only branc
 `main`, without required reviewers, wait timers or custom approval rules. Store
 only its dedicated `SINGLE_TENANT_CONFIG_READ_TOKEN`, `SINGLE_TENANT_DO_TOKEN`,
 `SINGLE_TENANT_TF_TOKEN`, `SINGLE_TENANT_PORTAL_KEY`,
-`SINGLE_TENANT_WORKFLOW_KEY`, and `SINGLE_TENANT_SMTP_JSON` there. Only the
-private configuration-read role may use the existing approved repository secret
-`HUSHLINE_INFRA_STAGING_PAT` without extracting or copying its value. Provider
-tokens, controller signing keys and SMTP must remain in the customer environment;
-shared staging and production provider token fallbacks are rejected.
+`SINGLE_TENANT_WORKFLOW_KEY`, and `SINGLE_TENANT_SMTP_JSON` there. All six roles
+must be present in this environment. Repository-level staging or production
+credentials cannot satisfy the release gate, including private configuration reads.
 The config token
 reads the private infrastructure repository; the cloud tokens must cover only the
 approved customer project/team. The DO token requires account-read permission
@@ -175,6 +173,16 @@ for team verification. The HCP token requires plan JSON and owned-workspace
 operations. No Stripe key enters the controller, Git requests or cloud jobs.
 Retain the existing dedicated notification configuration; this release changes
 no sender addresses.
+
+The legacy PR #2447 workflow is disabled during credential-boundary remediation.
+Before enabling it, restrict `self-service-test-2447` to branch `main` and install
+dedicated `SELF_SERVICE_TEST_DO_TOKEN`, `SELF_SERVICE_TEST_TF_TOKEN`,
+`SELF_SERVICE_TEST_CONFIG_READ_TOKEN`, and `SELF_SERVICE_TEST_STRIPE_KEY` in that
+environment. It uses the trusted base-branch workflow and validators; the PR
+checkout supplies request data only. Keep the existing environment SMTP roles
+restricted there. Do not substitute customer automation or repository-level
+staging credentials. Review historical runs and provider audit logs, then rotate
+the previously exposed staging credentials without interrupting other consumers.
 
 The request-validation workflow handles only create-only signed pointer commits.
 The privileged lifecycle runs trusted default-branch code, independently checks

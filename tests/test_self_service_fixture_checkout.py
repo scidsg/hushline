@@ -84,7 +84,14 @@ def test_empty_request_cannot_run_cloud_steps() -> None:
     text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
     job = text.split("  fixture-create:\n")[1].split("  retire:\n")[0]
     assert "self-service-teardown-fixture" not in job
-    steps = job.split("      - name: ")[3:]
+    steps = job.split("      - name: ")[1:]
+    steps = steps[
+        next(
+            i
+            for i, step in enumerate(steps)
+            if step.startswith("Check out the immutable private fixture payment")
+        ) :
+    ]
     assert all("if: steps.request.outputs.enabled == 'true'" in step for step in steps)
     assert "unchanged(" in job
     assert "healthy(" in job
