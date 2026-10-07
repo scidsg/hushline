@@ -810,6 +810,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
+          path: trusted
 
       - name: Verify the original successful apply and encrypted claim
         id: original
@@ -861,7 +862,7 @@ jobs:
           STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
           STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
           CUSTOM_DOMAIN: hushline.foo
-        run: python3 scripts/self_service_test_ownership.py finalize-original de44b913bbc22b3ac75d8e5b114bdc45
+        run: python3 trusted/scripts/self_service_test_ownership.py finalize-original de44b913bbc22b3ac75d8e5b114bdc45
 
       - name: Publish customer DNS target
         env:
@@ -870,7 +871,7 @@ jobs:
           ORDER_ID: de44b913bbc22b3ac75d8e5b114bdc45
           WORKSPACE_NAME: hushline-self-service-test-de44b913bbc22b3ac75d8e5b114bdc45
           CUSTOM_DOMAIN: hushline.foo
-        run: python3 scripts/self_service_test_request.py status self-service-status/status.json
+        run: python3 trusted/scripts/self_service_test_request.py status self-service-status/status.json
 
       - name: Upload safe customer deployment outputs
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -977,6 +978,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
+          path: trusted
       - name: Check out pinned test-only Terraform root
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
@@ -1033,7 +1035,7 @@ jobs:
         env:
           STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
           STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
-        run: python3 scripts/self_service_test_ownership.py claim-repair-vars "$ORDER_ID" infra/hushline-self-service-test/original-claim.tfvars.json
+        run: python3 trusted/scripts/self_service_test_ownership.py claim-repair-vars "$ORDER_ID" infra/hushline-self-service-test/original-claim.tfvars.json
       - name: Plan original initializer repair
         id: plan
         uses: dflook/terraform-plan@d9df4f6c2484e709ba7ffaa16c98a6906f4760cd
@@ -1048,7 +1050,7 @@ jobs:
         env:
           STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
           STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
-        run: python3 scripts/self_service_test_ownership.py claim-repair-plan "$ORDER_ID" "${{ steps.plan.outputs.json_plan_path }}"
+        run: python3 trusted/scripts/self_service_test_ownership.py claim-repair-plan "$ORDER_ID" "${{ steps.plan.outputs.json_plan_path }}"
       - name: Apply guarded initializer repair
         uses: dflook/terraform-apply@dcda97d729f1843ede471d2fac989cb946f5622a
         env:
@@ -1064,7 +1066,7 @@ jobs:
           STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
           STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
           CUSTOM_DOMAIN: hushline.foo
-        run: python3 scripts/self_service_test_ownership.py finalize-original de44b913bbc22b3ac75d8e5b114bdc45
+        run: python3 trusted/scripts/self_service_test_ownership.py finalize-original de44b913bbc22b3ac75d8e5b114bdc45
 
       - name: Publish customer DNS target
         env:
@@ -1073,7 +1075,7 @@ jobs:
           ORDER_ID: de44b913bbc22b3ac75d8e5b114bdc45
           WORKSPACE_NAME: hushline-self-service-test-de44b913bbc22b3ac75d8e5b114bdc45
           CUSTOM_DOMAIN: hushline.foo
-        run: python3 scripts/self_service_test_request.py status self-service-status/status.json
+        run: python3 trusted/scripts/self_service_test_request.py status self-service-status/status.json
 
       - name: Upload safe customer deployment outputs
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -1795,12 +1797,13 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
+          path: trusted
       - name: Read only the original owned deployment status
         env:
           STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
           STAGING_TF_TOKEN: ${{ secrets.SELF_SERVICE_TEST_TF_TOKEN }}
           CUSTOM_DOMAIN: hushline.foo
-        run: python3 scripts/self_service_test_ownership.py inspect de44b913bbc22b3ac75d8e5b114bdc45 > owned-diagnostics.json
+        run: python3 trusted/scripts/self_service_test_ownership.py inspect de44b913bbc22b3ac75d8e5b114bdc45 > owned-diagnostics.json
       - name: Retain sanitized original-order diagnostics
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -1837,6 +1840,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
+          path: trusted
       - name: Verify original ownership and read SMTP presence only
         env:
           STAGING_DO_TOKEN: ${{ secrets.SELF_SERVICE_TEST_DO_TOKEN }}
@@ -1882,6 +1886,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
+          path: trusted
       - name: Check out original request data
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:

@@ -21,6 +21,8 @@ def test_legacy_privileged_jobs_execute_only_trusted_base_code() -> None:
         assert "ref: ${{ github.event.pull_request.base.sha }}" in first
         assert "path: trusted" in first
         for step in job.split("      - name: ")[1:]:
+            if "uses: actions/checkout@" in step:
+                assert "          path:" in step  # Root checkout can delete the trusted tree.
             if "uses: actions/checkout@" in step and (
                 "pull_request.head.sha" in step or "ref: ${{ env.PR_HEAD_SHA }}" in step
             ):
