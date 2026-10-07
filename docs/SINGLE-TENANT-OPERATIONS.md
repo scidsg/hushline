@@ -191,3 +191,15 @@ configuration is independently reviewed, and the customer controller has passed
 a full uninterrupted isolated lifecycle rehearsal. The current installed sandbox
 controller and existing instances remain unchanged. Production deployment and
 opening live sales remain outside this preparation step.
+
+## Read-only installation preflight
+
+`Single Tenant read-only preflight` runs only trusted default-branch code in the
+customer environment, using the approved development credentials directly. It
+checks the DigitalOcean account is active and belongs to HushLineDev before any
+Terraform query. It discovers only the dedicated HCP customer project in
+science-and-design and verifies its organization. Output contains sanitized
+team/project metadata or an exact failure stage. It never creates a project,
+workspace or customer resource, submits a payment, enables checkout, or exposes
+credentials. Manual dispatch is an operator diagnostic, not a customer approval
+or a provisioning retry. A missing project remains a setup blocker.

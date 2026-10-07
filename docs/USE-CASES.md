@@ -374,3 +374,8 @@ Customer workflow setup can use the approved development cloud and private-read
 GitHub secrets directly. It never falls back to production cloud credentials or
 repository signing keys; exact team, project, order and saved-plan guards remain
 required before any provider mutation.
+
+During installation, an operator can verify the approved development credentials
+and dedicated customer project using the read-only default-branch preflight.
+An ownership mismatch stops before querying infrastructure; a missing project
+is reported without creating or adopting resources.
