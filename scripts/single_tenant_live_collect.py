@@ -109,16 +109,27 @@ class Collector:
         ):
             raise ValueError("Customer cloud secrets must be confined to the default branch")
         secrets = self.document(prefix + "/secrets")
+        names = {item["name"] for item in secrets.get("secrets", [])}
         required = {
-            "SINGLE_TENANT_CONFIG_READ_TOKEN",
-            "SINGLE_TENANT_DO_TOKEN",
-            "SINGLE_TENANT_TF_TOKEN",
             "SINGLE_TENANT_PORTAL_KEY",
             "SINGLE_TENANT_WORKFLOW_KEY",
             "SINGLE_TENANT_SMTP_JSON",
         }
-        if not required.issubset({item["name"] for item in secrets.get("secrets", [])}):
+        if not required.issubset(names):
             raise ValueError("Dedicated customer automation credentials are not configured")
+        # Only these existing approved development credentials can provide a
+        # cloud/read role. Production names and controller-key fallbacks are absent.
+        development = {
+            "SINGLE_TENANT_CONFIG_READ_TOKEN": "HUSHLINE_INFRA_STAGING_PAT",
+            "SINGLE_TENANT_DO_TOKEN": "HUSHLINE_STAGING_DO_TOKEN",
+            "SINGLE_TENANT_TF_TOKEN": "HUSHLINE_STAGING_TF_TOKEN",
+        }
+        missing = set(development) - names
+        if missing:
+            repository = self.document("repos/scidsg/hushline/actions/secrets")
+            approved = {item["name"] for item in repository.get("secrets", [])}
+            if any(development[name] not in approved for name in missing):
+                raise ValueError("Approved development automation credentials are not configured")
         for name in (
             "SINGLE_TENANT_TF_ORGANIZATION",
             "SINGLE_TENANT_TF_PROJECT",

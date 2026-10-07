@@ -369,3 +369,8 @@ paid invoice authorize normal year-end deletion. Retirement records prevent late
 callbacks or renewals from recreating a deleted instance. A fully verified
 retirement releases the hostname for a new separately paid order; the original
 order and payment tombstones remain permanent.
+
+Customer workflow setup can use the approved development cloud and private-read
+GitHub secrets directly. It never falls back to production cloud credentials or
+repository signing keys; exact team, project, order and saved-plan guards remain
+required before any provider mutation.

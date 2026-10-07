@@ -156,7 +156,10 @@ def test_failed_foreign_job_cannot_change_saved_order(collector: tuple[Collector
     assert worker.ledger.get(ORDER, OWNER)["state"] == "queued"
 
 
-@pytest.mark.parametrize("failure", [None, "review", "branch", "secret"])
+@pytest.mark.parametrize(
+    "failure",
+    [None, "review", "branch", "secret", "development", "production", "partial", "controller-key"],
+)
 def test_release_gate_requires_review_free_default_branch_customer_environment(
     collector: tuple[Collector, dict], failure: str | None
 ) -> None:
@@ -185,6 +188,23 @@ def test_release_gate_requires_review_free_default_branch_customer_environment(
         branches["branch_policies"][0]["name"] = "*"
     if failure == "secret":
         secret_names.pop()
+    if failure in {"development", "production", "partial", "controller-key"}:
+        secret_names = secret_names[3:]
+        approved = [
+            "HUSHLINE_INFRA_STAGING_PAT",
+            "HUSHLINE_STAGING_DO_TOKEN",
+            "HUSHLINE_STAGING_TF_TOKEN",
+        ]
+        if failure == "production":
+            approved = ["HUSHLINE_INFRA_TOKEN", "DIGITALOCEAN_TOKEN", "TERRAFORM_API_TOKEN"]
+        if failure == "partial":
+            approved.pop()
+        if failure == "controller-key":
+            secret_names.pop(0)
+            approved.append("SINGLE_TENANT_PORTAL_KEY")
+        documents["repos/scidsg/hushline/actions/secrets"] = {
+            "secrets": [{"name": name} for name in approved]
+        }
     documents[prefix] = environment
     documents[prefix + "/deployment-branch-policies"] = branches
     documents[prefix + "/secrets"] = {"secrets": [{"name": name} for name in secret_names]}
@@ -196,7 +216,7 @@ def test_release_gate_requires_review_free_default_branch_customer_environment(
         "SINGLE_TENANT_CONTROL_ORIGIN",
     ):
         documents["repos/scidsg/hushline/actions/variables/" + name] = {"value": "configured"}
-    if failure:
+    if failure and failure != "development":
         with pytest.raises(ValueError, match="environment|branch|credentials"):
             worker.environment()
     else:
