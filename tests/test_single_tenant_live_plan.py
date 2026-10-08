@@ -197,3 +197,47 @@ def test_runtime_cannot_ignore_the_new_instance_secret_variables() -> None:
     next(entry for entry in env if entry["key"] == "ENCRYPTION_KEY")["value"] = "other-instance-key"
     with pytest.raises(ValueError, match="Runtime inherited"):
         create(plan, ORDER, 25)
+
+
+@pytest.mark.parametrize("kind", ["GENERAL", ""])
+@pytest.mark.parametrize("limit", [None, 25])
+def test_provider_general_type_alias_retains_exact_order_and_allowance(
+    kind: str, limit: int | None
+) -> None:
+    plan = creation(limit)
+    app = next(r for r in plan["resource_changes"] if r["address"] == "digitalocean_app.tenant")
+    for service in app["change"]["after"]["spec"][0]["service"]:
+        for entry in service["env"]:
+            if entry["key"] in {"SINGLE_TENANT_INSTANCE_ORDER", "SINGLE_TENANT_LICENSE_LIMIT"}:
+                entry["type"] = kind
+    create(plan, ORDER, limit)
+
+
+@pytest.mark.parametrize("key", ["SINGLE_TENANT_INSTANCE_ORDER", "SINGLE_TENANT_LICENSE_LIMIT"])
+@pytest.mark.parametrize(
+    "change",
+    [{"type": "SECRET"}, {"type": None}, {"scope": "RUN_AND_BUILD_TIME"}, {"value": "foreign"}],
+)
+def test_general_type_alias_does_not_accept_changed_runtime_marker(key: str, change: dict) -> None:
+    plan = creation()
+    app = next(r for r in plan["resource_changes"] if r["address"] == "digitalocean_app.tenant")
+    entry = next(
+        e for e in app["change"]["after"]["spec"][0]["service"][0]["env"] if e["key"] == key
+    )
+    entry.update(change)
+    with pytest.raises(ValueError, match="marker|allowance"):
+        create(plan, ORDER, 25)
+
+
+@pytest.mark.parametrize("kind", ["", "GENERAL"])
+def test_general_type_alias_never_applies_to_private_runtime_secrets(kind: str) -> None:
+    plan = creation()
+    app = next(r for r in plan["resource_changes"] if r["address"] == "digitalocean_app.tenant")
+    entry = next(
+        e
+        for e in app["change"]["after"]["spec"][0]["service"][0]["env"]
+        if e["key"] == "SECRET_KEY"
+    )
+    entry["type"] = kind
+    with pytest.raises(ValueError, match="secret"):
+        create(plan, ORDER, 25)

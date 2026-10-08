@@ -68,6 +68,17 @@ def guard_credentials(plan: dict[str, Any], automation_token: str) -> None:
         raise ValueError("Plan does not use the approved dedicated cloud credential")
 
 
+def general_runtime(entry: dict[str, Any], key: str, value: str) -> bool:
+    # The pinned provider treats an empty GENERAL type as equivalent to GENERAL.
+    kind = entry.get("type")
+    return kind in ("", "GENERAL") and entry == {
+        "key": key,
+        "value": value,
+        "type": kind,
+        "scope": "RUN_TIME",
+    }
+
+
 def guard_create(
     plan: dict[str, Any],
     order: str,
@@ -138,22 +149,16 @@ def guard_create(
                         raise ValueError("Runtime inherited a secret outside this new instance")
                 instance = [e for e in env if e.get("key") == "SINGLE_TENANT_INSTANCE_ORDER"]
                 allowance = [e for e in env if e.get("key") == "SINGLE_TENANT_LICENSE_LIMIT"]
-                if len(instance) != 1 or instance[0] != {
-                    "key": "SINGLE_TENANT_INSTANCE_ORDER",
-                    "value": order,
-                    "type": "GENERAL",
-                    "scope": "RUN_TIME",
-                }:
+                if len(instance) != 1 or not general_runtime(
+                    instance[0], "SINGLE_TENANT_INSTANCE_ORDER", order
+                ):
                     raise ValueError("Instance ownership marker is missing")
                 if license_limit is None:
                     if allowance:
                         raise ValueError("Unlimited must not inherit a finite allowance")
-                elif len(allowance) != 1 or allowance[0] != {
-                    "key": "SINGLE_TENANT_LICENSE_LIMIT",
-                    "value": str(license_limit),
-                    "type": "GENERAL",
-                    "scope": "RUN_TIME",
-                }:
+                elif len(allowance) != 1 or not general_runtime(
+                    allowance[0], "SINGLE_TENANT_LICENSE_LIMIT", str(license_limit)
+                ):
                     raise ValueError("Runtime license allowance differs from the paid order")
         elif address != "digitalocean_database_firewall.tenant" and after.get("name") != name:
             raise ValueError("Resource escaped its new customer name")
