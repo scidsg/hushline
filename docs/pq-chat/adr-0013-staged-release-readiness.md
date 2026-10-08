@@ -23,7 +23,8 @@ local G13 artifact exists at commit
 `1d2c17f0ef4bc22694bd50ce1a24f892e8eb9cc1`, but it records
 `blocked-prerequisite-and-human-review`, no review subject, no independent
 review, and no human release approval. G1 is still pending human approval, G2
-is a no-go at the reviewed revisions, and G3 through G12 remain blocked. The
+is a no-go at the reviewed revisions, G3 through G11 have mixed implementation
+status, and G12 has an implemented harness with required results pending. The
 machine-readable [G14 rollout record](g14-rollout-record.json) therefore leaves
 all operational owners, thresholds, approvals, build identities, populations,
 results, and release links pending.

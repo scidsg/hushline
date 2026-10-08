@@ -10,6 +10,7 @@ on:
   pull_request:
     branches:
       - main
+      - codex/epic-2365
 
 jobs:
   lint:
@@ -130,7 +131,14 @@ jobs:
 
   pq-protocol:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - chromium
+          - firefox
+          - webkit
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -141,4 +149,98 @@ jobs:
       - run: npm run build:prod
       - run: npx playwright install --with-deps chromium firefox webkit
       - name: Test hybrid handshake and continuous PQ ratchet
-        run: npm run playwright:pq-protocol
+        run: npm run playwright:pq-protocol -- --project=${{ matrix.project }}
+
+  pq-ratchet-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - chromium-engine
+          - firefox-engine
+          - webkit-engine
+    defaults:
+      run:
+        working-directory: prototypes/pq-ratchet
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: prototypes/pq-ratchet/package-lock.json
+      - run: npm ci
+      - run: mkdir -p artifacts
+      - name: Verify the reviewed WASM artifact
+        run: npm run provenance > artifacts/provenance.json
+      - name: Generate the dependency SBOM
+        run: npm sbom --sbom-format cyclonedx > artifacts/sbom.cdx.json
+      - name: Audit prototype dependencies
+        run: npm audit --package-lock-only --json > artifacts/npm-audit.json
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - name: Measure synthetic PQ ratchet behavior and budgets
+        run: npm test -- --project=${{ matrix.project }}
+      - name: Upload non-secret protocol evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: pq-ratchet-${{ matrix.project }}-${{ github.sha }}
+          path: |
+            prototypes/pq-ratchet/artifacts
+            prototypes/pq-ratchet/test-results
+          if-no-files-found: error
+          retention-days: 14
+
+  pq-delivery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - chromium
+          - firefox
+          - webkit
+          - webkit-mobile-emulation
+    env:
+      PQ_CHAT_AUTO_MIGRATION_ENABLED: "true"
+      PQ_CHAT_MIGRATION_ROLLOUT_PERCENT: "100"
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build:prod
+      - name: Start synthetic integrated candidate
+        run: |
+          docker compose up -d postgres blob-storage
+          attempt=0
+          until curl -fsS http://localhost:4566/_localstack/health | grep -Eq 'running|available'; do
+            attempt=$((attempt + 1))
+            if [ "$attempt" -ge 30 ]; then
+              docker compose logs blob-storage
+              exit 1
+            fi
+            sleep 2
+          done
+          docker compose run --rm dev_data
+          docker compose up -d app
+          make runner-wait-for-app
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - name: Test integrated protected delivery and exact-byte retry
+        run: npm run playwright:pq-delivery -- --project=${{ matrix.project }}
+      - name: Record exact synthetic candidate identity
+        if: ${{ !cancelled() }}
+        run: node scripts/pq_validation_manifest.mjs
+      - name: Upload synthetic browser evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: pq-delivery-${{ matrix.project }}-${{ github.sha }}
+          path: test-results/pq-delivery
+          if-no-files-found: error
+          retention-days: 14

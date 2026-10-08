@@ -104,8 +104,8 @@
     },
     {
       "gate": "G12",
-      "issue": "scidsg/hushline#2377",
-      "observed_result": "blocked-prerequisite",
+      "issue": "scidsg/hushline#2407",
+      "observed_result": "validation-harness-implemented-results-pending",
       "satisfied": false,
       "evidence": "g12-validation-report.json"
     },

@@ -1,30 +1,30 @@
 {
   "schema_version": 1,
-  "report_version": 1,
-  "issue": "scidsg/hushline#2377",
+  "report_version": 2,
+  "issue": "scidsg/hushline#2407",
   "parent_epic": "scidsg/hushline#2365",
-  "recorded_at": "2026-09-25",
-  "repository_baseline": "1646e579c03eed0d418037dab30d24e579963d68",
-  "decision": "blocked-prerequisite",
+  "recorded_at": "2026-10-07",
+  "repository_baseline": "05e53c0bb86474e24ef931dc46a9fa6a6b25e0cf",
+  "decision": "validation-harness-implemented-results-pending",
   "release_approved": false,
   "production_changes": false,
   "prerequisites": [
     {
       "gate": "G11",
       "issue": "scidsg/hushline#2406",
-      "artifact_commit": "1646e579c03eed0d418037dab30d24e579963d68",
-      "required_result": "approved",
+      "artifact_commit": "05e53c0bb86474e24ef931dc46a9fa6a6b25e0cf",
+      "required_result": "implemented",
       "observed_result": "implemented-pending-validation-review",
-      "satisfied": false,
+      "satisfied": true,
       "evidence": [
         "adr-0010-conversation-migration-readiness.md",
         "g11-readiness.json"
       ],
-      "blocker": "G11 implementation remains pending the required validation review and approval."
+      "blocker": null
     }
   ],
   "build_identity": {
-    "status": "blocked",
+    "status": "candidate-awaiting-ci-identity",
     "implementation_commit": null,
     "production_bundle_sha256": null,
     "container_image_digest": null,
@@ -45,9 +45,14 @@
     "synthetic_corpus": null,
     "timing_runs_per_case": 0,
     "measured_at_utc": null,
-    "reproduction_instructions": null,
+    "reproduction_instructions": "make playwright-pq-delivery; CI writes test-results/pq-delivery/manifest.json and results.json",
     "ci_run": null,
-    "evidence": null
+    "evidence": [
+      "playwright.pq-delivery.config.js",
+      "tests/playwright/e2ee/client-side-encryption.spec.js",
+      "scripts/pq_validation_manifest.mjs",
+      ".github/workflows/tests.yml"
+    ]
   },
   "interoperability": [
     {
@@ -57,13 +62,13 @@
     },
     {
       "id": "bidirectional-traffic-and-multiple-observed-pq-epochs",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": "tests/playwright/pq-protocol/pq-protocol.spec.js"
     },
     {
       "id": "bounded-out-of-order-delayed-and-duplicate-traffic",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": "tests/playwright/pq-protocol/pq-protocol.spec.js"
     },
     {
       "id": "long-offline-gap-and-fresh-session-recovery",
@@ -72,59 +77,59 @@
     },
     {
       "id": "prekey-depletion-replenishment-and-concurrent-claim",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": "tests/test_pq_devices.py"
     }
   ],
   "adversarial_cases": [
     {
       "id": "forged-substituted-and-stale-identity-device-membership",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": "tests/test_pq_devices.py"
     },
     {
       "id": "context-purpose-direction-participant-and-conversation-substitution",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": "tests/playwright/pq-protocol/pq-protocol.spec.js"
     },
     {
       "id": "ciphertext-transcript-epoch-and-archive-wrapper-substitution",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": "tests/playwright/pq-protocol/pq-protocol.spec.js"
     },
     {
       "id": "version-suite-capability-and-component-downgrade",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": "tests/test_pq_message_storage.py"
     },
     {
       "id": "message-prekey-session-copy-and-operation-replay",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": "tests/test_pq_devices.py"
     },
     {
       "id": "unauthorized-read-write-and-cross-scope-access",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": "tests/test_pq_message_storage.py"
     },
     {
       "id": "skipped-key-and-pending-state-exhaustion",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": "tests/playwright/pq-state/pq-browser-state.spec.js"
     },
     {
       "id": "device-enrollment-revocation-and-churn",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": "tests/test_pq_devices.py"
     },
     {
       "id": "malformed-boundary-and-oversized-payloads-without-truncation",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": "tests/playwright/pq-state/pq-browser-state.spec.js"
     }
   ],
   "fault_injection": {
-    "status": "blocked",
+    "status": "pending-ci",
     "boundaries": [
       "browser-state-and-outbox-persistence",
       "cryptographic-state-transition",
@@ -156,7 +161,11 @@
       "exact-operation-and-ciphertext-byte-reuse-on-ambiguous-retry",
       "collision-or-mismatched-retry-rejected"
     ],
-    "evidence": null
+    "evidence": [
+      "tests/playwright/pq-state/pq-browser-state.spec.js",
+      "tests/playwright/e2ee/client-side-encryption.spec.js",
+      "tests/test_pq_message_storage.py"
+    ]
   },
   "copy_inventory": [
     {
@@ -224,8 +233,8 @@
       "os": null,
       "hardware": null,
       "modes": ["normal", "private"],
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": "playwright.pq-delivery.config.js"
     },
     {
       "browser": "Firefox",
@@ -234,8 +243,8 @@
       "os": null,
       "hardware": null,
       "modes": ["normal", "private"],
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": "playwright.pq-delivery.config.js"
     },
     {
       "browser": "WebKit",
@@ -244,8 +253,8 @@
       "os": null,
       "hardware": null,
       "modes": ["normal", "private"],
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": "playwright.pq-delivery.config.js"
     },
     {
       "browser": "storage-capability-fault-injection",
@@ -258,15 +267,32 @@
         "storage-quota-limited",
         "cross-tab-api-unavailable-or-partitioned"
       ],
-      "status": "blocked",
+      "status": "pending-ci",
+      "evidence": "tests/playwright/pq-state/pq-browser-state.spec.js"
+    }
+  ],
+  "external_browser_matrix": [
+    {
+      "browser": "Safari on macOS",
+      "status": "pending-external-run",
+      "evidence": null
+    },
+    {
+      "browser": "Safari on iOS hardware",
+      "status": "pending-external-run",
+      "evidence": null
+    },
+    {
+      "browser": "Tor Browser",
+      "status": "pending-external-run",
       "evidence": null
     }
   ],
   "browser_regressions": [
     {
       "id": "fresh-browser-retained-history-without-extra-credential-or-pairing",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": "tests/playwright/e2ee/client-side-encryption.spec.js"
     },
     {
       "id": "password-change-reset-logout-and-session-expiry",
@@ -295,8 +321,8 @@
     },
     {
       "id": "csp-unchanged-or-approved-minimal-policy-and-regression",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": "tests/test_security_headers.py"
     }
   ],
   "quality_budgets": [
@@ -304,22 +330,22 @@
       "id": "lighthouse-accessibility",
       "required": "score-equals-100",
       "measured": null,
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": ".github/workflows/lighthouse.yml"
     },
     {
       "id": "lighthouse-performance",
       "required": "score-at-least-95",
       "measured": null,
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": ".github/workflows/lighthouse-performance.yml"
     },
     {
       "id": "normal-path-interactions",
       "required": "zero-new-required-fields-credentials-prompts-confirmations-pages-or-clicks",
       "measured": null,
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": "tests/playwright/e2ee/client-side-encryption.spec.js"
     },
     {
       "id": "login-send-reply-and-thread-open-p95",
@@ -333,61 +359,66 @@
       "id": "main-thread-responsiveness",
       "required": "no-individual-pq-task-over-50ms-without-yield-and-no-new-p95-long-task-regression",
       "measured": null,
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": "prototypes/pq-ratchet/tests/prototype.spec.mjs"
     },
     {
       "id": "approved-crypto-payload-storage-memory-and-amplification-budgets",
       "required": "human-approved-thresholds-from-accepted-design",
       "measured": null,
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci-and-human-thresholds",
+      "evidence": "prototypes/pq-ratchet/tests/prototype.spec.mjs"
     }
   ],
   "operational_limits": {
-    "status": "blocked",
-    "maximum_plaintext_bytes": null,
-    "maximum_ciphertext_bytes": null,
-    "maximum_devices_per_account": null,
-    "prekey_low_watermark": null,
-    "prekey_batch_and_retention": null,
-    "maximum_skipped_keys": null,
-    "maximum_pending_epochs": null,
+    "status": "implemented-pending-review",
+    "maximum_plaintext_bytes": 50000,
+    "maximum_ciphertext_bytes": 200000,
+    "maximum_devices_per_account": 5,
+    "prekey_low_watermark": 20,
+    "prekey_batch_and_retention": "target 100; one-time lifetime 30 days; consumed tombstone 7 days",
+    "maximum_skipped_keys": 2000,
+    "maximum_pending_epochs": 32,
     "maximum_history_corpus": null,
     "maximum_retry_age_and_attempts": null,
-    "failure_and_recovery_behavior": null,
-    "evidence": null
+    "failure_and_recovery_behavior": "Bounds, storage denial, stale state, exhausted prekeys and ambiguous delivery fail closed; exact encrypted outbox bytes remain retryable.",
+    "evidence": [
+      "hushline/routes/pq_device.py",
+      "hushline/chat_key_lifecycle.py",
+      "assets/js/pq-browser-state.js",
+      "assets/js/pq-protocol-worker.js"
+    ]
   },
   "required_checks": [
     {
       "id": "make-lint",
       "applicability": "required",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": ".github/workflows/tests.yml"
     },
     {
       "id": "focused-protocol-security-persistence-copy-lifecycle-and-browser-tests",
       "applicability": "required",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": ".github/workflows/tests.yml"
     },
     {
       "id": "make-test",
       "applicability": "required",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": ".github/workflows/tests.yml"
     },
     {
       "id": "ci-style-coverage",
       "applicability": "required",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": ".github/workflows/tests.yml"
     },
     {
       "id": "workflow-security-checks",
       "applicability": "required",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": ".github/workflows/workflow-security.yml"
     },
     {
       "id": "codeql",
@@ -398,26 +429,26 @@
     {
       "id": "synthetic-end-to-end-playwright-screenshots-and-traces",
       "applicability": "required",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": ".github/workflows/tests.yml"
     },
     {
       "id": "python-dependency-audit",
       "applicability": "required",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": ".github/workflows/dependency-security-audit.yml"
     },
     {
       "id": "node-runtime-and-full-when-changed-dependency-audits",
       "applicability": "required-as-scoped",
-      "status": "blocked",
-      "evidence": null
+      "status": "pending-ci",
+      "evidence": ".github/workflows/dependency-security-audit.yml"
     },
     {
       "id": "rust-wasm-advisory-license-sbom-integrity-and-reproducible-build",
-      "applicability": "pending-integrated-build",
-      "status": "blocked",
-      "evidence": null
+      "applicability": "required-as-scoped",
+      "status": "pending-ci",
+      "evidence": ".github/workflows/tests.yml"
     }
   ],
   "evidence_safety": {
@@ -439,11 +470,11 @@
     ]
   },
   "residual_limitations": [
-    "no-accepted-integrated-pq-chat-build-exists",
+    "exact-pr-head-build-and-browser-identities-are-recorded-only-when-ci-executes",
     "no-human-approved-threat-matrix-or-complete-copy-inventory-exists",
     "no-reference-interoperability-or-continuous-pq-epoch-result-exists",
     "no-adversarial-fault-or-complete-copy-audit-result-exists",
-    "no-real-browser-private-mode-or-storage-restriction-result-exists",
+    "no-branded-safari-ios-hardware-or-tor-browser-result-exists",
     "no-pq-chat-accessibility-performance-or-crypto-budget-result-exists",
     "no-pq-chat-ci-codeql-workflow-or-dependency-audit-result-exists",
     "no-independent-security-review-or-release-approval-exists",

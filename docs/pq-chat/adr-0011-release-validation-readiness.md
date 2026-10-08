@@ -1,12 +1,12 @@
 # ADR-0011: PQ Chat Release-Validation Readiness
 
-Status: **Blocked before validation**
+Status: **Validation harness implemented; execution and review pending**
 
-Date: 2026-09-25
+Date: 2026-10-07
 
 Decision gate: G12 of `scidsg/hushline#2365`
 
-Issue: `scidsg/hushline#2377`
+Issue: `scidsg/hushline#2407`
 
 ## Context
 
@@ -28,33 +28,34 @@ and synthetic identifiers, but never plaintext disclosures, drafts, private
 keys or prekeys, shared/message/chain/root/archive secrets, serialized private
 state, credentials, tokens, or production data.
 
-G12 depends on G11's accepted integrated conversation migration. The local G11
-artifact exists at commit `1646e579c03eed0d418037dab30d24e579963d68`, but it
-records `blocked-prerequisites`, no production implementation, and no accepted
-build. The machine-readable [G12 validation report](g12-validation-report.json)
-therefore records required results as blocked and leaves measurements and
-evidence links empty instead of fabricating successful validation.
+G11 now supplies the integrated conversation migration at commit
+`05e53c0bb86474e24ef931dc46a9fa6a6b25e0cf`. G12 adds a dedicated browser
+configuration that runs the integrated protected-send and exact-byte retry
+flows in Chromium, Firefox, desktop WebKit, and mobile-WebKit emulation. The CI
+job retains traces, a machine-readable Playwright report, synthetic success
+screenshots, exact source and bundle hashes, browser versions, and runner
+characteristics. These automated engines do not stand in for branded Safari
+on macOS or iOS hardware, or for Tor Browser.
 
 ## Dependency Finding
 
 <!-- prettier-ignore -->
 | Gate | Required input | Local evidence | Finding |
 | --- | --- | --- | --- |
-| G11 / `scidsg/hushline#2376` | Accepted integrated migration with authenticated negotiation, monotonic version floor, protected delivery/archive/device lifecycle, mixed-history readers, stale-client behavior, and safe rollout/rollback | Commit `1646e579c03eed0d418037dab30d24e579963d68`; [ADR-0010](adr-0010-conversation-migration-readiness.md) and [readiness record](g11-readiness.json) | **Unsatisfied:** G11 is blocked before implementation and supplies no integrated PQ-chat build, protocol behavior, copy paths, browser behavior, or release candidate to validate |
+| G11 / `scidsg/hushline#2406` | Implemented integrated migration with authenticated negotiation, monotonic version floor, protected delivery/archive/device lifecycle, mixed-history readers, stale-client behavior, and safe rollout/rollback | Commit `05e53c0bb86474e24ef931dc46a9fa6a6b25e0cf`; [ADR-0010](adr-0010-conversation-migration-readiness.md) and [readiness record](g11-readiness.json) | **Satisfied for validation:** implementation and focused tests are present; release approval remains downstream of G12 execution and independent review |
 
-A merged readiness artifact, issue order, or closed checkbox is not proof that
-G11 passed. G12 cannot choose missing protocol rules, manufacture an
-implementation build, reinterpret classical account-chat evidence as PQ-chat
-evidence, or fill human reviewer dispositions. G1's threat model and UX
-contract also remain proposed for human approval, so there is no approved
-threat matrix or complete-copy inventory against which to record a pass.
+The prerequisite is satisfied by working code rather than issue state. G12
+still cannot manufacture an executed result, reinterpret classical account-chat
+evidence as PQ-chat evidence, treat WebKit as branded Safari, treat Firefox as
+Tor Browser, or fill human reviewer dispositions.
 
 ## Decision
 
-G12 is blocked before validation. Do not run or publish a partial matrix as a
-passing release report until G11 and all transitive gates are accepted and the
-exact integrated release candidate is available on `codex/epic-2365`. In
-particular, do not:
+The automated G12 harness is implemented and must run for the exact PR head.
+Its results remain pending until CI produces the candidate manifest and browser
+artifacts. Branded Safari/iOS, Tor Browser, approved performance/crypto budgets,
+dependency and workflow checks, and human review remain mandatory external
+evidence. In particular, do not:
 
 - treat a successful handshake as proof of continuous PQ protection;
 - substitute same-implementation round trips for a pinned reference peer;
@@ -72,8 +73,9 @@ particular, do not:
   archives, CI artifacts, or reviewer packets.
 
 No production model, migration, route, cryptographic dependency, browser
-asset, template, CSP, test runner, or workflow is changed by this decision.
-Existing account-chat and anonymous one-way flows remain unchanged.
+asset, template, or CSP is changed by this decision. The test runner and CI
+workflow gain integrated browser coverage and evidence capture. Existing
+account-chat and anonymous one-way production flows remain unchanged.
 
 ## Release-Evidence Contract
 
@@ -158,7 +160,7 @@ ownership, rollback floor, and residual limitations. Mandatory failures block
 release; suppressing, retrying away, or marking them flaky does not pass the
 gate.
 
-## Required Checks After Unblocking
+## Required Checks
 
 The final report must link results for repository lint; focused protocol,
 authorization, persistence, copy-inventory, lifecycle, and browser tests; the
@@ -175,19 +177,17 @@ until the protected workflow passes. A reachable runtime CVE blocks release
 unless maintainers record a formal risk acceptance. Test-only success cannot
 replace the real-browser matrix or human review.
 
-## Unblocking and Review Sequence
+## Execution and Review Sequence
 
-1. Complete the earlier gate sequence, including human G1 approval, a passing
-   exact G2 candidate, and accepted G3 through G11 implementations on
-   `codex/epic-2365`.
-2. Replace the blocked build identity and scenario slots in
-   `g12-validation-report.json` with the exact release candidate and its
-   approved protocol, copy inventory, limits, and crypto budgets.
-3. Run protocol/reference, adversarial, authorization, fault, copy-audit,
+1. Run the integrated CI matrix for the exact PR head and retain its manifest,
+   Playwright JSON, traces, and synthetic screenshots.
+2. Run protocol/reference, adversarial, authorization, fault, copy-audit,
    adjacent-flow, browser, accessibility, and benchmark matrices using only
    synthetic data; preserve durable, non-secret evidence links.
-4. Run and link every applicable CI, workflow-security, CodeQL, coverage, and
+3. Run and link every applicable CI, workflow-security, CodeQL, coverage, and
    dependency/supply-chain check for the same candidate.
+4. Execute and link branded Safari on macOS, Safari on iOS hardware, and Tor
+   Browser results; Playwright WebKit and Firefox do not satisfy these slots.
 5. Obtain QA/security, browser/accessibility, operations, and independent
    security review at the exact implementation commit. Resolve mandatory
    failures and record residual limitations before release approval.
@@ -204,6 +204,5 @@ or inherited slot.
 - Existing E2EE behavior and adjacent flows remain unchanged.
 - Every issue criterion has a versioned, machine-readable evidence slot with a
   defined identity and failure rule.
-- G12 remains incomplete until G11 passes and the exact integrated candidate
-  has complete passing evidence and human review with explicit residual
-  limitations.
+- G12 remains incomplete until the exact integrated candidate has complete
+  passing evidence and human review with explicit residual limitations.

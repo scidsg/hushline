@@ -62,6 +62,9 @@ test("offline PQXDH and two observed SPQR epochs survive traffic faults and relo
   expect(report.benchmarks.cold_latency_ms).toBeGreaterThan(0);
   expect(report.benchmarks.bundle_transfer_bytes).toBeGreaterThan(0);
   expect(report.benchmarks.ciphertext_amplification).toBeGreaterThan(1);
+  if (report.benchmarks.main_thread_50ms_budget_passed !== null) {
+    expect(report.benchmarks.main_thread_50ms_budget_passed).toBe(true);
+  }
   expect(report.state_reload.serialized_state_bytes).toBeGreaterThan(0);
   expect(report.fixture_sha256).toMatch(/^[0-9a-f]{64}$/);
   expect(report.reference_peer.status).toBe("not_run");

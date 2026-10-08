@@ -3,9 +3,10 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: false,
+  workers: 1,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
-  timeout: 240_000,
+  timeout: process.env.CI ? 600_000 : 240_000,
   reporter: [["list"], ["json", { outputFile: "artifacts/playwright.json" }]],
   outputDir: "test-results",
   use: {

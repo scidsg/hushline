@@ -2,6 +2,10 @@ name: Lighthouse Performance
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+      - codex/epic-2365
 
 permissions:
   contents: read
@@ -78,3 +82,12 @@ jobs:
             echo "Performance score must be at least 95, got $SCORE"
             exit 1
           fi
+
+      - name: Upload performance evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: lighthouse-performance-${{ github.sha }}
+          path: lighthouse-performance.json
+          if-no-files-found: error
+          retention-days: 14

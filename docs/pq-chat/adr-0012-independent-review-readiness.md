@@ -26,10 +26,9 @@ disable, rollback, and compromise recovery. Transport is only one content
 path: the reviewer must trace the archive and every alternate content-bearing
 copy as well.
 
-G13 depends on G12's accepted release-candidate validation. The local G12
-artifact exists at commit `21b356c81e488b6a47c185a6b4788b3a0ba9a0b4`, but
-it records `blocked-prerequisite`, no integrated release candidate, no pinned
-dependency identity, and no passing validation results. No independent
+G13 depends on G12's accepted release-candidate validation. G12 now records an
+implemented integration harness, but no complete passing exact-candidate
+matrix. No independent
 reviewer, booking, report, finding, retest, or human release decision is
 present. The machine-readable [G13 review record](g13-independent-review.json)
 therefore preserves those fields as pending or blocked rather than presenting
@@ -44,7 +43,7 @@ does not turn repository authorship into independent review authority.
 <!-- prettier-ignore -->
 | Gate | Required input | Local evidence | Finding |
 | --- | --- | --- | --- |
-| G12 / `scidsg/hushline#2377` | Accepted integrated release candidate with exact pinned build/dependency identity and complete protocol, adversarial, fault, copy, browser, quality, CI, audit, and human-review evidence | Commit `21b356c81e488b6a47c185a6b4788b3a0ba9a0b4`; [ADR-0011](adr-0011-release-validation-readiness.md) and [validation report](g12-validation-report.json) | **Unsatisfied:** G12 is blocked before validation and supplies no release candidate or passing evidence against which an independent reviewer can make final findings |
+| G12 / `scidsg/hushline#2407` | Accepted integrated release candidate with exact pinned build/dependency identity and complete protocol, adversarial, fault, copy, browser, quality, CI, audit, and human-review evidence | [ADR-0011](adr-0011-release-validation-readiness.md) and [validation report](g12-validation-report.json) | **Unsatisfied:** the validation harness is implemented, but exact-candidate execution, external browsers, budgets, audits, and human evidence remain pending |
 
 A merged readiness document, issue sequence, upstream audit, or closed
 checkbox does not satisfy G12 or G13. Reviewer booking is a human coordination
