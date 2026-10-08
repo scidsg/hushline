@@ -143,7 +143,11 @@ jobs:
         run: |
           docker compose up -d postgres blob-storage
           docker compose run --rm dev_data
-          docker compose up -d app
+          if [ -f docker-compose.screenshots.yaml ]; then
+            docker compose -f docker-compose.yaml -f docker-compose.screenshots.yaml up -d app
+          else
+            docker compose up -d app
+          fi
           attempt=0
           until curl -fsS http://localhost:8080/ > /dev/null; do
             attempt=$((attempt + 1))

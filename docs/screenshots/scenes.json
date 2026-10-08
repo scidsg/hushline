@@ -31,6 +31,54 @@
       "username": "not_newman",
       "password": "Test-testtesttesttest-1",
       "passwordEnv": "SCREENSHOT_NEWMAN_PASSWORD"
+    },
+    "single-tenant-plans": {
+      "username": "docs-st-plans",
+      "password": "Test-testtesttesttest-1"
+    },
+    "single-tenant-licenses": {
+      "username": "docs-st-licenses",
+      "password": "Test-testtesttesttest-1"
+    },
+    "single-tenant-payment": {
+      "username": "docs-st-payment",
+      "password": "Test-testtesttesttest-1"
+    },
+    "single-tenant-domain": {
+      "username": "docs-st-domain",
+      "password": "Test-testtesttesttest-1"
+    },
+    "single-tenant-dns": {
+      "username": "docs-st-dns",
+      "password": "Test-testtesttesttest-1"
+    },
+    "single-tenant-provision": {
+      "username": "docs-st-provision",
+      "password": "Test-testtesttesttest-1"
+    },
+    "single-tenant-ready": {
+      "username": "docs-st-ready",
+      "password": "Test-testtesttesttest-1"
+    },
+    "single-tenant-claim": {
+      "username": "docs-st-claim",
+      "password": "Test-testtesttesttest-1"
+    },
+    "single-tenant-subscription": {
+      "username": "docs-st-subscription",
+      "password": "Test-testtesttesttest-1"
+    },
+    "single-tenant-cancelled": {
+      "username": "docs-st-cancelled",
+      "password": "Test-testtesttesttest-1"
+    },
+    "single-tenant-retiring": {
+      "username": "docs-st-retiring",
+      "password": "Test-testtesttesttest-1"
+    },
+    "single-tenant-retired": {
+      "username": "docs-st-retired",
+      "password": "Test-testtesttesttest-1"
     }
   },
   "scenes": [
@@ -1190,6 +1238,122 @@
       "session": "guest",
       "javaScriptEnabled": false,
       "waitForSelector": "#directory-title"
+    },
+    {
+      "slug": "single-tenant-plans",
+      "title": "Single Tenant \u2014 Choose a plan",
+      "session": "single-tenant-plans",
+      "path": "/single-tenant/plans",
+      "captureModes": ["full"],
+      "fullPageOptional": false,
+      "waitForSelector": "h2"
+    },
+    {
+      "slug": "single-tenant-licenses",
+      "title": "Single Tenant \u2014 License selection",
+      "session": "single-tenant-licenses",
+      "path": "/single-tenant",
+      "captureModes": ["full"],
+      "fullPageOptional": false,
+      "waitForSelector": "h2"
+    },
+    {
+      "slug": "single-tenant-payment",
+      "title": "Single Tenant \u2014 Annual checkout",
+      "session": "single-tenant-payment",
+      "path": "/single-tenant",
+      "captureModes": ["full"],
+      "fullPageOptional": false,
+      "waitForSelector": "h2"
+    },
+    {
+      "slug": "single-tenant-domain",
+      "title": "Single Tenant \u2014 Choose a domain",
+      "session": "single-tenant-domain",
+      "path": "/single-tenant",
+      "captureModes": ["full"],
+      "fullPageOptional": false,
+      "waitForSelector": "h2",
+      "actions": [
+        {
+          "type": "fill",
+          "selector": "#domain",
+          "value": "tips.example.org"
+        }
+      ]
+    },
+    {
+      "slug": "single-tenant-dns",
+      "title": "Single Tenant \u2014 DNS records",
+      "session": "single-tenant-dns",
+      "path": "/single-tenant",
+      "captureModes": ["full"],
+      "fullPageOptional": false,
+      "waitForSelector": "h2"
+    },
+    {
+      "slug": "single-tenant-provision",
+      "title": "Single Tenant \u2014 Deployment checks",
+      "session": "single-tenant-provision",
+      "path": "/single-tenant",
+      "captureModes": ["full"],
+      "fullPageOptional": false,
+      "waitForSelector": "#deployment-complete:not([hidden])"
+    },
+    {
+      "slug": "single-tenant-ready",
+      "title": "Single Tenant \u2014 Instance ready",
+      "session": "single-tenant-ready",
+      "path": "/single-tenant",
+      "captureModes": ["full"],
+      "fullPageOptional": false,
+      "waitForSelector": "h2"
+    },
+    {
+      "slug": "single-tenant-claim",
+      "title": "Single Tenant \u2014 Claim administrator",
+      "session": "single-tenant-claim",
+      "path": "/single-tenant/claim",
+      "captureModes": ["full"],
+      "fullPageOptional": false,
+      "waitForSelector": "h2",
+      "screenshotMasks": ["main code"]
+    },
+    {
+      "slug": "single-tenant-subscription",
+      "title": "Single Tenant \u2014 Subscription management",
+      "session": "single-tenant-subscription",
+      "path": "/single-tenant/manage",
+      "captureModes": ["full"],
+      "fullPageOptional": false,
+      "waitForSelector": "h2"
+    },
+    {
+      "slug": "single-tenant-cancelled",
+      "title": "Single Tenant \u2014 Renewal cancelled",
+      "session": "single-tenant-cancelled",
+      "path": "/single-tenant/manage",
+      "captureModes": ["full"],
+      "fullPageOptional": false,
+      "waitForSelector": "h2"
+    },
+    {
+      "slug": "single-tenant-retiring",
+      "title": "Single Tenant \u2014 Deletion in progress",
+      "session": "single-tenant-retiring",
+      "path": "/single-tenant/manage",
+      "captureModes": ["full"],
+      "fullPageOptional": false,
+      "waitForSelector": "h2"
+    },
+    {
+      "slug": "single-tenant-retired",
+      "title": "Single Tenant \u2014 Instance deleted",
+      "session": "single-tenant-retired",
+      "path": "/single-tenant/manage",
+      "captureModes": ["full"],
+      "fullPageOptional": false,
+      "waitForSelector": "h2"
     }
   ]
 }
