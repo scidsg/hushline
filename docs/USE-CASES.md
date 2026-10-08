@@ -392,6 +392,11 @@ and dedicated customer project using the read-only default-branch preflight.
 An ownership mismatch stops before querying infrastructure; a missing project
 is reported without creating or adopting resources.
 
+Creation checks accept the provider's equivalent `GENERAL` and empty-string
+representations for non-secret runtime ownership and license markers. Each marker
+still requires the exact paid value and runtime scope; private instance secrets
+must retain explicit `SECRET` type and their exact generated values.
+
 ### Dedicated customer provider accounts
 
 Single Tenant automation uses a separate DigitalOcean account and Terraform
