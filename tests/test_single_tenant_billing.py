@@ -521,18 +521,18 @@ def test_missed_renewal_refresh_commits_verified_invoice_without_provisioning(
     provision.assert_not_called()
 
 
-def test_approved_free_first_year_keeps_all_five_full_price_components() -> None:
+def test_approved_discounted_first_year_keeps_all_five_full_price_components() -> None:
     order, session = evidence()
     order.stripe_free_coupon_id = "free_first_year"
     session.update(
-        amount_total=0,
-        payment_status="no_payment_required",
-        total_details={"amount_discount": 229164},
+        amount_total=2292,
+        payment_status="paid",
+        total_details={"amount_discount": 226872},
     )
     invoice = session["subscription"]["latest_invoice"]
     invoice.update(
-        amount_paid=0,
-        total=0,
+        amount_paid=2292,
+        total=2292,
         subtotal=229164,
         billing_reason="subscription_create",
         discounts=[
@@ -541,13 +541,13 @@ def test_approved_free_first_year_keeps_all_five_full_price_components() -> None
                 "coupon": {
                     "id": "free_first_year",
                     "livemode": True,
-                    "percent_off": 100,
+                    "percent_off": 99,
                     "duration": "once",
                     "max_redemptions": 1,
                 },
             }
         ],
-        total_discount_amounts=[{"amount": 229164, "discount": "di_owned"}],
+        total_discount_amounts=[{"amount": 226872, "discount": "di_owned"}],
     )
     assert (
         verified_year(order, session, live=True, now=datetime(2026, 10, 6, 1, tzinfo=UTC)).invoice
@@ -555,6 +555,43 @@ def test_approved_free_first_year_keeps_all_five_full_price_components() -> None
     )
     invoice["discounts"][0]["coupon"]["duration"] = "forever"
     with pytest.raises(ValueError, match="discount"):
+        verified_year(order, session, live=True, now=datetime(2026, 10, 6, 1, tzinfo=UTC))
+
+
+@pytest.mark.parametrize(
+    "change", ["unpaid", "free", "wrong_percent", "underpaid", "checkout_mismatch"]
+)
+def test_discounted_registration_rejects_unpaid_or_mismatched_evidence(change: str) -> None:
+    order, session = evidence()
+    order.stripe_free_coupon_id = "discount_first_year"
+    session.update(amount_total=2292, total_details={"amount_discount": 226872})
+    invoice = session["subscription"]["latest_invoice"]
+    coupon = {
+        "id": "discount_first_year",
+        "livemode": True,
+        "percent_off": 99,
+        "duration": "once",
+        "max_redemptions": 1,
+    }
+    invoice.update(
+        amount_paid=2292,
+        total=2292,
+        subtotal=229164,
+        billing_reason="subscription_create",
+        discounts=[{"coupon": coupon}],
+        total_discount_amounts=[{"amount": 226872}],
+    )
+    if change == "unpaid":
+        session["payment_status"] = "no_payment_required"
+    elif change == "free":
+        invoice.update(amount_paid=0, total=0, total_discount_amounts=[{"amount": 229164}])
+    elif change == "wrong_percent":
+        coupon["percent_off"] = 100
+    elif change == "underpaid":
+        invoice["amount_paid"] = 1
+    else:
+        session.update(amount_total=229164, total_details={"amount_discount": 0})
+    with pytest.raises(ValueError, match="discount|annual payment"):
         verified_year(order, session, live=True, now=datetime(2026, 10, 6, 1, tzinfo=UTC))
 
 
@@ -594,15 +631,15 @@ def test_immediate_cancellation_preserves_term_and_does_not_invoice_or_prorate(
     api.subscriptions.update.assert_not_called()
 
 
-def test_free_first_year_renews_at_normal_annual_price() -> None:
+def test_discounted_first_year_renews_at_normal_annual_price() -> None:
     order, session = evidence()
     order.stripe_free_coupon_id = "free_first_year"
     order.paid = True
     order.period_start = "2026-10-06T00:00:00+00:00"
     session.update(
-        amount_total=0,
-        payment_status="no_payment_required",
-        total_details={"amount_discount": 229164},
+        amount_total=2292,
+        payment_status="paid",
+        total_details={"amount_discount": 226872},
     )
     start = datetime(2027, 10, 6, tzinfo=UTC)
     end = annual_end(start)
@@ -636,7 +673,7 @@ def test_redeemed_gift_does_not_block_normal_paid_checkout(mocker: MockFixture) 
     api.coupons.retrieve.return_value = {
         "id": "gift-used",
         "livemode": True,
-        "percent_off": 100,
+        "percent_off": 99,
         "duration": "once",
         "max_redemptions": 1,
         "valid": False,

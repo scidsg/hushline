@@ -21,7 +21,7 @@ from hushline.model import SingleTenantOrder
 from hushline.single_tenant_client import ServiceUnavailable
 
 COMPONENT_COUNT = 5
-FREE_PERCENT = 100
+FREE_PERCENT = 99
 MAX_TOTAL_CENTS = 99999999
 API_VERSION = "2024-06-20"
 
@@ -99,11 +99,27 @@ def invoice_total(order: SingleTenantOrder, invoice: Any, full: int) -> int:
         or not free_coupon(discounts[0].get("coupon"), order.stripe_free_coupon_id)
         or invoice.get("billing_reason") != "subscription_create"
         or invoice.get("subtotal") != full
-        or invoice.get("total") != 0
-        or sum(item["amount"] for item in invoice.get("total_discount_amounts", [])) != full
+        or not approved_discount(
+            invoice.get("total_discount_amounts", []), full, invoice.get("total")
+        )
     ):
         raise ValueError("The annual discount is not the approved one-time registration")
-    return 0
+    return invoice["total"]
+
+
+def approved_discount(amounts: Any, full: int, total: Any) -> bool:
+    """Verify Stripe's 99% discount, allowing cent rounding across five lines."""
+    if not isinstance(total, int) or isinstance(total, bool) or total <= 0:
+        return False
+    if not isinstance(amounts, list) or len(amounts) != 1:
+        return False
+    amount = amounts[0].get("amount") if hasattr(amounts[0], "get") else None
+    return bool(
+        isinstance(amount, int)
+        and not isinstance(amount, bool)
+        and amount + total == full
+        and abs(amount * 100 - full * FREE_PERCENT) <= COMPONENT_COUNT * 100
+    )
 
 
 def verified_invoice(
@@ -116,8 +132,9 @@ def verified_invoice(
     full = sum(value for _, value in prices(order.license_limit))
     due = invoice_total(order, invoice, full)
     checkout_discount = session.get("total_details", {}).get("amount_discount", 0)
-    if checkout_discount not in {0, full} or (
-        checkout_discount and not order.stripe_free_coupon_id
+    if checkout_discount and (
+        not order.stripe_free_coupon_id
+        or not approved_discount([{"amount": checkout_discount}], full, session.get("amount_total"))
     ):
         raise ValueError("The checkout discount is not approved")
     if (
@@ -125,8 +142,7 @@ def verified_invoice(
         or session.get("id") != order.stripe_session_id
         or session.get("livemode") is not live
         or session.get("status") != "complete"
-        or session.get("payment_status")
-        not in ({"paid", "no_payment_required"} if checkout_discount else {"paid"})
+        or session.get("payment_status") != "paid"
         or session.get("mode") != "subscription"
         or session.get("client_reference_id") != order.billing_receipt
         or any(session.get("metadata", {}).get(k) != v for k, v in expected.items())
@@ -143,9 +159,8 @@ def verified_invoice(
         or invoice.get("currency") != "usd"
         or invoice.get("amount_paid") != due
         or (
-            checkout_discount
-            and invoice.get("billing_reason") == "subscription_create"
-            and due != 0
+            invoice.get("billing_reason") == "subscription_create"
+            and due != session.get("amount_total")
         )
         or invoice.get("customer") != session.get("customer")
         or subscription.get("customer") != session.get("customer")
