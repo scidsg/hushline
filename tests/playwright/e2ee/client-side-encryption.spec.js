@@ -635,7 +635,7 @@ test("protected delivery retries exact bytes after a lost acknowledgement", asyn
       async (route) => {
         initialRequests.push(route.request().postData() || "");
         if (initialRequests.length === 1) {
-          await route.abort("connectionreset");
+          await route.abort();
           return;
         }
         await route.continue();
@@ -695,7 +695,7 @@ test("protected delivery retries exact bytes after a lost acknowledgement", asyn
         const committed = await route.fetch();
         replyCommitStatus = committed.status();
         await committed.dispose();
-        await route.abort("connectionreset");
+        await route.abort();
         return;
       }
       await route.continue();

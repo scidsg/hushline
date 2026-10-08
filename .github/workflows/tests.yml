@@ -132,6 +132,13 @@ jobs:
   pq-protocol:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - chromium
+          - firefox
+          - webkit
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -142,11 +149,18 @@ jobs:
       - run: npm run build:prod
       - run: npx playwright install --with-deps chromium firefox webkit
       - name: Test hybrid handshake and continuous PQ ratchet
-        run: npm run playwright:pq-protocol
+        run: npm run playwright:pq-protocol -- --project=${{ matrix.project }}
 
   pq-ratchet-evidence:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - chromium-engine
+          - firefox-engine
+          - webkit-engine
     defaults:
       run:
         working-directory: prototypes/pq-ratchet
@@ -167,12 +181,12 @@ jobs:
         run: npm audit --package-lock-only --json > artifacts/npm-audit.json
       - run: npx playwright install --with-deps chromium firefox webkit
       - name: Measure synthetic PQ ratchet behavior and budgets
-        run: npm test
+        run: npm test -- --project=${{ matrix.project }}
       - name: Upload non-secret protocol evidence
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: pq-ratchet-${{ github.sha }}
+          name: pq-ratchet-${{ matrix.project }}-${{ github.sha }}
           path: |
             prototypes/pq-ratchet/artifacts
             prototypes/pq-ratchet/test-results

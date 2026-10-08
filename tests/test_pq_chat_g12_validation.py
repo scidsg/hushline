@@ -366,6 +366,8 @@ def test_g12_integrated_browser_harness_retains_synthetic_evidence() -> None:
     assert 'testInfo.attach("protected-recipient-timeline"' in scenario
     assert "contextOptionsForProject(testInfo)" in scenario
     assert "browser.newContext(contextOptions)" in scenario
+    assert scenario.count("await route.abort();") == 2
+    assert 'route.abort("connectionreset")' not in scenario
     assert "expect(initialRequests[1]).toBe(initialRequests[0])" in scenario
     assert "expect(replyRequests[1]).toBe(replyRequests[0])" in scenario
 
@@ -386,6 +388,9 @@ def test_g12_ci_runs_candidate_matrix_and_records_exact_identity() -> None:
     assert "codex/epic-2365" in workflow
     assert "project:" in workflow
     assert "webkit-mobile-emulation" in workflow
+    assert "chromium-engine" in workflow
+    assert "firefox-engine" in workflow
+    assert "webkit-engine" in workflow
     assert "playwright install --with-deps chromium firefox webkit" in workflow
     assert "npm run playwright:pq-delivery -- --project=${{ matrix.project }}" in workflow
     assert "pq-delivery-${{ matrix.project }}-${{ github.sha }}" in workflow
@@ -394,7 +399,9 @@ def test_g12_ci_runs_candidate_matrix_and_records_exact_identity() -> None:
     assert "npm run provenance > artifacts/provenance.json" in workflow
     assert "npm sbom --sbom-format cyclonedx" in workflow
     assert "npm audit --package-lock-only --json" in workflow
-    assert "Measure synthetic PQ ratchet behavior and budgets" in workflow
+    assert "npm run playwright:pq-protocol -- --project=${{ matrix.project }}" in workflow
+    assert "npm test -- --project=${{ matrix.project }}" in workflow
+    assert "pq-ratchet-${{ matrix.project }}-${{ github.sha }}" in workflow
     assert "fullyParallel: false" in protocol_config
     assert "workers: 1" in protocol_config
     assert "timeout: process.env.CI ? 300_000 : 120_000" in protocol_config
