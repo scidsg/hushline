@@ -315,3 +315,71 @@ def test_provider_team_is_verified_before_customer_operations(
         with pytest.raises(ValueError, match="team"):
             verify_team(transport, "a" * 40)
     transport.assert_called_once_with("GET", "https://api.digitalocean.com/v2/account", None)
+
+
+@pytest.mark.parametrize("metadata", [None, {}, {"total": 0}])
+def test_explicit_null_database_inventory_is_empty(metadata: Any) -> None:
+    request = Mock(return_value={"databases": None, "meta": metadata})
+    assert scope(request).inventory("/databases", "databases") == []
+    request.assert_called_once_with(
+        "GET", "https://api.digitalocean.com/v2/databases?per_page=200&page=1", None
+    )
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"databases": None, "meta": {"total": 1}},
+        {"databases": None, "meta": {"total": False}},
+        {"databases": None, "meta": []},
+        {
+            "databases": None,
+            "links": {"pages": {"next": "https://api.digitalocean.com/v2/databases?page=2"}},
+        },
+        {"databases": {}},
+        {"databases": [None]},
+        {"databases": "empty"},
+    ],
+)
+def test_incomplete_or_malformed_database_inventory_cannot_authorize_creation(
+    payload: dict[str, Any],
+) -> None:
+    with pytest.raises(ValueError, match="inventory"):
+        scope(Mock(return_value=payload)).inventory("/databases", "databases")
+
+
+@pytest.mark.parametrize(("path", "key"), [("/apps", "apps"), ("/projects", "projects")])
+def test_null_inventory_is_not_a_generic_absence_fallback(path: str, key: str) -> None:
+    with pytest.raises(ValueError, match="Invalid cloud resource inventory"):
+        scope(Mock(return_value={key: None})).inventory(path, key)
+
+
+def test_missing_database_inventory_and_api_failures_still_stop() -> None:
+    with pytest.raises(KeyError):
+        scope(Mock(return_value={})).inventory("/databases", "databases")
+    with pytest.raises(ValueError, match="API unavailable"):
+        scope(Mock(side_effect=ValueError("API unavailable"))).inventory("/databases", "databases")
+
+
+def test_omitted_app_inventory_with_explicit_zero_count_is_empty() -> None:
+    request = Mock(return_value={"meta": {"total": 0}})
+    assert scope(request).inventory("/apps", "apps") == []
+    assert request.call_args.args[0] == "GET"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {"meta": {}},
+        {"meta": {"total": False}},
+        {"meta": {"total": 1}},
+        {"meta": {"total": 0}, "links": {"pages": {"next": "next-page"}}},
+        {"meta": {"total": 0}, "links": {"pages": {"next": False}}},
+    ],
+)
+def test_omitted_app_inventory_without_proven_empty_final_page_stops(
+    payload: dict[str, Any],
+) -> None:
+    with pytest.raises(ValueError, match="inventory"):
+        scope(Mock(return_value=payload)).inventory("/apps", "apps")
