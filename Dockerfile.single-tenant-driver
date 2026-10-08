@@ -5,4 +5,4 @@ RUN apt-get update && apt-get install --yes --no-install-recommends tor && \
     rm -rf /var/lib/apt/lists/*
 COPY scripts/ /app/scripts/
 COPY hushline/ /app/hushline/
-CMD ["poetry", "run", "python", "-m", "scripts.single_tenant_live_run"]
+ENTRYPOINT ["poetry", "run", "python", "-m", "scripts.single_tenant_live_run"]
