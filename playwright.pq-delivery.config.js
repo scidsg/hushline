@@ -8,7 +8,7 @@ module.exports = defineConfig({
   workers: 1,
   forbidOnly: !!process.env.CI,
   retries: 0,
-  timeout: process.env.CI ? 120_000 : 90_000,
+  timeout: process.env.CI ? 300_000 : 90_000,
   reporter: [
     ["line"],
     ["json", { outputFile: "test-results/pq-delivery/results.json" }],

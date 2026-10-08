@@ -359,7 +359,9 @@ def test_g12_integrated_browser_harness_retains_synthetic_evidence() -> None:
     assert 'name: "webkit"' in config
     assert 'name: "webkit-mobile-emulation"' in config
     assert 'trace: "retain-on-failure"' in config
+    assert "timeout: process.env.CI ? 300_000 : 90_000" in config
     assert "test-results/pq-delivery/results.json" in config
+    assert "test.setTimeout(process.env.CI ? 300_000 : 90_000)" in scenario
     assert 'testInfo.attach("protected-sender-timeline"' in scenario
     assert 'testInfo.attach("protected-recipient-timeline"' in scenario
     assert "contextOptionsForProject(testInfo)" in scenario
@@ -395,8 +397,10 @@ def test_g12_ci_runs_candidate_matrix_and_records_exact_identity() -> None:
     assert "Measure synthetic PQ ratchet behavior and budgets" in workflow
     assert "fullyParallel: false" in protocol_config
     assert "workers: 1" in protocol_config
+    assert "timeout: process.env.CI ? 300_000 : 120_000" in protocol_config
     assert "fullyParallel: false" in ratchet_config
     assert "workers: 1" in ratchet_config
+    assert "timeout: process.env.CI ? 600_000 : 240_000" in ratchet_config
     assert "branches: [main, codex/epic-2365]" in audit_workflow
     assert '"prototypes/pq-ratchet/package-lock.json"' in audit_workflow
     assert "python-audit:" in audit_workflow

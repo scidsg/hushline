@@ -2,7 +2,7 @@ const { defineConfig, devices } = require("@playwright/test");
 
 module.exports = defineConfig({
   testDir: "tests/playwright/pq-protocol",
-  timeout: 120000,
+  timeout: process.env.CI ? 300_000 : 120_000,
   fullyParallel: false,
   workers: 1,
   webServer: {

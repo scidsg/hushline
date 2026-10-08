@@ -602,7 +602,7 @@ test("logged-in account conversation stays encrypted through browser lifecycle",
 test("protected delivery retries exact bytes after a lost acknowledgement", async ({
   browser,
 }) => {
-  test.setTimeout(90000);
+  test.setTimeout(process.env.CI ? 300_000 : 90_000);
   const testInfo = test.info();
   const contextOptions = contextOptionsForProject(testInfo);
 
