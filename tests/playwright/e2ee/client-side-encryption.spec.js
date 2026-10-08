@@ -711,7 +711,9 @@ test("protected delivery retries exact bytes after a lost acknowledgement", asyn
       });
     await expect(
       recipientPage.locator("[data-conversation-status]"),
-    ).toHaveText("Reply could not be encrypted.");
+    ).toHaveText(
+      "Reply could not be sent. Your draft has been kept for retry.",
+    );
 
     expect(replyCommitStatus).toBe(201);
     await expect(

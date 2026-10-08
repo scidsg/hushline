@@ -145,11 +145,13 @@ async function createParticipant(name, keyBase) {
   const signedPrekeyStore = new InMemSignedPreKeyStore();
   const kyberPrekeyStore = new InMemKyberPreKeyStore();
   const prekeys = await generatePreKeys(keyBase, 2, prekeyStore);
+  await yieldToMainThread();
   const signedPrekey = await generateSignedPreKey(
     keyBase + 100,
     identityKeyPair,
     signedPrekeyStore,
   );
+  await yieldToMainThread();
   const kyberPrekey = await generateKyberPreKey(
     keyBase + 200,
     identityKeyPair,
@@ -251,14 +253,17 @@ async function snapshot(participant, peerAddress) {
   for (const key of participant.prekeys) {
     const record = await participant.prekeyStore.export_pre_key(key.id);
     if (record) prekeys.push({ id: key.id, record: encodeBytes(record) });
+    await yieldToMainThread();
   }
   const signedPrekey =
     await participant.signedPrekeyStore.export_signed_pre_key(
       participant.signedPrekey.id,
     );
+  await yieldToMainThread();
   const kyberPrekey = await participant.kyberPrekeyStore.export_kyber_pre_key(
     participant.kyberPrekey.id,
   );
+  await yieldToMainThread();
   const session = await participant.sessionStore.export_session(peerAddress);
   invariant(signedPrekey, "signed prekey missing from saved state");
   invariant(kyberPrekey, "Kyber prekey missing from saved state");
@@ -308,18 +313,22 @@ async function restoreParticipant(name, saved, peerAddress) {
       key.id,
       decodeBytes(key.record),
     );
+    await yieldToMainThread();
   }
   await participant.signedPrekeyStore.import_signed_pre_key(
     saved.signed_prekey.id,
     decodeBytes(saved.signed_prekey.record),
   );
+  await yieldToMainThread();
   await participant.kyberPrekeyStore.import_kyber_pre_key(
     saved.kyber_prekey.id,
     decodeBytes(saved.kyber_prekey.record),
   );
+  await yieldToMainThread();
   await participant.kyberPrekeyStore.import_kyber_usage(
     decodeBytes(saved.kyber_usage),
   );
+  await yieldToMainThread();
   await participant.sessionStore.import_session(
     peerAddress,
     decodeBytes(saved.session),
@@ -347,11 +356,17 @@ function bundleBytes() {
     );
 }
 
+async function yieldToMainThread() {
+  await new Promise((resolvePromise) => setTimeout(resolvePromise, 0));
+}
+
 async function exchange(sender, recipient, observations, durations, sizes) {
+  await yieldToMainThread();
   const start = performance.now();
   const ciphertext = await encrypt(sender, recipient);
   const encryptedAt = performance.now();
   const observation = observeSpqr(ciphertext);
+  await yieldToMainThread();
   await decrypt(recipient, sender, ciphertext);
   durations.push(performance.now() - start);
   sizes.push({
@@ -446,17 +461,23 @@ export async function runPrototype({
   const started = performance.now();
   const memoryBefore = memoryBytes();
   const memorySamples = memoryBefore === null ? [] : [memoryBefore];
+  await yieldToMainThread();
   await init();
+  await yieldToMainThread();
   let alice = await createParticipant("alice-synthetic", 1);
+  await yieldToMainThread();
   let bob = await createParticipant("bob-synthetic", 1000);
   bindPeerIdentity(alice, bob);
   bindPeerIdentity(bob, alice);
+  await yieldToMainThread();
   await establish(alice, bob);
+  await yieldToMainThread();
   const handshake = await encrypt(alice, bob);
   invariant(
     handshake.message_type === message_type_pre_key(),
     "PQXDH prekey message missing",
   );
+  await yieldToMainThread();
   const handshakeResult = await decrypt(bob, alice, handshake);
   invariant(
     handshakeResult.kyberPreKeyId !== undefined,
@@ -490,11 +511,14 @@ export async function runPrototype({
     await measuredExchange(bob, alice);
   }
 
+  await yieldToMainThread();
   const persisted = await saveSnapshots(alice, bob);
+  await yieldToMainThread();
   ({ alice, bob } = await restoreSnapshots(persisted.saved));
   await measuredExchange(alice, bob);
   await measuredExchange(bob, alice);
 
+  await yieldToMainThread();
   const dropped = await encrypt(alice, bob);
   sizes.push({
     ciphertext: dropped.body.length,
@@ -502,9 +526,13 @@ export async function runPrototype({
   });
   await measuredExchange(alice, bob);
 
+  await yieldToMainThread();
   const reorderedFirst = await encrypt(alice, bob);
+  await yieldToMainThread();
   const reorderedSecond = await encrypt(alice, bob);
+  await yieldToMainThread();
   await decrypt(bob, alice, reorderedSecond);
+  await yieldToMainThread();
   await decrypt(bob, alice, reorderedFirst);
   sizes.push(
     {
@@ -518,6 +546,7 @@ export async function runPrototype({
   );
   let replay;
   try {
+    await yieldToMainThread();
     await decrypt(bob, alice, reorderedFirst);
     replay = { rejected: false };
   } catch (error) {
@@ -529,7 +558,7 @@ export async function runPrototype({
     await measuredExchange(alice, bob);
     await measuredExchange(bob, alice);
   }
-  await new Promise((resolvePromise) => setTimeout(resolvePromise, 0));
+  await yieldToMainThread();
   observer?.disconnect();
   const memoryAfter = memoryBytes();
   if (memoryAfter !== null) memorySamples.push(memoryAfter);

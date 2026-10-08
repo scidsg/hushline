@@ -41,8 +41,12 @@ def test_prototype_observes_wire_epochs_and_required_faults() -> None:
         "replay.rejected",
         "observed_epochs.length",
         "timing_runs",
+        "main_thread_50ms_budget_passed",
     ):
         assert requirement in browser_test
+
+    assert "async function yieldToMainThread()" in source
+    assert source.count("await yieldToMainThread();") >= 10
 
 
 def test_prototype_keeps_evidence_non_secret_and_reference_peer_open() -> None:
