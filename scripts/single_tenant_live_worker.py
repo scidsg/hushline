@@ -21,6 +21,7 @@ from flask import Flask
 from scripts.single_tenant_live_collect import Collector
 from scripts.single_tenant_live_ledger import Ledger
 from scripts.single_tenant_live_publish import Publisher
+from scripts.single_tenant_live_release import resolve
 from scripts.single_tenant_live_service import create_service
 from scripts.single_tenant_live_storage import require_storage_path
 
@@ -106,6 +107,30 @@ def reconcile(values: dict[str, Any], store: Ledger) -> None:
     collector.reconcile()
     store.expiry(now=datetime.now(UTC))
     failed = False
+    candidates = store.release_candidates(now=datetime.now(UTC))
+    if candidates:
+        try:
+            target = resolve(values["authority_origin"], collector.document)
+        except (ValueError, OSError):
+            target = None
+            failed = True
+        for value in candidates:
+            if target is None:
+                store.release_notice(value["order_id"], failed=True)
+                continue
+            if (
+                value.get("release", {}).get("state") == "upgrade_failed"
+                and value["release"].get("tag") == target.tag
+            ):
+                store.release_notice(value["order_id"], failed=True)
+                failed = True
+                continue
+            try:
+                transport.prepare_release(value, target.tag, target.source_sha)
+                store.release_notice(value["order_id"], failed=False)
+            except (ValueError, OSError):
+                store.release_notice(value["order_id"], failed=True)
+                failed = True
     for request in store.pending():
         try:
             transport.one(request)

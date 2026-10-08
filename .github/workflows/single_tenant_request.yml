@@ -40,7 +40,7 @@ jobs:
             }
             const pointer = JSON.parse(Buffer.from(file.content, "base64").toString("utf8"));
             if (Object.keys(pointer).sort().join(",") !== "config_ref,infra_ref,order_id,purpose,revision,source_ref" ||
-                !/^[a-f0-9]{32}$/.test(pointer.order_id) || !["provision", "retire"].includes(pointer.purpose) ||
+                !/^[a-f0-9]{32}$/.test(pointer.order_id) || !["provision", "retire", "upgrade"].includes(pointer.purpose) ||
                 !Number.isSafeInteger(pointer.revision) || pointer.revision < 1 || pointer.revision > 1000000 ||
                 pointer.source_ref !== source || pointer.infra_ref !== infra ||
                 !/^[a-f0-9]{40}$/.test(pointer.config_ref) ||

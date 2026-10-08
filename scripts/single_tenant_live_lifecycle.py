@@ -81,6 +81,11 @@ class Lifecycle:
         self.onion_check(variables["ONION_HOSTNAME"])
         self.checks["configuration"] = True
         return {
+            **(
+                {"build_source_sha": config["build_source_sha"]}
+                if "build_source_sha" in config
+                else {}
+            ),
             "state": "awaiting_dns",
             "ingress": app["default_ingress"].removeprefix("https://").rstrip("/"),
             "claim": variables["single_tenant_admin_claim"],

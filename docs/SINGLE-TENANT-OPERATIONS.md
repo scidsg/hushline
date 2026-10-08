@@ -262,3 +262,47 @@ The Linux worker uses `/usr/bin/gh`; the Mac profile uses `/opt/homebrew/bin/gh`
 The private `SINGLE_TENANT_FREE_REGISTRATION_CODE` is supplied only to the existing live billing reconciliation worker. On startup it creates or verifies the explicitly configured coupon and a seven-day, single-redemption promotion code with stable Stripe idempotency keys. Used or expired codes are never replaced. A setup outage is sanitized and retried without blocking existing renewal or cancellation reconciliation. After the coupon is redeemed, ordinary full-price purchases remain available.
 
 A fresh order may reuse a hostname only after the trusted retirement workflow confirms exact owned-resource absence. Active, failed, and retiring orders keep their hostname reservation. Historical orders, ownership, invoices, and publication requests remain intact; a hostname returning never adopts retired infrastructure or reuses payment proof.
+
+## Follow the production release
+
+Keep the existing infrastructure release procedure: change the literal `tag` in
+`hushline-env/hushline.tf`, review and merge the infrastructure change, and deploy
+production from a protected branch with the same version name. Customer Terraform
+credentials remain separate from the production workspace credential.
+
+The controller reads the version actually served by `https://tips.hushline.app`.
+It verifies the published, non-prerelease GitHub release, its signed source commit,
+ancestry on `main`, and a successful matching release build. Only after production
+serves that version does it queue one durable upgrade for each provisioned,
+controller-managed instance whose paid year remains active. Cancelling renewal
+still permits upgrades through the paid-through date. Retiring and retired
+instances are excluded. Legacy instances outside this controller are not adopted.
+
+Each upgrade uses a signed, fast-forward candidate containing exactly the released
+source tree plus an opaque order/version marker. The trusted workflow independently
+rechecks production, billing authority, and the owned workspace/project/app/database.
+It updates the existing customer's build branch and requests a deployment of the
+existing app specification; it does not replace resources or rewrite credentials.
+The existing initializer applies migrations without resetting the administrator
+claim or application keys. Success requires all three build components to report
+the exact candidate commit in an ACTIVE deployment.
+
+Provisioning, upgrades, and retirement share a per-order workflow queue. A late
+upgrade callback cannot restore a retiring instance. Failures remain visible in
+the encrypted ledger, preserve the instance's existing lifecycle state, and
+withhold new-sale readiness. Transport recovery retains the same signed commits;
+it does not automatically retry a failed cloud deployment. Inspect the saved
+release, branch and deployment IDs before planning an explicitly reviewed recovery.
+Automatic downgrades and database rollback are refused. Operator recovery must
+account for migration compatibility rather than simply moving the release tag.
+
+### Release regression browser evidence
+
+The local Playwright rehearsal uses production assets, a synthetic account and
+mocked Stripe/controller boundaries. It verifies management after readiness,
+explicit irreversible-deletion acknowledgement, and the retiring state with no
+restore action. These screenshots do not establish a live charge or cloud upgrade.
+
+![Synthetic ready account](screenshots/single-tenant/release-ready-desktop.png)
+
+![Synthetic immediate retirement](screenshots/single-tenant/release-retiring-mobile.png)

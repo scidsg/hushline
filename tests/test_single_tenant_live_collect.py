@@ -248,3 +248,72 @@ def test_linux_collector_uses_system_github_cli(mocker: MockFixture) -> None:
     process.return_value.stdout = b"{}"
     assert Collector.github("repos/scidsg/hushline/actions/variables") == b"{}"
     assert process.call_args.args[0][0] == "/usr/bin/gh"
+
+
+def test_failed_upgrade_preflight_preserves_ready_service(
+    collector: tuple[Collector, dict],
+) -> None:
+    worker, documents = collector
+    original = worker.ledger.get(ORDER, OWNER)
+    worker.ledger.event(
+        ORDER,
+        OWNER,
+        purpose="provision",
+        revision=1,
+        public_sha="2" * 40,
+        result={
+            "state": "awaiting_dns",
+            "checks": {"infrastructure": True, "configuration": True},
+            "claim": "a" * 22,
+            "ingress": "hls-" + ORDER[:28] + "-owned.ondigitalocean.app",
+        },
+    )
+    worker.ledger.observation(ORDER, OWNER, dns=True, https_ok=True)
+    target = {
+        "tag": "v0.7.27",
+        "source_sha": "5" * 40,
+        "build_sha": "6" * 40,
+        "previous_sha": "7" * 40,
+    }
+    worker.ledger.queue_release(ORDER, OWNER, target)
+    request = next(r for r in worker.ledger.pending() if r["purpose"] == "upgrade")
+    worker.ledger.published(
+        ORDER, "upgrade", request["revision"], private_sha="8" * 40, public_sha="9" * 40
+    )
+    run = documents["repos/scidsg/hushline/actions/runs/101"]
+    run.update(
+        conclusion="failure",
+        updated_at="2026-01-01T00:00:00Z",
+        display_title=f"Single Tenant single-tenant-request/{ORDER}/upgrade-{request['revision']}",
+    )
+    documents["repos/scidsg/hushline/actions/runs/101/artifacts"]["artifacts"] = []
+    assert worker.reconcile() == 0
+    result = worker.ledger.get(ORDER, OWNER)
+    assert result["state"] == "ready"
+    assert result["payment"] == original["payment"]
+    assert result["release"]["state"] == "upgrade_failed"
+    assert result["release"]["failure_stage"] == "workflow-preflight"
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "repos/scidsg/hushline/../hushline-infra/contents/private",
+        "repos/scidsg/hushline/compare/main...foreign",
+        "repos/scidsg/hushline/compare/" + "a" * 40 + "...main/../contents",
+    ],
+)
+def test_comparison_allowance_does_not_allow_traversal(path: str, mocker: MockFixture) -> None:
+    process = mocker.patch("scripts.single_tenant_live_collect.subprocess.run")
+    with pytest.raises(ValueError, match="escaped"):
+        Collector.github(path)
+    process.assert_not_called()
+
+
+def test_exact_reviewed_history_comparison_is_read_only(mocker: MockFixture) -> None:
+    process = mocker.patch("scripts.single_tenant_live_collect.subprocess.run")
+    process.return_value.returncode = 0
+    process.return_value.stdout = b"{}"
+    path = "repos/scidsg/hushline/compare/" + "a" * 40 + "...main"
+    assert Collector.github(path) == b"{}"
+    assert process.call_args.args[0][1:] == ["api", path]

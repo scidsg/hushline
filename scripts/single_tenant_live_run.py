@@ -29,7 +29,9 @@ from scripts.single_tenant_live_lifecycle import Lifecycle
 from scripts.single_tenant_live_ownership import CloudAPI, Ownership, verify_team
 from scripts.single_tenant_live_payment import verify
 from scripts.single_tenant_live_plan import identity
+from scripts.single_tenant_live_release import resolve
 from scripts.single_tenant_live_request import Request, commit
+from scripts.single_tenant_live_upgrade import Upgrade
 
 MAX_BYTES = 1048576
 MAX_HEALTH_BYTES = 16384
@@ -326,6 +328,10 @@ def execute(root: Path, result_dir: Path) -> None:
     stage = "authority"
 
     def progress(result: dict[str, Any]) -> None:
+        if pointer.purpose == "upgrade":
+            result.update(
+                release_tag=config["release"]["tag"], release_source=config["release"]["source_sha"]
+            )
         result["workflow_url"] = (
             "https://github.com/scidsg/hushline/actions/runs/" + os.environ["GITHUB_RUN_ID"]
         )
@@ -361,16 +367,31 @@ def execute(root: Path, result_dir: Path) -> None:
         ownership=owner,
         hcp=HCP(request=cloud.request),
         authority=authority,
-        branch=lambda order: public.build(order, source),
+        branch=lambda order: public.build(order, config.get("build_source_sha", source)),
         progress=progress,
         onion_check=lambda hostname: onion(hostname, "socks5h://127.0.0.1:9150"),
     )
     try:
         if pointer.purpose == "provision":
+            stage = "release"
+            config["build_source_sha"] = resolve(
+                authority_origin, lambda path: public.request("GET", "/" + path)
+            ).source_sha
             stage = "onion-identity"
             with tor() as (service, _):
                 stage = "provisioning"
                 result = engine.provision(config, root, variables(config, service=service))
+        elif pointer.purpose == "upgrade":
+            upgrade = Upgrade(
+                ownership=owner,
+                hcp=engine.hcp,
+                github=public.request,
+                authority=authority,
+                authority_origin=authority_origin,
+                progress=progress,
+            )
+            stage = "upgrade"
+            result = upgrade.run(config)
         else:
             stage = "retirement"
             result = engine.retire(config, root, variables(config, service=None))
@@ -379,11 +400,11 @@ def execute(root: Path, result_dir: Path) -> None:
         with contextlib.suppress(Exception):
             progress(
                 {
-                    "state": "failed",
-                    "checks": dict(engine.checks),
-                    "failure_stage": engine.stage
-                    if stage in {"provisioning", "retirement"}
-                    else stage,
+                    "state": "upgrade_failed" if pointer.purpose == "upgrade" else "failed",
+                    **({"checks": dict(engine.checks)} if pointer.purpose != "upgrade" else {}),
+                    "failure_stage": upgrade.stage
+                    if stage == "upgrade"
+                    else (engine.stage if stage in {"provisioning", "retirement"} else stage),
                 }
             )
         raise ValueError(

@@ -6,8 +6,10 @@ from typing import Any
 import pytest
 from cryptography.fernet import Fernet
 
+from scripts.single_tenant_live_envelope import keys
 from scripts.single_tenant_live_ledger import Ledger
 from scripts.single_tenant_live_publish import Publisher
+from scripts.single_tenant_live_request import Request
 from tests.test_single_tenant_live_ledger import ORDER, OWNER, payload
 
 
@@ -127,3 +129,43 @@ def test_crash_before_ledger_checkpoint_reuses_retained_commits(
     publisher.one(publisher.ledger.pending()[0])
     assert len(publisher.commits) == 2
     assert publisher.ledger.pending() == []
+
+
+@pytest.mark.parametrize("purpose", ["upgrade", "retire"])
+def test_release_metadata_is_private_to_upgrade_requests(tmp_path: Path, purpose: str) -> None:
+    ledger = Ledger.create(tmp_path / "release.sqlite3", Fernet.generate_key())
+    publisher = FakePublisher(ledger)
+    value = payload()
+    value["state"] = "ready"
+    value["verification"] = "f" * 64
+    _, value["claim_public_key"] = keys()
+    target = {
+        "tag": "v0.7.27",
+        "source_sha": "3" * 40,
+        "build_sha": "4" * 40,
+        "previous_sha": "5" * 40,
+    }
+    if purpose == "retire":
+        value["release"] = {**target, "state": "upgraded"}
+        value["payment"]["cancelled_at"] = "2026-10-07T00:00:00+00:00"
+    ledger.reserve(ORDER, OWNER, value)
+    if purpose == "upgrade":
+        ledger.queue_release(ORDER, OWNER, target)
+    else:
+        ledger.destroy(ORDER, OWNER)
+    request = next(r for r in ledger.pending() if r["purpose"] == purpose)
+    publisher.one(request)
+    private, public = publisher.commits
+    assert ("release" in private) is (purpose == "upgrade")
+    assert "release" not in public
+    parsed = Request(
+        public,
+        branch=f"single-tenant-request/{ORDER}/{purpose}-{request['revision']}",
+        source=publisher.app_sha,
+        infra=publisher.infra_sha,
+    )
+    assert parsed.private(private) == private
+    pushes = [call[-1] for call in publisher.calls if call[0] == "push"]
+    assert len(pushes) == (3 if purpose == "upgrade" else 2)
+    if purpose == "upgrade":
+        assert pushes[0] == "4" * 40 + ":refs/heads/single-tenant-build/" + ORDER + "/" + "3" * 40
