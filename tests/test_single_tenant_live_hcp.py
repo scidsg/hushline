@@ -112,3 +112,71 @@ def test_policy_failure_is_never_overridden() -> None:
 def test_artifact_trust_roots_reject_credential_exfiltration(url: str) -> None:
     with pytest.raises(ValueError, match="escaped"):
         HCP.artifact(url)
+
+
+@pytest.mark.parametrize("hosted", [False, True])
+def test_state_supports_exact_authenticated_redirect_and_legacy_artifact(hosted: bool) -> None:
+    artifact = "https://archivist.terraform.io/owned"
+    hosted_url = "https://app.terraform.io/api/state-versions/sv-Owned/hosted_state"
+    request = Mock(
+        side_effect=[
+            {
+                "data": {
+                    "id": "sv-Owned",
+                    "attributes": {"hosted-state-download-url": hosted_url if hosted else artifact},
+                }
+            },
+            {"location": artifact},
+        ]
+    )
+    transfer = Mock(return_value=b'{"resources":[]}')
+    assert HCP(request=request, transfer=transfer).state("ws-Owned") == {"resources": []}
+    assert request.call_args_list[0].args == (
+        "GET",
+        "https://app.terraform.io/api/v2/workspaces/ws-Owned/current-state-version",
+        None,
+    )
+    if hosted:
+        assert request.call_args_list[1].args == ("GET", hosted_url, None)
+    else:
+        assert request.call_count == 1
+    transfer.assert_called_once_with(artifact)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://app.terraform.io/api/state-versions/sv-Foreign/hosted_state",
+        "https://app.terraform.io/api/state-versions/sv-Owned/hosted_state?token=unit",
+        "https://user@app.terraform.io/api/state-versions/sv-Owned/hosted_state",
+        "https://evil.foo/api/state-versions/sv-Owned/hosted_state",
+    ],
+)
+def test_state_never_authenticates_foreign_or_malformed_download_url(url: str) -> None:
+    request = Mock(
+        return_value={"data": {"id": "sv-Owned", "attributes": {"hosted-state-download-url": url}}}
+    )
+    with pytest.raises(ValueError, match="escaped"):
+        HCP(request=request).state("ws-Owned")
+    assert request.call_count == 1
+
+
+def test_state_requires_valid_version_and_exact_redirect_shape() -> None:
+    request = Mock(return_value={"data": {"id": "foreign", "attributes": {}}})
+    with pytest.raises(ValueError, match="Invalid customer state"):
+        HCP(request=request).state("ws-Owned")
+    request = Mock(
+        side_effect=[
+            {
+                "data": {
+                    "id": "sv-Owned",
+                    "attributes": {
+                        "hosted-state-download-url": "https://app.terraform.io/api/state-versions/sv-Owned/hosted_state"
+                    },
+                }
+            },
+            {"data": {}},
+        ]
+    )
+    with pytest.raises(ValueError, match="redirect is unavailable"):
+        HCP(request=request).state("ws-Owned")

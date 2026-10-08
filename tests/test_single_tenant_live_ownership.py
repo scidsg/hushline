@@ -383,3 +383,102 @@ def test_omitted_app_inventory_without_proven_empty_final_page_stops(
 ) -> None:
     with pytest.raises(ValueError, match="inventory"):
         scope(Mock(return_value=payload)).inventory("/apps", "apps")
+
+
+@pytest.mark.parametrize("action", ["apply", "discard"])
+@pytest.mark.parametrize("body", [b"", b"\n", b"null"])
+def test_accepted_hcp_run_actions_do_not_require_resource_json(
+    mocker: MockFixture, action: str, body: bytes
+) -> None:
+    session = mocker.patch("requests.Session").return_value.__enter__.return_value
+    response = session.request.return_value.__enter__.return_value
+    response.status_code = 202
+    response.iter_content.return_value = [body]
+    api = CloudAPI(terraform_token=secrets.token_hex(16), digitalocean_token=secrets.token_hex(16))
+    assert (
+        api.request("POST", f"https://app.terraform.io/api/v2/runs/run-unit/actions/{action}") == {}
+    )
+    response.iter_content.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("method", "url", "status"),
+    [
+        ("GET", "https://app.terraform.io/api/v2/runs/run-unit", 202),
+        ("POST", "https://app.terraform.io/api/v2/runs", 202),
+        ("POST", "https://api.digitalocean.com/v2/apps", 202),
+        ("POST", "https://app.terraform.io/api/v2/runs/run-unit/actions/apply", 409),
+        ("POST", "https://app.terraform.io/api/v2/runs/run-unit/actions/apply", 403),
+    ],
+)
+def test_run_action_acknowledgement_is_scoped_and_errors_still_fail(
+    mocker: MockFixture, method: str, url: str, status: int
+) -> None:
+    session = mocker.patch("requests.Session").return_value.__enter__.return_value
+    response = session.request.return_value.__enter__.return_value
+    response.status_code = status
+    response.iter_content.return_value = [b"null"]
+    api = CloudAPI(terraform_token=secrets.token_hex(16), digitalocean_token=secrets.token_hex(16))
+    with pytest.raises(ValueError, match="ownership is unverified"):
+        api.request(method, url)
+
+
+def test_accepted_apply_is_polled_to_completion_without_resubmitting(
+    mocker: MockFixture,
+) -> None:
+    import json
+
+    from scripts.single_tenant_live_hcp import HCP
+
+    session = mocker.patch("requests.Session").return_value.__enter__.return_value
+    responses = []
+    for status, body in [
+        (
+            200,
+            {
+                "data": {
+                    "attributes": {"status": "planned", "actions": {"is-confirmable": True}},
+                    "relationships": {"workspace": {"data": {"id": "ws-unit"}}},
+                }
+            },
+        ),
+        (202, None),
+        (200, {"data": {"attributes": {"status": "applying"}}}),
+        (200, {"data": {"attributes": {"status": "applied"}}}),
+    ]:
+        response = mocker.MagicMock()
+        response.status_code = status
+        response.iter_content.return_value = [json.dumps(body).encode()]
+        manager = mocker.MagicMock()
+        manager.__enter__.return_value = response
+        responses.append(manager)
+    session.request.side_effect = responses
+    sleep = mocker.patch("scripts.single_tenant_live_hcp.time.sleep")
+    api = CloudAPI(terraform_token=secrets.token_hex(16), digitalocean_token=secrets.token_hex(16))
+    HCP(request=api.request).apply("run-unit", "ws-unit")
+    assert [call.args[0] for call in session.request.call_args_list] == [
+        "GET",
+        "POST",
+        "GET",
+        "GET",
+    ]
+    assert session.request.call_args_list[1].args[1].endswith("/runs/run-unit/actions/apply")
+    sleep.assert_called_once()
+
+
+@pytest.mark.parametrize("status", [302, 307])
+def test_state_redirect_resolves_only_the_fixed_artifact_host(
+    mocker: MockFixture, status: int
+) -> None:
+    session = mocker.patch("requests.Session").return_value.__enter__.return_value
+    response = session.request.return_value.__enter__.return_value
+    response.status_code = status
+    response.headers = {"Location": "https://archivist.terraform.io/owned"}
+    api = CloudAPI(terraform_token=secrets.token_hex(16), digitalocean_token=secrets.token_hex(16))
+    url = "https://app.terraform.io/api/state-versions/sv-unit/hosted_state"
+    assert api.request("GET", url) == {"location": "https://archivist.terraform.io/owned"}
+    assert session.request.call_count == 1
+    assert session.request.call_args.kwargs["allow_redirects"] is False
+    response.headers = {"Location": "https://evil.foo/owned"}
+    with pytest.raises(ValueError, match="ownership is unverified"):
+        api.request("GET", url)
