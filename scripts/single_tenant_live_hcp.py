@@ -208,4 +208,15 @@ class HCP:
 
     def state(self, workspace: str) -> dict[str, Any]:
         version = self.tf("/workspaces/" + workspace + "/current-state-version")["data"]
-        return json.loads(self.transfer(version["attributes"]["hosted-state-download-url"]))
+        identifier = version.get("id", "")
+        if not re.fullmatch(r"sv-[A-Za-z0-9]+", identifier):
+            raise ValueError("Invalid customer state version")
+        url = version["attributes"]["hosted-state-download-url"]
+        if url == f"https://app.terraform.io/api/state-versions/{identifier}/hosted_state":
+            # New HCP state URLs require API authentication for the first hop.
+            # Resolve only this exact version; transfer never forwards the token.
+            response = self.request("GET", url, None)
+            if set(response) != {"location"}:
+                raise ValueError("Private state redirect is unavailable")
+            url = response["location"]
+        return json.loads(self.transfer(url))

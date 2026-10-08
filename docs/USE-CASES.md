@@ -420,3 +420,9 @@ An explicitly configured live Stripe coupon may give one registration its first 
 After Stripe Checkout, Single Tenant customers remain signed in. A first-party return page automatically verifies the account-owned payment and advances to step 3 (domain setup); pending verification retries without requesting infrastructure. Strict session cookies and authentication remain required for confirmation.
 
 The trusted customer lifecycle container keeps its Python driver as the entrypoint. Workflow-supplied infrastructure and encrypted-result paths are driver arguments, so provisioning can start without treating a directory as an executable.
+
+A queued customer Terraform apply remains provisioning until the exact saved run reports completion. HCP’s accepted action acknowledgement is not a resource document or proof that infrastructure is ready; readiness still requires recorded ownership, successful initialization, onion health, DNS, and HTTPS health.
+
+When HCP returns an authenticated state-download route, automation resolves only that exact state version and fetches the signed Archivist artifact without forwarding the API token.
+
+Customer ownership preserves the provider-generated database firewall ID, including its database UUID prefix and timestamp/counter suffix. A firewall ID for another database, a bare UUID, or a malformed suffix cannot be recorded or used for lifecycle actions.

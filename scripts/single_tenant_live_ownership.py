@@ -67,13 +67,22 @@ class CloudAPI:
                     timeout=(5, 60),
                     stream=True,
                 ) as response:
-                    if (
-                        method == "GET"
-                        and re.fullmatch(
-                            r"https://app\.terraform\.io/api/v2/plans/plan-[A-Za-z0-9]+/json-output",
-                            url,
+                    if method == "GET" and (
+                        (
+                            re.fullmatch(
+                                r"https://app\.terraform\.io/api/v2/plans/plan-[A-Za-z0-9]+/json-output",
+                                url,
+                            )
+                            and response.status_code == HTTPStatus.TEMPORARY_REDIRECT
                         )
-                        and response.status_code == HTTPStatus.TEMPORARY_REDIRECT
+                        or (
+                            re.fullmatch(
+                                r"https://app\.terraform\.io/api/state-versions/sv-[A-Za-z0-9]+/hosted_state",
+                                url,
+                            )
+                            and response.status_code
+                            in {HTTPStatus.FOUND, HTTPStatus.TEMPORARY_REDIRECT}
+                        )
                     ):
                         location = response.headers.get("Location", "")
                         if not location.startswith("https://archivist.terraform.io/"):
@@ -83,6 +92,18 @@ class CloudAPI:
                         raise MissingResource
                     if not HTTPStatus.OK <= response.status_code < HTTPStatus.MULTIPLE_CHOICES:
                         raise ValueError("Cloud control-plane request failed")
+                    # HCP run actions acknowledge queuing with 202 and no
+                    # resource document. The saved run is polled independently;
+                    # an accepted action does not mean its apply has completed.
+                    if (
+                        method == "POST"
+                        and response.status_code == HTTPStatus.ACCEPTED
+                        and re.fullmatch(
+                            r"https://app\.terraform\.io/api/v2/runs/run-[A-Za-z0-9]+/actions/(apply|discard)",
+                            url,
+                        )
+                    ):
+                        return {}
                     body = bytearray()
                     for chunk in response.iter_content(8192):
                         body.extend(chunk)
@@ -112,13 +133,18 @@ def verify_team(request: Callable[..., dict[str, Any]], expected: str) -> None:
 
 
 def validate_ids(ids: Any) -> dict[str, str]:
+    uuid = r"[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}"
     if (
         not isinstance(ids, dict)
         or set(ids) != RESOURCES
         or any(
-            not isinstance(value, str)
-            or not re.fullmatch(r"[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}", value)
-            for value in ids.values()
+            not isinstance(ids[address], str) or not re.fullmatch(uuid, ids[address])
+            for address in RESOURCES - {FIREWALL_ADDRESS}
+        )
+        or not isinstance(ids[FIREWALL_ADDRESS], str)
+        or not re.fullmatch(
+            re.escape(ids[DATABASE_ADDRESS]) + r"-[0-9]{18}[0-9a-f]{8}",
+            ids[FIREWALL_ADDRESS],
         )
     ):
         raise ValueError("Four exact provider resource IDs are required")
