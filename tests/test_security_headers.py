@@ -35,6 +35,8 @@ def test_csp(client: FlaskClient) -> None:
     assert "'unsafe-eval'" not in csp
     assert "img-src 'self' data: https:" in csp
     assert "form-action 'self'" in csp
+    assert url_for("static", filename="css/style.css") in response.text
+    assert _csp_directives(response.headers)["style-src"] == "'self' 'unsafe-inline'"
 
 
 def test_csp_form_action_allows_stripe_redirect_hosts_when_premium_enabled(

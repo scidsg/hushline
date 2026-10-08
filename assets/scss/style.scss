@@ -5926,7 +5926,6 @@ li.tab a {
 
 li.tab:not(.active) .badge {
   filter: saturate(0);
-  opacity: 0.5;
   font-family: var(--font-sans);
 }
 

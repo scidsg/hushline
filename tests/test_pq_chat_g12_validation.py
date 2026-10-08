@@ -374,18 +374,29 @@ def test_g12_ci_runs_candidate_matrix_and_records_exact_identity() -> None:
     audit_workflow = (workflow_directory / "dependency-security-audit.yml").read_text(
         encoding="utf-8"
     )
+    protocol_config = (REPO_ROOT / "playwright.pq-protocol.config.js").read_text(encoding="utf-8")
+    ratchet_config = (REPO_ROOT / "prototypes" / "pq-ratchet" / "playwright.config.mjs").read_text(
+        encoding="utf-8"
+    )
     manifest = (REPO_ROOT / "scripts" / "pq_validation_manifest.mjs").read_text(encoding="utf-8")
 
     assert "pq-delivery:" in workflow
     assert "codex/epic-2365" in workflow
+    assert "project:" in workflow
+    assert "webkit-mobile-emulation" in workflow
     assert "playwright install --with-deps chromium firefox webkit" in workflow
-    assert "npm run playwright:pq-delivery" in workflow
+    assert "npm run playwright:pq-delivery -- --project=${{ matrix.project }}" in workflow
+    assert "pq-delivery-${{ matrix.project }}-${{ github.sha }}" in workflow
     assert "node scripts/pq_validation_manifest.mjs" in workflow
     assert "pq-ratchet-evidence:" in workflow
     assert "npm run provenance > artifacts/provenance.json" in workflow
     assert "npm sbom --sbom-format cyclonedx" in workflow
     assert "npm audit --package-lock-only --json" in workflow
     assert "Measure synthetic PQ ratchet behavior and budgets" in workflow
+    assert "fullyParallel: false" in protocol_config
+    assert "workers: 1" in protocol_config
+    assert "fullyParallel: false" in ratchet_config
+    assert "workers: 1" in ratchet_config
     assert "branches: [main, codex/epic-2365]" in audit_workflow
     assert '"prototypes/pq-ratchet/package-lock.json"' in audit_workflow
     assert "python-audit:" in audit_workflow
@@ -414,6 +425,8 @@ def test_g12_accessibility_gate_requires_a_perfect_score() -> None:
     assert "Accessibility score must be 100" in makefile
     assert 'if [ "$SCORE" -ne 100 ]' in workflow
     assert "Accessibility score must be 100" in workflow
+    assert "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020" in workflow
+    assert "npm run build:prod" in workflow
     assert "lighthouse-accessibility-${{ github.sha }}" in workflow
     assert "codex/epic-2365" in performance_workflow
     assert 'if [ "$SCORE" -lt 95 ]' in performance_workflow

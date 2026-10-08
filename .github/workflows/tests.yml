@@ -182,6 +182,14 @@ jobs:
   pq-delivery:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - chromium
+          - firefox
+          - webkit
+          - webkit-mobile-emulation
     env:
       PQ_CHAT_AUTO_MIGRATION_ENABLED: "true"
       PQ_CHAT_MIGRATION_ROLLOUT_PERCENT: "100"
@@ -210,7 +218,7 @@ jobs:
           make runner-wait-for-app
       - run: npx playwright install --with-deps chromium firefox webkit
       - name: Test integrated protected delivery and exact-byte retry
-        run: npm run playwright:pq-delivery
+        run: npm run playwright:pq-delivery -- --project=${{ matrix.project }}
       - name: Record exact synthetic candidate identity
         if: ${{ !cancelled() }}
         run: node scripts/pq_validation_manifest.mjs
@@ -218,7 +226,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: pq-delivery-${{ github.sha }}
+          name: pq-delivery-${{ matrix.project }}-${{ github.sha }}
           path: test-results/pq-delivery
           if-no-files-found: error
           retention-days: 14

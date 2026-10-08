@@ -1047,6 +1047,9 @@ def test_directory_search_accessibility_hooks_exist() -> None:
     assert ".directory-sticky-shell" in scss
     assert ".directory-filter-panel" in scss
     assert ".visually-hidden" in scss
+    inactive_tab_badge = re.search(r"li\.tab:not\(\.active\) \.badge \{([^}]*)\}", scss)
+    assert inactive_tab_badge is not None
+    assert "opacity" not in inactive_tab_badge.group(1)
 
 
 def test_directory_sticky_active_tab_scroll_to_top_hook_exists() -> None:
