@@ -294,8 +294,20 @@ class Ownership:
         values = []
         for page in range(1, MAX_INVENTORY_PAGES + 1):
             data = self.do(f"{path}?per_page=200&page={page}")
-            items = data[key]
             next_page = data.get("links", {}).get("pages", {}).get("next")
+            if key not in data and path == "/apps" and key == "apps":
+                metadata = data.get("meta")
+                if (
+                    not isinstance(metadata, dict)
+                    or not isinstance(metadata.get("total"), int)
+                    or isinstance(metadata.get("total"), bool)
+                    or metadata["total"] != 0
+                    or next_page is not None
+                ):
+                    raise ValueError("Missing app inventory is not verified empty")
+                items = []
+            else:
+                items = data[key]
             if items is None and path == "/databases" and key == "databases":
                 # The live API returns an explicit null for no database clusters.
                 # Never normalize missing fields, API errors or an incomplete page.

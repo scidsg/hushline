@@ -359,3 +359,27 @@ def test_missing_database_inventory_and_api_failures_still_stop() -> None:
         scope(Mock(return_value={})).inventory("/databases", "databases")
     with pytest.raises(ValueError, match="API unavailable"):
         scope(Mock(side_effect=ValueError("API unavailable"))).inventory("/databases", "databases")
+
+
+def test_omitted_app_inventory_with_explicit_zero_count_is_empty() -> None:
+    request = Mock(return_value={"meta": {"total": 0}})
+    assert scope(request).inventory("/apps", "apps") == []
+    assert request.call_args.args[0] == "GET"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {"meta": {}},
+        {"meta": {"total": False}},
+        {"meta": {"total": 1}},
+        {"meta": {"total": 0}, "links": {"pages": {"next": "next-page"}}},
+        {"meta": {"total": 0}, "links": {"pages": {"next": False}}},
+    ],
+)
+def test_omitted_app_inventory_without_proven_empty_final_page_stops(
+    payload: dict[str, Any],
+) -> None:
+    with pytest.raises(ValueError, match="inventory"):
+        scope(Mock(return_value=payload)).inventory("/apps", "apps")
