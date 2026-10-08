@@ -195,3 +195,26 @@ def test_only_verified_retirement_releases_hostname_for_a_new_order(ledger: Ledg
     assert ledger.get(ORDER, OWNER)["state"] == "retired"
     with pytest.raises(ValueError, match="adopted or replaced"):
         ledger.reserve(ORDER, OWNER, data)
+
+
+def test_immediate_destruction_is_owned_idempotent_and_keeps_paid_dates(ledger: Ledger) -> None:
+    data = payload()
+    data["state"] = "ready"
+    data["payment"]["cancelled_at"] = "2026-10-06T02:00:00+00:00"
+    ledger.reserve(ORDER, OWNER, data)
+    with pytest.raises(ValueError, match="own"):
+        ledger.destroy(ORDER, "d" * 64)
+    ledger.destroy(ORDER, OWNER)
+    ledger.destroy(ORDER, OWNER)
+    current = ledger.get(ORDER, OWNER)
+    assert current["state"] == "retiring"
+    assert current["payment"]["period_end"] == data["payment"]["period_end"]
+    assert len([item for item in ledger.pending() if item["purpose"] == "retire"]) == 1
+
+
+def test_immediate_destruction_requires_confirmed_cancellation(ledger: Ledger) -> None:
+    data = payload()
+    data["state"] = "ready"
+    ledger.reserve(ORDER, OWNER, data)
+    with pytest.raises(ValueError, match="cancelled"):
+        ledger.destroy(ORDER, OWNER)

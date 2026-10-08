@@ -70,17 +70,23 @@ def authorize(order: SingleTenantOrder, purpose: str, now: datetime) -> dict[str
         raise ValueError("A verified owned payment is required")
     api = billing.client()
     session = api.checkout.sessions.retrieve(
-        order.stripe_session_id, {"expand": ["subscription.latest_invoice"]}
+        order.stripe_session_id, {"expand": ["subscription.latest_invoice.discounts"]}
     )
     if purpose == "retire":
         # A failed later renewal must not hide the independently verified paid year.
         # Read the immutable recorded invoice; never infer payment from the new term.
         session = dict(session)
         session["subscription"] = dict(session["subscription"])
-        session["subscription"]["latest_invoice"] = api.invoices.retrieve(order.stripe_invoice_id)
+        session["subscription"]["latest_invoice"] = api.invoices.retrieve(
+            order.stripe_invoice_id, {"expand": ["discounts"]}
+        )
     paid = billing.verified_invoice(order, session, live=True, historical=purpose == "retire")
     if purpose == "provision":
-        if order.user_id is None or session["subscription"].get("status") != "active":
+        if (
+            order.destroy_requested_at
+            or order.user_id is None
+            or session["subscription"].get("status") != "active"
+        ):
             raise ValueError("An active owning account and subscription are required")
         if not paid.start <= now < paid.end:
             raise ValueError("The paid year is not currently active")
@@ -99,20 +105,24 @@ def authorize(order: SingleTenantOrder, purpose: str, now: datetime) -> dict[str
             or session["subscription"].get("status") != "canceled"
             or order.period_start != paid.start.isoformat()
             or order.period_end != paid.end.isoformat()
-            or now < paid.end
+            or (now < paid.end and not order.destroy_requested_at)
         ):
             raise ValueError(
                 "Retirement requires the unchanged expired year and terminal cancellation"
             )
     else:
         raise ValueError("Unsupported billing authority purpose")
-    return {
+    result = {
         "order_id": order.id,
         "owner": order.owner_ref,
         "authorized": purpose,
         "checked_at": now.isoformat(),
         "payment": billing.proof(order),
     }
+
+    if purpose == "retire" and order.destroy_requested_at:
+        result["destroy_requested_at"] = order.destroy_requested_at
+    return result
 
 
 def init_app(app: Flask) -> None:

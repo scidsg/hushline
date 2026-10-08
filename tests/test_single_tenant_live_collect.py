@@ -8,6 +8,7 @@ from typing import Any
 
 import pytest
 from cryptography.fernet import Fernet
+from pytest_mock import MockFixture
 
 from scripts.single_tenant_live_collect import Collector
 from scripts.single_tenant_live_envelope import encrypt, keys
@@ -236,3 +237,14 @@ def test_release_gate_requires_review_free_default_branch_customer_environment(
             worker.environment()
     else:
         worker.environment()
+
+
+def test_linux_collector_uses_system_github_cli(mocker: MockFixture) -> None:
+    mocker.patch.dict(
+        "os.environ", {"SINGLE_TENANT_CONTROL_STORAGE_PROFILE": "linux-controller-v1"}
+    )
+    process = mocker.patch("scripts.single_tenant_live_collect.subprocess.run")
+    process.return_value.returncode = 0
+    process.return_value.stdout = b"{}"
+    assert Collector.github("repos/scidsg/hushline/actions/variables") == b"{}"
+    assert process.call_args.args[0][0] == "/usr/bin/gh"

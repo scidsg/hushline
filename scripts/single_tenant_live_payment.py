@@ -54,7 +54,11 @@ def validate_response(  # noqa: PLR0913 — explicit expected identity, purpose,
 ) -> dict[str, Any]:
     if (
         not isinstance(data, dict)
-        or set(data) != {"order_id", "owner", "authorized", "checked_at", "payment"}
+        or set(data)
+        not in (
+            {"order_id", "owner", "authorized", "checked_at", "payment"},
+            {"order_id", "owner", "authorized", "checked_at", "payment", "destroy_requested_at"},
+        )
         or data.get("order_id") != order
         or data.get("owner") != owner
         or data.get("authorized") != purpose
@@ -75,10 +79,19 @@ def validate_response(  # noqa: PLR0913 — explicit expected identity, purpose,
     ):
         raise ValueError("Billing authority is stale or not a complete annual term")
     if purpose == "provision":
+        if "destroy_requested_at" in data:
+            raise ValueError("Destruction authority cannot authorize provisioning")
         if not start <= now < end:
             raise ValueError("Provisioning requires a currently paid year")
     elif purpose == "retire":
-        if not expected.get("cancelled_at") or now < end:
+        requested = data.get("destroy_requested_at")
+        early = False
+        if requested is not None:
+            instant = datetime.fromisoformat(requested)
+            early = instant.tzinfo == UTC and start <= instant <= checked
+            if not early:
+                raise ValueError("Invalid explicit destruction authority")
+        if not expected.get("cancelled_at") or (now < end and not early):
             raise ValueError("Retirement requires confirmed cancellation after paid-year expiry")
     else:
         raise ValueError("Unsupported live billing operation")

@@ -460,6 +460,8 @@ def _load_single_tenant(env: Mapping[str, str]) -> Mapping[str, Any]:
         "SINGLE_TENANT_SERVICE_URL",
         "SINGLE_TENANT_SERVICE_KEY",
         "SINGLE_TENANT_TEST_ORDER",
+        "SINGLE_TENANT_FREE_COUPON_ID",
+        "SINGLE_TENANT_FREE_REGISTRATION_CODE",
     ):
         if value := env.get(key):
             data[key] = value

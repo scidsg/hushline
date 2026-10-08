@@ -303,14 +303,39 @@ class Ledger:
                 raise ValueError("An existing paid year cannot change its invoice")
             if start > old_start and start < old_end:
                 raise ValueError("Renewal cannot overlap the existing paid year")
-            if payload.get("retirement_started") or payload.get("state") in {"retiring", "retired"}:
-                raise ValueError("A retiring order cannot be renewed")
             if payment == prior:
                 return
+            if payload.get("retirement_started") or payload.get("state") in {"retiring", "retired"}:
+                raise ValueError("A retiring order cannot be renewed")
             payload["payment"] = payment
             connection.execute(
                 "UPDATE orders SET payload=?, revision=revision+1 WHERE id=?",
                 (self.seal(payload), order),
+            )
+
+    def destroy(self, order: str, owner: str) -> None:
+        """Queue one immutable teardown after the portal confirms cancellation."""
+        self.owner(order, owner)
+        with self.transaction() as connection:
+            row = connection.execute(
+                "SELECT owner_tag, payload, revision FROM orders WHERE id=?", (order,)
+            ).fetchone()
+            if row is None or not hmac.compare_digest(row[0], self.tag(owner)):
+                raise ValueError("The account does not own this instance")
+            payload, revision = self.open(row[1]), row[2]
+            if payload.get("state") == "retired":
+                return
+            if connection.execute(
+                "SELECT 1 FROM requests WHERE order_id=? AND purpose='retire'", (order,)
+            ).fetchone():
+                return
+            if not payload["payment"].get("cancelled_at") or payload.get("state") != "ready":
+                raise ValueError("Immediate teardown requires a ready cancelled instance")
+            payload["retirement_started"] = True
+            payload["state"] = "retiring"
+            self._queue(connection, order, "retire", revision, payload)
+            connection.execute(
+                "UPDATE orders SET payload=? WHERE id=?", (self.seal(payload), order)
             )
 
     def expiry(self, *, now: datetime) -> int:
