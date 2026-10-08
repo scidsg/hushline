@@ -26,7 +26,7 @@ def test_existing_code_is_verified_without_reactivation(mocker: MockFixture, act
     api.coupons.retrieve.return_value = {
         "id": COUPON,
         "livemode": True,
-        "percent_off": 100,
+        "percent_off": 99,
         "duration": "once",
         "max_redemptions": 1,
     }
@@ -57,7 +57,7 @@ def test_foreign_coupon_code_cannot_be_replaced(mocker: MockFixture) -> None:
     api.coupons.retrieve.return_value = {
         "id": COUPON,
         "livemode": True,
-        "percent_off": 100,
+        "percent_off": 99,
         "duration": "once",
         "max_redemptions": 1,
     }
@@ -85,7 +85,7 @@ def test_gift_creation_is_live_single_use_and_idempotently_reserved(mocker: Mock
     coupon = {
         "id": COUPON,
         "livemode": True,
-        "percent_off": 100,
+        "percent_off": 99,
         "duration": "once",
         "max_redemptions": 1,
     }
@@ -106,7 +106,7 @@ def test_gift_creation_is_live_single_use_and_idempotently_reserved(mocker: Mock
         )
         prepare_registration_code()
     values = api.coupons.create.call_args.args[0]
-    assert values["percent_off"] == 100
+    assert values["percent_off"] == 99
     assert values["duration"] == "once"
     assert values["max_redemptions"] == 1
     assert "idempotency_key" in api.coupons.create.call_args.kwargs["options"]

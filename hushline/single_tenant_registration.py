@@ -8,7 +8,7 @@ from typing import Any
 import stripe
 from flask import current_app
 
-from hushline.single_tenant_billing import client, free_coupon
+from hushline.single_tenant_billing import FREE_PERCENT, client, free_coupon
 from hushline.single_tenant_client import ServiceUnavailable
 
 CODE_LIFETIME_SECONDS = 7 * 24 * 60 * 60
@@ -36,7 +36,7 @@ def prepare_registration_code() -> None:
                 {
                     "id": coupon_id,
                     "name": "Single Tenant first-year registration",
-                    "percent_off": 100,
+                    "percent_off": FREE_PERCENT,
                     "duration": "once",
                     "max_redemptions": 1,
                     "metadata": {"single_tenant_kind": "registration-gift"},
