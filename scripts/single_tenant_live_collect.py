@@ -36,8 +36,11 @@ class Collector:
 
     @staticmethod
     def github(path: str) -> bytes:
-        if not path.startswith("repos/scidsg/hushline/") or any(
-            value in path for value in ("\n", "\r", "..")
+        comparison = re.fullmatch(r"repos/scidsg/hushline/compare/[a-f0-9]{40}\.\.\.main", path)
+        if (
+            not path.startswith("repos/scidsg/hushline/")
+            or any(value in path for value in ("\n", "\r"))
+            or (".." in path and comparison is None)
         ):
             raise ValueError("Read-only GitHub request escaped the customer repository")
         try:
@@ -181,7 +184,7 @@ class Collector:
             return False
         title = re.fullmatch(
             r"Single Tenant single-tenant-request/([a-f0-9]{32})/"
-            r"(provision|retire)-([1-9][0-9]{0,6})",
+            r"(provision|retire|upgrade)-([1-9][0-9]{0,6})",
             run.get("display_title", ""),
         )
         try:
@@ -198,17 +201,27 @@ class Collector:
         owner = next((item["owner"] for item in keys if item["order_id"] == order), None)
         if not sha or not owner:
             return False
+        result = {
+            "state": "failed",
+            "failure_stage": "workflow-preflight",
+            "workflow_url": "https://github.com/scidsg/hushline/actions/runs/" + str(run["id"]),
+        }
+        if purpose == "upgrade":
+            release = self.ledger.get(order, owner).get("release", {})
+            if release.get("revision") != revision:
+                return False
+            result.update(
+                state="upgrade_failed",
+                release_tag=release["tag"],
+                release_source=release["source_sha"],
+            )
         self.ledger.event(
             order,
             owner,
             purpose=purpose,
             revision=revision,
             public_sha=sha,
-            result={
-                "state": "failed",
-                "failure_stage": "workflow-preflight",
-                "workflow_url": "https://github.com/scidsg/hushline/actions/runs/" + str(run["id"]),
-            },
+            result=result,
         )
         return True
 

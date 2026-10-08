@@ -372,6 +372,16 @@ callbacks or renewals from recreating a deleted instance. A fully verified
 retirement releases the hostname for a new separately paid order; the original
 order and payment tombstones remain permanent.
 
+Updating production through the existing version-named infrastructure branch also
+updates every active controller-managed instance to the version actually served
+by production. The controller verifies the published release and queues a durable
+per-order upgrade. Existing resources, encrypted runtime configuration and
+administrator claims are retained; the initializer applies migrations. Each
+workflow rechecks current payment and ownership, verifies exact signed source,
+and reports success only for the matching active deployment. Upgrades never
+restore a retiring instance or silently roll a database back. Failed upgrades
+retain existing service state and require recorded operator recovery.
+
 Customer workflow setup can use the approved development cloud and private-read
 GitHub secrets directly. It never falls back to production cloud credentials or
 repository signing keys; exact team, project, order and saved-plan guards remain

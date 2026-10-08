@@ -7,11 +7,8 @@ on:
   workflow_run:
     workflows: ["Validate paid Single Tenant request"]
     types: [completed]
-concurrency:
-  group: single-tenant-${{ github.event.workflow_run.head_branch }}
-  cancel-in-progress: false
 jobs:
-  lifecycle:
+  verify:
     if: >-
       github.repository == 'scidsg/hushline' && github.run_attempt == 1 &&
       github.event.workflow_run.conclusion == 'success' &&
@@ -19,12 +16,13 @@ jobs:
       github.event.workflow_run.head_repository.full_name == github.repository &&
       startsWith(github.event.workflow_run.head_branch, 'single-tenant-request/')
     runs-on: ubuntu-latest
-    timeout-minutes: 100
-    environment: single-tenant-automation
     permissions:
-      contents: write
+      contents: read
+    outputs:
+      order_id: ${{ steps.verify.outputs.order_id }}
     steps:
       - name: Independently verify the original request
+        id: verify
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         env:
           SOURCE_SHA: ${{ vars.SINGLE_TENANT_SOURCE_SHA }}
@@ -53,13 +51,32 @@ jobs:
             }
             const pointer = JSON.parse(Buffer.from(file.content, "base64").toString("utf8"));
             if (Object.keys(pointer).sort().join(",") !== "config_ref,infra_ref,order_id,purpose,revision,source_ref" ||
-                !/^[a-f0-9]{32}$/.test(pointer.order_id) || !["provision", "retire"].includes(pointer.purpose) ||
+                !/^[a-f0-9]{32}$/.test(pointer.order_id) || !["provision", "retire", "upgrade"].includes(pointer.purpose) ||
                 !Number.isSafeInteger(pointer.revision) || pointer.revision < 1 || pointer.revision > 1000000 ||
                 pointer.source_ref !== source || pointer.infra_ref !== infra ||
                 !/^[a-f0-9]{40}$/.test(pointer.config_ref) ||
                 branch !== `single-tenant-request/${pointer.order_id}/${pointer.purpose}-${pointer.revision}`) {
               throw new Error("Request coordinates escaped the exact customer order");
             }
+            core.setOutput("order_id", pointer.order_id);
+  lifecycle:
+    needs: verify
+    concurrency:
+      group: single-tenant-${{ needs.verify.outputs.order_id }}
+      cancel-in-progress: false
+    if: >-
+      github.repository == 'scidsg/hushline' && github.run_attempt == 1 &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      startsWith(github.event.workflow_run.head_branch, 'single-tenant-request/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    environment: single-tenant-automation
+    permissions:
+      contents: write
+      actions: read
+    steps:
       - name: Check out immutable reviewed application driver
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:

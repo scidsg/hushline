@@ -390,7 +390,24 @@ class Ledger:
         result: dict[str, Any],
     ) -> None:
         self.owner(order, owner)
-        allowed = {"state", "ingress", "checks", "workflow_url", "failure_stage", "claim"}
+        allowed = {
+            "state",
+            "ingress",
+            "checks",
+            "workflow_url",
+            "failure_stage",
+            "claim",
+            "build_source_sha",
+        }
+        if purpose == "upgrade":
+            allowed = {
+                "state",
+                "workflow_url",
+                "failure_stage",
+                "release_tag",
+                "release_source",
+                "deployment_id",
+            }
         states = {
             "queued",
             "provisioning",
@@ -398,7 +415,27 @@ class Ledger:
             "failed",
             "retiring",
             "retired",
+            "upgrading",
+            "upgraded",
+            "upgrade_failed",
         }
+        if purpose != "upgrade":
+            states -= {"upgrading", "upgraded", "upgrade_failed"}
+        if "build_source_sha" in result and not re.fullmatch(
+            r"[a-f0-9]{40}", result["build_source_sha"]
+        ):
+            raise ValueError("Invalid immutable application build source")
+        if "workflow_url" in result and not re.fullmatch(
+            r"https://github\.com/scidsg/hushline/actions/runs/[1-9][0-9]{0,19}",
+            result["workflow_url"],
+        ):
+            raise ValueError("Workflow URL escaped the owned repository")
+        if "failure_stage" in result and not re.fullmatch(r"[a-z-]{1,40}", result["failure_stage"]):
+            raise ValueError("Invalid sanitized failure stage")
+        if "deployment_id" in result and not re.fullmatch(
+            r"[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}", result["deployment_id"]
+        ):
+            raise ValueError("Invalid exact customer deployment identity")
         if set(result) - allowed or result.get("state") not in states:
             raise ValueError("Invalid lifecycle result")
         with self.transaction() as connection:
@@ -419,6 +456,28 @@ class Ledger:
                 "digest": hashlib.sha256(json.dumps(result, sort_keys=True).encode()).hexdigest(),
             }
             if payload.get("last_workflow_event") == tag:
+                return
+            if purpose == "upgrade":
+                target = payload.get("release", {})
+                if (
+                    target.get("revision") != revision
+                    or payload.get("retirement_started")
+                    or payload.get("state") in {"retiring", "retired"}
+                ):
+                    return
+                if (
+                    result.get("state") not in {"upgrading", "upgraded", "upgrade_failed"}
+                    or result.get("release_tag") != target.get("tag")
+                    or result.get("release_source") != target.get("source_sha")
+                ):
+                    raise ValueError("Upgrade result does not match the queued release")
+                if target.get("state") == "upgraded":
+                    return
+                target.update(result)
+                payload["release"] = target
+                connection.execute(
+                    "UPDATE orders SET payload=? WHERE id=?", (self.seal(payload), order)
+                )
                 return
             prior = payload.get("state")
             if prior == "retired" or (
@@ -532,6 +591,70 @@ class Ledger:
             payload["publication_error"] = failed
             connection.execute(
                 "UPDATE orders SET payload=? WHERE id=?", (self.seal(payload), order)
+            )
+
+    def release_notice(self, order: str, *, failed: bool) -> None:
+        with self.transaction() as connection:
+            row = connection.execute("SELECT payload FROM orders WHERE id=?", (order,)).fetchone()
+            if row is None:
+                raise ValueError("Release order is missing")
+            payload = self.open(row[0])
+            payload["release_blocked"] = failed
+            connection.execute(
+                "UPDATE orders SET payload=? WHERE id=?", (self.seal(payload), order)
+            )
+
+    def release_candidates(self, *, now: datetime) -> list[dict[str, Any]]:
+        return [
+            value
+            for value in self.result_keys()
+            if value.get("state") in {"ready", "awaiting_dns"}
+            and not value.get("retirement_started")
+            and datetime.fromisoformat(value["payment"]["period_start"])
+            <= now
+            < datetime.fromisoformat(value["payment"]["period_end"])
+        ]
+
+    def queue_release(self, order: str, owner: str, target: dict[str, Any]) -> None:
+        from scripts.single_tenant_live_release import validate_target
+
+        self.owner(order, owner)
+        validate_target(target)
+        with self.transaction() as connection:
+            row = connection.execute(
+                "SELECT owner_tag, payload, revision FROM orders WHERE id=?", (order,)
+            ).fetchone()
+            if not row or row[0] != self.tag(owner):
+                raise ValueError("Release does not own this customer order")
+            payload = self.open(row[1])
+            if payload.get("state") not in {"ready", "awaiting_dns"} or payload.get(
+                "retirement_started"
+            ):
+                raise ValueError("Only an active provisioned instance may be upgraded")
+            if (
+                not datetime.fromisoformat(payload["payment"]["period_start"])
+                <= datetime.now(UTC)
+                < datetime.fromisoformat(payload["payment"]["period_end"])
+            ):
+                raise ValueError("The paid term is no longer active")
+            prior = payload.get("release", {})
+            if prior.get("tag") == target["tag"]:
+                if prior.get("source_sha") != target["source_sha"]:
+                    raise ValueError("A published release cannot change source")
+                return
+            if prior.get("state") in {"queued", "upgrading"}:
+                raise ValueError("The previous release request is still unresolved")
+            if prior and tuple(map(int, target["tag"][1:].split("."))) < tuple(
+                map(int, prior["tag"][1:].split("."))
+            ):
+                raise ValueError("Automatic database downgrades are not authorized")
+            revision = row[2] + 1
+            request = {**payload, "release": target}
+            self._queue(connection, order, "upgrade", revision, request)
+            payload["release"] = {**target, "revision": revision, "state": "queued"}
+            connection.execute(
+                "UPDATE orders SET payload=?, revision=? WHERE id=?",
+                (self.seal(payload), revision, order),
             )
 
     def result_keys(self) -> list[dict[str, Any]]:

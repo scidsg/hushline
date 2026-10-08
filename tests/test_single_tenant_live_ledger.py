@@ -248,3 +248,118 @@ def test_unconfirmed_retired_label_does_not_release_hostname(ledger: Ledger) -> 
     other["payment"].update(receipt="f" * 32, subscription_id="sub_new")
     with pytest.raises(ValueError, match="already belongs"):
         ledger.reserve(other["order_id"], other["owner"], other)
+
+
+def test_release_is_durable_once_and_keeps_ready_state(ledger: Ledger) -> None:
+    value = payload()
+    value["state"] = "ready"
+    ledger.reserve(ORDER, OWNER, value)
+    target = {
+        "tag": "v0.7.27",
+        "source_sha": "1" * 40,
+        "build_sha": "2" * 40,
+        "previous_sha": "3" * 40,
+    }
+    ledger.queue_release(ORDER, OWNER, target)
+    ledger.queue_release(ORDER, OWNER, target)
+    upgrades = [r for r in ledger.pending() if r["purpose"] == "upgrade"]
+    assert len(upgrades) == 1
+    request = upgrades[0]
+    ledger.checkpoint(
+        ORDER, "upgrade", request["revision"], private_sha="4" * 40, public_sha="5" * 40
+    )
+    ledger.event(
+        ORDER,
+        OWNER,
+        purpose="upgrade",
+        revision=request["revision"],
+        public_sha="5" * 40,
+        result={
+            "state": "upgraded",
+            "release_tag": target["tag"],
+            "release_source": target["source_sha"],
+        },
+    )
+    actual = ledger.get(ORDER, OWNER)
+    assert actual["state"] == "ready"
+    assert actual["release"]["state"] == "upgraded"
+    assert actual["payment"] == value["payment"]
+
+
+def test_late_upgrade_cannot_restore_a_retiring_instance(ledger: Ledger) -> None:
+    value = payload()
+    value["state"] = "ready"
+    value["payment"]["cancelled_at"] = "2026-10-07T00:00:00+00:00"
+    ledger.reserve(ORDER, OWNER, value)
+    target = {
+        "tag": "v0.7.27",
+        "source_sha": "1" * 40,
+        "build_sha": "2" * 40,
+        "previous_sha": "3" * 40,
+    }
+    ledger.queue_release(ORDER, OWNER, target)
+    request = next(r for r in ledger.pending() if r["purpose"] == "upgrade")
+    ledger.checkpoint(
+        ORDER, "upgrade", request["revision"], private_sha="4" * 40, public_sha="5" * 40
+    )
+    ledger.destroy(ORDER, OWNER)
+    ledger.event(
+        ORDER,
+        OWNER,
+        purpose="upgrade",
+        revision=request["revision"],
+        public_sha="5" * 40,
+        result={
+            "state": "upgraded",
+            "release_tag": target["tag"],
+            "release_source": target["source_sha"],
+        },
+    )
+    assert ledger.get(ORDER, OWNER)["state"] == "retiring"
+
+
+@pytest.mark.parametrize("state", ["queued", "retiring", "retired", "failed"])
+def test_rollout_excludes_instances_without_active_service(ledger: Ledger, state: str) -> None:
+    value = payload()
+    value["state"] = state
+    ledger.reserve(ORDER, OWNER, value)
+    assert ledger.release_candidates(now=datetime(2026, 10, 7, tzinfo=UTC)) == []
+
+
+def test_rollout_keeps_cancelled_renewal_until_paid_term_ends(ledger: Ledger) -> None:
+    value = payload()
+    value["state"] = "ready"
+    value["payment"]["cancelled_at"] = "2026-10-07T00:00:00+00:00"
+    ledger.reserve(ORDER, OWNER, value)
+    assert len(ledger.release_candidates(now=datetime(2026, 10, 7, tzinfo=UTC))) == 1
+    assert ledger.release_candidates(now=datetime(2027, 10, 6, tzinfo=UTC)) == []
+
+
+@pytest.mark.parametrize("bad", ["claim", "deployment_id", "failure_stage", "workflow_url"])
+def test_upgrade_callback_cannot_change_claim_or_add_unbounded_fields(
+    ledger: Ledger, bad: str
+) -> None:
+    value = payload()
+    value["state"] = "ready"
+    ledger.reserve(ORDER, OWNER, value)
+    target = {
+        "tag": "v0.7.27",
+        "source_sha": "1" * 40,
+        "build_sha": "2" * 40,
+        "previous_sha": "3" * 40,
+    }
+    ledger.queue_release(ORDER, OWNER, target)
+    revision = next(r["revision"] for r in ledger.pending() if r["purpose"] == "upgrade")
+    ledger.checkpoint(ORDER, "upgrade", revision, private_sha="4" * 40, public_sha="5" * 40)
+    result = {
+        "state": "upgraded",
+        "release_tag": target["tag"],
+        "release_source": target["source_sha"],
+        bad: "untrusted!",
+    }
+    with pytest.raises(ValueError, match="Invalid|escaped"):
+        ledger.event(
+            ORDER, OWNER, purpose="upgrade", revision=revision, public_sha="5" * 40, result=result
+        )
+    assert ledger.get(ORDER, OWNER)["state"] == "ready"
+    assert ledger.get(ORDER, OWNER)["release"]["state"] == "queued"

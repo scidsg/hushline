@@ -90,7 +90,14 @@ class Publisher:
         return result.stdout
 
     def commit(  # noqa: PLR0913 — fixed source, private file and signed commit message
-        self, path: Path, base: str, filename: str, payload: dict[str, Any], message: str
+        self,
+        path: Path,
+        base: str,
+        filename: str,
+        payload: dict[str, Any],
+        message: str,
+        *,
+        parent: str | None = None,
     ) -> str:
         with tempfile.TemporaryDirectory(
             prefix="single-tenant-index-", dir=self.artifacts
@@ -123,7 +130,7 @@ class Publisher:
                     "-S",
                     tree,
                     "-p",
-                    base,
+                    parent or base,
                 ],
                 data=message + "\n",
             ).strip()
@@ -140,6 +147,8 @@ class Publisher:
         payload: dict[str, Any],
         message: str,
         anchor: str,
+        *,
+        parent: str | None = None,
     ) -> str:
         existing = self.git(
             path, ["for-each-ref", "--format=%(refname) %(objectname)", anchor]
@@ -154,12 +163,12 @@ class Publisher:
             sha = existing[1]
             self.git(path, ["verify-commit", sha])
             if (
-                self.git(path, ["show", "-s", "--format=%P", sha]).strip() != base
+                self.git(path, ["show", "-s", "--format=%P", sha]).strip() != (parent or base)
                 or json.loads(self.git(path, ["show", sha + ":" + filename])) != payload
             ):
                 raise ValueError("Retained request cannot adopt a different source or payload")
             return sha
-        sha = self.commit(path, base, filename, payload, message)
+        sha = self.commit(path, base, filename, payload, message, parent=parent)
         self.git(path, ["update-ref", anchor, sha, "0" * 40])
         return sha
 
@@ -174,11 +183,67 @@ class Publisher:
         if self.git(path, ["ls-remote", "--heads", "origin", ref]).split() != [sha, ref]:
             raise ValueError("Published request identity is unverified")
 
+    def prepare_release(self, payload: dict[str, Any], tag: str, source: str) -> None:
+        order = payload["order_id"]
+        identity(order)
+        if not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", tag) or not re.fullmatch(
+            r"[a-f0-9]{40}", source
+        ):
+            raise ValueError("An exact published release is required")
+        prior = payload.get("release", {})
+        if prior.get("tag") == tag and prior.get("source_sha") == source:
+            return
+        if prior.get("state") in {"queued", "upgrading"}:
+            raise ValueError("An original rollout still needs reconciliation")
+        ref = "refs/heads/single-tenant/" + order
+        remote = self.git(self.app, ["ls-remote", "--heads", "origin", ref]).split()
+        if (
+            len(remote) != len((source, ref))
+            or remote[1] != ref
+            or not re.fullmatch(r"[a-f0-9]{40}", remote[0])
+        ):
+            raise ValueError("The original customer build branch is unavailable")
+        current = remote[0]
+        if prior and current not in {prior["build_sha"], prior["previous_sha"]}:
+            raise ValueError("The customer build branch changed outside its recorded rollout")
+        if not prior:
+            original = payload["last_workflow_event"]["public_sha"]
+            self.git(self.app, ["fetch", "origin", original])
+            pointer = json.loads(
+                self.git(self.app, ["show", original + ":.single-tenant-request.json"])
+            )
+            if current != payload.get("build_source_sha", pointer["source_ref"]):
+                raise ValueError("The customer build branch is not its original signed source")
+        self.git(self.app, ["fetch", "origin", current])
+        version = re.search(
+            r'__version__\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"',
+            self.git(self.app, ["show", current + ":hushline/version.py"]),
+        )
+        if version is None or tuple(map(int, tag[1:].split("."))) < tuple(
+            map(int, version[1].split("."))
+        ):
+            raise ValueError("Automatic application and database downgrades are not authorized")
+        self.git(self.app, ["fetch", "origin", source])
+        sha = self.signed_request(
+            self.app,
+            source,
+            ".single-tenant-release.json",
+            {"order_id": order, "tag": tag, "source_sha": source},
+            "Deploy production release " + tag + " to Single Tenant " + order,
+            "refs/single-tenant-outbox/" + order + "/release-" + source,
+            parent=current,
+        )
+        self.ledger.queue_release(
+            order,
+            payload["owner"],
+            {"tag": tag, "source_sha": source, "build_sha": sha, "previous_sha": current},
+        )
+
     def one(self, request: dict[str, Any]) -> None:
         order, purpose, revision = request["order_id"], request["purpose"], request["revision"]
         identity(order)
         if (
-            purpose not in {"provision", "retire"}
+            purpose not in {"provision", "retire", "upgrade"}
             or not isinstance(revision, int)
             or isinstance(revision, bool)
             or revision < 1
@@ -200,8 +265,9 @@ class Publisher:
                         "payment",
                         "verification",
                         "claim_public_key",
+                        "release",
                     )
-                    if key in request["payload"]
+                    if key in request["payload"] and (key != "release" or purpose == "upgrade")
                 },
                 f"Record Single Tenant {purpose} request {order}",
                 "refs/single-tenant-outbox/" + suffix + "/private",
@@ -228,6 +294,13 @@ class Publisher:
             )
         if not private_sha or not public_sha:
             raise ValueError("Partial publication checkpoint cannot be replaced")
+        if purpose == "upgrade":
+            target = request["payload"]["release"]
+            self.publish_ref(
+                self.app,
+                "refs/heads/single-tenant-build/" + order + "/" + target["source_sha"],
+                target["build_sha"],
+            )
         self.publish_ref(self.infra, "refs/heads/single-tenant-config/" + suffix, private_sha)
         self.publish_ref(self.app, "refs/heads/single-tenant-request/" + suffix, public_sha)
         self.ledger.published(
