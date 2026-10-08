@@ -115,6 +115,7 @@ def reconcile_cancellations() -> int:
         order = db.session.scalar(query)
         if order is None:
             db.session.rollback()
+            reconcile_destructions()
             return count
         attempted.add(order.id)
         desired = order.cancelled
@@ -137,6 +138,27 @@ def reconcile_cancellations() -> int:
             count += 1
         else:
             db.session.rollback()
+
+
+def reconcile_destructions() -> int:
+    """Retry the same confirmed intent without changing the recorded annual term."""
+    count = 0
+    orders = db.session.scalars(
+        db.select(SingleTenantOrder).where(
+            SingleTenantOrder.destruction_pending.is_(True),
+            SingleTenantOrder.cancellation_pending.is_(False),
+        )
+    ).all()
+    for order in orders:
+        try:
+            call(order, "destroy")
+        except ServiceUnavailable:
+            db.session.rollback()
+            continue
+        order.destruction_pending = False
+        db.session.commit()
+        count += 1
+    return count
 
 
 def reconcile_billing() -> int:
@@ -174,8 +196,16 @@ def init_app(app: Flask) -> None:
     def reconcile(once: bool) -> None:
         validate_settings(app.config)
         from hushline.single_tenant_billing import refresh_expired_terms
+        from hushline.single_tenant_registration import prepare_registration_code
 
+        code_prepared = False
         while True:
+            if not code_prepared:
+                try:
+                    prepare_registration_code()
+                    code_prepared = True
+                except ServiceUnavailable:
+                    app.logger.warning("Single Tenant registration code setup is pending")
             refresh_expired_terms()
             reconcile_cancellations()
             reconcile_billing()
@@ -425,12 +455,24 @@ def init_app(app: Flask) -> None:
             if not form.validate_on_submit():
                 abort(400)
             action = request.form.get("action")
-            if action not in {"cancel", "resume"}:
+            if action not in {"cancel", "resume", "destroy"}:
                 abort(400)
             if action == "cancel" and request.form.get("confirm_deletion") != "yes":
                 abort(400)
+            if action == "destroy":
+                if (
+                    request.form.get("confirm_destroy_now") != "yes"
+                    or not order.paid
+                    or order.service_state != "ready"
+                ):
+                    abort(409)
+                order.destroy_requested_at = (
+                    order.destroy_requested_at or datetime.now(UTC).isoformat()
+                )
+                order.destruction_pending = True
             if action == "resume" and (
-                order.service_state in {"retiring", "retired"}
+                order.destroy_requested_at is not None
+                or order.service_state in {"retiring", "retired"}
                 or (
                     not app.config.get("SINGLE_TENANT_TEST_MODE")
                     and order.paid
@@ -439,7 +481,7 @@ def init_app(app: Flask) -> None:
                 )
             ):
                 abort(409)
-            order.cancelled = action == "cancel"
+            order.cancelled = action in {"cancel", "destroy"}
             order.cancellation_pending = True
             db.session.commit()
             reconcile_cancellations()
@@ -464,7 +506,11 @@ def init_app(app: Flask) -> None:
             fixture_test=False,
             stripe_test=app.config.get("SINGLE_TENANT_TEST_MODE", False),
             clock_test=bool(app.config.get("SINGLE_TENANT_TEST_ORDER")),
-            explicit_retirement=False,
+            explicit_retirement=bool(order.destroy_requested_at),
+            can_destroy=order.paid
+            and order.service_state == "ready"
+            and not order.destroy_requested_at,
+            destruction_pending=order.destruction_pending,
             paid_through=datetime.fromisoformat(order.period_end).strftime("%B %d, %Y at %H:%M UTC")
             if order.period_end
             else None,

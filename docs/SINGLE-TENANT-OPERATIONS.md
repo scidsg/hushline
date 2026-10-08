@@ -250,3 +250,15 @@ private keys to the host. Install the reviewed runtime and locked dependencies;
 Terraform must set this profile for both API and worker units before starting them.
 Sales remain closed pending signing/publishing and backup/restore proof, HTTPS
 verification, both customer rehearsal plans and live financial integration checks.
+
+### Live first-year registration code and immediate destruction
+
+Configure `SINGLE_TENANT_FREE_COUPON_ID` in the existing production portal and billing worker only. Create the live Stripe coupon with 100 percent off, `duration=once`, `max_redemptions=1`, and a short-lived promotion code. The portal validates this definition before offering code entry and persists its approved coupon identity with the order. The Stripe-confirmed first invoice must show the complete five-component annual subtotal, the approved discount, and zero due. Subsequent annual invoices must verify the normal full price. Stripe live mode remains mandatory. Do not distribute Stripe keys to the controller or fulfillment jobs.
+
+Immediate destruction requires a ready instance, owner authentication, CSRF, and a separate permanent-deletion acknowledgement. Persist the destruction intent before canceling the owned Stripe subscription with `invoice_now=false` and `prorate=false`. No refund or date rewrite is implied. Only after cancellation and billing synchronization are confirmed does the portal queue the original order's retirement request. Fresh authority independently confirms the terminal subscription and recorded explicit request before every saved-plan apply. Failed acknowledgements remain pending across restarts and account deletion. Once requested, renewal cannot be resumed.
+
+The Linux worker uses `/usr/bin/gh`; the Mac profile uses `/opt/homebrew/bin/gh`. Install the official GitHub CLI and supply a dedicated read-only credential for workflow status, contents, environment metadata, secret names, and repository variables. The service publisher SSH key continues to authenticate Git transport and sign immutable requests.
+
+The private `SINGLE_TENANT_FREE_REGISTRATION_CODE` is supplied only to the existing live billing reconciliation worker. On startup it creates or verifies the explicitly configured coupon and a seven-day, single-redemption promotion code with stable Stripe idempotency keys. Used or expired codes are never replaced. A setup outage is sanitized and retried without blocking existing renewal or cancellation reconciliation. After the coupon is redeemed, ordinary full-price purchases remain available.
+
+A fresh order may reuse a hostname only after the trusted retirement workflow confirms exact owned-resource absence. Active, failed, and retiring orders keep their hostname reservation. Historical orders, ownership, invoices, and publication requests remain intact; a hostname returning never adopts retired infrastructure or reuses payment proof.

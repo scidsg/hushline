@@ -94,3 +94,15 @@ def test_untrusted_origin_is_rejected_before_network_access(
     with pytest.raises(ValueError, match="trust root"):
         verify(origin, "a" * 64, ORDER, OWNER, "provision", expected)
     network.assert_not_called()
+
+
+def test_explicit_fresh_destruction_authority_allows_early_retirement() -> None:
+    data, expected = response()
+    data["authorized"] = "retire"
+    expected["cancelled_at"] = NOW.isoformat()
+    data["payment"] = dict(expected)
+    data["destroy_requested_at"] = NOW.isoformat()
+    assert validate_response(data, ORDER, OWNER, "retire", expected, NOW) == expected
+    data["destroy_requested_at"] = (NOW + timedelta(seconds=1)).isoformat()
+    with pytest.raises(ValueError, match="destruction"):
+        validate_response(data, ORDER, OWNER, "retire", expected, NOW)

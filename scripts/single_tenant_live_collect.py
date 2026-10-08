@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import re
 import subprocess
 import zipfile
@@ -42,7 +43,12 @@ class Collector:
         try:
             result = subprocess.run(
                 [  # noqa: S603 — fixed read-only CLI and validated repository path
-                    "/opt/homebrew/bin/gh",
+                    (
+                        "/usr/bin/gh"
+                        if os.environ.get("SINGLE_TENANT_CONTROL_STORAGE_PROFILE")
+                        == "linux-controller-v1"
+                        else "/opt/homebrew/bin/gh"
+                    ),
                     "api",
                     path,
                 ],

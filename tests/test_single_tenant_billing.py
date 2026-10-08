@@ -519,3 +519,138 @@ def test_missed_renewal_refresh_commits_verified_invoice_without_provisioning(
     confirm.assert_called_once_with(order, "cs_live_owned", commit=False)
     database.commit.assert_called_once()
     provision.assert_not_called()
+
+
+def test_approved_free_first_year_keeps_all_five_full_price_components() -> None:
+    order, session = evidence()
+    order.stripe_free_coupon_id = "free_first_year"
+    session.update(
+        amount_total=0,
+        payment_status="no_payment_required",
+        total_details={"amount_discount": 229164},
+    )
+    invoice = session["subscription"]["latest_invoice"]
+    invoice.update(
+        amount_paid=0,
+        total=0,
+        subtotal=229164,
+        billing_reason="subscription_create",
+        discounts=[
+            {
+                "id": "di_owned",
+                "coupon": {
+                    "id": "free_first_year",
+                    "livemode": True,
+                    "percent_off": 100,
+                    "duration": "once",
+                    "max_redemptions": 1,
+                },
+            }
+        ],
+        total_discount_amounts=[{"amount": 229164, "discount": "di_owned"}],
+    )
+    assert (
+        verified_year(order, session, live=True, now=datetime(2026, 10, 6, 1, tzinfo=UTC)).invoice
+        == "in_owned"
+    )
+    invoice["discounts"][0]["coupon"]["duration"] = "forever"
+    with pytest.raises(ValueError, match="discount"):
+        verified_year(order, session, live=True, now=datetime(2026, 10, 6, 1, tzinfo=UTC))
+
+
+def test_unapproved_zero_total_never_authorizes_an_instance() -> None:
+    order, session = evidence()
+    session.update(
+        amount_total=0,
+        payment_status="no_payment_required",
+        total_details={"amount_discount": 229164},
+    )
+    with pytest.raises(ValueError, match="discount"):
+        verified_year(order, session, live=True, now=datetime(2026, 10, 6, 1, tzinfo=UTC))
+
+
+def test_immediate_cancellation_preserves_term_and_does_not_invoice_or_prorate(
+    mocker: MockFixture,
+) -> None:
+    from hushline.single_tenant_billing import cancel
+
+    order, session = evidence()
+    order.paid = True
+    order.stripe_subscription_id = "sub_owned"
+    order.stripe_customer_id = "cus_owned"
+    order.period_end = "2027-10-06T00:00:00+00:00"
+    order.destroy_requested_at = "2026-10-08T00:00:00+00:00"
+    api = mocker.Mock()
+    api.subscriptions.retrieve.return_value = session["subscription"]
+    api.subscriptions.cancel.return_value = {**session["subscription"], "status": "canceled"}
+    mocker.patch("hushline.single_tenant_billing.client", return_value=api)
+    mocker.patch("hushline.single_tenant_billing.db.session.flush")
+    with live_context():
+        assert cancel(order, True)["cancelled"] is True
+    assert order.period_end == "2027-10-06T00:00:00+00:00"
+    api.subscriptions.cancel.assert_called_once_with(
+        "sub_owned", {"invoice_now": False, "prorate": False}
+    )
+    api.subscriptions.update.assert_not_called()
+
+
+def test_free_first_year_renews_at_normal_annual_price() -> None:
+    order, session = evidence()
+    order.stripe_free_coupon_id = "free_first_year"
+    order.paid = True
+    order.period_start = "2026-10-06T00:00:00+00:00"
+    session.update(
+        amount_total=0,
+        payment_status="no_payment_required",
+        total_details={"amount_discount": 229164},
+    )
+    start = datetime(2027, 10, 6, tzinfo=UTC)
+    end = annual_end(start)
+    subscription = session["subscription"]
+    subscription.update(
+        current_period_start=int(start.timestamp()), current_period_end=int(end.timestamp())
+    )
+    invoice = subscription["latest_invoice"]
+    invoice.update(
+        id="in_renewal", billing_reason="subscription_cycle", discounts=[], amount_paid=229164
+    )
+    for line in invoice["lines"]["data"]:
+        line["period"] = {"start": int(start.timestamp()), "end": int(end.timestamp())}
+    result = verified_year(order, session, live=True, now=start)
+    assert result.invoice == "in_renewal"
+    assert result.end == end
+    invoice["amount_paid"] = 0
+    with pytest.raises(ValueError, match="annual payment"):
+        verified_year(order, session, live=True, now=start)
+
+
+def test_redeemed_gift_does_not_block_normal_paid_checkout(mocker: MockFixture) -> None:
+    from flask import current_app
+
+    from hushline.single_tenant_billing import checkout
+
+    order, _ = evidence()
+    order.stripe_session_id = None
+    order.paid = False
+    api = mocker.patch("hushline.single_tenant_billing.client").return_value
+    api.coupons.retrieve.return_value = {
+        "id": "gift-used",
+        "livemode": True,
+        "percent_off": 100,
+        "duration": "once",
+        "max_redemptions": 1,
+        "valid": False,
+    }
+    api.checkout.sessions.create.return_value = {
+        "id": "cs_live_owned",
+        "url": "https://checkout.stripe.com/c/pay/owned",
+        "livemode": True,
+        "status": "open",
+    }
+    database = mocker.patch("hushline.single_tenant_billing.db.session")
+    database.scalar.return_value = order
+    with live_context():
+        current_app.config["SINGLE_TENANT_FREE_COUPON_ID"] = "gift-used"
+        checkout(order)
+    assert order.stripe_free_coupon_id is None
+    assert api.checkout.sessions.create.call_args.args[0]["allow_promotion_codes"] is False

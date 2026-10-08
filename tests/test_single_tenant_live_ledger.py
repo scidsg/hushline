@@ -195,3 +195,56 @@ def test_only_verified_retirement_releases_hostname_for_a_new_order(ledger: Ledg
     assert ledger.get(ORDER, OWNER)["state"] == "retired"
     with pytest.raises(ValueError, match="adopted or replaced"):
         ledger.reserve(ORDER, OWNER, data)
+
+
+def test_immediate_destruction_is_owned_idempotent_and_keeps_paid_dates(ledger: Ledger) -> None:
+    data = payload()
+    data["state"] = "ready"
+    data["payment"]["cancelled_at"] = "2026-10-06T02:00:00+00:00"
+    ledger.reserve(ORDER, OWNER, data)
+    with pytest.raises(ValueError, match="own"):
+        ledger.destroy(ORDER, "d" * 64)
+    ledger.destroy(ORDER, OWNER)
+    ledger.destroy(ORDER, OWNER)
+    current = ledger.get(ORDER, OWNER)
+    assert current["state"] == "retiring"
+    assert current["payment"]["period_end"] == data["payment"]["period_end"]
+    assert len([item for item in ledger.pending() if item["purpose"] == "retire"]) == 1
+
+
+def test_immediate_destruction_requires_confirmed_cancellation(ledger: Ledger) -> None:
+    data = payload()
+    data["state"] = "ready"
+    ledger.reserve(ORDER, OWNER, data)
+    with pytest.raises(ValueError, match="cancelled"):
+        ledger.destroy(ORDER, OWNER)
+
+
+@pytest.mark.parametrize("state", ["ready", "retiring", "failed", "retired"])
+def test_hostname_returns_only_after_confirmed_retirement(ledger: Ledger, state: str) -> None:
+    original = payload()
+    original["state"] = state
+    original["retirement_started"] = True
+    original["last_workflow_event"] = {"purpose": "retire"}
+    ledger.reserve(ORDER, OWNER, original)
+    other = deepcopy(original)
+    other.update(order_id="d" * 32, owner="e" * 64, state="queued")
+    other["payment"].update(receipt="f" * 32, subscription_id="sub_new")
+    if state == "retired":
+        ledger.reserve(other["order_id"], other["owner"], other)
+        assert ledger.get(ORDER, OWNER) == original
+        assert ledger.get(other["order_id"], other["owner"]) == other
+    else:
+        with pytest.raises(ValueError, match="already belongs"):
+            ledger.reserve(other["order_id"], other["owner"], other)
+
+
+def test_unconfirmed_retired_label_does_not_release_hostname(ledger: Ledger) -> None:
+    original = payload()
+    original["state"] = "retired"
+    ledger.reserve(ORDER, OWNER, original)
+    other = deepcopy(original)
+    other.update(order_id="d" * 32, owner="e" * 64)
+    other["payment"].update(receipt="f" * 32, subscription_id="sub_new")
+    with pytest.raises(ValueError, match="already belongs"):
+        ledger.reserve(other["order_id"], other["owner"], other)

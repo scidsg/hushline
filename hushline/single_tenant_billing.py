@@ -21,6 +21,7 @@ from hushline.model import SingleTenantOrder
 from hushline.single_tenant_client import ServiceUnavailable
 
 COMPONENT_COUNT = 5
+FREE_PERCENT = 100
 MAX_TOTAL_CENTS = 99999999
 API_VERSION = "2024-06-20"
 
@@ -75,6 +76,36 @@ def annual_end(start: datetime) -> datetime:
     return start.replace(year=start.year + 1, day=day)
 
 
+def free_coupon(coupon: Any, expected: str | None) -> bool:
+    """Only the explicitly configured, live, single-redemption first-invoice gift."""
+    return bool(
+        expected
+        and hasattr(coupon, "get")
+        and coupon.get("id") == expected
+        and coupon.get("livemode") is True
+        and coupon.get("percent_off") == FREE_PERCENT
+        and coupon.get("duration") == "once"
+        and coupon.get("max_redemptions") == 1
+    )
+
+
+def invoice_total(order: SingleTenantOrder, invoice: Any, full: int) -> int:
+    discounts = invoice.get("discounts") or []
+    if not discounts:
+        return full
+    if (
+        len(discounts) != 1
+        or not hasattr(discounts[0], "get")
+        or not free_coupon(discounts[0].get("coupon"), order.stripe_free_coupon_id)
+        or invoice.get("billing_reason") != "subscription_create"
+        or invoice.get("subtotal") != full
+        or invoice.get("total") != 0
+        or sum(item["amount"] for item in invoice.get("total_discount_amounts", [])) != full
+    ):
+        raise ValueError("The annual discount is not the approved one-time registration")
+    return 0
+
+
 def verified_invoice(
     order: SingleTenantOrder, session: Any, *, live: bool, historical: bool = False
 ) -> PaidYear:
@@ -82,12 +113,20 @@ def verified_invoice(
     subscription = session.get("subscription") or {}
     invoice = subscription.get("latest_invoice") if hasattr(subscription, "get") else None
     invoice = invoice or {}
+    full = sum(value for _, value in prices(order.license_limit))
+    due = invoice_total(order, invoice, full)
+    checkout_discount = session.get("total_details", {}).get("amount_discount", 0)
+    if checkout_discount not in {0, full} or (
+        checkout_discount and not order.stripe_free_coupon_id
+    ):
+        raise ValueError("The checkout discount is not approved")
     if (
         not order.billing_receipt
         or session.get("id") != order.stripe_session_id
         or session.get("livemode") is not live
         or session.get("status") != "complete"
-        or session.get("payment_status") != "paid"
+        or session.get("payment_status")
+        not in ({"paid", "no_payment_required"} if checkout_discount else {"paid"})
         or session.get("mode") != "subscription"
         or session.get("client_reference_id") != order.billing_receipt
         or any(session.get("metadata", {}).get(k) != v for k, v in expected.items())
@@ -95,14 +134,19 @@ def verified_invoice(
         or subscription.get("livemode") is not live
         or any(subscription.get("metadata", {}).get(k) != v for k, v in expected.items())
         or session.get("currency") != "usd"
-        or session.get("amount_total") != sum(value for _, value in prices(order.license_limit))
+        or session.get("amount_total") != full - checkout_discount
         or not isinstance(invoice.get("id"), str)
         or not invoice["id"].startswith("in_")
         or (historical and invoice["id"] != order.stripe_invoice_id)
         or invoice.get("livemode") is not live
         or invoice.get("status") != "paid"
         or invoice.get("currency") != "usd"
-        or invoice.get("amount_paid") != session.get("amount_total")
+        or invoice.get("amount_paid") != due
+        or (
+            checkout_discount
+            and invoice.get("billing_reason") == "subscription_create"
+            and due != 0
+        )
         or invoice.get("customer") != session.get("customer")
         or subscription.get("customer") != session.get("customer")
         or invoice.get("subscription") != subscription.get("id")
@@ -224,6 +268,13 @@ def checkout(order: SingleTenantOrder) -> dict[str, Any]:
     if not order.billing_receipt:
         raise ServiceUnavailable("The annual checkout reservation is unavailable")
     try:
+        coupon_id = current_app.config.get("SINGLE_TENANT_FREE_COUPON_ID")
+        if coupon_id and not order.stripe_session_id:
+            coupon = api.coupons.retrieve(coupon_id)
+            if not free_coupon(coupon, coupon_id):
+                raise ServiceUnavailable("The one-time registration code is unavailable")
+            order.stripe_free_coupon_id = coupon_id if coupon.get("valid") is True else None
+            db.session.flush()
         if order.stripe_session_id:
             session = api.checkout.sessions.retrieve(order.stripe_session_id)
         else:
@@ -249,7 +300,7 @@ def checkout(order: SingleTenantOrder) -> dict[str, Any]:
                     "success_url": origin.rstrip("/")
                     + "/single-tenant/payment-return?session_id={CHECKOUT_SESSION_ID}",
                     "cancel_url": origin.rstrip("/") + "/single-tenant",
-                    "allow_promotion_codes": False,
+                    "allow_promotion_codes": bool(order.stripe_free_coupon_id),
                 },
                 options={"idempotency_key": "hushline-single-tenant-" + order.billing_receipt},
             )
@@ -279,7 +330,7 @@ def confirm(order: SingleTenantOrder, session_id: str, *, commit: bool = True) -
         raise ServiceUnavailable("The account does not own this checkout")
     try:
         session = client().checkout.sessions.retrieve(
-            session_id, {"expand": ["subscription.latest_invoice"]}
+            session_id, {"expand": ["subscription.latest_invoice.discounts"]}
         )
         paid = verified_year(order, session, live=True, now=datetime.now(UTC))
     except (stripe.StripeError, ValueError, KeyError, TypeError):
@@ -354,15 +405,33 @@ def cancel(order: SingleTenantOrder, desired: bool) -> dict[str, Any]:
                 UTC
             ):
                 raise ValueError("The paid-through state must be reconciled before renewal changes")
-            subscription = api.subscriptions.update(
-                order.stripe_subscription_id,
-                {"cancel_at_period_end": desired},
-            )
-            if (
-                subscription.get("livemode") is not True
-                or subscription.get("cancel_at_period_end") is not desired
-            ):
-                raise ValueError("Stripe did not confirm this order's renewal intent")
+            if order.destroy_requested_at:
+                if not desired:
+                    raise ValueError("An immediate destruction intent cannot be withdrawn")
+                subscription = api.subscriptions.cancel(
+                    order.stripe_subscription_id, {"invoice_now": False, "prorate": False}
+                )
+                if (
+                    subscription.get("status") != "canceled"
+                    or subscription.get("id") != order.stripe_subscription_id
+                    or subscription.get("customer") != order.stripe_customer_id
+                    or subscription.get("livemode") is not True
+                    or any(
+                        subscription.get("metadata", {}).get(k) != v
+                        for k, v in metadata(order).items()
+                    )
+                ):
+                    raise ValueError("Stripe did not confirm immediate cancellation")
+            else:
+                subscription = api.subscriptions.update(
+                    order.stripe_subscription_id,
+                    {"cancel_at_period_end": desired},
+                )
+                if (
+                    subscription.get("livemode") is not True
+                    or subscription.get("cancel_at_period_end") is not desired
+                ):
+                    raise ValueError("Stripe did not confirm this order's renewal intent")
         order.cancelled_at = (
             datetime.fromtimestamp(
                 subscription.get("canceled_at") or int(datetime.now(UTC).timestamp()), UTC

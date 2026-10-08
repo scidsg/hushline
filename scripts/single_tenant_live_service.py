@@ -106,7 +106,13 @@ def create_service(  # noqa: PLR0913 — explicit independent trust roots and re
             "paid": True,
             "verification": payload["verification"],
             "term": {
-                "state": state if state in {"retiring", "retired"} else "active",
+                "state": (
+                    "blocked"
+                    if state == "failed" and payload.get("retirement_started")
+                    else state
+                    if state in {"retiring", "retired"}
+                    else "active"
+                ),
                 "period_end": payload["payment"]["period_end"],
                 "cancelled_at": payload["payment"]["cancelled_at"],
             },
@@ -193,6 +199,11 @@ def create_service(  # noqa: PLR0913 — explicit independent trust roots and re
                 # Do not call it back synchronously; fresh authority is required
                 # later, asynchronously, before every infrastructure operation.
                 ledger.billing(order, owner, data["payment"])
+            elif action == "destroy":
+                if set(data) != {"order_id", "owner"}:
+                    abort(400)
+                # Fresh Stripe authority is checked asynchronously before each apply.
+                ledger.destroy(order, owner)
             elif action in {"status", "dns", "claim"}:
                 if set(data) != {"order_id", "owner"}:
                     abort(400)

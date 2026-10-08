@@ -389,3 +389,9 @@ organization, with explicit team and project IDs. Dedicated provider credentials
 must be configured in the customer environment before it can accept orders.
 The setup preflight rejects matching names with other IDs and cannot adopt or
 modify production, staging, or another project's infrastructure.
+
+### Immediate Single Tenant destruction and first-year registration code
+
+An authenticated owner of a ready Single Tenant instance can choose **Cancel renewal and destroy my instance now** and explicitly acknowledge permanent deletion. The portal saves this irreversible intent before contacting Stripe, confirms cancellation of the owned live subscription without proration or an additional invoice, and queues exact-order teardown. Retries retain the same order and its recorded annual dates; the request cannot be withdrawn. The existing **Cancel renewal** option continues service until the annual term ends. Users must download anything they need before requesting destruction.
+
+An explicitly configured live Stripe coupon may give one registration its first annual invoice at no cost. It must be a 100% discount with `duration=once` and `max_redemptions=1`. All five annual price components and order ownership are still verified. Normal paid renewal resumes after the first year; unrelated, perpetual, sandbox, or unverified zero-total discounts do not authorize provisioning.

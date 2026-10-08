@@ -35,6 +35,9 @@ class SingleTenantOrder(Model):
     stripe_subscription_id: Mapped[str | None] = mapped_column(db.String(255), unique=True)
     stripe_invoice_id: Mapped[str | None] = mapped_column(db.String(255), unique=True)
     stripe_customer_id: Mapped[str | None] = mapped_column(db.String(255))
+    stripe_free_coupon_id: Mapped[str | None] = mapped_column(db.String(255))
+    destroy_requested_at: Mapped[str | None] = mapped_column(db.String(40))
+    destruction_pending: Mapped[bool] = mapped_column(default=False, nullable=False)
     billing_sync_pending: Mapped[bool] = mapped_column(default=False, nullable=False)
 
     def __init__(self, *, id: str, user_id: int, owner_ref: str) -> None:

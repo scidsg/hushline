@@ -397,3 +397,71 @@ def test_live_withdrawal_after_paid_year_is_rejected_before_intent_changes(
     assert order.cancelled is True
     assert order.cancellation_pending is False
     call.assert_not_called()
+
+
+def test_immediate_destruction_requires_acknowledgement_and_cannot_resume(
+    client: FlaskClient, order: SingleTenantOrder, mocker: MockFixture
+) -> None:
+    order.paid = True
+    order.service_state = "ready"
+    order.period_end = "2027-10-06T00:00:00+00:00"
+    db.session.commit()
+    service = mocker.patch("hushline.single_tenant.call", side_effect=ServiceUnavailable("safe"))
+    assert client.post("/single-tenant/manage", data={"action": "destroy"}).status_code == 409
+    assert order.destroy_requested_at is None
+    service.assert_not_called()
+    assert (
+        client.post(
+            "/single-tenant/manage", data={"action": "destroy", "confirm_destroy_now": "yes"}
+        ).status_code
+        == 302
+    )
+    assert order.cancelled
+    assert order.cancellation_pending
+    assert order.destruction_pending
+    assert order.destroy_requested_at
+    assert order.period_end == "2027-10-06T00:00:00+00:00"
+    assert client.post("/single-tenant/manage", data={"action": "resume"}).status_code == 409
+    service.side_effect = None
+    service.return_value = {"order_id": order.id, "owner": order.owner_ref, "cancelled": True}
+    assert reconcile_cancellations() == 1
+    assert not order.cancellation_pending
+    assert not order.destruction_pending
+    assert service.call_args.args == (order, "destroy")
+
+
+def test_ready_owner_sees_separate_immediate_destruction_and_csp(
+    client: FlaskClient, order: SingleTenantOrder, mocker: MockFixture
+) -> None:
+    order.paid = True
+    order.stage = "ready"
+    order.service_state = "ready"
+    order.period_end = "2027-10-06T00:00:00+00:00"
+    db.session.commit()
+    mocker.patch("hushline.single_tenant.call", return_value=snapshot(order, ready=True))
+    result = client.get("/single-tenant/manage")
+    html = result.get_data(as_text=True)
+    assert "Cancel renewal and destroy my instance now" in html
+    assert 'name="confirm_destroy_now"' in html
+    assert "Cancel renewal</button>" in html
+    assert "Content-Security-Policy" in result.headers
+    assert "script-src 'self'" in result.headers["Content-Security-Policy"]
+    assert "script-src 'self' 'unsafe-inline'" not in result.headers["Content-Security-Policy"]
+
+
+def test_gift_setup_failure_does_not_stop_existing_cancellation_worker(
+    app: Flask, mocker: MockFixture
+) -> None:
+    mocker.patch(
+        "hushline.single_tenant_registration.prepare_registration_code",
+        side_effect=ServiceUnavailable("private error must not be logged"),
+    )
+    refresh = mocker.patch("hushline.single_tenant_billing.refresh_expired_terms")
+    cancel = mocker.patch("hushline.single_tenant.reconcile_cancellations")
+    sync = mocker.patch("hushline.single_tenant.reconcile_billing")
+    result = app.test_cli_runner().invoke(args=["single-tenant-reconcile", "--once"])
+    assert result.exit_code == 0
+    refresh.assert_called_once()
+    cancel.assert_called_once()
+    sync.assert_called_once()
+    assert "private error" not in result.output

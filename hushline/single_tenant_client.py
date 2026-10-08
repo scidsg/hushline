@@ -70,6 +70,7 @@ def _remote_call(order: SingleTenantOrder, action: str, **fields: Any) -> dict[s
         "claim",
         "capabilities",
         "billing-sync",
+        "destroy",
     }:
         raise ValueError("Unsupported service operation")
     path = "/internal/single-tenant/" + action

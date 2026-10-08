@@ -153,6 +153,22 @@ class Ledger:
                 if existing[0] != self.tag(owner) or self.open(existing[1]) != payload:
                     raise ValueError("An existing order cannot be adopted or replaced")
                 return
+            prior_domain = connection.execute(
+                "SELECT id, payload FROM orders WHERE domain_tag=?", (self.tag(domain),)
+            ).fetchone()
+            if prior_domain:
+                prior = self.open(prior_domain[1])
+                if (
+                    prior.get("state") == "retired"
+                    and prior.get("retirement_started") is True
+                    and prior.get("last_workflow_event", {}).get("purpose") == "retire"
+                ):
+                    # Keep historical ownership and payment records; release only
+                    # the hostname after trusted teardown confirms exact absence.
+                    connection.execute(
+                        "UPDATE orders SET domain_tag=? WHERE id=?",
+                        (self.tag("retired:" + prior_domain[0] + ":" + domain), prior_domain[0]),
+                    )
             try:
                 connection.execute(
                     "INSERT INTO orders(id, owner_tag, receipt_tag, subscription_tag, domain_tag, "
@@ -303,14 +319,39 @@ class Ledger:
                 raise ValueError("An existing paid year cannot change its invoice")
             if start > old_start and start < old_end:
                 raise ValueError("Renewal cannot overlap the existing paid year")
-            if payload.get("retirement_started") or payload.get("state") in {"retiring", "retired"}:
-                raise ValueError("A retiring order cannot be renewed")
             if payment == prior:
                 return
+            if payload.get("retirement_started") or payload.get("state") in {"retiring", "retired"}:
+                raise ValueError("A retiring order cannot be renewed")
             payload["payment"] = payment
             connection.execute(
                 "UPDATE orders SET payload=?, revision=revision+1 WHERE id=?",
                 (self.seal(payload), order),
+            )
+
+    def destroy(self, order: str, owner: str) -> None:
+        """Queue one immutable teardown after the portal confirms cancellation."""
+        self.owner(order, owner)
+        with self.transaction() as connection:
+            row = connection.execute(
+                "SELECT owner_tag, payload, revision FROM orders WHERE id=?", (order,)
+            ).fetchone()
+            if row is None or not hmac.compare_digest(row[0], self.tag(owner)):
+                raise ValueError("The account does not own this instance")
+            payload, revision = self.open(row[1]), row[2]
+            if payload.get("state") == "retired":
+                return
+            if connection.execute(
+                "SELECT 1 FROM requests WHERE order_id=? AND purpose='retire'", (order,)
+            ).fetchone():
+                return
+            if not payload["payment"].get("cancelled_at") or payload.get("state") != "ready":
+                raise ValueError("Immediate teardown requires a ready cancelled instance")
+            payload["retirement_started"] = True
+            payload["state"] = "retiring"
+            self._queue(connection, order, "retire", revision, payload)
+            connection.execute(
+                "UPDATE orders SET payload=? WHERE id=?", (self.seal(payload), order)
             )
 
     def expiry(self, *, now: datetime) -> int:
