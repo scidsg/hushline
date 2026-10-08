@@ -133,13 +133,18 @@ def verify_team(request: Callable[..., dict[str, Any]], expected: str) -> None:
 
 
 def validate_ids(ids: Any) -> dict[str, str]:
+    uuid = r"[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}"
     if (
         not isinstance(ids, dict)
         or set(ids) != RESOURCES
         or any(
-            not isinstance(value, str)
-            or not re.fullmatch(r"[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}", value)
-            for value in ids.values()
+            not isinstance(ids[address], str) or not re.fullmatch(uuid, ids[address])
+            for address in RESOURCES - {FIREWALL_ADDRESS}
+        )
+        or not isinstance(ids[FIREWALL_ADDRESS], str)
+        or not re.fullmatch(
+            re.escape(ids[DATABASE_ADDRESS]) + r"-[0-9]{18}[0-9a-f]{8}",
+            ids[FIREWALL_ADDRESS],
         )
     ):
         raise ValueError("Four exact provider resource IDs are required")

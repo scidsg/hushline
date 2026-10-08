@@ -31,6 +31,8 @@ IDS = {
     for index, address in enumerate(sorted(RESOURCES), start=1)
 }
 
+IDS[FIREWALL_ADDRESS] = IDS[DATABASE_ADDRESS] + "-20261008222116554400000001"
+
 
 def project() -> dict[str, Any]:
     return {
@@ -482,3 +484,28 @@ def test_state_redirect_resolves_only_the_fixed_artifact_host(
     response.headers = {"Location": "https://evil.foo/owned"}
     with pytest.raises(ValueError, match="ownership is unverified"):
         api.request("GET", url)
+
+
+@pytest.mark.parametrize(
+    "firewall_id",
+    [
+        "00000000-0000-0000-0000-000000000999",
+        "00000000-0000-0000-0000-000000000999-20261008222116554400000001",
+        IDS[DATABASE_ADDRESS] + "-2026100822211655440000000",
+        IDS[DATABASE_ADDRESS] + "-2026100822211655440000000g",
+        IDS[DATABASE_ADDRESS] + "-20261008222116554400000001/foreign",
+        None,
+    ],
+)
+def test_ownership_rejects_foreign_or_malformed_firewall_id(firewall_id: Any) -> None:
+    changed = resources()
+    changed[FIREWALL_ADDRESS]["id"] = firewall_id
+    with pytest.raises(ValueError, match="exact provider resource IDs"):
+        validate_state(changed, ORDER)
+
+
+def test_ownership_preserves_provider_firewall_timestamp_and_hex_counter() -> None:
+    changed = resources()
+    changed[FIREWALL_ADDRESS]["id"] = IDS[DATABASE_ADDRESS] + "-202610082221165544000000af"
+    ids = validate_state(changed, ORDER)
+    assert ids[FIREWALL_ADDRESS] == changed[FIREWALL_ADDRESS]["id"]

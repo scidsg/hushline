@@ -424,3 +424,5 @@ The trusted customer lifecycle container keeps its Python driver as the entrypoi
 A queued customer Terraform apply remains provisioning until the exact saved run reports completion. HCP’s accepted action acknowledgement is not a resource document or proof that infrastructure is ready; readiness still requires recorded ownership, successful initialization, onion health, DNS, and HTTPS health.
 
 When HCP returns an authenticated state-download route, automation resolves only that exact state version and fetches the signed Archivist artifact without forwarding the API token.
+
+Customer ownership preserves the provider-generated database firewall ID, including its database UUID prefix and timestamp/counter suffix. A firewall ID for another database, a bare UUID, or a malformed suffix cannot be recorded or used for lifecycle actions.
