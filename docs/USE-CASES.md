@@ -399,6 +399,10 @@ organization, with explicit team and project IDs. Dedicated provider credentials
 must be configured in the customer environment before it can accept orders.
 The setup preflight rejects matching names with other IDs and cannot adopt or
 modify production, staging, or another project's infrastructure.
+A successful final DigitalOcean database inventory page may explicitly return
+`databases: null` for an account without clusters. This empty response permits
+the customer preflight to continue; missing data, errors, contradictory counts,
+and incomplete pagination still stop provisioning before cloud changes.
 
 ### Immediate Single Tenant destruction and first-year registration code
 

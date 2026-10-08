@@ -294,8 +294,27 @@ class Ownership:
         values = []
         for page in range(1, MAX_INVENTORY_PAGES + 1):
             data = self.do(f"{path}?per_page=200&page={page}")
-            values.extend(data[key])
-            if not data.get("links", {}).get("pages", {}).get("next"):
+            items = data[key]
+            next_page = data.get("links", {}).get("pages", {}).get("next")
+            if items is None and path == "/databases" and key == "databases":
+                # The live API returns an explicit null for no database clusters.
+                # Never normalize missing fields, API errors or an incomplete page.
+                metadata = data.get("meta")
+                if next_page is not None or (
+                    metadata is not None
+                    and (
+                        not isinstance(metadata, dict)
+                        or not isinstance(metadata.get("total", 0), int)
+                        or isinstance(metadata.get("total", 0), bool)
+                        or metadata.get("total", 0) != 0
+                    )
+                ):
+                    raise ValueError("Null database inventory is not verified empty")
+                items = []
+            if not isinstance(items, list) or any(not isinstance(item, dict) for item in items):
+                raise ValueError("Invalid cloud resource inventory")
+            values.extend(items)
+            if not next_page:
                 return values
         raise ValueError("Cloud inventory exceeded its safety limit")
 
