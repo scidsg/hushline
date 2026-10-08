@@ -295,3 +295,14 @@ it does not automatically retry a failed cloud deployment. Inspect the saved
 release, branch and deployment IDs before planning an explicitly reviewed recovery.
 Automatic downgrades and database rollback are refused. Operator recovery must
 account for migration compatibility rather than simply moving the release tag.
+
+### Release regression browser evidence
+
+The local Playwright rehearsal uses production assets, a synthetic account and
+mocked Stripe/controller boundaries. It verifies management after readiness,
+explicit irreversible-deletion acknowledgement, and the retiring state with no
+restore action. These screenshots do not establish a live charge or cloud upgrade.
+
+![Synthetic ready account](screenshots/single-tenant/release-ready-desktop.png)
+
+![Synthetic immediate retirement](screenshots/single-tenant/release-retiring-mobile.png)
