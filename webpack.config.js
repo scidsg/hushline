@@ -37,6 +37,7 @@ modules = [
   "single-tenant",
   "single-tenant-price",
   "single-tenant-progress",
+  "single-tenant-payment-return",
   "images",
 ];
 
