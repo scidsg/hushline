@@ -465,3 +465,91 @@ def test_gift_setup_failure_does_not_stop_existing_cancellation_worker(
     cancel.assert_called_once()
     sync.assert_called_once()
     assert "private error" not in result.output
+
+
+def test_stripe_return_without_cookie_does_not_replace_existing_session(
+    app: Flask, client: FlaskClient, order: SingleTenantOrder, mocker: MockFixture
+) -> None:
+    service = mocker.patch("hushline.single_tenant.call")
+    anonymous = app.test_client(use_cookies=False)
+    response = anonymous.get("/single-tenant/payment-return?session_id=cs_test_owned")
+    assert response.status_code == 200
+    assert "Set-Cookie" not in response.headers
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.headers["Referrer-Policy"] == "no-referrer"
+    assert b"single-tenant-payment-return.js" in response.data
+    assert b"/single-tenant/payment-confirm?session_id=cs_test_owned" in response.data
+    service.assert_not_called()
+    assert order.paid is False
+
+
+def test_payment_confirmation_automatically_advances_to_domain(
+    client: FlaskClient, order: SingleTenantOrder, mocker: MockFixture
+) -> None:
+    order.stage = "payment"
+    db.session.commit()
+    service = mocker.patch("hushline.single_tenant.call", return_value={"paid": True})
+    response = client.get(
+        "/single-tenant/payment-confirm?session_id=cs_test_owned",
+        headers={"Accept": "application/json"},
+    )
+    assert response.json == {"paid": True}
+    assert response.status_code == 200
+    assert order.stage == "domain"
+    assert order.paid is True
+    service.assert_called_once_with(order, "confirm", session_id="cs_test_owned")
+    # A repeated return never charges or confirms a second time.
+    service.reset_mock()
+    assert client.get("/single-tenant/payment-confirm").location.endswith("/single-tenant")
+    service.assert_not_called()
+
+
+@pytest.mark.parametrize("unavailable", [False, True])
+def test_pending_payment_return_cannot_advance_or_provision(
+    client: FlaskClient, order: SingleTenantOrder, mocker: MockFixture, unavailable: bool
+) -> None:
+    order.stage = "payment"
+    db.session.commit()
+    service = mocker.patch("hushline.single_tenant.call", return_value={"paid": False})
+    if unavailable:
+        service.side_effect = ServiceUnavailable("pending")
+    response = client.get("/single-tenant/payment-confirm", headers={"Accept": "application/json"})
+    assert response.status_code == (503 if unavailable else 202)
+    assert response.json == {"paid": False}
+    assert order.stage == "payment"
+    assert order.paid is False
+    assert service.call_args.args[1] == "confirm"
+
+
+def test_payment_confirmation_requires_authenticated_owner(
+    app: Flask, order: SingleTenantOrder, mocker: MockFixture
+) -> None:
+    service = mocker.patch("hushline.single_tenant.call")
+    response = app.test_client().get("/single-tenant/payment-confirm?session_id=cs_test_owned")
+    assert response.status_code == 302
+    assert "/login" in response.location
+    service.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "session_id", ["", "https://evil.test", "cs_test_<script>", "cs_live_" + "x" * 201]
+)
+def test_payment_return_rejects_unbounded_or_external_input(
+    client: FlaskClient, session_id: str
+) -> None:
+    assert (
+        client.get(
+            "/single-tenant/payment-return", query_string={"session_id": session_id}
+        ).status_code
+        == 400
+    )
+
+
+def test_payment_return_preserves_strict_cookie_and_csp(app: Flask, client: FlaskClient) -> None:
+    response = client.get("/single-tenant/payment-return?session_id=cs_test_owned")
+    assert response.status_code == 200
+    assert app.config["SESSION_COOKIE_SAMESITE"] == "Strict"
+    csp = response.headers["Content-Security-Policy"]
+    assert "script-src-elem 'self'" in csp
+    assert "script-src-elem 'self' 'unsafe-inline'" not in csp
+    assert "connect-src 'self'" in csp

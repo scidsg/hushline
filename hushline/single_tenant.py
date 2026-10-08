@@ -15,6 +15,7 @@ from flask import (
     abort,
     current_app,
     flash,
+    make_response,
     redirect,
     render_template,
     request,
@@ -400,10 +401,37 @@ def init_app(app: Flask) -> None:
         )
 
     @bp.route("/payment-return")
-    @authentication_required
     def payment_return() -> Response:
+        # Stripe is cross-site: Strict cookies are absent on this first request.
+        # Render without touching session so its existing cookie is not replaced.
+        session_id = request.args.get("session_id", "")
+        if not re.fullmatch(r"cs_(?:live|test)_[A-Za-z0-9]{1,200}", session_id):
+            return make_response("Invalid payment return", 400)
+        # Normal template processors generate a CSRF token and would overwrite
+        # the withheld session cookie. This standalone page needs no session data.
+        response = make_response(
+            app.jinja_env.get_template("single-tenant/payment-return.html").render(
+                confirm_url=url_for("single_tenant.payment_confirm", session_id=session_id),
+                setup_url=url_for("single_tenant.setup"),
+                script_url=url_for("static", filename="js/single-tenant-payment-return.js"),
+                stylesheet_url=url_for("static", filename="css/style.css"),
+            )
+        )
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        return response
+
+    @bp.route("/payment-confirm")
+    @authentication_required
+    def payment_confirm() -> Response | tuple[dict[str, bool], int]:
         order = owned_order()
-        if not order or order.stage != "payment":
+        if not order:
+            abort(404)
+        if order.stage != "payment":
+            if order.paid:
+                if request.accept_mimetypes.best == "application/json":
+                    return {"paid": True}, 200
+                return redirect(url_for("single_tenant.setup"))
             abort(404)
         try:
             result = call(order, "confirm", session_id=request.args.get("session_id", ""))
@@ -412,7 +440,11 @@ def init_app(app: Flask) -> None:
                 order.stage = "domain"
                 db.session.commit()
         except ServiceUnavailable:
+            if request.accept_mimetypes.best == "application/json":
+                return {"paid": False}, 503
             flash("Payment verification is pending. No infrastructure has been requested.")
+        if request.accept_mimetypes.best == "application/json":
+            return {"paid": order.paid}, 200 if order.paid else 202
         return redirect(url_for("single_tenant.setup"))
 
     @bp.route("/status")

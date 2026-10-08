@@ -406,4 +406,6 @@ An authenticated owner of a ready Single Tenant instance can choose **Cancel ren
 
 An explicitly configured live Stripe coupon may give one registration its first annual invoice at 99% off. It must be a 99% discount with `duration=once` and `max_redemptions=1`. All five annual price components and order ownership are still verified. Normal paid renewal resumes after the first year; unrelated, perpetual, sandbox, or unverified discounts do not authorize provisioning.
 
+After Stripe Checkout, Single Tenant customers remain signed in. A first-party return page automatically verifies the account-owned payment and advances to step 3 (domain setup); pending verification retries without requesting infrastructure. Strict session cookies and authentication remain required for confirmation.
+
 The trusted customer lifecycle container keeps its Python driver as the entrypoint. Workflow-supplied infrastructure and encrypted-result paths are driver arguments, so provisioning can start without treating a directory as an executable.

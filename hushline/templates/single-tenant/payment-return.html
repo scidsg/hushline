@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Confirming your payment — Hush Line</title>
+<link rel="stylesheet" href="{{ stylesheet_url }}">
+<script defer src="{{ script_url }}"></script>
+</head>
+<body>
+<main id="payment-return" data-confirm-url="{{ confirm_url }}" data-setup-url="{{ setup_url }}">
+<h1>Confirming your payment</h1>
+<p id="payment-message" role="status">Please wait. We’ll continue to your domain setup automatically.</p>
+<noscript><p><a href="{{ confirm_url }}">Continue to domain setup</a></p></noscript>
+</main>
+</body>
+</html>
