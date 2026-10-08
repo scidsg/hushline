@@ -164,3 +164,43 @@ def test_matching_workflow_preserves_successful_checks(controller: tuple[Flask, 
         == 200
     )
     assert ledger.get(ORDER, OWNER)["checks"] == {"infrastructure": True, "configuration": False}
+
+
+def test_signed_immediate_destruction_is_owned_and_replay_safe(
+    controller: tuple[Flask, Ledger],
+) -> None:
+    app, ledger = controller
+    data = payload()
+    data["state"] = "ready"
+    data["payment"]["cancelled_at"] = "2026-10-07T00:00:00+00:00"
+    ledger.reserve(ORDER, OWNER, data)
+    request = {"order_id": ORDER, "owner": OWNER}
+    client = app.test_client()
+    assert client.post("/internal/single-tenant/destroy", json=request).status_code == 401
+    assert signed(client, "destroy", {**request, "owner": "f" * 64}).status_code == 409
+    assert signed(client, "destroy", request, key=WORKFLOW, nonce="b" * 32).status_code == 401
+    result = signed(client, "destroy", request, nonce="c" * 32)
+    assert result.status_code == 200
+    assert result.json["term"]["state"] == "retiring"
+    assert result.json["status"]["ready"] is False
+    assert result.json["term"]["period_end"] == data["payment"]["period_end"]
+    assert signed(client, "destroy", request, nonce="c" * 32).status_code == 401
+    assert signed(client, "destroy", request, nonce="d" * 32).status_code == 200
+    assert len([item for item in ledger.pending() if item["purpose"] == "retire"]) == 1
+
+
+def test_immediate_destruction_rejects_unconfirmed_cancellation_and_extra_fields(
+    controller: tuple[Flask, Ledger],
+) -> None:
+    app, ledger = controller
+    data = payload()
+    data["state"] = "ready"
+    ledger.reserve(ORDER, OWNER, data)
+    request = {"order_id": ORDER, "owner": OWNER}
+    client = app.test_client()
+    assert signed(client, "destroy", request).status_code == 409
+    assert (
+        signed(client, "destroy", {**request, "period_end": "changed"}, nonce="b" * 32).status_code
+        == 400
+    )
+    assert not any(item["purpose"] == "retire" for item in ledger.pending())
