@@ -37,6 +37,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Build and push
+        id: release_image
         uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25
         with:
           context: .
@@ -54,3 +55,24 @@ jobs:
           cache-to: |
             type=gha,mode=max
             type=registry,ref=ghcr.io/${{ github.repository }}/hushline:buildcache,mode=max
+
+      - name: Record immutable release image
+        env:
+          RELEASE_IMAGE_DIGEST: ${{ steps.release_image.outputs.digest }}
+          RELEASE_IMAGE_TAG: ${{ github.ref_name }}
+        run: |
+          python - <<'PYTHON'
+          import json, os, re
+          digest = os.environ["RELEASE_IMAGE_DIGEST"]
+          if not re.fullmatch(r"sha256:[a-f0-9]{64}", digest):
+              raise SystemExit("Missing immutable release image digest")
+          with open("release-image.json", "w") as output:
+              json.dump({"tag": os.environ["RELEASE_IMAGE_TAG"], "source_sha": os.environ["GITHUB_SHA"], "digest": digest, "image": "ghcr.io/scidsg/hushline/hushline"}, output)
+          PYTHON
+      - name: Preserve release image identity
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: single-tenant-release-image
+          path: release-image.json
+          if-no-files-found: error
+          retention-days: 90

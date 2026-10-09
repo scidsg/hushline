@@ -10,6 +10,8 @@ import hmac
 import re
 from typing import Any
 
+from scripts.single_tenant_live_image import image_source
+
 SERVICE_COUNT = 2
 APP_REPOSITORY = "https://github.com/scidsg/hushline.git"
 PREFIX = "hushline-single-tenant-"
@@ -79,15 +81,19 @@ def general_runtime(entry: dict[str, Any], key: str, value: str) -> bool:
     }
 
 
-def guard_create(
+def guard_create(  # noqa: PLR0913 — separate credential, secret, entitlement and image trust roots
     plan: dict[str, Any],
     order: str,
     license_limit: int | None,
     *,
     automation_token: str,
     app_secrets: dict[str, str],
+    image_digest: str,
 ) -> None:
     name, app_name = identity(order)
+    expected_image = image_source(image_digest)
+    if plan.get("variables", {}).get("APP_IMAGE_DIGEST", {}).get("value") != image_digest:
+        raise ValueError("Plan image differs from the verified release build")
     guard_credentials(plan, automation_token)
     keys = {"SECRET_KEY", "ENCRYPTION_KEY", "SESSION_FERNET_KEY"}
     if set(app_secrets) != keys or any(not value for value in app_secrets.values()):
@@ -127,14 +133,21 @@ def guard_create(
                 "app-onion",
             }:
                 raise ValueError("Only the two owned app services are allowed")
-            for service in services:
-                git = service.get("git", [{}])[0]
+            jobs = specs[0].get("job", [])
+            if len(jobs) != 1 or jobs[0].get("name") != "initialize-instance":
+                raise ValueError("The exact owned initializer is required")
+            for component in [*services, *jobs]:
+                images = component.get("image", [])
                 if (
-                    git.get("branch") != "single-tenant/" + order
-                    or git.get("repo_clone_url") != APP_REPOSITORY
-                    or service.get("dockerfile_path") != "Dockerfile.prod"
+                    len(images) != 1
+                    or any(images[0].get(key) != value for key, value in expected_image.items())
+                    or images[0].get("tag")
+                    or any(
+                        component.get(key) for key in ("git", "github", "gitlab", "dockerfile_path")
+                    )
                 ):
-                    raise ValueError("App build branch belongs to another order")
+                    raise ValueError("Application source differs from its immutable release image")
+            for service in services:
                 env = service.get("env", [])
                 if len({e.get("key") for e in env}) != len(env):
                     raise ValueError("Ambiguous application configuration")

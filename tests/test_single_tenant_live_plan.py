@@ -4,9 +4,11 @@ from copy import deepcopy
 
 import pytest
 
+from scripts.single_tenant_live_image import image_source
 from scripts.single_tenant_live_plan import RESOURCES, guard_create, guard_delete, identity
 
 ORDER = "a" * 32
+DIGEST = "sha256:" + "b" * 64
 
 
 def credentials() -> dict[str, str]:
@@ -21,7 +23,9 @@ def credentials() -> dict[str, str]:
 def create(plan: dict, order: str, limit: int | None) -> None:
     secrets = credentials()
     token = secrets.pop("DO_TOKEN")
-    guard_create(plan, order, limit, automation_token=token, app_secrets=secrets)
+    guard_create(
+        plan, order, limit, automation_token=token, app_secrets=secrets, image_digest=DIGEST
+    )
 
 
 def deletion(plan: dict, order: str, ids: dict, *, phase: str) -> None:
@@ -70,16 +74,19 @@ def creation(limit: int | None = 25) -> dict:
                     {
                         "name": kind,
                         "env": env,
-                        "git": [
-                            {
-                                "branch": "single-tenant/" + ORDER,
-                                "repo_clone_url": "https://github.com/scidsg/hushline.git",
-                            }
-                        ],
-                        "dockerfile_path": "Dockerfile.prod",
+                        "image": [image_source(DIGEST)],
                     }
                 )
-            after = {"spec": [{"name": app, "service": services}], "project_id": None}
+            after = {
+                "spec": [
+                    {
+                        "name": app,
+                        "service": services,
+                        "job": [{"name": "initialize-instance", "image": [image_source(DIGEST)]}],
+                    }
+                ],
+                "project_id": None,
+            }
         if address in {"digitalocean_app.tenant", "digitalocean_database_cluster.tenant"}:
             unknown["project_id"] = True
         if address == "digitalocean_database_firewall.tenant":
@@ -98,7 +105,10 @@ def creation(limit: int | None = 25) -> dict:
         )
     return {
         "resource_changes": resources,
-        "variables": {key: {"value": value} for key, value in credentials().items()},
+        "variables": {
+            **{key: {"value": value} for key, value in credentials().items()},
+            "APP_IMAGE_DIGEST": {"value": DIGEST},
+        },
         "configuration": {
             "provider_config": {
                 "digitalocean": {
@@ -240,4 +250,25 @@ def test_general_type_alias_never_applies_to_private_runtime_secrets(kind: str) 
     )
     entry["type"] = kind
     with pytest.raises(ValueError, match="secret"):
+        create(plan, ORDER, 25)
+
+
+@pytest.mark.parametrize("kind", ["service", "job"])
+@pytest.mark.parametrize("bad", ["digest", "mutable", "repository"])
+def test_every_privileged_component_requires_the_exact_image(kind: str, bad: str) -> None:
+    plan = creation()
+    app = next(v for v in plan["resource_changes"] if v["address"] == "digitalocean_app.tenant")
+    component = app["change"]["after"]["spec"][0][kind][0]
+    if bad == "digest":
+        component["image"][0]["digest"] = "sha256:" + "c" * 64
+    elif bad == "repository":
+        component["image"][0]["repository"] = "foreign/image"
+    else:
+        component["git"] = [
+            {
+                "repo_clone_url": "https://github.com/scidsg/hushline.git",
+                "branch": "single-tenant/" + ORDER,
+            }
+        ]
+    with pytest.raises(ValueError, match="immutable release image"):
         create(plan, ORDER, 25)

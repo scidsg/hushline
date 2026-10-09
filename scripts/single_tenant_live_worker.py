@@ -142,6 +142,7 @@ def reconcile(values: dict[str, Any], store: Ledger) -> None:
         raise ValueError("An original request publication needs reconciliation")
     # This heartbeat proves the automatic worker and trusted Git transport work;
     # live sales still need the separate explicit release feature flag.
+    collector.image(values.get("authority_origin", ""))
     store.heartbeat(now=int(time.time()))
 
 

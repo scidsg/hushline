@@ -100,3 +100,14 @@ def test_release_discovery_outage_does_not_stop_existing_publication(
     assert transport.one.call_count == 2
     transport.prepare_release.assert_not_called()
     assert ledger.healthy(now=1000) is False
+
+
+def test_unavailable_release_image_withholds_sales_after_durable_work(
+    worker: tuple[Ledger, Any, Any],
+) -> None:
+    ledger, transport, collector = worker
+    collector.image.side_effect = ValueError("Image provenance unavailable")
+    with pytest.raises(ValueError, match="provenance"):
+        reconcile({"authority_origin": "https://tips.hushline.app"}, ledger)
+    transport.one.assert_called_once()
+    assert ledger.healthy(now=1000) is False

@@ -509,3 +509,21 @@ def test_ownership_preserves_provider_firewall_timestamp_and_hex_counter() -> No
     changed[FIREWALL_ADDRESS]["id"] = IDS[DATABASE_ADDRESS] + "-202610082221165544000000af"
     ids = validate_state(changed, ORDER)
     assert ids[FIREWALL_ADDRESS] == changed[FIREWALL_ADDRESS]["id"]
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://app.terraform.io/api/v2/workspaces/ws-foreign",
+        "https://api.digitalocean.com/v2/apps",
+        "https://api.digitalocean.com/v2/apps/invalid",
+        "https://api.digitalocean.com/v2/apps/00000000-0000-0000-0000-000000000001/deployments",
+    ],
+)
+def test_new_put_transport_is_limited_to_one_app_endpoint(mocker: MockFixture, url: str) -> None:
+    session = mocker.patch("scripts.single_tenant_live_ownership.requests.Session")
+    with pytest.raises(ValueError, match="exact owned endpoint"):
+        CloudAPI(
+            terraform_token=secrets.token_hex(16), digitalocean_token=secrets.token_hex(16)
+        ).request("PUT", url, {"spec": {}})
+    session.assert_not_called()
