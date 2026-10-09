@@ -289,8 +289,11 @@ build branch, workspace, state lineage, and project membership must match; no
 replacement, deletion, import, or database update is accepted. Fresh orders still
 refuse every existing workspace. An incomplete apply or ownership mismatch stops
 cleanup for operator review;
-there is no unguarded scheduled or HCP automatic destruction. Remove the
-`self-service-test` label on the controller PR to request guarded cleanup.
+there is no unguarded scheduled or HCP automatic destruction. This PR #2447
+rehearsal is now retired: its five orders completed guarded cleanup and safe
+empty-workspace deletion. The workflow is an archived regression-test fixture,
+and its GitHub environment is removed. Historical label instructions no longer
+authorize any deployment. See [the retirement record](SELF-SERVICE-TEST-RETIREMENT.md).
 
 ### Annual Single Tenant cancellation
 

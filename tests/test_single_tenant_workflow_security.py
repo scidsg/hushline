@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 def test_legacy_privileged_jobs_execute_only_trusted_base_code() -> None:
-    text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
+    text = Path("tests/fixtures/archived-workflows/self_service_test_deploy.yml").read_text()
     assert "  pull_request_target:" in text
     assert "  pull_request:" not in text
     assert "PYTHONPATH: ${{ github.workspace }}/trusted" in text
@@ -43,3 +43,9 @@ def test_customer_workflow_has_no_repository_credential_fallback() -> None:
     assert "secrets.SINGLE_TENANT_CONFIG_READ_TOKEN" in text
     assert "secrets.HUSHLINE_INFRA_STAGING_PAT" not in text
     assert not re.search(r"secrets\.[A-Z_]+\s*\|\|\s*secrets\.", text)
+
+
+def test_retired_rehearsal_cannot_run_as_a_github_workflow() -> None:
+    assert not Path(".github/workflows/self_service_test_deploy.yml").exists()
+    for workflow in Path(".github/workflows").glob("*.y*ml"):
+        assert "environment: self-service-test-2447" not in workflow.read_text()

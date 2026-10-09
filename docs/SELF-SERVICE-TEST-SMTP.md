@@ -1,5 +1,10 @@
 # Original test instance SMTP
 
+> Historical PR #2447 rehearsal documentation. The workflow and GitHub
+> environment are retired; the label instructions below are inactive. See the
+> [retirement record](SELF-SERVICE-TEST-RETIREMENT.md). For the current paid
+> customer lifecycle, use [Single Tenant operations](SINGLE-TENANT-OPERATIONS.md).
+
 The original paid test order for `hushline.foo` can receive the dedicated
 single-tenant Riseup account through `self-service-smtp-configure` on PR 2447.
 This is an in-place application configuration update, not provisioning.

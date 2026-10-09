@@ -72,7 +72,7 @@ def test_absent_pointer_disables_all_cloud_steps(
 
 
 def test_retirement_workflow_has_independent_guards() -> None:
-    text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
+    text = Path("tests/fixtures/archived-workflows/self_service_test_deploy.yml").read_text()
     job = text.split("  retire:\n")[1].split("  inspect:\n")[0]
     assert "number == 2447" in job
     assert "environment: self-service-test-2447" in job

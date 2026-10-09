@@ -214,7 +214,7 @@ def test_smtp_operations_reject_foreign_order_before_cloud_access(
 
 
 def test_workflow_does_not_reinitialize_or_provision_for_smtp() -> None:
-    text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
+    text = Path("tests/fixtures/archived-workflows/self_service_test_deploy.yml").read_text()
     job = text.split("  smtp-configure:\n")[1]
     assert "self-service-test-2447" in job
     assert "HUSHLINE_SINGLE_TENANT_SMTP_PASSWORD" in job

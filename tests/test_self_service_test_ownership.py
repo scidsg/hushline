@@ -239,7 +239,7 @@ def test_nonempty_workspace_is_never_deleted(monkeypatch: pytest.MonkeyPatch) ->
 
 
 def test_workflow_cannot_sweep_other_instances() -> None:
-    text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
+    text = Path("tests/fixtures/archived-workflows/self_service_test_deploy.yml").read_text()
     assert "secrets.SELF_SERVICE_TEST_CONFIG_READ_TOKEN" in text
     assert "secrets.HUSHLINE_INFRA_STAGING_PAT" not in text
     assert "secrets.HUSHLINE_INFRA_TOKEN" not in text
@@ -1197,7 +1197,7 @@ def test_finalization_rejects_other_order_before_cloud_requests(
 
 
 def test_finalization_workflow_cannot_redeploy_or_regenerate_claim() -> None:
-    text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
+    text = Path("tests/fixtures/archived-workflows/self_service_test_deploy.yml").read_text()
     finalization = text.split("  finalize:\n")[1].split("  repair-claim:\n")[0]
     assert "terraform" not in finalization
     assert "prepare_self_service_test" not in finalization
@@ -1379,7 +1379,7 @@ def test_claim_plan_only_updates_original_initializer(
 
 
 def test_each_onion_verification_job_installs_tor_first() -> None:
-    text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
+    text = Path("tests/fixtures/archived-workflows/self_service_test_deploy.yml").read_text()
     for job, next_job in [
         ("deploy", "finalize"),
         ("finalize", "repair-claim"),
@@ -1392,7 +1392,7 @@ def test_each_onion_verification_job_installs_tor_first() -> None:
 
 
 def test_onion_verification_uses_its_own_tor_listener() -> None:
-    text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
+    text = Path("tests/fixtures/archived-workflows/self_service_test_deploy.yml").read_text()
     for job, next_job in [
         ("deploy", "finalize"),
         ("finalize", "repair-claim"),
