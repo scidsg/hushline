@@ -440,7 +440,8 @@ Single Tenant provisioning and managed updates execute the immutable image from 
 
 Operators of provisioned Single Tenant and DIY instances can see an update notice
 in the footer when their installed version is older than the latest stable release,
-including when they customize the app name. It links to release notes so they can
+including when they customize the app name. The red **update available** link
+opens release notes so they can
 update through their existing deployment method. Background server checks and a
 daily cache keep page rendering independent of GitHub availability. Visitors send
 no release-check requests. Onion deployments default to no outbound check unless

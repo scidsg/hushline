@@ -2845,6 +2845,16 @@ footer .powered-by {
   font-size: var(--font-size-smaller);
 }
 
+footer .update-notice a {
+  color: var(--color-error);
+}
+
+@media (prefers-color-scheme: dark) {
+  footer .update-notice a {
+    color: var(--color-error-dark);
+  }
+}
+
 footer a:hover {
   text-decoration: underline;
 }

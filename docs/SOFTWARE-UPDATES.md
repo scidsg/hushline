@@ -1,6 +1,6 @@
 # Software update notice
 
-Provisioned and DIY instances show **Update available: v…** in the footer when a
+Provisioned and DIY instances show **update available** in the footer when a
 newer stable Hush Line release is known. The notice appears regardless of the app
 name and links to the official release notes. The installed version and existing
 branding remain visible. The notice does not install software or change settings.
