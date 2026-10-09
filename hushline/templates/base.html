@@ -273,7 +273,7 @@
             {% endif %}
             {% if 'user_id' in session and session.get('is_authenticated', False) %}
               {% if is_premium_enabled and user and user.is_free_tier %}
-                <li><a href="{{ url_for('premium.index') }}">Upgrade</a></li>
+                <li><a href="{{ url_for('premium.select_tier' if is_single_tenant_enabled else 'premium.index') }}">Upgrade</a></li>
               {% endif %}
             {% endif %}
             <li><a href="{{ url_for('directory') }}">Directory</a></li>

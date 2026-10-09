@@ -321,7 +321,11 @@ fixture remain protected; real billing and production policies are unchanged.
 ### Account-bound Single Tenant subscriptions
 
 Users create and authenticate a normal Hush Line account before choosing Free,
-Super User, or Single Tenant. Single Tenant uses the existing UI framework and
+Super User, or Single Tenant. Registered Free users can revisit those choices through
+the header’s **Upgrade** link when Single Tenant is enabled. Existing subscription
+management continues through the premium billing page.
+
+Single Tenant uses the existing UI framework and
 requires a complete annual payment upfront. Pricing updates as the license count
 changes; Unlimited licenses cost $20,000/year before infrastructure and the three
 existing percentage charges. Verified Stripe payment authorizes provisioning.
