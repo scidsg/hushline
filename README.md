@@ -178,6 +178,16 @@ If local audit commands are blocked by network/tooling availability, document th
 
 More screenshots: <https://github.com/scidsg/hushline-screenshots/tree/main/releases/latest>
 
+## Quotes
+
+### Psst
+
+“Psst.org uses Hush Line as our platform for the Psst Safe, where tech and AI worker can make collective disclosures and get pro bono support. Its straightforward architecture made it adaptable to our needs and a core part of our whistleblower infrastructure, supporting intake, identity protection and the secure storage of disclosures so insiders can collectivize.”
+
+### Center for Investigative Reporting
+
+"The simplicity and security of Hush Line are an incredible match for the world of investigative journalism. Our team can manage our tip line themselves, something I simply cannot say about other options."
+
 ## In the Media
 
 ### Privacy Guides
