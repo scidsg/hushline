@@ -1,4 +1,5 @@
 import pytest
+from bs4 import BeautifulSoup
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 from pytest_mock import MockFixture
@@ -18,8 +19,9 @@ def test_footer_shows_update_for_default_and_custom_brand_without_broadening_csp
     )
     response = client.get(url_for("directory"), follow_redirects=True)
     assert response.status_code == 200
-    assert ">update available</a" in response.text
-    assert "0.7.28" not in response.text
+    notice = BeautifulSoup(response.text, "html.parser").select_one("footer .update-notice")
+    assert notice is not None
+    assert notice.get_text(" ", strip=True) == "| ⚠️ Update available"
     assert f'href="{RELEASE_PAGE}"' in response.text
     assert ("Powered by Hush Line" in response.text) == (brand_name != "🤫 Hush Line")
     directives = dict(
@@ -39,5 +41,5 @@ def test_footer_does_not_claim_unknown_release_is_current(
     mocker.patch.object(app.extensions["hushline_release_check"], "newer_than", return_value=None)
     response = client.get(url_for("directory"), follow_redirects=True)
     assert response.status_code == 200
-    assert "update available" not in response.text
+    assert "Update available" not in response.text
     assert "up to date" not in response.text.lower()

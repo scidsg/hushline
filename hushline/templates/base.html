@@ -365,14 +365,15 @@
             | 
             <a href="https://hushline.app" class="powered-by">⚡️ Powered by Hush Line</a>
           {% endif %}
+          {% if hushline_update_version %}
+            <span class="update-notice">
+              |
+              <a href="{{ hushline_release_page }}" target="_blank" rel="noopener noreferrer"
+                >⚠️ Update available</a
+              >
+            </span>
+          {% endif %}
         </p>
-        {% if hushline_update_version %}
-          <p class="update-notice">
-            <a href="{{ hushline_release_page }}" target="_blank" rel="noopener noreferrer"
-              >update available</a
-            >
-          </p>
-        {% endif %}
       </footer>
     {% endblock %}
 
