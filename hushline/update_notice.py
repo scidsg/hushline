@@ -10,7 +10,7 @@ import urllib.request
 from collections.abc import Callable
 from typing import Any
 
-from flask import Flask
+from flask import Flask, request
 
 from hushline.version import __version__
 
@@ -109,6 +109,7 @@ def init_app(app: Flask) -> None:
         onion = bool(app.config.get("ONION_HOSTNAME")) or str(
             app.config.get("SERVER_NAME") or ""
         ).split(":", 1)[0].lower().endswith(".onion")
+        onion = onion or request.host.split(":", 1)[0].lower().endswith(".onion")
         enabled = app.config.get("UPDATE_CHECK_ENABLED", not onion)
         latest = check.newer_than(__version__) if enabled and not app.testing else None
         return {"hushline_update_version": latest, "hushline_release_page": RELEASE_PAGE}

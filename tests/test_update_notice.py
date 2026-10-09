@@ -171,3 +171,12 @@ def test_explicit_onion_opt_in_and_fixed_link(mocker: MockFixture) -> None:
 @pytest.mark.parametrize(("value", "expected"), [("true", True), ("false", False)])
 def test_update_check_environment_switch(value: str, expected: bool) -> None:
     assert load_config({"UPDATE_CHECK_ENABLED": value})["UPDATE_CHECK_ENABLED"] is expected
+
+
+def test_onion_request_without_static_hostname_defaults_to_no_check(mocker: MockFixture) -> None:
+    app = Flask(__name__)
+    init_app(app)
+    check = mocker.patch.object(app.extensions["hushline_release_check"], "newer_than")
+    with app.test_request_context(base_url="http://example.onion"):
+        assert render_template_string("{{ hushline_update_version }}") == "None"
+    check.assert_not_called()
