@@ -507,3 +507,23 @@ def test_docs_screenshots_manifest_artvandelay_profile_cleanup_accepts_delete_co
     assert setup_delete_actions
     assert all(action["acceptDialog"] is True for action in reset_delete_actions)
     assert all(action["acceptDialog"] is True for action in setup_delete_actions)
+
+
+def test_single_tenant_scenes_are_selected_by_documentation_references() -> None:
+    module = _load_allowlist_script()
+    patterns = module.compile_reference_patterns("src/assets/img/screenshots")
+    refs = module.collect_references(
+        REPO_ROOT,
+        docs_only=True,
+        patterns=patterns,
+        screenshot_root="src/assets/img/screenshots",
+    )
+    scenes = [
+        scene for scene in _manifest()["scenes"] if scene["slug"].startswith("single-tenant-")
+    ]
+    assert len(scenes) == 12
+    for scene in scenes:
+        for viewport in ("desktop", "mobile"):
+            for theme in ("light", "dark"):
+                assert f"{scene['session']}/{scene['slug']}-{viewport}-{theme}-full.png" in refs
+    assert _scene_map()["single-tenant-claim"]["screenshotMasks"] == ["main code"]

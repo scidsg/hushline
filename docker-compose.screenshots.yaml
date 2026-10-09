@@ -1,0 +1,17 @@
+# Disposable local capture only; never use this entrypoint for production.
+services:
+  app:
+    environment:
+      DOCS_SCREENSHOT_FIXTURES: "1"
+    command:
+      [
+        "poetry",
+        "run",
+        "flask",
+        "--app",
+        "scripts.docs_screenshot_app:create_screenshot_app",
+        "run",
+        "--host=0.0.0.0",
+        "--port=8080",
+        "--with-threads",
+      ]
