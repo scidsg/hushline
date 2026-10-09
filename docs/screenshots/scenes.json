@@ -1243,10 +1243,25 @@
       "slug": "single-tenant-plans",
       "title": "Single Tenant \u2014 Choose a plan",
       "session": "single-tenant-plans",
-      "path": "/single-tenant/plans",
+      "path": "/directory",
       "captureModes": ["full"],
       "fullPageOptional": false,
-      "waitForSelector": "h2"
+      "waitForSelector": "header",
+      "actions": [
+        {
+          "type": "click_if_exists",
+          "selector": "button[aria-controls=\"primary-nav\"]"
+        },
+        {
+          "type": "click",
+          "selector": "#primary-nav a:has-text(\"Upgrade\")",
+          "waitForNetworkIdle": true
+        },
+        {
+          "type": "wait_for",
+          "selector": "form[action=\"/single-tenant/select\"] button"
+        }
+      ]
     },
     {
       "slug": "single-tenant-licenses",

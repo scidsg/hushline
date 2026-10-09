@@ -5,6 +5,7 @@ from collections.abc import Callable
 from typing import Any
 
 import pytest
+from bs4 import BeautifulSoup
 from flask import Flask
 from flask.testing import FlaskClient
 from pytest_mock import MockFixture
@@ -86,6 +87,50 @@ def test_free_plan_continues_to_onboarding(client: FlaskClient, user: User) -> N
     db.session.commit()
     response = client.post("/premium/select-tier/free")
     assert response.location.endswith("/onboarding")
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.parametrize("enabled", [True, False])
+def test_registered_free_user_header_upgrade_offers_enabled_plans(
+    app: Flask,
+    client: FlaskClient,
+    user: User,
+    mocker: MockFixture,
+    enabled: bool,
+) -> None:
+    app.config["SINGLE_TENANT_ENABLED"] = enabled
+    assert user.is_free_tier
+    remote = mocker.patch("hushline.single_tenant.call")
+    checkout = mocker.patch("hushline.premium.stripe.checkout.Session.create")
+    page = client.get("/directory")
+    assert page.status_code == 200
+    header = BeautifulSoup(page.data, "html.parser").select_one("#primary-nav")
+    assert header is not None
+    upgrade = next(link for link in header.select("a") if link.get_text(strip=True) == "Upgrade")
+    href = str(upgrade["href"])
+    assert href == ("/premium/select-tier" if enabled else "/premium/")
+    plans = client.get(href, follow_redirects=True)
+    assert plans.status_code == 200
+    if enabled:
+        assert plans.request.path == "/single-tenant/plans"
+        assert b"Use Free Plan" in plans.data
+        assert b"Upgrade to Super User" in plans.data
+        assert b"Choose Single Tenant" in plans.data
+        assert b'action="/single-tenant/select"' in plans.data
+    else:
+        assert plans.request.path == "/premium/"
+        assert b"Choose Single Tenant" not in plans.data
+    for response in (page, plans):
+        csp = response.headers["Content-Security-Policy"]
+        assert "script-src 'self'" in csp
+        assert "'unsafe-eval'" not in csp
+        assert "form-action 'self' https://checkout.stripe.com https://billing.stripe.com" in csp
+    remote.assert_not_called()
+    checkout.assert_not_called()
+    assert (
+        db.session.scalar(db.select(SingleTenantOrder).where(SingleTenantOrder.user_id == user.id))
+        is None
+    )
 
 
 def test_license_price_updates_without_an_extra_price_button(
