@@ -343,6 +343,9 @@ def _load_hushline_misc(env: Mapping[str, str]) -> Mapping[str, Any]:
     if key := env.get("SESSION_FERNET_KEY"):
         data["SESSION_FERNET_KEY"] = key
 
+    if value := env.get("UPDATE_CHECK_ENABLED"):
+        data["UPDATE_CHECK_ENABLED"] = parse_bool(value)
+
     if onion := env.get("ONION_HOSTNAME"):
         data["ONION_HOSTNAME"] = onion
 

@@ -366,6 +366,13 @@
             <a href="https://hushline.app" class="powered-by">⚡️ Powered by Hush Line</a>
           {% endif %}
         </p>
+        {% if hushline_update_version %}
+          <p class="update-notice">
+            <a href="{{ hushline_release_page }}" target="_blank" rel="noopener noreferrer"
+              >Update available: v{{ hushline_update_version }}</a
+            >
+          </p>
+        {% endif %}
       </footer>
     {% endblock %}
 
