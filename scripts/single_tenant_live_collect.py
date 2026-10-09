@@ -17,8 +17,10 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from scripts.single_tenant_live_envelope import decrypt
+from scripts.single_tenant_live_image import release_image
 from scripts.single_tenant_live_ledger import Ledger
 from scripts.single_tenant_live_publish import Publisher
+from scripts.single_tenant_live_release import resolve
 
 MAX_RESPONSE_BYTES = 16777216
 MAX_PAGES = 10
@@ -64,6 +66,17 @@ class Collector:
         if result.returncode or len(result.stdout) > MAX_RESPONSE_BYTES:
             raise ValueError("Read-only workflow status is unavailable")
         return result.stdout
+
+    def image(self, authority_origin: str) -> None:
+        released = resolve(authority_origin, self.document)
+        release_image(
+            released.tag,
+            released.source_sha,
+            self.document,
+            lambda identifier: self.api(
+                f"repos/scidsg/hushline/actions/artifacts/{identifier}/zip"
+            ),
+        )
 
     def document(self, path: str) -> dict[str, Any]:
         value = json.loads(self.api(path))

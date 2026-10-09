@@ -48,7 +48,16 @@ class CloudAPI:
         self, method: str, url: str, payload: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         origin = next((host for host in self.tokens if url.startswith(host + "/")), None)
-        if origin is None or method not in {"GET", "POST", "PATCH"}:
+        if (
+            method == "PUT"
+            and re.fullmatch(
+                r"https://api\.digitalocean\.com/v2/apps/[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}",
+                url,
+            )
+            is None
+        ):
+            raise ValueError("App update escaped its exact owned endpoint")
+        if origin is None or method not in {"GET", "POST", "PATCH", "PUT"}:
             raise ValueError("Unsupported cloud control-plane request")
         try:
             with requests.Session() as session:

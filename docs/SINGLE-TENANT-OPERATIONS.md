@@ -278,14 +278,30 @@ controller-managed instance whose paid year remains active. Cancelling renewal
 still permits upgrades through the paid-through date. Retiring and retired
 instances are excluded. Legacy instances outside this controller are not adopted.
 
-Each upgrade uses a signed, fast-forward candidate containing exactly the released
-source tree plus an opaque order/version marker. The trusted workflow independently
-rechecks production, billing authority, and the owned workspace/project/app/database.
-It updates the existing customer's build branch and requests a deployment of the
-existing app specification; it does not replace resources or rewrite credentials.
-The existing initializer applies migrations without resetting the administrator
-claim or application keys. Success requires all three build components to report
-the exact candidate commit in an ACTIVE deployment.
+Each upgrade keeps a signed, fast-forward release marker for ownership and release
+history. Executable source comes from the production release image, pinned to its
+SHA-256 digest for both services and the privileged initializer. The release build
+records that digest in `single-tenant-release-image`; the controller and driver
+verify the original successful tag build, repository, source commit, artifact
+identity, archive digest, and exact image name before accepting it. Moving a
+customer branch or image tag cannot replace these deployed bytes.
+
+Upgrades change only those three components' image sources on the already-owned
+app. They preserve the current runtime environments, encrypted secret values,
+domain, worker, database, project and resource IDs. The next Terraform retirement
+plan refreshes the app state and retains the exact-ID deletion guard. A legacy
+order-specific Git source may migrate to the pinned image; arbitrary repository
+sources cannot. The final ACTIVE deployment must contain the expected image digest.
+
+Merge the paired app and infrastructure changes, then publish and deploy a normal
+app release through the existing version-branch/tag process. Older releases have
+no image identity artifact and intentionally cannot enable new checkout under
+this controller. Deploy the controller from the reviewed app and infrastructure
+commits after that release. Image artifacts are retained for 90 days; unavailable,
+expired or tampered provenance withholds the healthy heartbeat and sales readiness.
+Durable publication and expiry work still run before this image readiness check.
+Publish a current release before the active release artifact expires. No mutable
+source fallback is permitted.
 
 Provisioning, upgrades, and retirement share a per-order workflow queue. A late
 upgrade callback cannot restore a retiring instance. Failures remain visible in

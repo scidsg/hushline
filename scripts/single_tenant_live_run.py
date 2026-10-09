@@ -12,6 +12,7 @@ import os
 import re
 import secrets
 import subprocess
+import sys
 import tempfile
 import time
 from collections.abc import Iterator
@@ -25,6 +26,7 @@ from cryptography.fernet import Fernet
 
 from scripts.single_tenant_live_envelope import encrypt
 from scripts.single_tenant_live_hcp import HCP
+from scripts.single_tenant_live_image import MAX_ARCHIVE_BYTES, release_image
 from scripts.single_tenant_live_lifecycle import Lifecycle
 from scripts.single_tenant_live_ownership import CloudAPI, Ownership, verify_team
 from scripts.single_tenant_live_payment import verify
@@ -50,7 +52,20 @@ class GitHub:
             "/repos/scidsg/hushline-infra/"
         ):
             raise ValueError("Repository request escaped its trust root")
-        if method not in {"GET", "POST"}:
+        if method == "PATCH":
+            if (
+                re.fullmatch(
+                    r"/repos/scidsg/hushline/git/refs/heads/single-tenant/[a-f0-9]{32}", path
+                )
+                is None
+                or not isinstance(payload, dict)
+                or set(payload) != {"sha", "force"}
+                or not isinstance(payload["sha"], str)
+                or re.fullmatch(r"[a-f0-9]{40}", payload["sha"]) is None
+                or payload["force"] is not False
+            ):
+                raise ValueError("Repository ref update escaped its exact customer scope")
+        elif method not in {"GET", "POST"}:
             raise ValueError("Unsupported repository request")
         try:
             with requests.Session() as client:
@@ -81,6 +96,32 @@ class GitHub:
             return result
         except requests.RequestException:
             raise ValueError("Exact repository request failed") from None
+
+    def artifact(self, identifier: int) -> bytes:
+        if isinstance(identifier, bool) or not isinstance(identifier, int) or identifier < 1:
+            raise ValueError("Exact release artifact identity is required")
+        try:
+            result = subprocess.run(
+                [  # noqa: S603 — fixed CLI and validated numeric artifact
+                    "/usr/bin/gh" if sys.platform == "linux" else "/opt/homebrew/bin/gh",
+                    "api",
+                    f"repos/scidsg/hushline/actions/artifacts/{identifier}/zip",
+                ],
+                env={
+                    "PATH": "/usr/bin:/bin",
+                    "GH_TOKEN": self.token,
+                    "GH_HOST": "github.com",
+                    "HOME": str(Path.home()),
+                },
+                capture_output=True,
+                check=False,
+                timeout=30,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            raise ValueError("Exact release artifact is unavailable") from None
+        if result.returncode or len(result.stdout) > MAX_ARCHIVE_BYTES:
+            raise ValueError("Exact release artifact is unavailable")
+        return bytes(result.stdout)
 
     def content(self, repo: str, path: str, sha: str) -> dict[str, Any]:
         result = self.request("GET", f"/repos/scidsg/{repo}/contents/{path}?ref={sha}")
@@ -249,6 +290,9 @@ def variables(config: dict[str, Any], *, service: Path | None) -> dict[str, Any]
         "DO_TOKEN": os.environ["SINGLE_TENANT_DO_TOKEN"],
         "name": name,
         "branch": "single-tenant/" + config["order_id"],
+        "APP_IMAGE_DIGEST": config["app_image_digest"]
+        if service is not None
+        else "sha256:" + "0" * 64,
         "license_limit": config["payment"]["license_limit"],
         "custom_domain": config["domain"],
         "SECRET_KEY": secrets.token_hex(32),
@@ -374,9 +418,14 @@ def execute(root: Path, result_dir: Path) -> None:
     try:
         if pointer.purpose == "provision":
             stage = "release"
-            config["build_source_sha"] = resolve(
-                authority_origin, lambda path: public.request("GET", "/" + path)
-            ).source_sha
+            released = resolve(authority_origin, lambda path: public.request("GET", "/" + path))
+            config["build_source_sha"] = released.source_sha
+            config["app_image_digest"] = release_image(
+                released.tag,
+                released.source_sha,
+                lambda path: public.request("GET", "/" + path),
+                public.artifact,
+            )
             stage = "onion-identity"
             with tor() as (service, _):
                 stage = "provisioning"
@@ -386,6 +435,7 @@ def execute(root: Path, result_dir: Path) -> None:
                 ownership=owner,
                 hcp=engine.hcp,
                 github=public.request,
+                archive=public.artifact,
                 authority=authority,
                 authority_origin=authority_origin,
                 progress=progress,

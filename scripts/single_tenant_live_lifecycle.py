@@ -53,6 +53,7 @@ class Lifecycle:
             order,
             config["payment"]["license_limit"],
             automation_token=variables["DO_TOKEN"],
+            image_digest=variables["APP_IMAGE_DIGEST"],
             app_secrets={
                 key: variables[key]
                 for key in ("SECRET_KEY", "ENCRYPTION_KEY", "SESSION_FERNET_KEY")

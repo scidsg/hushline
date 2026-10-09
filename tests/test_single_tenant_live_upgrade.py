@@ -8,12 +8,14 @@ from typing import Any, cast
 import pytest
 from pytest_mock import MockFixture
 
+from scripts.single_tenant_live_image import image_source
 from scripts.single_tenant_live_ownership import APP_ADDRESS
 from scripts.single_tenant_live_release import Release
 from scripts.single_tenant_live_upgrade import Upgrade
 from tests.test_single_tenant_live_ledger import ORDER
 
 SOURCE, BUILD, PREVIOUS = "1" * 40, "2" * 40, "3" * 40
+DIGEST = "sha256:" + "b" * 64
 DEPLOYMENT = "12345678-1234-1234-1234-123456789012"
 APP = "87654321-1234-1234-1234-123456789012"
 
@@ -22,8 +24,21 @@ def deployment(sha: str = BUILD) -> dict[str, Any]:
     return {
         "id": DEPLOYMENT,
         "phase": "ACTIVE",
-        "services": [{"name": name, "source_commit_hash": sha} for name in ("app", "app-onion")],
-        "jobs": [{"name": "initialize-instance", "source_commit_hash": sha}],
+        "spec": {
+            "services": [
+                {
+                    "name": name,
+                    "image": image_source(DIGEST if sha == BUILD else "sha256:" + "c" * 64),
+                }
+                for name in ("app", "app-onion")
+            ],
+            "jobs": [
+                {
+                    "name": "initialize-instance",
+                    "image": image_source(DIGEST if sha == BUILD else "sha256:" + "c" * 64),
+                }
+            ],
+        },
     }
 
 
@@ -48,7 +63,11 @@ def upgrade(mocker: MockFixture) -> tuple[Upgrade, Any, dict[str, Any], Any]:
         "active_deployment": deployment(PREVIOUS),
     }
     owner.do.side_effect = [{"app": app}, {"app": app}, {"deployment": deployment()}]
-    owner.request.return_value = {"deployment": {"id": DEPLOYMENT}}
+
+    def update(method: str, url: str, data: dict[str, Any]) -> dict[str, Any]:
+        return {"app": {"spec": data["spec"], "pending_deployment": deployment()}}
+
+    owner.request.side_effect = update
     target = {"tag": "v0.7.27", "source_sha": SOURCE, "build_sha": BUILD, "previous_sha": PREVIOUS}
     config = {"order_id": ORDER, "release": target}
     instance = Upgrade(
@@ -63,6 +82,8 @@ def upgrade(mocker: MockFixture) -> tuple[Upgrade, Any, dict[str, Any], Any]:
         "scripts.single_tenant_live_upgrade.resolve", return_value=Release("v0.7.27", SOURCE)
     )
     mocker.patch("scripts.single_tenant_live_upgrade.state_resources", return_value={})
+    instance.archive = mocker.Mock()
+    mocker.patch("scripts.single_tenant_live_upgrade.release_image", return_value=DIGEST)
     mocker.patch.object(instance, "build")
     return instance, owner, config, app
 
@@ -74,11 +95,20 @@ def test_redeploys_only_owned_app_without_changing_spec_or_secrets(
     unchanged = deepcopy(app)
     assert instance.run(config) == {"state": "upgraded", "deployment_id": DEPLOYMENT}
     assert app == unchanged
-    owner.request.assert_called_once_with(
-        "POST",
-        "https://api.digitalocean.com/v2/apps/" + APP + "/deployments",
-        {"force_build": True},
+    assert owner.request.call_count == 1
+    assert owner.request.call_args.args[:2] == (
+        "PUT",
+        "https://api.digitalocean.com/v2/apps/" + APP,
     )
+    sent = owner.request.call_args.args[2]["spec"]
+    for previous, current in zip(
+        [*app["spec"]["services"], *app["spec"]["jobs"]],
+        [*sent["services"], *sent["jobs"]],
+        strict=True,
+    ):
+        assert current["image"] == image_source(DIGEST)
+        assert "git" not in current
+        assert current["envs"] == previous["envs"]
     assert cast(Any, instance.authority).call_count == 2
     assert owner.owned.call_count == 2
 
@@ -249,3 +279,29 @@ def test_exact_pending_deployment_recovers_without_another_cloud_write(
     app["pending_deployment"]["phase"] = "BUILDING"
     assert instance.run(config)["state"] == "upgraded"
     owner.request.assert_not_called()
+
+
+def test_existing_pinned_instance_advances_only_image_source(
+    upgrade: tuple[Upgrade, Any, dict, Any],
+) -> None:
+    instance, owner, config, app = upgrade
+    for component in [*app["spec"]["services"], *app["spec"]["jobs"]]:
+        component.pop("git")
+        component["image"] = image_source("sha256:" + "c" * 64)
+    assert instance.run(config)["state"] == "upgraded"
+    sent = owner.request.call_args.args[2]["spec"]
+    assert all(c["image"] == image_source(DIGEST) for c in [*sent["services"], *sent["jobs"]])
+
+
+def test_failed_image_provenance_never_changes_branch_or_app(
+    upgrade: tuple[Upgrade, Any, dict, Any], mocker: MockFixture
+) -> None:
+    instance, owner, config, _ = upgrade
+    mocker.patch(
+        "scripts.single_tenant_live_upgrade.release_image",
+        side_effect=ValueError("Image provenance invalid"),
+    )
+    with pytest.raises(ValueError, match="provenance"):
+        instance.run(config)
+    owner.request.assert_not_called()
+    cast(Any, instance.build).assert_not_called()

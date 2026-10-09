@@ -430,3 +430,5 @@ A queued customer Terraform apply remains provisioning until the exact saved run
 When HCP returns an authenticated state-download route, automation resolves only that exact state version and fetches the signed Archivist artifact without forwarding the API token.
 
 Customer ownership preserves the provider-generated database firewall ID, including its database UUID prefix and timestamp/counter suffix. A firewall ID for another database, a bare UUID, or a malformed suffix cannot be recorded or used for lifecycle actions.
+
+Single Tenant provisioning and managed updates execute the immutable image from the verified production release build. Both application services and the initializer share its SHA-256 digest. Missing or expired image provenance blocks new checkout; the normal production release process remains the source of customer updates.

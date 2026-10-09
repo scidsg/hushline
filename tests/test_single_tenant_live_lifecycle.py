@@ -74,6 +74,7 @@ def setup() -> tuple[Lifecycle, Mock, Mock, Mock]:
 def variables() -> dict[str, Any]:
     return {
         **credentials(),
+        "APP_IMAGE_DIGEST": "sha256:" + "b" * 64,
         "ONION_HOSTNAME": "a" * 56 + ".onion",
         "single_tenant_admin_claim": "c" * 22,
     }
