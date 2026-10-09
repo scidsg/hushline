@@ -1,5 +1,10 @@
 # Annual Single Tenant cancellation
 
+> Historical PR #2447 rehearsal documentation. The workflow and GitHub
+> environment are retired; the label instructions below are inactive. See the
+> [retirement record](SELF-SERVICE-TEST-RETIREMENT.md). For the current paid
+> customer lifecycle, use [Single Tenant operations](SINGLE-TENANT-OPERATIONS.md).
+
 Cancellation stops renewal. The instance remains available through the full
 prepaid annual term. At the recorded UTC period end, the instance and its stored
 messages are deleted with no export grace period. Cancelling must clearly explain

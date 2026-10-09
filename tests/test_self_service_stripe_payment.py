@@ -166,7 +166,7 @@ def test_invoice_period_and_price_components_are_verified() -> None:
 
 
 def test_stripe_workflow_has_paid_gate_and_unchanged_order_before_apply() -> None:
-    text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
+    text = Path("tests/fixtures/archived-workflows/self_service_test_deploy.yml").read_text()
     job = text.split("  stripe-deploy:\n")[1].split("  finalize:\n")[0]
     assert "number == 2447" in job
     assert "environment: self-service-test-2447" in job

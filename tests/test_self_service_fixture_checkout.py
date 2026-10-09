@@ -81,7 +81,7 @@ def test_pointer_cannot_create_original_or_retired_fixture(tmp_path: Path, order
 
 
 def test_empty_request_cannot_run_cloud_steps() -> None:
-    text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
+    text = Path("tests/fixtures/archived-workflows/self_service_test_deploy.yml").read_text()
     job = text.split("  fixture-create:\n")[1].split("  retire:\n")[0]
     assert "self-service-teardown-fixture" not in job
     steps = job.split("      - name: ")[1:]

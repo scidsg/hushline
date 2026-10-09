@@ -174,22 +174,15 @@ operations. No Stripe key enters the controller, Git requests or cloud jobs.
 Retain the existing dedicated notification configuration; this release changes
 no sender addresses.
 
-The legacy PR #2447 workflow is disabled during credential-boundary remediation.
-Label-driven legacy deployment requires a fresh label action for the current
-immutable PR head; an old label cannot authorize subsequent pushes. Closing the
-PR does not delete resources. Legacy cleanup requires explicit removal of the
-test label and the existing exact-order retirement guards. These two jobs read
-only their immutable private JSON order through the GitHub API, never check out
-private repository code. The paid customer lifecycle uses its independent
-payment authority and dedicated Single Tenant provider credentials.
-Before enabling it, restrict `self-service-test-2447` to branch `main` and install
-dedicated `SELF_SERVICE_TEST_DO_TOKEN`, `SELF_SERVICE_TEST_TF_TOKEN`,
-`SELF_SERVICE_TEST_CONFIG_READ_TOKEN`, and `SELF_SERVICE_TEST_STRIPE_KEY` in that
-environment. It uses the trusted base-branch workflow and validators; the PR
-checkout supplies request data only. Keep the existing environment SMTP roles
-restricted there. Do not substitute customer automation or repository-level
-staging credentials. Review historical runs and provider audit logs, then rotate
-the previously exposed staging credentials without interrupting other consumers.
+The legacy PR #2447 rehearsal is retired. Its workflow is archived as an inert
+regression-test fixture at
+`tests/fixtures/archived-workflows/self_service_test_deploy.yml`; it is no longer
+a GitHub Actions workflow. The `self-service-test-2447` GitHub environment and its
+legacy secret copies are removed after verified cleanup. Historical runs remain
+available; see [the retirement record](SELF-SERVICE-TEST-RETIREMENT.md). Do not
+re-enable its labels or recreate that environment. The paid customer lifecycle
+uses its independent payment authority and dedicated Single Tenant provider
+credentials. Shared staging automation remains independent.
 
 The request-validation workflow handles only create-only signed pointer commits.
 The privileged lifecycle runs trusted default-branch code, independently checks

@@ -141,7 +141,7 @@ def test_service_phase_preserves_project(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 def test_project_plan_is_fresh_and_separately_guarded() -> None:
-    text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
+    text = Path("tests/fixtures/archived-workflows/self_service_test_deploy.yml").read_text()
     job = text.split("  retire:\n")[1].split("  inspect:\n")[0]
     assert "target: digitalocean_project.staging" in job
     assert "RETIREMENT_PHASE: services" in job

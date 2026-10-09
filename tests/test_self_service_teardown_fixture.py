@@ -85,7 +85,7 @@ def test_original_change_blocks_fixture_mutation(
 
 
 def test_fixture_job_cannot_overwrite_or_destroy_during_creation() -> None:
-    text = Path(".github/workflows/self_service_test_deploy.yml").read_text()
+    text = Path("tests/fixtures/archived-workflows/self_service_test_deploy.yml").read_text()
     job = text.split("  fixture-create:\n")[1].split("  retire:\n")[0]
     assert "createRef" in job
     assert "updateRef" not in job
