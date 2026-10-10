@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import runpy
 import shutil
 import subprocess
 import time
@@ -16,7 +17,9 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-from scripts.single_tenant_live_image import MAX_ARCHIVE_BYTES, release_image
+_IMAGE_HELPERS = runpy.run_path(str(Path(__file__).with_name("single_tenant_live_image.py")))
+MAX_ARCHIVE_BYTES = int(_IMAGE_HELPERS["MAX_ARCHIVE_BYTES"])
+release_image = _IMAGE_HELPERS["release_image"]
 
 APP = "scidsg/hushline"
 INFRA = "scidsg/hushline-infra"

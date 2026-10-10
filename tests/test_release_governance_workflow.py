@@ -24,7 +24,7 @@ def test_release_governance_workflow_covers_release_control_files() -> None:
         "staging_deploy",
         "Makefile",
         r"hushline/version\.py",
-        r"scripts/(release|deploy_published_release)\.py",
+        r"scripts/.*\.py",
         "deploy-published-release",
     ]
 

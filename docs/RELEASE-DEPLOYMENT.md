@@ -15,6 +15,11 @@ such as `v0.7.29`, using reviewed infra `main` as its base. A generated branch h
 only the image version and verified build digest change and a remotely verified signed commit. Existing
 branches are checked before reuse and are never reset or force-pushed.
 Infrastructure validation must pass before promotion.
+Both secret-bearing Python commands run in isolated mode, excluding repository
+directories, user site packages, and `PYTHONPATH` from import resolution. The
+image-artifact helper is loaded by its exact sibling file path without importing
+the repository's `scripts` package. All Python files under `scripts/` are
+administrator-governed release dependencies, including added or renamed modules.
 The infra repository's **Release branch updates** ruleset restricts changes to
 `v*` branches to repository administrators, including the registered publishing
 service. Default-branch review rules remain unchanged.
