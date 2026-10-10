@@ -16,6 +16,7 @@ on:
       - "hushline/settings/security_keys.py"
       - "hushline/templates/settings/security_keys.html"
       - "hushline/templates/verify_2fa_login.html"
+      - "hushline/templates/verify_recovery_code_login.html"
       - "hushline/webauthn.py"
       - "migrations/**"
       - "package.json"
