@@ -435,3 +435,14 @@ When HCP returns an authenticated state-download route, automation resolves only
 Customer ownership preserves the provider-generated database firewall ID, including its database UUID prefix and timestamp/counter suffix. A firewall ID for another database, a bare UUID, or a malformed suffix cannot be recorded or used for lifecycle actions.
 
 Single Tenant provisioning and managed updates execute the immutable image from the verified production release build. Both application services and the initializer share its SHA-256 digest. Missing or expired image provenance blocks new checkout; the normal production release process remains the source of customer updates.
+
+### Software update awareness
+
+Operators of provisioned Single Tenant and DIY instances can see an update notice
+in the footer when their installed version is older than the latest stable release,
+including when they customize the app name. The red **⚠️ Update available** link
+opens release notes so they can
+update through their existing deployment method. Background server checks and a
+daily cache keep page rendering independent of GitHub availability. Visitors send
+no release-check requests. Onion deployments default to no outbound check unless
+the operator explicitly enables it. See [software updates](SOFTWARE-UPDATES.md).
