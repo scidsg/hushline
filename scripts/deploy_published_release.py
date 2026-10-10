@@ -8,6 +8,7 @@ import re
 import shutil
 import subprocess
 import time
+from http import HTTPStatus
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError
@@ -26,6 +27,20 @@ SINGLE_PARENT_FIELDS = 2
 
 class DeploymentError(RuntimeError):
     """A release cannot safely be promoted."""
+
+
+class APIError(DeploymentError):
+    def __init__(self, status: int) -> None:
+        self.status = status
+        super().__init__(f"Release API returned HTTP {status}")
+
+
+class SupersededRelease(DeploymentError):
+    """A newer publication already owns production promotion."""
+
+
+class UnpublishedRelease(DeploymentError):
+    """The image build finished before its release was published."""
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -58,7 +73,7 @@ class API:
             with build_opener(NoRedirect).open(request, timeout=30) as response:
                 raw = response.read(MAX_RESPONSE + 1)
         except HTTPError as error:
-            raise DeploymentError(f"Release API returned HTTP {error.code}") from None
+            raise APIError(error.code) from None
         if len(raw) > MAX_RESPONSE:
             raise DeploymentError("Release API response exceeded its bound")
         document = json.loads(raw)
@@ -84,7 +99,12 @@ def updated_source(source: str, tag: str) -> str:
 
 def verify_release(github: API, tag: str) -> str:
     version(tag)
-    release = github.request(f"/repos/{APP}/releases/tags/{tag}")
+    try:
+        release = github.request(f"/repos/{APP}/releases/tags/{tag}")
+    except APIError as error:
+        if error.status == HTTPStatus.NOT_FOUND:
+            raise UnpublishedRelease("Release is not yet published") from None
+        raise
     author = release.get("author", {})
     if (
         release.get("tag_name") != tag
@@ -99,7 +119,7 @@ def verify_release(github: API, tag: str) -> str:
         raise DeploymentError("Only an administrator can authorize a release")
     latest = github.request(f"/repos/{APP}/releases/latest")
     if latest.get("id") != release.get("id"):
-        raise DeploymentError("Superseded releases cannot deploy")
+        raise SupersededRelease("A newer published release supersedes this event")
     commit = github.request(f"/repos/{APP}/commits/{tag}")
     sha = commit.get("sha", "")
     if (
@@ -279,6 +299,13 @@ def main() -> None:
             Path("release-infra"),
             tag,
         )
+    except SupersededRelease as error:
+        print(str(error))
+    except UnpublishedRelease as error:
+        if os.environ["GITHUB_EVENT_NAME"] == "workflow_run":
+            print("Release is not yet published; publication will trigger deployment")
+            return
+        raise SystemExit(str(error)) from None
     except DeploymentError as error:
         raise SystemExit(str(error)) from None
 

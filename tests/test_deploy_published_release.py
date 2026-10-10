@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
@@ -201,3 +202,104 @@ def test_unsigned_infra_commit_cannot_switch_production(monkeypatch: pytest.Monk
     with pytest.raises(release.DeploymentError, match="Infra release commit signature"):
         release.deploy(FakeAPI(docs), tf, Path("unused"), "v0.7.29")
     assert not tf.writes
+
+
+def test_existing_release_branch_with_other_changes_cannot_deploy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def fake_git(_root: Path, *args: str) -> str:
+        calls.append(args)
+        if args[0] == "ls-remote":
+            return INFRA_SHA + " refs/heads/v0.7.29"
+        if args[0] == "rev-parse":
+            return INFRA_SHA
+        if args[0] == "rev-list":
+            return INFRA_SHA + " " + SHA
+        if args[0] == "diff":
+            return "modules/hushline-app/app.tf"
+        return ""
+
+    monkeypatch.setattr(release, "git", fake_git)
+    monkeypatch.setattr(release.subprocess, "run", lambda *_, **__: SimpleNamespace(returncode=1))
+    with pytest.raises(release.DeploymentError, match="other infrastructure"):
+        release.prepare_branch(Path("unused"), "v0.7.29")
+    assert not any(args[0] in {"push", "commit"} for args in calls)
+
+
+def test_existing_reviewed_release_branch_is_reused_without_push(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def fake_git(_root: Path, *args: str) -> str:
+        calls.append(args)
+        if args[0] == "ls-remote":
+            return INFRA_SHA + " refs/heads/v0.7.29"
+        if args[0] == "rev-parse":
+            return INFRA_SHA
+        if args[0] == "show":
+            return 'tag = "v0.7.29"'
+        return ""
+
+    monkeypatch.setattr(release, "git", fake_git)
+    monkeypatch.setattr(release.subprocess, "run", lambda *_, **__: SimpleNamespace(returncode=0))
+    release.prepare_branch(Path("unused"), "v0.7.29")
+    assert not any(args[0] in {"push", "commit"} for args in calls)
+
+
+@pytest.mark.parametrize("event_name", ["workflow_run", "release"])
+def test_build_before_publication_waits_only_for_build_event(
+    monkeypatch: pytest.MonkeyPatch,
+    event_name: str,
+) -> None:
+    event = {
+        "release": {"tag_name": "v0.7.29"},
+        "workflow_run": {
+            "conclusion": "success",
+            "event": "push",
+            "head_branch": "v0.7.29",
+            "head_repository": {"full_name": release.APP},
+        },
+    }
+    monkeypatch.setenv("GITHUB_EVENT_PATH", "unused")
+    monkeypatch.setenv("GITHUB_EVENT_NAME", event_name)
+    monkeypatch.setenv("RELEASE_GITHUB_TOKEN", "test")
+    monkeypatch.setenv("RELEASE_TF_TOKEN", "test")
+    monkeypatch.setattr(Path, "read_text", lambda *_: json.dumps(event))
+
+    def not_published(*_: Any) -> None:
+        raise release.UnpublishedRelease("Not published")
+
+    monkeypatch.setattr(release, "deploy", not_published)
+    if event_name == "release":
+        with pytest.raises(SystemExit, match="Not published"):
+            release.main()
+    else:
+        release.main()
+
+
+def test_missing_workspace_is_not_mistaken_for_missing_publication(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    event = {
+        "workflow_run": {
+            "conclusion": "success",
+            "event": "push",
+            "head_branch": "v0.7.29",
+            "head_repository": {"full_name": release.APP},
+        }
+    }
+    monkeypatch.setenv("GITHUB_EVENT_PATH", "unused")
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "workflow_run")
+    monkeypatch.setenv("RELEASE_GITHUB_TOKEN", "test")
+    monkeypatch.setenv("RELEASE_TF_TOKEN", "test")
+    monkeypatch.setattr(Path, "read_text", lambda *_: json.dumps(event))
+
+    def workspace_missing(*_: Any) -> None:
+        raise release.APIError(404)
+
+    monkeypatch.setattr(release, "deploy", workspace_missing)
+    with pytest.raises(SystemExit, match="HTTP 404"):
+        release.main()
