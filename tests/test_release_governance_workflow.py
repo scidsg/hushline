@@ -24,7 +24,8 @@ def test_release_governance_workflow_covers_release_control_files() -> None:
         "staging_deploy",
         "Makefile",
         r"hushline/version\.py",
-        r"scripts/release\.py",
+        r"scripts/(release|deploy_published_release)\.py",
+        "deploy-published-release",
     ]
 
     for path_fragment in expected_path_fragments:

@@ -1,0 +1,57 @@
+# Release deployment
+
+Publishing a stable Hush Line release is the maintainer's explicit approval to
+deploy it. The existing `make release` process and its registered YubiKey
+authorization remain unchanged. There is no second Terraform confirmation step
+for a normal release.
+
+The **Deploy published release** workflow runs after release publication or a
+successful release image build. It verifies a human administrator published the
+latest stable release, its source commit has a remotely verified signature and
+belongs to `main`, and the exact tagged image build succeeded.
+
+Automation updates `hushline-env/hushline.tf` on a branch named for the version,
+such as `v0.7.29`, using reviewed infra `main` as its base. A generated branch has
+only the image version change and a remotely verified signed commit. Existing
+branches are checked before reuse and are never reset or force-pushed.
+Infrastructure validation must pass before promotion.
+The infra repository's **Release branch updates** ruleset restricts changes to
+`v*` branches to repository administrators, including the registered publishing
+service. Default-branch review rules remain unchanged.
+
+The workflow switches only `science-and-design/prod` to that version branch and
+enables automatic apply. Terraform still plans the change and enforces configured
+policies and run tasks, including protections against app and database deletion.
+Infrastructure changes outside a normal image release continue through reviewed
+infra pull requests. The release automation does not merge infrastructure PRs or
+change branch protections.
+
+Once production actually serves the new version, the existing Single Tenant
+controller verifies it and queues upgrades for active managed instances to the
+same immutable image digest. Each order retains its ownership, payment checks,
+resources, private configuration and administrator claim. Cancelled or retiring
+instances are not recreated. DIY instances require their operators to update.
+
+## Automation credentials
+
+These repository Actions secrets are used only by the release automation:
+
+- `ADMIN_PAT`: reads release-author permissions and verified commit/build metadata.
+- `HUSHLINE_INFRA_STAGING_PAT`: existing infra repository publishing credential.
+- `HUSHLINE_INFRA_RELEASE_SIGNING_KEY`: registered service SSH signing identity;
+  the workflow creates a private temporary file and removes it after use.
+- `HUSHLINE_PRODUCTION_TF_TOKEN`: production Terraform control-plane credential.
+
+The release workflow never uses customer or ephemeral staging Terraform or
+DigitalOcean credentials. Rotate credentials before expiration. Missing or invalid
+credentials fail deployment rather than falling back to a different account.
+
+## Monitoring and recovery
+
+After publishing a release, monitor its image build, **Deploy published release**,
+the production Terraform run, and managed-instance upgrades. A failed build,
+invalid signature, superseded release, existing branch with unexpected changes,
+or failed infrastructure validation stops promotion. Resolve the failure and
+rerun the workflow; successful promotion is idempotent and cannot select an older
+production version. Failed managed upgrades retain their recorded service state
+and require operator recovery.

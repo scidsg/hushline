@@ -1,0 +1,74 @@
+name: Deploy published release
+
+on:
+  release:
+    types: [published]
+  workflow_run:
+    workflows: [Build release container image]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: production-release-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      github.repository == 'scidsg/hushline' &&
+      (github.event_name == 'release' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == 'scidsg/hushline'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out trusted automation
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Check out infrastructure
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: scidsg/hushline-infra
+          ref: main
+          token: ${{ secrets.HUSHLINE_INFRA_STAGING_PAT }}
+          path: release-infra
+          fetch-depth: 0
+      - name: Set up Terraform validation
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
+        with:
+          terraform_wrapper: false
+      - name: Install infrastructure validation tools
+        run: |
+          sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update
+          sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install -y ripgrep shellcheck
+      - name: Deploy the human-published release
+        env:
+          RELEASE_GITHUB_TOKEN: ${{ secrets.ADMIN_PAT }}
+          RELEASE_TF_TOKEN: ${{ secrets.HUSHLINE_PRODUCTION_TF_TOKEN }}
+          RELEASE_SIGNING_KEY: ${{ secrets.HUSHLINE_INFRA_RELEASE_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          signing_key="$RUNNER_TEMP/infra-release-signing-key"
+          export INFRA_SIGNING_PATH="$signing_key"
+          trap 'rm -f "$signing_key"' EXIT
+          python3 - <<'PY'
+          import os
+          key = os.environ['RELEASE_SIGNING_KEY']
+          if not key:
+              raise SystemExit('Release signing credential is missing')
+          fd = os.open(os.environ['INFRA_SIGNING_PATH'], os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+          with os.fdopen(fd, 'w') as output:
+              output.write(key.rstrip() + '\n')
+          PY
+          git -C release-infra config user.name hushline-dev
+          git -C release-infra config user.email 166439242+hushline-dev@users.noreply.github.com
+          git -C release-infra config gpg.format ssh
+          git -C release-infra config user.signingkey "$signing_key"
+          git -C release-infra config commit.gpgsign true
+          python3 scripts/deploy_published_release.py
