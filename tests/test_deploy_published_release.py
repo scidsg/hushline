@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
+from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -13,6 +14,38 @@ from scripts import deploy_published_release as release
 SHA = "a" * 40
 INFRA_SHA = "b" * 40
 DIGEST = "sha256:" + "c" * 64
+
+
+@pytest.mark.parametrize("body", [b"", b"null", b"{}"])
+def test_apply_accepts_successful_acknowledgement(monkeypatch: Any, body: bytes) -> None:
+    response = BytesIO(body)
+    response.status = 202  # type: ignore[attr-defined]
+    monkeypatch.setattr(
+        release, "build_opener", lambda *_: SimpleNamespace(open=lambda *_, **__: response)
+    )
+    api = release.API("https://app.terraform.io/api/v2", "synthetic-token")
+    assert api.request("/runs/run-example/actions/apply", {}, method="POST") == {}
+
+
+@pytest.mark.parametrize(
+    ("origin", "path", "method", "status"),
+    [
+        ("https://app.terraform.io/api/v2", "/runs/run-example/actions/apply", "POST", 200),
+        ("https://app.terraform.io/api/v2", "/runs/run-example", "GET", 202),
+        ("https://app.terraform.io/api/v2", "/runs/run-example/actions/apply", "GET", 202),
+        ("https://api.github.com", "/runs/run-example/actions/apply", "POST", 202),
+    ],
+)
+def test_other_null_api_responses_remain_invalid(
+    monkeypatch: Any, origin: str, path: str, method: str, status: int
+) -> None:
+    response = BytesIO(b"null")
+    response.status = status  # type: ignore[attr-defined]
+    monkeypatch.setattr(
+        release, "build_opener", lambda *_: SimpleNamespace(open=lambda *_, **__: response)
+    )
+    with pytest.raises(release.DeploymentError, match="Invalid release API response"):
+        release.API(origin, "synthetic-token").request(path, method=method)
 
 
 def documents() -> dict[str, dict[str, Any]]:

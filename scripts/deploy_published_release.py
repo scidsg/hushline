@@ -89,6 +89,7 @@ class API:
         )
         try:
             with build_opener(NoRedirect).open(request, timeout=30) as response:
+                status = response.status
                 raw = response.read(MAX_RESPONSE + 1)
         except HTTPError as error:
             raise APIError(error.code) from None
@@ -97,6 +98,14 @@ class API:
         if len(raw) > MAX_RESPONSE:
             raise DeploymentError("Release API response exceeded its bound")
         document = json.loads(raw) if raw else {}
+        if (
+            document is None
+            and status == HTTPStatus.ACCEPTED
+            and self.origin == "https://app.terraform.io/api/v2"
+            and request.get_method() == "POST"
+            and re.fullmatch(r"/runs/run-[A-Za-z0-9]+/actions/apply", path)
+        ):
+            return {}
         if not isinstance(document, dict):
             raise DeploymentError("Invalid release API response")
         return document
