@@ -57,7 +57,7 @@ jobs:
           signing_key="$RUNNER_TEMP/infra-release-signing-key"
           export INFRA_SIGNING_PATH="$signing_key"
           trap 'rm -f "$signing_key"' EXIT
-          python3 - <<'PY'
+          python3 -I - <<'PY'
           import os
           key = os.environ['RELEASE_SIGNING_KEY']
           if not key:
@@ -71,4 +71,4 @@ jobs:
           git -C release-infra config gpg.format ssh
           git -C release-infra config user.signingkey "$signing_key"
           git -C release-infra config commit.gpgsign true
-          python3 -m scripts.deploy_published_release
+          python3 -I scripts/deploy_published_release.py

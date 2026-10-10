@@ -455,5 +455,7 @@ including when they customize the app name. The red **⚠️ Update available** 
 opens release notes so they can
 update through their existing deployment method. Background server checks and a
 daily cache keep page rendering independent of GitHub availability. Visitors send
-no release-check requests. Onion deployments default to no outbound check unless
-the operator explicitly enables it. See [software updates](SOFTWARE-UPDATES.md).
+no release-check requests. Onion deployments and instances without a configured
+canonical hostname default to no outbound check unless the operator explicitly
+enables it. Incoming Host headers cannot enable checks.
+See [software updates](SOFTWARE-UPDATES.md).

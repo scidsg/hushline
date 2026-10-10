@@ -173,10 +173,34 @@ def test_update_check_environment_switch(value: str, expected: bool) -> None:
     assert load_config({"UPDATE_CHECK_ENABLED": value})["UPDATE_CHECK_ENABLED"] is expected
 
 
-def test_onion_request_without_static_hostname_defaults_to_no_check(mocker: MockFixture) -> None:
+@pytest.mark.parametrize("host", ["example.onion", "attacker.example", "localhost"])
+def test_unconfigured_deployment_never_checks_regardless_of_host(
+    host: str, mocker: MockFixture
+) -> None:
     app = Flask(__name__)
     init_app(app)
     check = mocker.patch.object(app.extensions["hushline_release_check"], "newer_than")
-    with app.test_request_context(base_url="http://example.onion"):
-        assert render_template_string("{{ hushline_update_version }}") == "None"
+
+    @app.get("/")
+    def page() -> str:
+        return render_template_string("{{ hushline_update_version }}")
+
+    response = app.test_client().get("/", headers={"Host": host})
+    assert response.status_code == 200
+    assert response.text == "None"
     check.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "config", [{"SERVER_NAME": "public.example"}, {"UPDATE_CHECK_ENABLED": True}]
+)
+def test_operator_config_can_enable_public_check(config: dict, mocker: MockFixture) -> None:
+    app = Flask(__name__)
+    app.config.update(config)
+    init_app(app)
+    check = mocker.patch.object(
+        app.extensions["hushline_release_check"], "newer_than", return_value="0.7.28"
+    )
+    with app.test_request_context():
+        assert render_template_string("{{ hushline_update_version }}") == "0.7.28"
+    check.assert_called_once()

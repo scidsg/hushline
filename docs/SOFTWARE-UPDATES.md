@@ -15,9 +15,10 @@ The request contains no instance hostname, installed version, account, visitor,
 message, credentials, or cookies. GitHub sees the server's outbound IP address.
 Visitors' browsers do not fetch release information; the existing CSP is unchanged.
 
-Checks default to enabled on ordinary public deployments and disabled when an
-onion service is configured (`ONION_HOSTNAME` or an onion `SERVER_NAME`) or the
-current request uses an onion hostname. Operators
+Checks default to enabled only when an operator has configured a non-onion
+`SERVER_NAME` and no `ONION_HOSTNAME`. With no configured canonical hostname,
+or with an onion service configured, checks default to disabled. Incoming Host
+headers never authorize outbound checks. Operators
 can explicitly set `UPDATE_CHECK_ENABLED=true` or `UPDATE_CHECK_ENABLED=false`.
 Test-mode applications never make these requests. Offline deployments simply
 continue rendering their normal footer when no release information is available.

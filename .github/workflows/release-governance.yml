@@ -26,7 +26,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          governed_path_pattern='^(\.github/release-allowed-signers|\.github/workflows/(build-release|bump-personal-server-after-release|deploy-published-release|docs-screenshots|publish-docs-screenshots|release-governance|staging_deploy)\.yml|Makefile|hushline/version\.py|scripts/(release|deploy_published_release)\.py)$'
+          governed_path_pattern='^(\.github/release-allowed-signers|\.github/workflows/(build-release|bump-personal-server-after-release|deploy-published-release|docs-screenshots|publish-docs-screenshots|release-governance|staging_deploy)\.yml|Makefile|hushline/version\.py|scripts/.*\.py)$'
 
           if [ "$EVENT_NAME" = "pull_request_target" ]; then
             actor="$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")"
