@@ -458,7 +458,7 @@ def test_password_reset_does_not_bypass_factor_or_unlock_recovery_boundary(
     assert ChatKey.active_for_user_id(user.id) is None
 
 
-def test_factor_guidance_disclaims_server_recovery_without_disclosure(
+def test_factor_challenge_omits_disclosure_and_support_guidance(
     client: FlaskClient, user: User, user_password: str
 ) -> None:
     _credential(user)
@@ -467,9 +467,7 @@ def test_factor_guidance_disclaims_server_recovery_without_disclosure(
     response = client.get(url_for("verify_2fa_login"))
 
     assert "<details>" not in response.text
-    assert "support and administrators cannot bypass" in response.text
-    assert "cannot" in response.text
-    assert "recover encrypted message history" in response.text
+    assert "support and administrators cannot bypass" not in response.text
     csp = response.headers["Content-Security-Policy"]
     assert "default-src 'self'" in csp
     assert "script-src 'self'" in csp
