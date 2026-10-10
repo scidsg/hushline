@@ -389,6 +389,14 @@ and reports success only for the matching active deployment. Upgrades never
 restore a retiring instance or silently roll a database back. Failed upgrades
 retain existing service state and require recorded operator recovery.
 
+A maintainer's publication of a stable release is the explicit deployment
+approval. After verifying the human administrator, signed source and successful
+image build, release automation updates the version-named infra branch and
+production Terraform binding with automatic apply enabled. Normal releases do
+not require a second manual Terraform confirmation. Infrastructure validation,
+destruction policies and managed-instance ownership checks remain enforced; see
+[Release deployment](./RELEASE-DEPLOYMENT.md).
+
 Customer workflow setup can use the approved development cloud and private-read
 GitHub secrets directly. It never falls back to production cloud credentials or
 repository signing keys; exact team, project, order and saved-plan guards remain
