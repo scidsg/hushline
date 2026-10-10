@@ -12,6 +12,7 @@ from scripts import deploy_published_release as release
 
 SHA = "a" * 40
 INFRA_SHA = "b" * 40
+DIGEST = "sha256:" + "c" * 64
 
 
 def documents() -> dict[str, dict[str, Any]]:
@@ -166,6 +167,11 @@ def test_deploy_changes_only_production_branch_and_auto_apply(
 ) -> None:
     tf = terraform_api()
     monkeypatch.setattr(release, "prepare_branch", lambda *_: None)
+    monkeypatch.setattr(release, "release_image", lambda *_: DIGEST)
+    monkeypatch.setattr(release, "applied_revision", lambda *_: SHA)
+    monkeypatch.setattr(release, "verify_production_delta", lambda *_: None)
+    applied: list[tuple[Any, ...]] = []
+    monkeypatch.setattr(release, "apply_release_run", lambda *args: applied.append(args))
     monkeypatch.setattr(release, "git", lambda *_: INFRA_SHA)
     monkeypatch.setattr(release.subprocess, "run", lambda *_, **__: SimpleNamespace(returncode=0))
     release.deploy(FakeAPI(documents()), tf, Path("unused"), "v0.7.29")
@@ -174,10 +180,12 @@ def test_deploy_changes_only_production_branch_and_auto_apply(
             "data": {
                 "type": "workspaces",
                 "id": release.WORKSPACE,
-                "attributes": {"vcs-repo": {"branch": "v0.7.29"}, "auto-apply": True},
+                "attributes": {"vcs-repo": {"branch": "v0.7.29"}, "auto-apply": False},
             }
         }
     ]
+    assert len(applied) == 1
+    assert applied[0][2] == release.Promotion("v0.7.29", INFRA_SHA, DIGEST, SHA)
 
 
 def test_older_release_cannot_roll_back_production() -> None:
@@ -197,10 +205,241 @@ def test_unsigned_infra_commit_cannot_switch_production(monkeypatch: pytest.Monk
         False
     )
     monkeypatch.setattr(release, "prepare_branch", lambda *_: None)
+    monkeypatch.setattr(release, "release_image", lambda *_: DIGEST)
+    monkeypatch.setattr(release, "applied_revision", lambda *_: SHA)
+    monkeypatch.setattr(release, "verify_production_delta", lambda *_: None)
     monkeypatch.setattr(release, "git", lambda *_: INFRA_SHA)
     monkeypatch.setattr(release.subprocess, "run", lambda *_, **__: SimpleNamespace(returncode=0))
     with pytest.raises(release.DeploymentError, match="Infra release commit signature"):
         release.deploy(FakeAPI(docs), tf, Path("unused"), "v0.7.29")
+    assert not tf.writes
+
+
+def image_plan() -> dict[str, Any]:
+    before: dict[str, Any] = {
+        "spec": [
+            {
+                "service": [
+                    {
+                        "name": "app",
+                        "image": [
+                            {
+                                "registry_type": "GHCR",
+                                "registry": "scidsg",
+                                "repository": "hushline/hushline",
+                                "tag": "v0.7.28",
+                                "digest": None,
+                            }
+                        ],
+                        "env": [{"key": "SECRET_KEY", "value": "private-fixture"}],
+                    }
+                ]
+            }
+        ],
+        "live_url": "https://example.org",
+    }
+    after = deepcopy(before)
+    after["spec"][0]["service"][0]["image"][0].update({"tag": None, "digest": DIGEST})
+    return {
+        "resource_changes": [
+            {
+                "address": "module.app.digitalocean_app.app",
+                "change": {
+                    "actions": ["update"],
+                    "before": before,
+                    "after": after,
+                    "after_unknown": {},
+                },
+            }
+        ]
+    }
+
+
+def test_only_verified_image_plan_can_be_confirmed() -> None:
+    release.verify_plan(image_plan(), DIGEST)
+
+
+@pytest.mark.parametrize(
+    "case", ["secret", "replacement", "other-resource", "wrong-digest", "new-component"]
+)
+def test_unrelated_or_unverified_plan_cannot_be_confirmed(case: str) -> None:
+    plan = image_plan()
+    entry = plan["resource_changes"][0]
+    component = entry["change"]["after"]["spec"][0]["service"][0]
+    if case == "secret":
+        component["env"][0]["value"] = "changed-private-fixture"
+    elif case == "replacement":
+        entry["change"]["actions"] = ["delete", "create"]
+    elif case == "other-resource":
+        entry["address"] = "digitalocean_database_cluster.db"
+    elif case == "wrong-digest":
+        component["image"][0]["digest"] = "sha256:" + "d" * 64
+    else:
+        entry["change"]["after"]["spec"][0]["service"].append(deepcopy(component))
+    with pytest.raises(release.DeploymentError):
+        release.verify_plan(plan, DIGEST)
+
+
+def test_pending_module_changes_block_app_release(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(release, "git", lambda *_: "modules/hushline-app/app.tf")
+    with pytest.raises(release.DeploymentError, match="deploy separately"):
+        release.verify_production_delta(Path("unused"), SHA, "v0.7.29", DIGEST)
+
+
+def test_pending_production_environment_changes_block_app_release(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old = 'tag = "v0.7.28"\napp_image_digest = null\ninstance_count = 2'
+    new = release.updated_source(old, "v0.7.29", DIGEST).replace("count = 2", "count = 3")
+
+    def fake_git(_root: Path, *args: str) -> str:
+        if args[0] == "diff":
+            return release.VERSION_FILE
+        return old if args[1].startswith(SHA) else new
+
+    monkeypatch.setattr(release, "git", fake_git)
+    with pytest.raises(release.DeploymentError, match="unrelated production"):
+        release.verify_production_delta(Path("unused"), SHA, "v0.7.29", DIGEST)
+
+
+def test_digest_update_requires_reviewed_support() -> None:
+    with pytest.raises(release.DeploymentError, match="reviewed immutable"):
+        release.updated_source('tag = "v0.7.28"', "v0.7.29", DIGEST)
+    source = 'tag = "v0.7.28"\napp_image_digest = null'
+    result = release.updated_source(source, "v0.7.29", DIGEST)
+    assert DIGEST in result
+    assert 'tag = "v0.7.29"' in result
+
+
+class RunAPI(FakeAPI):
+    def __init__(self) -> None:
+        super().__init__(terraform_api().docs)
+        data = self.docs[f"/workspaces/{release.WORKSPACE}"]["data"]
+        data["attributes"]["vcs-repo"]["branch"] = "v0.7.29"
+        data["relationships"]["current-run"] = {"data": {"id": "run-release"}}
+        self.docs["/runs/run-release"] = {
+            "data": {
+                "id": "run-release",
+                "attributes": {
+                    "source": "tfe-configuration-version",
+                    "status": "policy_checked",
+                    "is-destroy": False,
+                    "auto-apply": False,
+                    "plan-only": False,
+                    "refresh-only": False,
+                    "actions": {"is-confirmable": True},
+                },
+                "relationships": {
+                    "workspace": {"data": {"id": release.WORKSPACE}},
+                    "configuration-version": {"data": {"id": "cv-release"}},
+                    "plan": {"data": {"id": "plan-release"}},
+                },
+            }
+        }
+        self.docs["/configuration-versions/cv-release/ingress-attributes"] = {
+            "data": {
+                "attributes": {
+                    "commit-sha": INFRA_SHA,
+                    "branch": "v0.7.29",
+                    "identifier": release.INFRA,
+                }
+            }
+        }
+        self.docs["/plans/plan-release"] = {
+            "data": {
+                "attributes": {
+                    "resource-additions": 0,
+                    "resource-destructions": 0,
+                    "resource-changes": 1,
+                }
+            }
+        }
+
+    def request(
+        self, path: str, payload: dict[str, Any] | None = None, *, method: str | None = None
+    ) -> dict[str, Any]:
+        if method == "POST":
+            self.writes.append({"path": path, "payload": payload})
+            return {}
+        return super().request(path, payload)
+
+    def plan_json(self, identifier: str) -> dict[str, Any]:
+        assert identifier == "plan-release"
+        return image_plan()
+
+
+def test_only_exact_vcs_release_run_is_automatically_confirmed() -> None:
+    tf = RunAPI()
+    release.apply_release_run(
+        tf, FakeAPI(documents()), release.Promotion("v0.7.29", INFRA_SHA, DIGEST, SHA)
+    )
+    assert [write["path"] for write in tf.writes] == ["/runs/run-release/actions/apply"]
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "api-source",
+        "wrong-commit",
+        "destroy",
+        "policy-failed",
+        "drift",
+        "targeted",
+        "variable-override",
+    ],
+)
+def test_unrelated_run_or_drift_is_never_automatically_confirmed(
+    monkeypatch: pytest.MonkeyPatch, case: str
+) -> None:
+    tf = RunAPI()
+    attrs = tf.docs["/runs/run-release"]["data"]["attributes"]
+    if case == "api-source":
+        attrs["source"] = "tfe-api"
+    elif case == "wrong-commit":
+        tf.docs["/configuration-versions/cv-release/ingress-attributes"]["data"]["attributes"][
+            "commit-sha"
+        ] = SHA
+    elif case == "destroy":
+        attrs["is-destroy"] = True
+    elif case == "policy-failed":
+        attrs["status"] = "policy_override"
+    elif case == "drift":
+        tf.docs["/plans/plan-release"]["data"]["attributes"]["resource-additions"] = 1
+    elif case == "targeted":
+        attrs["target-addrs"] = ["module.app"]
+    else:
+        attrs["variables"] = [{"key": "SECRET_KEY", "value": "override-fixture"}]
+    monkeypatch.setattr(release, "BUILD_ATTEMPTS", 1)
+    monkeypatch.setattr(release.time, "sleep", lambda _: None)
+    with pytest.raises(release.DeploymentError):
+        release.apply_release_run(
+            tf, FakeAPI(documents()), release.Promotion("v0.7.29", INFRA_SHA, DIGEST, SHA)
+        )
+    assert not tf.writes
+
+
+def test_unknown_config_cannot_be_hidden_as_a_computed_change() -> None:
+    plan = image_plan()
+    plan["resource_changes"][0]["change"]["after_unknown"] = {
+        "spec": [{"service": [{"env": True}]}]
+    }
+    with pytest.raises(release.DeploymentError, match="unknown"):
+        release.verify_plan(plan, DIGEST)
+
+
+def test_no_change_infra_preparation_does_not_need_a_new_state_version() -> None:
+    tf = RunAPI()
+    attrs = tf.docs["/runs/run-release"]["data"]["attributes"]
+    attrs.update({"status": "planned_and_finished", "has-changes": False})
+    assert release.applied_revision(tf) == INFRA_SHA
+
+
+def test_changed_release_source_stops_confirmation() -> None:
+    tf = RunAPI()
+    with pytest.raises(release.DeploymentError, match="source changed"):
+        release.apply_release_run(
+            tf, FakeAPI(documents()), release.Promotion("v0.7.29", INFRA_SHA, DIGEST, "d" * 40)
+        )
     assert not tf.writes
 
 
