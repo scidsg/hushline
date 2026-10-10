@@ -2821,6 +2821,15 @@ footer:has(a.powered-by) {
   height: 38px;
 }
 
+footer:has(span.update-notice) {
+  height: auto;
+  min-height: 38px;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
 footer p {
   margin: 0;
 }
@@ -2832,6 +2841,20 @@ footer a {
 footer .powered-by {
   margin-left: 0.25rem;
   font-size: var(--font-size-smaller);
+}
+
+footer .update-notice {
+  white-space: nowrap;
+}
+
+footer .update-notice a {
+  color: var(--color-error);
+}
+
+@media (prefers-color-scheme: dark) {
+  footer .update-notice a {
+    color: var(--color-error-dark);
+  }
 }
 
 footer a:hover {

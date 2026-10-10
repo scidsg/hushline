@@ -69,6 +69,9 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
     app.config.from_mapping(config)
     validate_webauthn_relying_party_config(app.config, required=False)
     configure_jinja(app)
+    from hushline.update_notice import init_app as init_update_notice
+
+    init_update_notice(app)
     db.init_app(app)
     migrate.init_app(app, db)
     public_store.init_app(app)
