@@ -770,6 +770,9 @@ def register_auth_routes(app: Flask) -> None:
             flash("⛔️ No permitted second factor is available. Please log in again.")
             return redirect(url_for("login"))
 
+        if not allow_totp and not allow_security_key:
+            return redirect(url_for("verify_recovery_code_login"))
+
         form = TwoFactorForm()
 
         def render_mfa() -> Response:
@@ -780,7 +783,6 @@ def register_auth_routes(app: Flask) -> None:
                     allow_totp=allow_totp,
                     allow_security_key=allow_security_key,
                     allow_recovery_code=allow_recovery_code,
-                    recovery_code_form=RecoveryCodeLoginForm(),
                 )
             )
             response.headers["Cache-Control"] = "no-store"
@@ -841,9 +843,11 @@ def register_auth_routes(app: Flask) -> None:
 
         return render_mfa()
 
-    @app.post("/verify-recovery-code-login")
+    @app.route("/verify-recovery-code-login", methods=["GET", "POST"])
     def verify_recovery_code_login() -> Response | str | tuple[Response | str, int]:
         user = get_session_user()
+        if user is not None and session.get("is_authenticated", False) and request.method == "GET":
+            return redirect(url_for("inbox"))
         if user is None or session.get("is_authenticated", False):
             clear_auth_session()
             return redirect(url_for("login"))
@@ -858,19 +862,27 @@ def register_auth_routes(app: Flask) -> None:
             pending_methods = _pending_mfa_methods(user)
             response = make_response(
                 render_template(
-                    "verify_2fa_login.html",
-                    form=TwoFactorForm(),
-                    allow_totp=TOTP_MFA_METHOD in pending_methods and bool(user.totp_secret),
-                    allow_security_key=SECURITY_KEY_MFA_METHOD in pending_methods
-                    and any(
-                        credential.disabled_at is None for credential in user.webauthn_credentials
+                    "verify_recovery_code_login.html",
+                    form=form,
+                    can_use_primary_factor=(
+                        TOTP_MFA_METHOD in pending_methods and bool(user.totp_secret)
+                    )
+                    or (
+                        SECURITY_KEY_MFA_METHOD in pending_methods
+                        and any(
+                            credential.disabled_at is None
+                            for credential in user.webauthn_credentials
+                        )
                     ),
-                    allow_recovery_code=True,
-                    recovery_code_form=form,
                 )
             )
             response.headers["Cache-Control"] = "no-store"
             return response
+
+        if request.method == "GET":
+            if not has_usable_recovery_codes(user.id):
+                return redirect(url_for("verify_2fa_login"))
+            return render_recovery_challenge()
 
         if not form.validate_on_submit():
             if form.errors.get("csrf_token"):

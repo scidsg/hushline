@@ -2,6 +2,48 @@ const { expect, test } = require("@playwright/test");
 
 const TEST_PASSWORD = "Test-testtesttesttest-1";
 
+for (const width of [1280, 390]) {
+  test(`inbox count badges remain fully visible at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await login(page, "jerryseinfeld");
+    await page.goto("/inbox", { waitUntil: "networkidle" });
+    await page.evaluate(() => document.fonts.ready);
+    const badges = page.locator(".inbox-tabs .badge");
+    await expect(badges.first()).toBeVisible();
+    const clipped = await badges.evaluateAll((elements) =>
+      elements.flatMap((badge) => {
+        const box = badge.getBoundingClientRect();
+        const range = document.createRange();
+        range.selectNodeContents(badge);
+        const text = range.getBoundingClientRect();
+        if (text.top < box.top + 1 || text.bottom > box.bottom - 1) {
+          return ["count text touches or exceeds the badge border"];
+        }
+        for (
+          let parent = badge.parentElement;
+          parent;
+          parent = parent.parentElement
+        ) {
+          const style = getComputedStyle(parent);
+          if (["hidden", "clip", "auto", "scroll"].includes(style.overflowY)) {
+            const top = parent.getBoundingClientRect().top + parent.clientTop;
+            if (
+              box.top < top - 0.5 ||
+              box.bottom > top + parent.clientHeight + 0.5
+            ) {
+              return ["badge clipped by a scrolling ancestor"];
+            }
+          }
+        }
+        return [];
+      }),
+    );
+    expect(clipped).toEqual([]);
+  });
+}
+
 async function login(page, username) {
   await page.addInitScript(() => {
     localStorage.setItem("hasFinishedGuidance", "true");
