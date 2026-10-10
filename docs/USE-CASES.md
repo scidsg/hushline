@@ -392,7 +392,10 @@ retain existing service state and require recorded operator recovery.
 A maintainer's publication of a stable release is the explicit deployment
 approval. After verifying the human administrator, signed source and successful
 image build, release automation updates the version-named infra branch and
-production Terraform binding with automatic apply enabled. Normal releases do
+production Terraform binding and confirms only the matching verified VCS run.
+Production uses the same immutable digest as managed tenants, and pending
+infrastructure changes block release promotion. Workspace-wide auto-apply stays
+disabled for unrelated runs. Normal releases do
 not require a second manual Terraform confirmation. Infrastructure validation,
 destruction policies and managed-instance ownership checks remain enforced; see
 [Release deployment](./RELEASE-DEPLOYMENT.md).

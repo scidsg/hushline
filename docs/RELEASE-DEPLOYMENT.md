@@ -12,19 +12,32 @@ belongs to `main`, and the exact tagged image build succeeded.
 
 Automation updates `hushline-env/hushline.tf` on a branch named for the version,
 such as `v0.7.29`, using reviewed infra `main` as its base. A generated branch has
-only the image version change and a remotely verified signed commit. Existing
+only the image version and verified build digest change and a remotely verified signed commit. Existing
 branches are checked before reuse and are never reset or force-pushed.
 Infrastructure validation must pass before promotion.
 The infra repository's **Release branch updates** ruleset restricts changes to
 `v*` branches to repository administrators, including the registered publishing
 service. Default-branch review rules remain unchanged.
 
-The workflow switches only `science-and-design/prod` to that version branch and
-enables automatic apply. Terraform still plans the change and enforces configured
-policies and run tasks, including protections against app and database deletion.
+The workflow compares production Terraform inputs with the last applied revision
+and blocks pending infrastructure changes. It switches only
+`science-and-design/prod` to that version branch, keeps workspace-wide auto-apply
+disabled, and automatically confirms only that exact VCS release run. Terraform
+still plans the change and enforces configured policies and run tasks, including
+protections against app and database deletion. The actual plan must update only
+the app's Hush Line image digests; changes to secrets, resources, component counts,
+or other app configuration stop automatic confirmation. API/CLI runs and other
+VCS runs are not automatically confirmed. Plan JSON stays in memory and is never
+logged or written to an artifact.
 Infrastructure changes outside a normal image release continue through reviewed
 infra pull requests. The release automation does not merge infrastructure PRs or
 change branch protections.
+
+Before the first digest-pinned release, deploy the reviewed infra digest-support
+change separately. Its `app_image_digest = null` preserves the existing deployed
+tag. The automatic app release must not include this module change as an
+unrelated infrastructure delta. After that one-time infrastructure preparation,
+publishing a stable app release remains the only human release approval.
 
 Once production actually serves the new version, the existing Single Tenant
 controller verifies it and queues upgrades for active managed instances to the

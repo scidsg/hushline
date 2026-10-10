@@ -24,7 +24,7 @@ jobs:
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_repository.full_name == 'scidsg/hushline'))
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     steps:
       - name: Check out trusted automation
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -71,4 +71,4 @@ jobs:
           git -C release-infra config gpg.format ssh
           git -C release-infra config user.signingkey "$signing_key"
           git -C release-infra config commit.gpgsign true
-          python3 scripts/deploy_published_release.py
+          python3 -m scripts.deploy_published_release
