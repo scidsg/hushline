@@ -203,6 +203,10 @@ authentication, displays each high-entropy code only once, and invalidates prior
 stored only as hashes and consumed once. Password reset, notification email, support staff, and
 administrators do not bypass an enrolled second factor.
 
+The login challenge offers a “Use recovery code” link to a separate recovery-code screen,
+with a back link to the authenticator or security-key challenge when available. Recovery-code
+errors stay on that screen; both screens retain the same authentication protections.
+
 Conversation notifications are generic activity alerts. They do not include conversation plaintext or conversation ciphertext, even when the recipient has enabled message-content notifications for one-way tip intake.
 
 PR descriptions for conversation workflow changes should include a threat or risk summary, affected data paths, mitigations, validation commands, manual test steps, known risks, and follow-ups.

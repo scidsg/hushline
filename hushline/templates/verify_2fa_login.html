@@ -10,6 +10,7 @@
 {% endblock %}
 
 {% block content %}
+  <a href="{{ url_for('login') }}" class="back-button"><span class="icon chevron back" aria-hidden="true"></span> Back to Login</a>
   {% if allow_totp %}
     <h2>Enter your 2FA Code</h2>
     <p>🔑 Enter the six-digit code from your authenticator app.</p>
@@ -50,29 +51,6 @@
   {% endif %}
 
   {% if allow_recovery_code %}
-    <h3>Use a recovery code</h3>
-    <p>Each recovery code works once. Using one does not recover encrypted message history.</p>
-    <form method="POST" action="{{ url_for('verify_recovery_code_login') }}">
-      {{ recovery_code_form.hidden_tag() }}
-      <div>
-        {{ recovery_code_form.recovery_code.label }}
-        {{ recovery_code_form.recovery_code(autocomplete='one-time-code', spellcheck='false') }}
-        {% if recovery_code_form.recovery_code.errors %}
-          <div class="error">{{ recovery_code_form.recovery_code.errors[0] }}</div>
-        {% endif %}
-      </div>
-      <button type="submit">Verify Recovery Code</button>
-    </form>
+    <p><a href="{{ url_for('verify_recovery_code_login') }}">Use recovery code</a></p>
   {% endif %}
-
-  <details>
-    <summary>Lost access to all authentication factors?</summary>
-    <p>
-      Try a separately stored backup security key, an authenticator app you deliberately
-      enrolled, or an unused recovery code. Hush Line support and administrators cannot bypass
-      these factors or recover encrypted message history.
-    </p>
-  </details>
-
-  <p><a href="{{ url_for('login') }}">Cancel</a></p>
 {% endblock %}

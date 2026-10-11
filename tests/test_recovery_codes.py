@@ -264,6 +264,8 @@ def test_recovery_code_login_is_single_use_account_bound_and_records_strong_auth
         data={"recovery_code": other_codes[0]},
     )
     assert cross_account.status_code == 401
+    assert "<h2>Use Recovery Code</h2>" in cross_account.text
+    assert 'name="verification_code"' not in cross_account.text
     assert other_codes[0] not in cross_account.text
     other_row = db.session.scalar(
         db.select(RecoveryCode).where(
@@ -343,6 +345,8 @@ def test_recovery_code_attempts_are_rate_limited_without_consuming_valid_code(
     )
 
     assert response.status_code == 429
+    assert "<h2>Use Recovery Code</h2>" in response.text
+    assert codes[0] not in response.text
     assert has_usable_recovery_codes(user.id)
 
 
@@ -408,6 +412,7 @@ def test_exhausted_codes_are_removed_from_later_login_policy(
     response = client.get(url_for("verify_2fa_login"))
 
     assert 'action="/verify-recovery-code-login"' not in response.text
+    assert 'href="/verify-recovery-code-login"' not in response.text
     assert "Use your security key" in response.text
 
 
@@ -453,7 +458,7 @@ def test_password_reset_does_not_bypass_factor_or_unlock_recovery_boundary(
     assert ChatKey.active_for_user_id(user.id) is None
 
 
-def test_missing_all_factors_guidance_disclaims_server_recovery(
+def test_factor_challenge_omits_disclosure_and_support_guidance(
     client: FlaskClient, user: User, user_password: str
 ) -> None:
     _credential(user)
@@ -461,10 +466,96 @@ def test_missing_all_factors_guidance_disclaims_server_recovery(
 
     response = client.get(url_for("verify_2fa_login"))
 
-    assert "Lost access to all authentication factors?" in response.text
-    assert "support and administrators cannot bypass" in response.text
-    assert "cannot" in response.text
-    assert "recover encrypted message history" in response.text
+    assert "<details>" not in response.text
+    assert "support and administrators cannot bypass" not in response.text
     csp = response.headers["Content-Security-Policy"]
     assert "default-src 'self'" in csp
     assert "script-src 'self'" in csp
+
+
+def test_recovery_link_opens_separate_screen_and_back_preserves_pending_login(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    user.totp_secret = pyotp.random_base32()
+    db.session.commit()
+    codes = _persist_codes(user)
+    _password_login(client, user, user_password)
+    log_count = db.session.scalar(db.select(db.func.count()).select_from(AuthenticationLog))
+
+    challenge = client.get(url_for("verify_2fa_login"))
+    soup = BeautifulSoup(challenge.text, "html.parser")
+    link = soup.find("a", string="Use recovery code")
+    assert link is not None
+    assert link["href"] == url_for("verify_recovery_code_login")
+    assert soup.find("input", attrs={"name": "verification_code"}) is not None
+    assert soup.find("input", attrs={"name": "recovery_code"}) is None
+    assert soup.find("details") is None
+    assert soup.select_one(".back-button .icon.chevron.back") is not None
+
+    recovery = client.get(str(link["href"]))
+    soup = BeautifulSoup(recovery.text, "html.parser")
+    assert recovery.status_code == 200
+    assert recovery.headers["Cache-Control"] == "no-store"
+    assert (
+        recovery.headers["Content-Security-Policy"] == challenge.headers["Content-Security-Policy"]
+    )
+    assert soup.find("input", attrs={"name": "recovery_code"}) is not None
+    assert soup.find("input", attrs={"name": "verification_code"}) is None
+    assert soup.find("details") is None
+    assert "security-key-login.js" not in recovery.text
+    back = soup.select_one("a.back-button")
+    assert back is not None
+    assert back["href"] == url_for("verify_2fa_login")
+    assert soup.select_one(".back-button .icon.chevron.back") is not None
+    assert client.get(str(back["href"])).status_code == 200
+    with client.session_transaction() as session:
+        assert session["is_authenticated"] is False
+    assert db.session.scalar(db.select(db.func.count()).select_from(AuthenticationLog)) == log_count
+    assert has_usable_recovery_codes(user.id)
+    assert all(code not in recovery.text for code in codes)
+
+
+def test_recovery_screen_requires_pending_password_login(client: FlaskClient) -> None:
+    response = client.get(url_for("verify_recovery_code_login"))
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("login"))
+
+
+def test_recovery_screen_rejects_unpermitted_factor(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    _credential(user)
+    _password_login(client, user, user_password)
+    response = client.get(url_for("verify_recovery_code_login"))
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("login"))
+    with client.session_transaction() as session:
+        assert not session.get("is_authenticated")
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_recovery_screen_does_not_log_out_authenticated_user(client: FlaskClient) -> None:
+    response = client.get(url_for("verify_recovery_code_login"))
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(url_for("inbox"))
+    with client.session_transaction() as session:
+        assert session["is_authenticated"] is True
+
+
+def test_recovery_only_challenge_opens_recovery_screen_without_back_loop(
+    client: FlaskClient, user: User, user_password: str
+) -> None:
+    user.totp_secret = pyotp.random_base32()
+    db.session.commit()
+    _persist_codes(user)
+    _password_login(client, user, user_password)
+    user.totp_secret = None
+    db.session.commit()
+
+    response = client.get(url_for("verify_2fa_login"), follow_redirects=True)
+    assert response.status_code == 200
+    assert response.request.path == url_for("verify_recovery_code_login")
+    soup = BeautifulSoup(response.text, "html.parser")
+    back = soup.select_one("a.back-button")
+    assert back is not None
+    assert back["href"] == url_for("login")

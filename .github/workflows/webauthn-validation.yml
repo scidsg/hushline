@@ -16,6 +16,7 @@ on:
       - "hushline/settings/security_keys.py"
       - "hushline/templates/settings/security_keys.html"
       - "hushline/templates/verify_2fa_login.html"
+      - "hushline/templates/verify_recovery_code_login.html"
       - "hushline/webauthn.py"
       - "migrations/**"
       - "package.json"
@@ -23,6 +24,7 @@ on:
       - "poetry.lock"
       - "pyproject.toml"
       - "tests/playwright/e2ee/security-key-enrollment.spec.js"
+      - "tests/playwright/e2ee/inbox-sticky-tabs.spec.js"
       - "tests/test_2fa.py"
       - "tests/test_config.py"
       - "tests/test_recovery_codes.py"
@@ -100,8 +102,8 @@ jobs:
           done
           docker compose up -d --no-deps app
           make runner-wait-for-app
-      - name: Run virtual-authenticator ceremonies
-        run: npm run playwright:e2ee -- security-key-enrollment.spec.js
+      - name: Run virtual-authenticator and Inbox browser checks
+        run: npm run playwright:e2ee -- security-key-enrollment.spec.js inbox-sticky-tabs.spec.js
       - name: Upload sanitized browser evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Use Recovery Code{% endblock %}
+
+{% block content %}
+  {% if can_use_primary_factor %}
+    <a href="{{ url_for('verify_2fa_login') }}" class="back-button"><span class="icon chevron back" aria-hidden="true"></span> Back to 2FA</a>
+  {% else %}
+    <a href="{{ url_for('login') }}" class="back-button"><span class="icon chevron back" aria-hidden="true"></span> Back to Login</a>
+  {% endif %}
+  <h2>Use Recovery Code</h2>
+  <p>Each recovery code works once. Using one does not recover encrypted message history.</p>
+  <form method="POST" action="{{ url_for('verify_recovery_code_login') }}">
+    {{ form.hidden_tag() }}
+    <div>
+      {{ form.recovery_code.label }}
+      {{ form.recovery_code(autocomplete='one-time-code', spellcheck='false') }}
+      {% if form.recovery_code.errors %}
+        <div class="error">{{ form.recovery_code.errors[0] }}</div>
+      {% endif %}
+    </div>
+    <button type="submit">Verify Recovery Code</button>
+  </form>
+{% endblock %}
