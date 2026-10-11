@@ -133,6 +133,72 @@ def test_registered_free_user_header_upgrade_offers_enabled_plans(
     )
 
 
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.parametrize(
+    "scenario", [(False, "licenses"), (True, "licenses"), (False, "payment"), (True, "payment")]
+)
+def test_unpaid_draft_does_not_block_free_account(
+    client: FlaskClient,
+    user: User,
+    user_password: str,
+    mocker: MockFixture,
+    scenario: tuple[bool, str],
+) -> None:
+    onboarding_complete, stage = scenario
+    user.set_free_tier()
+    user.onboarding_complete = onboarding_complete
+    db.session.commit()
+    service = mocker.patch("hushline.single_tenant.call")
+    checkout = mocker.patch("hushline.single_tenant_billing.checkout")
+    assert client.get("/premium/select-tier", follow_redirects=True).status_code == 200
+    selected = client.post("/single-tenant/select", follow_redirects=True)
+    assert selected.status_code == 200
+    order = db.session.get(SingleTenantOrder, ORDER)
+    assert order is not None
+    order.stage = stage
+    db.session.commit()
+
+    assert client.get("/single-tenant/plans").status_code == 200
+    inbox = client.get("/inbox", follow_redirects=True)
+    assert inbox.status_code == 200
+    assert inbox.request.path == "/inbox"
+    onboarding = client.get("/onboarding", follow_redirects=True)
+    assert onboarding.status_code == 200
+    assert onboarding.request.path in {"/onboarding", "/inbox"}
+    free = client.post("/premium/select-tier/free", follow_redirects=True)
+    assert free.status_code == 200
+    assert free.request.path == ("/inbox" if onboarding_complete else "/onboarding")
+    resumed = client.post("/single-tenant/select")
+    assert resumed.status_code == 302
+    assert resumed.location.endswith("/single-tenant")
+    assert db.session.get(SingleTenantOrder, ORDER) is order
+    assert order.stage == stage
+    assert order.paid is False
+    with client.session_transaction() as session:
+        session.clear()
+    login = client.post(
+        "/login",
+        data={"username": user.primary_username.username, "password": user_password},
+        follow_redirects=True,
+    )
+    assert login.status_code == 200
+    assert login.request.path == ("/inbox" if onboarding_complete else "/onboarding")
+    service.assert_not_called()
+    checkout.assert_not_called()
+
+
+@pytest.mark.parametrize("endpoint", ["/inbox", "/onboarding", "/onboarding/skip"])
+def test_verified_paid_order_still_requires_setup(
+    client: FlaskClient, order: SingleTenantOrder, endpoint: str
+) -> None:
+    order.paid = True
+    order.stage = "domain"
+    db.session.commit()
+    response = client.post(endpoint) if endpoint.endswith("/skip") else client.get(endpoint)
+    assert response.status_code == 302
+    assert response.location.endswith("/single-tenant")
+
+
 def test_license_price_updates_without_an_extra_price_button(
     client: FlaskClient, order: SingleTenantOrder
 ) -> None:

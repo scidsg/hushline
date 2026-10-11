@@ -330,7 +330,11 @@ fixture remain protected; real billing and production policies are unchanged.
 Users create and authenticate a normal Hush Line account before choosing Free,
 Super User, or Single Tenant. Registered Free users can revisit those choices through
 the header’s **Upgrade** link when Single Tenant is enabled. Existing subscription
-management continues through the premium billing page.
+management continues through the premium billing page. Exploring Single Tenant
+saves an unpaid draft without blocking Inbox or Free account onboarding. Users
+can return to plans, continue on Free, and resume the same draft later. Only a
+verified paid order awaiting instance setup redirects those account screens to
+Single Tenant setup.
 
 Single Tenant uses the existing UI framework and
 requires a complete annual payment upfront. Pricing updates as the license count
