@@ -63,7 +63,12 @@ def pending_setup(user: User) -> bool:
     order = db.session.scalar(
         db.select(SingleTenantOrder).where(SingleTenantOrder.user_id == user.id)
     )
-    return order is not None and order.stage != "ready" and order.service_state != "retired"
+    return (
+        order is not None
+        and order.paid
+        and order.stage != "ready"
+        and order.service_state != "retired"
+    )
 
 
 def synchronize(order: SingleTenantOrder) -> dict[str, Any]:
