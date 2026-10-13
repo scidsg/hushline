@@ -183,15 +183,30 @@ def test_webauthn_credential_limit_allows_a_backup_key() -> None:
     assert cfg["WEBAUTHN_REVOKED_CREDENTIAL_RETENTION_DAYS"] == 14
 
 
-def test_webauthn_enrollment_requires_explicit_switch_and_population() -> None:
+def test_webauthn_enrollment_is_enabled_for_all_accounts_by_default() -> None:
     cfg = load_config({})
-    assert cfg[WEBAUTHN_ENROLLMENT_ENABLED] is False
+    assert cfg[WEBAUTHN_ENROLLMENT_ENABLED] is True
+    assert cfg[WEBAUTHN_ENROLLMENT_USER_IDS] == "*"
+    assert webauthn_enrollment_is_enabled(cfg, user_id=7)
+    assert webauthn_enrollment_is_enabled(cfg, user_id=8)
+
+
+def test_webauthn_enrollment_can_be_paused_explicitly() -> None:
+    cfg = load_config({WEBAUTHN_ENROLLMENT_ENABLED: "false"})
+    assert not webauthn_enrollment_is_enabled(cfg, user_id=7)
+
+
+@pytest.mark.parametrize("population", ["", " "])
+def test_webauthn_enrollment_explicit_empty_population_enables_nobody(population: str) -> None:
+    cfg = load_config({WEBAUTHN_ENROLLMENT_USER_IDS: population})
+    assert cfg[WEBAUTHN_ENROLLMENT_ENABLED] is True
     assert cfg[WEBAUTHN_ENROLLMENT_USER_IDS] == frozenset()
     assert not webauthn_enrollment_is_enabled(cfg, user_id=7)
 
+
+def test_webauthn_enrollment_respects_explicit_population() -> None:
     cfg = load_config(
         {
-            WEBAUTHN_ENROLLMENT_ENABLED: "true",
             WEBAUTHN_ENROLLMENT_USER_IDS: "7, 12",
         }
     )

@@ -17,7 +17,11 @@ from hushline.auth import (
     WEBAUTHN_ENROLLMENT_AUTHORIZATION_SESSION_KEY,
     WEBAUTHN_SESSION_BINDING_KEY,
 )
-from hushline.config import WEBAUTHN_ENROLLMENT_ENABLED
+from hushline.config import (
+    WEBAUTHN_ENROLLMENT_ENABLED,
+    WEBAUTHN_ENROLLMENT_USER_IDS,
+    load_config,
+)
 from hushline.db import db
 from hushline.model import (
     AuthenticationLog,
@@ -137,6 +141,21 @@ def test_enrollment_requires_current_password(client: FlaskClient, user_password
     _authorize(client, user_password)
     response = client.get(url_for("settings.security_keys"))
     assert response.status_code == 200
+    assert 'id="security-key-enrollment-form"' in response.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_enrollment_is_available_with_default_rollout_configuration(
+    app: Flask, client: FlaskClient, user_password: str
+) -> None:
+    defaults = load_config({})
+    app.config[WEBAUTHN_ENROLLMENT_ENABLED] = defaults[WEBAUTHN_ENROLLMENT_ENABLED]
+    app.config[WEBAUTHN_ENROLLMENT_USER_IDS] = defaults[WEBAUTHN_ENROLLMENT_USER_IDS]
+    _authorize(client, user_password)
+
+    response = client.get(url_for("settings.security_keys"))
+    assert response.status_code == 200
+    assert "New security key enrollment is currently paused" not in response.text
     assert 'id="security-key-enrollment-form"' in response.text
 
 

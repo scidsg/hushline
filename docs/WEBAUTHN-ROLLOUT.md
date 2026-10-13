@@ -38,9 +38,12 @@ Set both trust roots explicitly:
   no scheme or port.
 - `WEBAUTHN_ORIGIN` is the one exact public origin, including scheme and any non-default port.
 - `WEBAUTHN_RP_NAME` is the name shown by the browser; it defaults to `Hush Line`.
-- `WEBAUTHN_ENROLLMENT_ENABLED` defaults to `false`.
-- `WEBAUTHN_ENROLLMENT_USER_IDS` is empty for nobody, a comma-separated list of positive database
-  user IDs for an approved cohort, or `*` for an approved all-user launch.
+- `WEBAUTHN_ENROLLMENT_ENABLED` defaults to `true`; set it to `false` to pause new enrollment.
+- `WEBAUTHN_ENROLLMENT_USER_IDS` defaults to `*` for all accounts. Set an explicitly empty value
+  for nobody or a comma-separated list of positive database user IDs for a restricted cohort.
+
+Existing explicit pause and population settings override these defaults after upgrading. Remove
+those overrides or update them when resuming enrollment for all accounts.
 
 Do not infer trust roots from request or proxy headers. Do not put usernames or other direct
 identifiers in rollout configuration. An HTTPS hostname and an onion hostname are distinct
@@ -54,8 +57,9 @@ application must never treat the affected account as password-only.
 
 ## Rollout sequence
 
-1. Deploy the additive WebAuthn and recovery-code schema with enrollment disabled and the
-   population empty. Confirm migration compatibility and that password-only and TOTP accounts
+1. For a staged rollout, explicitly set `WEBAUTHN_ENROLLMENT_ENABLED=false` and
+   `WEBAUTHN_ENROLLMENT_USER_IDS` to an empty value before deploying the additive WebAuthn and
+   recovery-code schema. Confirm migration compatibility and that password-only and TOTP accounts
    retain their existing behavior before changing enrollment configuration.
 2. In ephemeral staging, use synthetic accounts only. Complete every row in the staging table
    and the applicable physical-device rows in

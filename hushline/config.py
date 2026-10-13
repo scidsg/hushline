@@ -227,8 +227,8 @@ def _load_webauthn(env: Mapping[str, str]) -> Mapping[str, Any]:
             )
         data[key] = value
 
-    data[WEBAUTHN_ENROLLMENT_ENABLED] = parse_bool(env.get(WEBAUTHN_ENROLLMENT_ENABLED, "false"))
-    raw_user_ids = env.get(WEBAUTHN_ENROLLMENT_USER_IDS, "").strip()
+    data[WEBAUTHN_ENROLLMENT_ENABLED] = parse_bool(env.get(WEBAUTHN_ENROLLMENT_ENABLED, "true"))
+    raw_user_ids = env.get(WEBAUTHN_ENROLLMENT_USER_IDS, "*").strip()
     if raw_user_ids == "*":
         data[WEBAUTHN_ENROLLMENT_USER_IDS] = "*"
     else:
