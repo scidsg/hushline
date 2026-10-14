@@ -35,9 +35,11 @@
     </form>
   {% endif %}
 
-  <p>
-    <a href="{{ url_for('settings.security_keys') }}">Manage MFA, security keys, and recovery codes</a>
-  </p>
+  {% if security_keys_available %}
+    <p><a href="{{ url_for('settings.security_keys') }}">Manage security keys and recovery codes</a></p>
+  {% elif user.totp_secret %}
+    <p><a href="{{ url_for('settings.security_keys') }}">Manage authentication and recovery codes</a></p>
+  {% endif %}
 
   <h4>Change Password</h4>
   <form

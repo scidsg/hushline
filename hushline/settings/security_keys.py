@@ -329,6 +329,14 @@ def register_security_key_routes(bp: Blueprint) -> None:
     @authentication_required
     def security_keys() -> Response:
         user = _current_user()
+        if (
+            not webauthn_enrollment_is_enabled(current_app.config, user_id=user.id)
+            and not _active_credentials(user)
+            and not user.totp_secret
+        ):
+            response = redirect(url_for(".auth"))
+            response.headers["Cache-Control"] = "no-store"
+            return response
         response = current_app.make_response(_render_security_keys(user))
         response.headers["Cache-Control"] = "no-store"
         return response
@@ -689,7 +697,7 @@ def register_security_key_routes(bp: Blueprint) -> None:
         user = _current_user()
         if not webauthn_enrollment_is_enabled(current_app.config, user_id=user.id):
             return _json_error(
-                "New security key enrollment is currently paused. Enrolled keys still work.",
+                "Unable to add this key. Reload the page and try again.",
                 HTTPStatus.SERVICE_UNAVAILABLE,
             )
         if not _has_recent_enrollment_authorization(user):
@@ -748,7 +756,7 @@ def register_security_key_routes(bp: Blueprint) -> None:
         user = _current_user()
         if not webauthn_enrollment_is_enabled(current_app.config, user_id=user.id):
             return _json_error(
-                "New security key enrollment is currently paused. Enrolled keys still work.",
+                "Unable to add this key. Reload the page and try again.",
                 HTTPStatus.SERVICE_UNAVAILABLE,
             )
         if not _has_recent_enrollment_authorization(user):

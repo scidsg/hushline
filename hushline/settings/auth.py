@@ -2,6 +2,7 @@ from typing import Tuple
 
 from flask import (
     Blueprint,
+    current_app,
     render_template,
     request,
     session,
@@ -9,6 +10,7 @@ from flask import (
 from werkzeug.wrappers.response import Response
 
 from hushline.auth import authentication_required
+from hushline.config import webauthn_enrollment_is_enabled
 from hushline.db import db
 from hushline.model import (
     User,
@@ -66,4 +68,8 @@ def register_auth_routes(bp: Blueprint) -> None:
             chat_key=user.active_chat_key,
             change_username_form=change_username_form,
             change_password_form=change_password_form,
+            security_keys_available=(
+                webauthn_enrollment_is_enabled(current_app.config, user_id=user.id)
+                or any(key.disabled_at is None for key in user.webauthn_credentials)
+            ),
         ), status_code

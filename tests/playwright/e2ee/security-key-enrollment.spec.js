@@ -330,9 +330,10 @@ test("virtual authenticators cover enrollment, login, revocation, and backup rec
   await page.getByLabel(/remove every second factor/i).check();
   await page.getByRole("button", { name: "Disable All MFA" }).click();
   await virtualExpect(page.getByText("MFA disabled")).toBeVisible();
-  await virtualExpect(page.locator("#security-key-empty")).toContainText(
-    "No security keys are enrolled",
-  );
+  await virtualExpect(page.locator("#security-key-list")).toHaveCount(0);
+  await virtualExpect(
+    page.locator("#security-key-authorization-form"),
+  ).toBeVisible();
   await writeFile(
     testInfo.outputPath("validation-metadata.json"),
     JSON.stringify(
