@@ -35,10 +35,17 @@
     </form>
   {% endif %}
 
-  {% if security_keys_available %}
-    <p><a href="{{ url_for('settings.security_keys') }}">Manage security keys and recovery codes</a></p>
-  {% elif user.totp_secret %}
-    <p><a href="{{ url_for('settings.security_keys') }}">Manage authentication and recovery codes</a></p>
+  {% if security_keys_available or user.totp_secret %}
+    <div class="alias-list">
+      <div class="alias-entry">
+        <div>
+          <a href="{{ url_for('settings.security_keys') }}" class="stretched-link">
+            {{ "Manage security keys and recovery codes" if security_keys_available else "Manage authentication and recovery codes" }}
+          </a>
+        </div>
+        <div class="icon chevron" aria-hidden="true"></div>
+      </div>
+    </div>
   {% endif %}
 
   <h4>Change Password</h4>

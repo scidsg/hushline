@@ -334,6 +334,10 @@ def test_recovery_management_remains_available_without_advertising_unavailable_k
     db.session.commit()
     settings = client.get(url_for("settings.auth"))
     assert "Manage authentication and recovery codes" in settings.text
+    card = BeautifulSoup(settings.text, "html.parser").select_one(".alias-entry")
+    assert card is not None
+    assert card.select_one("a.stretched-link") is not None
+    assert card.select_one('.icon.chevron[aria-hidden="true"]') is not None
     assert "security keys" not in settings.text.lower()
     page = client.get(url_for("settings.security_keys"))
     assert page.status_code == 200
@@ -349,6 +353,12 @@ def test_available_security_keys_show_actions_without_backend_or_empty_status(
 ) -> None:
     settings = client.get(url_for("settings.auth"))
     assert "Manage security keys and recovery codes" in settings.text
+    card = BeautifulSoup(settings.text, "html.parser").select_one(".alias-entry")
+    assert card is not None
+    link = card.select_one("a.stretched-link")
+    assert link is not None
+    assert link["href"] == url_for("settings.security_keys")
+    assert card.select_one('.icon.chevron[aria-hidden="true"]') is not None
     _authorize(client, user_password)
     page = client.get(url_for("settings.security_keys"))
     assert 'id="security-key-enrollment-form"' in page.text
