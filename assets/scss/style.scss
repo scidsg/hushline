@@ -5071,6 +5071,14 @@ h2.submit#embed-recipient-heading {
   margin-top: 0.25rem;
 }
 
+.authenticator-app-form {
+  margin-bottom: 0;
+}
+
+.authenticator-app-form + .alias-list {
+  margin-top: 0.5rem;
+}
+
 .security-key-card {
   flex-direction: column;
   align-items: stretch;
