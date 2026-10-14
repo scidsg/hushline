@@ -321,6 +321,24 @@ def test_existing_keys_remain_manageable_when_new_enrollment_is_unavailable(
     assert "Office USB key" in page.text
     assert ">Rename</button>" in page.text
     assert ">Remove</button>" in page.text
+    markup = BeautifulSoup(page.text, "html.parser")
+    card = markup.select_one("#security-key-list .security-key-card")
+    assert card is not None
+    assert markup.select_one("#security-key-list li") is None
+    actions = card.select_one(".security-key-actions")
+    assert actions is not None
+    rename_button = actions.find("button", string="Rename")
+    assert rename_button is not None
+    rename_form = card.find("form", id=rename_button["form"])
+    assert rename_form is not None
+    assert rename_form["action"] == url_for("settings.rename_security_key")
+    assert rename_form.select_one('input[name="csrf_token"]') is not None
+    remove_button = actions.select_one("button.btn-danger")
+    assert remove_button is not None
+    remove_form = remove_button.find_parent("form")
+    assert remove_form is not None
+    assert remove_form["action"] == url_for("settings.remove_security_key")
+    assert remove_form.select_one('input[name="csrf_token"]') is not None
     assert "security-key-enrollment-form" not in page.text
     assert "paused" not in page.text
 

@@ -5071,6 +5071,44 @@ h2.submit#embed-recipient-heading {
   margin-top: 0.25rem;
 }
 
+.security-key-card {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.security-key-card .meta {
+  margin: 0;
+}
+
+.security-key-card form {
+  margin: 0;
+}
+
+.security-key-card input[type="text"],
+.security-key-actions .btn {
+  margin-bottom: 0;
+}
+
+.security-key-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.security-key-actions .btn-danger {
+  background: transparent;
+  border-width: 1px;
+  box-shadow: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .security-key-actions .btn-danger {
+    color: pink;
+  }
+}
+
 .stretched-link::after {
   position: absolute;
   top: 0;

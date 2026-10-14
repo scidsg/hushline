@@ -16,20 +16,20 @@
 
   {% if credentials %}
     <h4>Your Security Keys</h4>
-    <ul id="security-key-list">
+    <div id="security-key-list" class="alias-list">
       {% for credential in credentials %}
-        <li>
+        <div class="alias-entry security-key-card">
           <strong>{{ credential.name or 'Security key' }}</strong>
-          <span class="meta">
+          <p class="meta">
             Added <time datetime="{{ credential.created_at.isoformat() }}">{{ credential.created_at.strftime('%Y-%m-%d') }}</time>.
             {% if credential.last_used_at %}
               Last used <time datetime="{{ credential.last_used_at.isoformat() }}">{{ credential.last_used_at.strftime('%Y-%m-%d %H:%M UTC') }}</time>.
             {% else %}
               Never used.
             {% endif %}
-          </span>
+          </p>
           {% if enrollment_authorized %}
-            <form method="POST" action="{{ url_for('settings.rename_security_key') }}">
+            <form id="rename-key-form-{{ credential.id }}" method="POST" action="{{ url_for('settings.rename_security_key') }}">
               {{ rename_form.csrf_token(id='rename-key-csrf-' ~ credential.id) }}
               <input type="hidden" name="credential_id" value="{{ credential.id }}" />
               <label for="rename-key-{{ credential.id }}">Key Label</label>
@@ -42,17 +42,19 @@
                 value="{{ credential.name or '' }}"
                 autocomplete="off"
               />
-              <button type="submit">Rename</button>
             </form>
-            <form method="POST" action="{{ url_for('settings.remove_security_key') }}">
-              {{ removal_form.csrf_token(id='remove-key-csrf-' ~ credential.id) }}
-              <input type="hidden" name="credential_id" value="{{ credential.id }}" />
-              <button type="submit">Remove</button>
-            </form>
+            <div class="security-key-actions">
+              <button type="submit" form="rename-key-form-{{ credential.id }}" class="btn">Rename</button>
+              <form method="POST" action="{{ url_for('settings.remove_security_key') }}">
+                {{ removal_form.csrf_token(id='remove-key-csrf-' ~ credential.id) }}
+                <input type="hidden" name="credential_id" value="{{ credential.id }}" />
+                <button type="submit" class="btn btn-danger">Remove</button>
+              </form>
+            </div>
           {% endif %}
-        </li>
+        </div>
       {% endfor %}
-    </ul>
+    </div>
   {% endif %}
 
   {% if credentials|length >= max_credentials %}
