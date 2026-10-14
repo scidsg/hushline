@@ -306,13 +306,21 @@ test("virtual authenticators cover enrollment, login, revocation, and backup rec
   });
 
   await authorizeAfterRecentStrongAuthentication(page);
-  const primaryRow = page.locator("#security-key-list li", {
+  const primaryRow = page.locator("#security-key-list .security-key-card", {
     hasText: "Primary virtual USB key",
   });
-  await primaryRow.getByRole("button", { name: "Remove" }).click();
+  await primaryRow
+    .getByLabel("Key Label", { exact: true })
+    .fill("Renamed primary key");
+  await primaryRow.getByRole("button", { name: "Rename", exact: true }).click();
+  const renamedRow = page.locator("#security-key-list .security-key-card", {
+    hasText: "Renamed primary key",
+  });
+  await virtualExpect(renamedRow).toBeVisible();
+  await renamedRow.getByRole("button", { name: "Remove", exact: true }).click();
   await virtualExpect(page.getByText("Security key removed")).toBeVisible();
   await virtualExpect(
-    page.getByText("Primary virtual USB key", { exact: true }),
+    page.getByText("Renamed primary key", { exact: true }),
   ).toHaveCount(0);
 
   await page.goto("/logout", { waitUntil: "networkidle" });
@@ -330,9 +338,10 @@ test("virtual authenticators cover enrollment, login, revocation, and backup rec
   await page.getByLabel(/remove every second factor/i).check();
   await page.getByRole("button", { name: "Disable All MFA" }).click();
   await virtualExpect(page.getByText("MFA disabled")).toBeVisible();
-  await virtualExpect(page.locator("#security-key-empty")).toContainText(
-    "No security keys are enrolled",
-  );
+  await virtualExpect(page.locator("#security-key-list")).toHaveCount(0);
+  await virtualExpect(
+    page.locator("#security-key-authorization-form"),
+  ).toBeVisible();
   await writeFile(
     testInfo.outputPath("validation-metadata.json"),
     JSON.stringify(

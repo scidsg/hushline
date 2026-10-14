@@ -277,7 +277,8 @@ def test_enrollment_kill_switch_blocks_only_new_credentials(
     )
 
     assert page.status_code == 200
-    assert "New security key enrollment is currently paused" in page.text
+    assert "New security key enrollment is currently paused" not in page.text
+    assert "Add USB or NFC" not in page.text
     assert 'id="security-key-enrollment-form"' not in page.text
     assert "Existing key" in page.text
     assert options.status_code == 503
@@ -288,6 +289,100 @@ def test_enrollment_kill_switch_blocks_only_new_credentials(
     finish.assert_not_called()
     db.session.refresh(credential)
     assert credential.disabled_at is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_unavailable_security_keys_are_hidden_and_direct_page_redirects(
+    app: Flask, client: FlaskClient
+) -> None:
+    app.config[WEBAUTHN_ENROLLMENT_ENABLED] = False
+    settings = client.get(url_for("settings.auth"))
+    assert "security-keys" not in settings.text
+    assert "security keys" not in settings.text.lower()
+    page = client.get(url_for("settings.security_keys"))
+    assert page.status_code == 302
+    assert page.location == url_for("settings.auth")
+    assert page.headers["Cache-Control"] == "no-store"
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_existing_keys_remain_manageable_when_new_enrollment_is_unavailable(
+    app: Flask, client: FlaskClient, user: User, user_password: str
+) -> None:
+    _credential(user, b"existing-management-key", "Office USB key")
+    app.config[WEBAUTHN_ENROLLMENT_ENABLED] = False
+    settings = client.get(url_for("settings.auth"))
+    assert "Manage security keys and recovery codes" in settings.text
+    _mark_recent_strong_authentication(client, user)
+    _authorize(client, user_password)
+    app.config["WTF_CSRF_ENABLED"] = True
+    page = client.get(url_for("settings.security_keys"))
+    assert page.status_code == 200
+    assert "Office USB key" in page.text
+    assert ">Rename</button>" in page.text
+    assert ">Remove</button>" in page.text
+    markup = BeautifulSoup(page.text, "html.parser")
+    card = markup.select_one("#security-key-list .security-key-card")
+    assert card is not None
+    assert markup.select_one("#security-key-list li") is None
+    actions = card.select_one(".security-key-actions")
+    assert actions is not None
+    rename_button = actions.find("button", string="Rename")
+    assert rename_button is not None
+    rename_form = card.find("form", id=rename_button["form"])
+    assert rename_form is not None
+    assert rename_form["action"] == url_for("settings.rename_security_key")
+    assert rename_form.select_one('input[name="csrf_token"]') is not None
+    remove_button = actions.select_one("button.btn-danger")
+    assert remove_button is not None
+    remove_form = remove_button.find_parent("form")
+    assert remove_form is not None
+    assert remove_form["action"] == url_for("settings.remove_security_key")
+    assert remove_form.select_one('input[name="csrf_token"]') is not None
+    assert "security-key-enrollment-form" not in page.text
+    assert "paused" not in page.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_recovery_management_remains_available_without_advertising_unavailable_keys(
+    app: Flask, client: FlaskClient, user: User
+) -> None:
+    app.config[WEBAUTHN_ENROLLMENT_ENABLED] = False
+    user.totp_secret = pyotp.random_base32()
+    db.session.commit()
+    settings = client.get(url_for("settings.auth"))
+    assert "Manage authentication and recovery codes" in settings.text
+    card = BeautifulSoup(settings.text, "html.parser").select_one(".alias-entry")
+    assert card is not None
+    assert card.select_one("a.stretched-link") is not None
+    assert card.select_one('.icon.chevron[aria-hidden="true"]') is not None
+    assert "security keys" not in settings.text.lower()
+    page = client.get(url_for("settings.security_keys"))
+    assert page.status_code == 200
+    assert "Authentication and Recovery" in page.text
+    assert "Security Keys" not in page.text
+    assert "paused" not in page.text
+    assert "security-keys.js" not in page.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+def test_available_security_keys_show_actions_without_backend_or_empty_status(
+    client: FlaskClient, user_password: str
+) -> None:
+    settings = client.get(url_for("settings.auth"))
+    assert "Manage security keys and recovery codes" in settings.text
+    card = BeautifulSoup(settings.text, "html.parser").select_one(".alias-entry")
+    assert card is not None
+    link = card.select_one("a.stretched-link")
+    assert link is not None
+    assert link["href"] == url_for("settings.security_keys")
+    assert card.select_one('.icon.chevron[aria-hidden="true"]') is not None
+    _authorize(client, user_password)
+    page = client.get(url_for("settings.security_keys"))
+    assert 'id="security-key-enrollment-form"' in page.text
+    assert "No security keys are enrolled" not in page.text
+    assert "paused" not in page.text
+    assert "keys enabled" not in page.text.lower()
 
 
 @pytest.mark.usefixtures("_authenticated_user")

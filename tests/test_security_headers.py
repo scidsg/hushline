@@ -150,9 +150,10 @@ def test_settings_profile_keeps_frame_restrictions(client: FlaskClient) -> None:
 def test_security_key_settings_keeps_csp_enforced(app: Flask, client: FlaskClient) -> None:
     enabled_response = client.get(url_for("settings.security_keys"))
     app.config[WEBAUTHN_ENROLLMENT_ENABLED] = False
-    paused_response = client.get(url_for("settings.security_keys"))
+    paused_response = client.get(url_for("settings.security_keys"), follow_redirects=True)
 
-    assert "New security key enrollment is currently paused" in paused_response.text
+    assert "New security key enrollment is currently paused" not in paused_response.text
+    assert "security-keys.js" not in paused_response.text
     for response in (enabled_response, paused_response):
         assert response.status_code == 200
         directives = _csp_directives(response.headers)

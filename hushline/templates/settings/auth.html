@@ -29,15 +29,24 @@
     <form
       method="POST"
       action="{{ url_for('settings.toggle_2fa') }}"
-      class="formBody"
+      class="formBody authenticator-app-form"
     >
       <button type="submit">Add Authenticator App</button>
     </form>
   {% endif %}
 
-  <p>
-    <a href="{{ url_for('settings.security_keys') }}">Manage MFA, security keys, and recovery codes</a>
-  </p>
+  {% if security_keys_available or user.totp_secret %}
+    <div class="alias-list">
+      <div class="alias-entry">
+        <div>
+          <a href="{{ url_for('settings.security_keys') }}" class="stretched-link">
+            {{ "Manage security keys and recovery codes" if security_keys_available else "Manage authentication and recovery codes" }}
+          </a>
+        </div>
+        <div class="icon chevron" aria-hidden="true"></div>
+      </div>
+    </div>
+  {% endif %}
 
   <h4>Change Password</h4>
   <form
