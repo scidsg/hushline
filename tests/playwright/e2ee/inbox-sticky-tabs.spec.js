@@ -2,6 +2,37 @@ const { expect, test } = require("@playwright/test");
 
 const TEST_PASSWORD = "Test-testtesttesttest-1";
 
+for (const width of [390, 1280]) {
+  test(`inbox badge borders fit their scroll container at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 700 });
+    await login(page, "jerryseinfeld");
+    await page.goto("/inbox", { waitUntil: "networkidle" });
+    await page.evaluate(() => document.fonts.ready);
+
+    for (const padding of ["0.25rem", "0.215rem", "0.125rem"]) {
+      await page.locator(".inbox-tabs .badge").evaluateAll((badges, value) => {
+        for (const badge of badges) badge.style.paddingBlock = value;
+      }, padding);
+      const badges = page.locator(".inbox-tabs .badge");
+      expect(await badges.count()).toBeGreaterThan(0);
+      for (const badge of await badges.all()) {
+        await badge.scrollIntoViewIfNeeded();
+        const fits = await badge.evaluate((element) => {
+          const bounds = element.getBoundingClientRect();
+          const tabs = element.closest(".inbox-tabs").getBoundingClientRect();
+          return bounds.top >= tabs.top && bounds.bottom <= tabs.bottom;
+        });
+        expect(
+          fits,
+          `badge border must fit with ${padding} vertical padding`,
+        ).toBe(true);
+      }
+    }
+  });
+}
+
 for (const width of [1280, 390]) {
   test(`inbox count badges remain fully visible at ${width}px`, async ({
     page,

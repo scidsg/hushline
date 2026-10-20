@@ -3012,13 +3012,18 @@ img.alert {
 
 .directory-tabs .tab,
 .settings-tabs .tab,
-.inbox-tabs .tab,
-.inbox-tabs-nav .tab,
 .tools-tabs .tab {
   isolation: isolate;
   transform: translateZ(0);
   -webkit-font-smoothing: antialiased;
   backface-visibility: hidden;
+}
+
+// Keep fractional-height badge borders out of a clipped compositing layer.
+.inbox-tabs .tab,
+.inbox-tabs-nav .tab {
+  isolation: isolate;
+  -webkit-font-smoothing: antialiased;
 }
 
 .directory-tabs .tab:hover::before,
@@ -4604,7 +4609,6 @@ h2.submit#embed-recipient-heading {
 .inbox-tabs .tab .badge {
   height: auto;
   min-width: 1.5625rem;
-  line-height: 1.25;
   align-items: center;
   flex-shrink: 0;
 }
