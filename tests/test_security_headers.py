@@ -40,6 +40,18 @@ def test_csp(client: FlaskClient) -> None:
     assert "form-action 'self'" in csp
 
 
+@pytest.mark.usefixtures("_authenticated_user")
+def test_inbox_badges_keep_csp_enforced(client: FlaskClient) -> None:
+    response = client.get(url_for("inbox"))
+    assert response.status_code == 200
+    assert 'class="badge"' in response.text
+    directives = _csp_directives(response.headers)
+    assert directives["script-src"] == "'self'"
+    assert directives["script-src-elem"] == "'self'"
+    assert directives["style-src"] == "'self' 'unsafe-inline'"
+    assert response.headers["X-Frame-Options"] == "DENY"
+
+
 def test_csp_form_action_allows_stripe_redirect_hosts_when_premium_enabled(
     client: FlaskClient, app: Flask, monkeypatch: pytest.MonkeyPatch
 ) -> None:
