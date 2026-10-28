@@ -1,4 +1,7 @@
 import json
+import smtplib
+import socket
+import ssl
 from base64 import b64decode
 from datetime import UTC, datetime
 from io import BytesIO
@@ -1913,9 +1916,8 @@ def test_notifications_business_tier_display_price_handles_missing_and_decimal_t
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-@pytest.mark.usefixtures("_pgp_user")
 @patch("hushline.settings.notifications.is_safe_smtp_host", return_value=True)
-@patch("hushline.email.smtplib.SMTP")
+@patch("hushline.email._SMTP")
 def test_update_smtp_settings_starttls(
     SMTP: MagicMock,
     is_safe_smtp_host: MagicMock,
@@ -1962,9 +1964,8 @@ def test_update_smtp_settings_starttls(
 
 
 @pytest.mark.usefixtures("_authenticated_user")
-@pytest.mark.usefixtures("_pgp_user")
 @patch("hushline.settings.notifications.is_safe_smtp_host", return_value=True)
-@patch("hushline.email.smtplib.SMTP_SSL")
+@patch("hushline.email._SMTP_SSL")
 def test_update_smtp_settings_ssl(
     SMTP: MagicMock,
     is_safe_smtp_host: MagicMock,
@@ -2013,7 +2014,7 @@ def test_update_smtp_settings_ssl(
 @pytest.mark.usefixtures("_authenticated_user")
 @pytest.mark.usefixtures("_pgp_user")
 @patch("hushline.settings.notifications.is_safe_smtp_host", return_value=True)
-@patch("hushline.email.smtplib.SMTP")
+@patch("hushline.email._SMTP")
 def test_update_smtp_settings_default_forwarding(
     SMTP: MagicMock,
     is_safe_smtp_host: MagicMock,
@@ -3909,3 +3910,107 @@ def test_alias_fields_invalid_add_post_renders_errors_without_creating_field(
     new_field_form = soup.select_one(".field-form-new form")
     assert new_field_form is not None
     assert "This field is required." in new_field_form.text
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.parametrize(("protocol", "port"), [("StartTLS", 587), ("SSL", 465)])
+@pytest.mark.parametrize(
+    "failure",
+    [
+        smtplib.SMTPAuthenticationError(535, b"Authentication failed"),
+        smtplib.SMTPNotSupportedError("Authentication is not supported"),
+        smtplib.SMTPServerDisconnected("Server disconnected"),
+        ssl.SSLCertVerificationError("Certificate verification failed"),
+        ConnectionRefusedError("Connection refused"),
+        TimeoutError("Connection timed out"),
+    ],
+)
+def test_new_account_custom_smtp_connection_failure_preserves_settings(
+    client: FlaskClient,
+    user: User,
+    protocol: str,
+    port: int,
+    failure: Exception,
+) -> None:
+    assert user.smtp_server is None
+    assert user.pgp_key is None
+    with (
+        patch("hushline.settings.notifications.is_safe_smtp_host", return_value=True),
+        patch("hushline.settings.notifications.create_smtp_config") as create_config,
+    ):
+        create_config.return_value.smtp_login.return_value.__enter__.side_effect = failure
+        response = client.post(
+            url_for("settings.notifications"),
+            data={
+                "custom_smtp_settings": "y",
+                "smtp_settings-smtp_server": "smtp.example.com",
+                "smtp_settings-smtp_port": port,
+                "smtp_settings-smtp_username": "user@example.com",
+                "smtp_settings-smtp_password": "synthetic-password",
+                "smtp_settings-smtp_sender": "sender@example.com",
+                "smtp_settings-smtp_encryption": protocol,
+                EmailForwardingForm.submit.name: "",
+            },
+        )
+    assert response.status_code == 400
+    assert "Unable to validate SMTP connection settings." in response.text
+    assert "synthetic-password" not in response.text
+    db.session.refresh(user)
+    assert user.smtp_server is None
+    assert user.smtp_password is None
+
+
+@pytest.mark.usefixtures("_authenticated_user")
+@pytest.mark.parametrize(("protocol", "port"), [("SSL", 465), ("StartTLS", 587)])
+def test_custom_smtp_multiple_unreachable_addresses_do_not_kill_worker(
+    client: FlaskClient,
+    user: User,
+    protocol: str,
+    port: int,
+) -> None:
+    elapsed = 0.0
+    sockets = []
+
+    def make_socket(*args: object) -> MagicMock:
+        sock = MagicMock()
+        sock.gettimeout.return_value = 10.0
+        sock.settimeout.side_effect = lambda value: setattr(sock.gettimeout, "return_value", value)
+
+        def connect(address: object) -> None:
+            nonlocal elapsed
+            elapsed += sock.gettimeout()
+            if elapsed >= 30:
+                raise SystemExit("simulated Gunicorn worker timeout")
+            raise TimeoutError("TCP connect timed out")
+
+        sock.connect.side_effect = connect
+        sockets.append(sock)
+        return sock
+
+    addresses = [
+        (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("8.8.8.8", port))
+    ] * 4
+    with (
+        patch("hushline.email.socket.getaddrinfo", return_value=addresses),
+        patch("hushline.email.socket.socket", side_effect=make_socket),
+        patch("hushline.email.time.monotonic", side_effect=lambda: elapsed),
+    ):
+        response = client.post(
+            url_for("settings.notifications"),
+            data={
+                "custom_smtp_settings": "y",
+                "smtp_settings-smtp_server": "smtp.example.com",
+                "smtp_settings-smtp_port": port,
+                "smtp_settings-smtp_username": "user@example.com",
+                "smtp_settings-smtp_password": "synthetic-password",
+                "smtp_settings-smtp_sender": "sender@example.com",
+                "smtp_settings-smtp_encryption": protocol,
+                EmailForwardingForm.submit.name: "",
+            },
+        )
+    assert response.status_code == 400
+    assert "Unable to validate SMTP connection settings." in response.text
+    assert elapsed <= 10
+    assert all(sock.close.called for sock in sockets)
+    db.session.refresh(user)
+    assert user.smtp_server is None
