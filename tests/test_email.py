@@ -1,5 +1,6 @@
 import secrets
 import smtplib
+import socket
 from contextlib import contextmanager
 from typing import Generator, cast
 from unittest.mock import MagicMock, patch
@@ -53,7 +54,7 @@ def test_ssl_smtp_login_authenticates_over_ssl() -> None:
     )
 
     with (
-        patch("hushline.email.smtplib.SMTP_SSL", return_value=smtp_context) as smtp_ssl,
+        patch("hushline.email._SMTP_SSL", return_value=smtp_context) as smtp_ssl,
         cfg.smtp_login(timeout=5) as logged_in_server,
     ):
         assert logged_in_server is server
@@ -74,7 +75,7 @@ def test_starttls_smtp_login_upgrades_with_default_tls_context() -> None:
     )
 
     with (
-        patch("hushline.email.smtplib.SMTP", return_value=smtp_context) as smtp,
+        patch("hushline.email._SMTP", return_value=smtp_context) as smtp,
         patch("hushline.email.ssl.create_default_context", return_value=tls_context),
         cfg.smtp_login(timeout=5) as logged_in_server,
     ):
@@ -298,3 +299,50 @@ def test_send_email_keeps_inline_pgp_body_as_top_level_text() -> None:
     assert sent_message.is_multipart() is False
     assert sent_message["Content-Transfer-Encoding"] == "7bit"
     assert sent_message.get_payload() == armored_body
+
+
+def test_smtp_fallback_uses_remaining_connection_budget() -> None:
+    first, second = MagicMock(), MagicMock()
+    first.connect.side_effect = TimeoutError("first address timed out")
+    addresses = [
+        (
+            socket.AF_INET6,
+            socket.SOCK_STREAM,
+            socket.IPPROTO_TCP,
+            "",
+            ("2606:4700::1111", 587, 0, 0),
+        ),
+        (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("1.1.1.1", 587)),
+    ]
+    smtp = email_mod._SMTP(local_hostname="localhost", source_address=("127.0.0.1", 0))
+    with (
+        patch("hushline.email.socket.getaddrinfo", return_value=addresses),
+        patch("hushline.email.socket.socket", side_effect=[first, second]),
+        patch("hushline.email.time.monotonic", side_effect=[0, 0, 7]),
+    ):
+        result = smtp._get_socket("smtp.example.com", 587, 10)
+    assert result is second
+    first.settimeout.assert_called_once_with(10)
+    first.close.assert_called_once_with()
+    second.settimeout.assert_any_call(3)
+    second.settimeout.assert_called_with(10)
+    second.bind.assert_called_once_with(("127.0.0.1", 0))
+    second.connect.assert_called_once_with(("1.1.1.1", 587))
+    second.close.assert_not_called()
+
+
+def test_smtp_ssl_preserves_tls_context_and_original_hostname() -> None:
+    tcp_socket = MagicMock()
+    tls_context = MagicMock()
+    with (
+        patch.object(email_mod._SMTP, "_get_socket", return_value=tcp_socket),
+        patch.object(smtplib.SMTP, "getreply", return_value=(220, b"ready")),
+    ):
+        email_mod._SMTP_SSL(
+            "smtp.example.com",
+            465,
+            local_hostname="localhost",
+            timeout=10,
+            context=tls_context,
+        )
+    tls_context.wrap_socket.assert_called_once_with(tcp_socket, server_hostname="smtp.example.com")

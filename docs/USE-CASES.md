@@ -178,6 +178,9 @@ The app and public directory support more than individual profiles. Current disc
 | Admin | Delete an alias without deleting the whole user                                                   | I can remove an outdated intake endpoint while preserving the owner account                       | Settings -> Users           |
 | Admin | Preserve participant-only access to account conversations                                         | Administrators can govern accounts without becoming hidden readers of conversation ciphertext     | Admin moderation boundaries |
 
+Custom SMTP connection attempts share one timeout across all resolved server addresses.
+If the server is unreachable, saving returns a validation error without changing the stored settings.
+
 ## Two-Way Account Conversation Security Model
 
 Two-way conversations are for logged-in Hush Line account holders who submit to another account while both sides can use Hush Line chat keys. Anonymous submissions continue to use the existing message inbox and reply-link flow; they do not create account conversations.

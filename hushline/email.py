@@ -13,6 +13,43 @@ from flask import current_app
 from hushline.model import SMTPEncryption
 
 
+class _SMTP(smtplib.SMTP):
+    def _get_socket(self, host: str, port: int, timeout: float) -> socket.socket:
+        # socket.create_connection gives every resolved address the full timeout.
+        # Share one budget so multiple unreachable addresses cannot kill the web worker.
+        if timeout <= 0:
+            raise ValueError("SMTP connection timeout must be positive")
+        deadline = time.monotonic() + timeout
+        addresses = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+        last_error: OSError | None = None
+        for family, socktype, proto, _, address in addresses:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("SMTP connection timed out")
+            sock = None
+            try:
+                sock = socket.socket(family, socktype, proto)
+                sock.settimeout(remaining)
+                if self.source_address:
+                    sock.bind(self.source_address)
+                sock.connect(address)
+                sock.settimeout(timeout)
+                return sock
+            except OSError as error:
+                if sock is not None:
+                    sock.close()
+                last_error = error
+        if last_error is not None:
+            raise last_error
+        raise OSError("SMTP server did not resolve to any addresses")
+
+
+class _SMTP_SSL(smtplib.SMTP_SSL, _SMTP):
+    # SMTP_SSL wraps the socket from super()._get_socket with the original
+    # hostname, preserving TLS SNI and the SSL context's verification behavior.
+    pass
+
+
 @dataclass
 class SMTPConfig:
     username: str
@@ -44,7 +81,7 @@ def create_smtp_config(  # noqa PLR0913
 class SSL_SMTPConfig(SMTPConfig):
     @contextmanager
     def smtp_login(self, timeout: int = 10) -> Generator[smtplib.SMTP, None, None]:
-        with smtplib.SMTP_SSL(self.server, self.port, timeout=timeout) as server:
+        with _SMTP_SSL(self.server, self.port, timeout=timeout) as server:
             server.ehlo()
             server.login(self.username, self.password)
             yield server
@@ -53,7 +90,7 @@ class SSL_SMTPConfig(SMTPConfig):
 class StartTLS_SMTPConfig(SMTPConfig):
     @contextmanager
     def smtp_login(self, timeout: int = 10) -> Generator[smtplib.SMTP, None, None]:
-        with smtplib.SMTP(self.server, self.port, timeout=timeout) as server:
+        with _SMTP(self.server, self.port, timeout=timeout) as server:
             server.ehlo()
             server.starttls(context=ssl.create_default_context())
             server.ehlo()
