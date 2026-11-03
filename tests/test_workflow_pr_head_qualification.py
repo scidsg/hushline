@@ -339,16 +339,18 @@ def test_dependency_audit_workflow_only_runs_python_audit_when_poetry_lock_chang
     )
 
 
-def test_dependency_audit_pins_poetry_export_plugin_install() -> None:
+def test_dependency_audit_uses_preinstalled_poetry_export_plugin() -> None:
     workflow_text = _workflow_text(".github/workflows/dependency-security-audit.yml")
     make_text = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
 
-    expected_install = 'poetry self add "poetry-plugin-export==1.10.0"'
+    expected_export = (
+        "poetry export -f requirements.txt --without-hashes " "-o /tmp/requirements.txt"
+    )
 
-    assert expected_install in workflow_text
-    assert expected_install in make_text
-    assert "poetry self add poetry-plugin-export &&" not in workflow_text
-    assert "poetry self add poetry-plugin-export &&" not in make_text
+    assert expected_export in workflow_text
+    assert expected_export in make_text
+    assert "poetry self add" not in workflow_text
+    assert "poetry self add" not in make_text
 
 
 def test_securedrop_refresh_summary_uses_checked_random_github_output_delimiter() -> None:

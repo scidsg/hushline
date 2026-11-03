@@ -23,7 +23,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 RUN python -m pip install --no-cache-dir --upgrade "pip>=26,<27" && \
-    python -m pip install --no-cache-dir poetry
+    python -m pip install --no-cache-dir poetry "poetry-plugin-export==1.10.0"
 
 RUN npm install --global prettier@3.3.3
 
