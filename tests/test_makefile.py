@@ -49,6 +49,15 @@ def test_test_target_writes_html_coverage_to_tmp_by_default() -> None:
     assert "--cov-report html:$(COVERAGE_HTML_DIR)" in target_section
 
 
+def test_test_target_installs_locked_openpgp_dependency_when_needed() -> None:
+    make_text = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    target_section = _target_section("test")
+
+    assert "node_modules/openpgp/package.json: package.json package-lock.json" in make_text
+    assert "npm_config_update_notifier=false npm ci --no-audit --no-fund" in make_text
+    assert "test: node_modules/openpgp/package.json ## Run the test suite" in target_section
+
+
 def test_release_target_invokes_release_helper_with_prod_defaults() -> None:
     make_text = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
     target_section = _target_section("release")
