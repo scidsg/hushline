@@ -23,6 +23,14 @@ def test_dev_and_prod_dockerfiles_use_the_same_python_313_bookworm_runtime_image
     assert _python_runtime_base("Dockerfile.prod") == EXPECTED_RUNTIME_IMAGE
 
 
+def test_dev_dockerfile_preinstalls_pinned_poetry_export_plugin() -> None:
+    dockerfile = (ROOT / "Dockerfile.dev").read_text(encoding="utf-8")
+
+    assert (
+        'python -m pip install --no-cache-dir poetry "poetry-plugin-export==1.10.0"' in dockerfile
+    )
+
+
 @pytest.mark.local_only()
 def test_customer_driver_accepts_workflow_paths_as_arguments() -> None:
     if os.environ.get("SINGLE_TENANT_DRIVER_CONTAINER_SMOKE") != "1":
