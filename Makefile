@@ -109,8 +109,11 @@ endif
 TESTS ?= ./tests/
 PYTEST_DEFAULT_MARK_EXPR ?= not external_network
 COVERAGE_HTML_DIR ?= /tmp/hushline-htmlcov
+node_modules/openpgp/package.json: package.json package-lock.json
+	npm_config_update_notifier=false npm ci --no-audit --no-fund
+
 .PHONY: test
-test: ## Run the test suite
+test: node_modules/openpgp/package.json ## Run the test suite
 	$(CMD) poetry run pytest --cov hushline --cov-report term-missing --cov-report html:$(COVERAGE_HTML_DIR) -vv -m "$(PYTEST_DEFAULT_MARK_EXPR)" $(PYTEST_ADDOPTS) $(TESTS)
 
 .PHONY: test-public-record-links

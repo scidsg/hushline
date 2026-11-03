@@ -56,7 +56,8 @@ jobs:
         run: make test PYTEST_ADDOPTS="--skip-local-only"
 
   virtual-authenticator:
-    runs-on: ubuntu-latest
+    # Playwright 1.55.1 supports Ubuntu 24.04, not the newer ubuntu-latest image.
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
