@@ -135,10 +135,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project:
-          - chromium
-          - firefox
-          - webkit
+        include:
+          - project: chromium
+            browser: chromium
+          - project: firefox
+            browser: firefox
+          - project: webkit
+            browser: webkit
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -147,7 +150,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build:prod
-      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
       - name: Test hybrid handshake and continuous PQ ratchet
         run: npm run playwright:pq-protocol -- --project=${{ matrix.project }}
 
@@ -157,10 +160,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project:
-          - chromium-engine
-          - firefox-engine
-          - webkit-engine
+        include:
+          - project: chromium-engine
+            browser: chromium
+          - project: firefox-engine
+            browser: firefox
+          - project: webkit-engine
+            browser: webkit
     defaults:
       run:
         working-directory: prototypes/pq-ratchet
@@ -179,7 +185,7 @@ jobs:
         run: npm sbom --sbom-format cyclonedx > artifacts/sbom.cdx.json
       - name: Audit prototype dependencies
         run: npm audit --package-lock-only --json > artifacts/npm-audit.json
-      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
       - name: Measure synthetic PQ ratchet behavior and budgets
         run: npm test -- --project=${{ matrix.project }}
       - name: Upload non-secret protocol evidence
@@ -199,11 +205,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project:
-          - chromium
-          - firefox
-          - webkit
-          - webkit-mobile-emulation
+        include:
+          - project: chromium
+            browser: chromium
+          - project: firefox
+            browser: firefox
+          - project: webkit
+            browser: webkit
+          - project: webkit-mobile-emulation
+            browser: webkit
     env:
       PQ_CHAT_AUTO_MIGRATION_ENABLED: "true"
       PQ_CHAT_MIGRATION_ROLLOUT_PERCENT: "100"
@@ -230,7 +240,7 @@ jobs:
           docker compose run --rm dev_data
           docker compose up -d app
           make runner-wait-for-app
-      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
       - name: Test integrated protected delivery and exact-byte retry
         run: npm run playwright:pq-delivery -- --project=${{ matrix.project }}
       - name: Record exact synthetic candidate identity

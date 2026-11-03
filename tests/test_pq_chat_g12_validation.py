@@ -386,12 +386,24 @@ def test_g12_ci_runs_candidate_matrix_and_records_exact_identity() -> None:
 
     assert "pq-delivery:" in workflow
     assert "codex/epic-2365" in workflow
+    assert "include:" in workflow
     assert "project:" in workflow
+    assert "browser:" in workflow
     assert "webkit-mobile-emulation" in workflow
     assert "chromium-engine" in workflow
     assert "firefox-engine" in workflow
     assert "webkit-engine" in workflow
-    assert "playwright install --with-deps chromium firefox webkit" in workflow
+    for project, browser in (
+        ("chromium", "chromium"),
+        ("firefox", "firefox"),
+        ("webkit", "webkit"),
+        ("chromium-engine", "chromium"),
+        ("firefox-engine", "firefox"),
+        ("webkit-engine", "webkit"),
+        ("webkit-mobile-emulation", "webkit"),
+    ):
+        assert f"- project: {project}\n            browser: {browser}" in workflow
+    assert "playwright install --with-deps ${{ matrix.browser }}" in workflow
     assert "npm run playwright:pq-delivery -- --project=${{ matrix.project }}" in workflow
     assert "pq-delivery-${{ matrix.project }}-${{ github.sha }}" in workflow
     assert "node scripts/pq_validation_manifest.mjs" in workflow
