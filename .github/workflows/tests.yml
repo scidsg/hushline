@@ -101,7 +101,8 @@ jobs:
           PYTEST_ADDOPTS: "--alembic --skip-local-only"
 
   pqc-browser:
-    runs-on: ubuntu-latest
+    # Playwright 1.55.1 supports Ubuntu 24.04, not the newer ubuntu-latest image.
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -116,7 +117,7 @@ jobs:
         run: npm run playwright:e2ee -- pqc.spec.js
 
   pq-browser-state:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -130,7 +131,7 @@ jobs:
         run: npm run playwright:pq-state
 
   pq-protocol:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -155,7 +156,7 @@ jobs:
         run: npm run playwright:pq-protocol -- --project=${{ matrix.project }}
 
   pq-ratchet-evidence:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -200,7 +201,7 @@ jobs:
           retention-days: 14
 
   pq-delivery:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false

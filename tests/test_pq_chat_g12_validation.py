@@ -386,6 +386,7 @@ def test_g12_ci_runs_candidate_matrix_and_records_exact_identity() -> None:
 
     assert "pq-delivery:" in workflow
     assert "codex/epic-2365" in workflow
+    assert workflow.count("runs-on: ubuntu-24.04") == 5
     assert "include:" in workflow
     assert "project:" in workflow
     assert "browser:" in workflow
