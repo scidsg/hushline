@@ -28,12 +28,20 @@ const dependencyLock = JSON.parse(readFileSync("package-lock.json", "utf8"));
 const protocolDependency =
   dependencyLock.packages["node_modules/@getmaapp/signal-wasm"];
 
-const browserVersions = {};
-for (const [name, browserType] of Object.entries({
+const browserTypes = {
   chromium,
   firefox,
   webkit,
-})) {
+};
+const selectedBrowser = process.env.PLAYWRIGHT_BROWSER;
+if (selectedBrowser && !Object.hasOwn(browserTypes, selectedBrowser)) {
+  throw new Error(`Unsupported PLAYWRIGHT_BROWSER: ${selectedBrowser}`);
+}
+const browserVersions = {};
+const browsersToRecord = selectedBrowser
+  ? [[selectedBrowser, browserTypes[selectedBrowser]]]
+  : Object.entries(browserTypes);
+for (const [name, browserType] of browsersToRecord) {
   const browser = await browserType.launch({ headless: true });
   browserVersions[name] = browser.version();
   await browser.close();

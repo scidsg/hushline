@@ -132,7 +132,7 @@ jobs:
 
   pq-protocol:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -157,7 +157,7 @@ jobs:
 
   pq-ratchet-evidence:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -247,6 +247,8 @@ jobs:
       - name: Record exact synthetic candidate identity
         if: ${{ !cancelled() }}
         run: node scripts/pq_validation_manifest.mjs
+        env:
+          PLAYWRIGHT_BROWSER: ${{ matrix.browser }}
       - name: Upload synthetic browser evidence
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

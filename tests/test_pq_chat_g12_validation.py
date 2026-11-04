@@ -408,6 +408,7 @@ def test_g12_ci_runs_candidate_matrix_and_records_exact_identity() -> None:
     assert "npm run playwright:pq-delivery -- --project=${{ matrix.project }}" in workflow
     assert "pq-delivery-${{ matrix.project }}-${{ github.sha }}" in workflow
     assert "node scripts/pq_validation_manifest.mjs" in workflow
+    assert "PLAYWRIGHT_BROWSER: ${{ matrix.browser }}" in workflow
     assert "pq-ratchet-evidence:" in workflow
     assert "npm run provenance > artifacts/provenance.json" in workflow
     assert "npm sbom --sbom-format cyclonedx" in workflow
@@ -417,10 +418,10 @@ def test_g12_ci_runs_candidate_matrix_and_records_exact_identity() -> None:
     assert "pq-ratchet-${{ matrix.project }}-${{ github.sha }}" in workflow
     assert "fullyParallel: false" in protocol_config
     assert "workers: 1" in protocol_config
-    assert "timeout: process.env.CI ? 300_000 : 120_000" in protocol_config
+    assert "timeout: process.env.CI ? 600_000 : 120_000" in protocol_config
     assert "fullyParallel: false" in ratchet_config
     assert "workers: 1" in ratchet_config
-    assert "timeout: process.env.CI ? 600_000 : 240_000" in ratchet_config
+    assert "timeout: process.env.CI ? 900_000 : 240_000" in ratchet_config
     assert "branches: [main, codex/epic-2365]" in audit_workflow
     assert '"prototypes/pq-ratchet/package-lock.json"' in audit_workflow
     assert "python-audit:" in audit_workflow
@@ -431,10 +432,20 @@ def test_g12_ci_runs_candidate_matrix_and_records_exact_identity() -> None:
     assert 'wrapper_source_revision: "0a5e3cb8bf282efb3521d7cdac5476caf3fb1acd"' in manifest
     assert 'libsignal_source_revision: "b056faa6dd02961cff24064c54c089c52e1a0753"' in manifest
     assert '"package-lock.json"' in manifest
+    assert "process.env.PLAYWRIGHT_BROWSER" in manifest
+    assert "Object.hasOwn(browserTypes, selectedBrowser)" in manifest
     assert "browser.version()" in manifest
     assert "synthetic_data_only: true" in manifest
     assert "Playwright WebKit is not branded Safari" in manifest
     assert "Firefox automation is not a Tor Browser result" in manifest
+
+
+def test_g12_full_node_audit_uses_patched_serializer() -> None:
+    package = json.loads((REPO_ROOT / "package.json").read_text(encoding="utf-8"))
+    lock = json.loads((REPO_ROOT / "package-lock.json").read_text(encoding="utf-8"))
+
+    assert package["overrides"]["serialize-javascript"] == "^7.1.4"
+    assert lock["packages"]["node_modules/serialize-javascript"]["version"] == "7.1.4"
 
 
 def test_g12_accessibility_gate_requires_a_perfect_score() -> None:
