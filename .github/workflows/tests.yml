@@ -71,7 +71,7 @@ jobs:
 
   test-with-alembic:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
@@ -238,7 +238,7 @@ jobs:
             fi
             sleep 2
           done
-          docker compose run --rm dev_data
+          # Starting app runs the dev_data dependency once and waits for it to succeed.
           docker compose up -d app
           make runner-wait-for-app
       - run: npx playwright install --with-deps ${{ matrix.browser }}

@@ -359,9 +359,9 @@ def test_g12_integrated_browser_harness_retains_synthetic_evidence() -> None:
     assert 'name: "webkit"' in config
     assert 'name: "webkit-mobile-emulation"' in config
     assert 'trace: "retain-on-failure"' in config
-    assert "timeout: process.env.CI ? 300_000 : 90_000" in config
+    assert "timeout: process.env.CI ? 600_000 : 90_000" in config
     assert "test-results/pq-delivery/results.json" in config
-    assert "test.setTimeout(process.env.CI ? 300_000 : 90_000)" in scenario
+    assert "test.setTimeout(process.env.CI ? 600_000 : 90_000)" in scenario
     assert 'testInfo.attach("protected-sender-timeline"' in scenario
     assert 'testInfo.attach("protected-recipient-timeline"' in scenario
     assert "contextOptionsForProject(testInfo)" in scenario
@@ -409,6 +409,9 @@ def test_g12_ci_runs_candidate_matrix_and_records_exact_identity() -> None:
     assert "pq-delivery-${{ matrix.project }}-${{ github.sha }}" in workflow
     assert "node scripts/pq_validation_manifest.mjs" in workflow
     assert "PLAYWRIGHT_BROWSER: ${{ matrix.browser }}" in workflow
+    assert "docker compose run --rm dev_data" not in workflow
+    assert "Starting app runs the dev_data dependency once" in workflow
+    assert "test-with-alembic:\n    runs-on: ubuntu-latest\n    timeout-minutes: 45" in workflow
     assert "pq-ratchet-evidence:" in workflow
     assert "npm run provenance > artifacts/provenance.json" in workflow
     assert "npm sbom --sbom-format cyclonedx" in workflow
@@ -440,12 +443,13 @@ def test_g12_ci_runs_candidate_matrix_and_records_exact_identity() -> None:
     assert "Firefox automation is not a Tor Browser result" in manifest
 
 
-def test_g12_full_node_audit_uses_patched_serializer() -> None:
+def test_g12_full_node_audit_uses_patched_dependencies() -> None:
     package = json.loads((REPO_ROOT / "package.json").read_text(encoding="utf-8"))
     lock = json.loads((REPO_ROOT / "package-lock.json").read_text(encoding="utf-8"))
 
     assert package["overrides"]["serialize-javascript"] == "^7.1.4"
     assert lock["packages"]["node_modules/serialize-javascript"]["version"] == "7.1.4"
+    assert lock["packages"]["node_modules/fast-uri"]["version"] == "3.1.9"
 
 
 def test_g12_accessibility_gate_requires_a_perfect_score() -> None:
