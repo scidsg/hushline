@@ -148,4 +148,9 @@ def test_waiting_page_uses_only_local_status_polling(client: FlaskClient) -> Non
     assert "frame-src 'none'" in policy
     assert "https://js.stripe.com" not in policy
     assert "https://api.stripe.com" not in policy
-    assert "https://checkout.stripe.com" in policy
+    directives = dict(part.strip().split(" ", 1) for part in policy.split(";") if part.strip())
+    assert directives["form-action"].split() == [
+        "'self'",
+        "https://checkout.stripe.com",
+        "https://billing.stripe.com",
+    ]
