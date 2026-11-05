@@ -222,7 +222,7 @@ class Username(Model):
 
     @property
     def embed_owner_has_required_plan(self) -> bool:
-        return self.user.is_current_paid_super_user
+        return self.user.has_active_premium_entitlement
 
     @property
     def embed_owner_has_required_key(self) -> bool:

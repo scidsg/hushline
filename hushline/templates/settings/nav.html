@@ -8,7 +8,7 @@
       ('settings.auth', 'Authentication', True),
       ('settings.branding', 'Branding', user.is_admin),
       ('settings.broadcasts', 'Broadcasts', user.is_admin),
-      ('settings.developer', 'Developer', user.is_admin or user.is_current_paid_super_user),
+      ('settings.developer', 'Developer', user.is_admin or user.has_active_premium_entitlement),
       ('settings.encryption', 'Encryption', True),
       ('settings.replies', 'Message Statuses', user.pgp_key is not none),
       ('settings.metrics', 'Metrics', user.is_admin),

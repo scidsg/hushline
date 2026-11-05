@@ -527,15 +527,19 @@ def test_create_products_and_prices_finds_product_in_list(app: Flask) -> None:
 
     with (
         patch(
-            "hushline.premium.stripe.Product.retrieve",
+            "hushline.billing.stripe.stripe.Product.retrieve",
             side_effect=InvalidRequestError("missing", param=""),
         ),
         patch(
-            "hushline.premium.stripe.Product.list",
+            "hushline.billing.stripe.stripe.Product.list",
             return_value=[SimpleNamespace(id="prod_found", name=tier.name, default_price=None)],
         ),
-        patch("hushline.premium.stripe.Product.create", return_value=MagicMock(id="prod_new")),
-        patch("hushline.premium.stripe.Price.create", return_value=MagicMock(id="price_new")),
+        patch(
+            "hushline.billing.stripe.stripe.Product.create", return_value=MagicMock(id="prod_new")
+        ),
+        patch(
+            "hushline.billing.stripe.stripe.Price.create", return_value=MagicMock(id="price_new")
+        ),
     ):
         create_products_and_prices()
 
@@ -553,14 +557,14 @@ def test_create_products_and_prices_reuses_existing_default_price(app: Flask) ->
 
     with (
         patch(
-            "hushline.premium.stripe.Product.retrieve",
+            "hushline.billing.stripe.stripe.Product.retrieve",
             return_value=MagicMock(id="prod_ok", default_price="price_default"),
         ),
         patch(
-            "hushline.premium.stripe.Price.retrieve",
+            "hushline.billing.stripe.stripe.Price.retrieve",
             return_value=MagicMock(id="price_default", unit_amount=2550),
         ),
-        patch("hushline.premium.stripe.Price.create") as price_create_mock,
+        patch("hushline.billing.stripe.stripe.Price.create") as price_create_mock,
     ):
         create_products_and_prices()
 
@@ -579,11 +583,13 @@ def test_create_products_and_prices_price_already_exists_path(app: Flask) -> Non
 
     with (
         patch(
-            "hushline.premium.stripe.Product.retrieve",
+            "hushline.billing.stripe.stripe.Product.retrieve",
             return_value=MagicMock(id="prod_ok", default_price=None),
         ),
-        patch("hushline.premium.stripe.Price.retrieve", return_value=MagicMock(id="price_ok")),
-        patch("hushline.premium.stripe.Price.create") as price_create_mock,
+        patch(
+            "hushline.billing.stripe.stripe.Price.retrieve", return_value=MagicMock(id="price_ok")
+        ),
+        patch("hushline.billing.stripe.stripe.Price.create") as price_create_mock,
     ):
         create_products_and_prices()
 
@@ -599,14 +605,17 @@ def test_create_products_and_prices_recreates_price_when_existing_id_invalid(app
 
     with (
         patch(
-            "hushline.premium.stripe.Product.retrieve",
-            return_value=SimpleNamespace(id="prod_ok", default_price=None),
+            "hushline.billing.stripe.stripe.Product.retrieve",
+            return_value=SimpleNamespace(id="prod_ok", name="Business", default_price=None),
         ),
         patch(
-            "hushline.premium.stripe.Price.retrieve",
+            "hushline.billing.stripe.stripe.Price.retrieve",
             side_effect=InvalidRequestError("missing", param=""),
         ),
-        patch("hushline.premium.stripe.Price.create", return_value=SimpleNamespace(id="price_new")),
+        patch(
+            "hushline.billing.stripe.stripe.Price.create",
+            return_value=SimpleNamespace(id="price_new", unit_amount=2000),
+        ),
     ):
         create_products_and_prices()
 

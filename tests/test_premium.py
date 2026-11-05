@@ -10,6 +10,7 @@ from flask.testing import FlaskClient
 from pytest_mock import MockFixture
 from stripe import InvalidRequestError, SignatureVerificationError, StripeError
 
+from hushline.billing.domain import BillingError, SubscriptionEvent
 from hushline.db import db
 from hushline.model import (
     StripeEvent,
@@ -40,7 +41,7 @@ from hushline.premium import (
 
 @pytest.fixture()
 def mock_stripe(mocker: MockFixture) -> MagicMock:
-    return mocker.patch("hushline.premium.stripe")
+    return mocker.patch("hushline.billing.stripe.stripe")
 
 
 @pytest.fixture()
@@ -67,21 +68,21 @@ def test_create_products_and_prices(app: Flask, mocker: MockFixture) -> None:
 
     # Mock the Stripe API calls
     mock_stripe_product_create = mocker.patch(
-        "hushline.premium.stripe.Product.create", return_value=MagicMock(id="prod_123")
+        "hushline.billing.stripe.stripe.Product.create", return_value=MagicMock(id="prod_123")
     )
     mock_stripe_price_create = mocker.patch(
-        "hushline.premium.stripe.Price.create", return_value=MagicMock(id="price_123")
+        "hushline.billing.stripe.stripe.Price.create", return_value=MagicMock(id="price_123")
     )
     mock_stripe_product_retrieve = mocker.patch(
-        "hushline.premium.stripe.Product.retrieve",
+        "hushline.billing.stripe.stripe.Product.retrieve",
         side_effect=stripe_error_instance,
     )
     mocker.patch(
-        "hushline.premium.stripe.Product.list",
+        "hushline.billing.stripe.stripe.Product.list",
         return_value=[MagicMock(id="prod_123", name="Business")],
     )
     mock_stripe_price_retrieve = mocker.patch(
-        "hushline.premium.stripe.Price.retrieve",
+        "hushline.billing.stripe.stripe.Price.retrieve",
         side_effect=stripe_error_instance,
     )
 
@@ -172,7 +173,7 @@ def test_create_customer_updates_existing_customer(
 
     returned_customer = create_customer(user)
 
-    assert returned_customer is existing_customer
+    assert returned_customer.id == existing_customer.id
     mock_stripe.Customer.modify.assert_called_once_with("cus_existing", email="user@example.com")
     mock_stripe.Customer.create.assert_not_called()
 
@@ -183,11 +184,11 @@ def test_create_customer_recreates_when_modify_fails(
     user.stripe_customer_id = "cus_stale"
     db.session.commit()
     modify_mock = mocker.patch(
-        "hushline.premium.stripe.Customer.modify",
+        "hushline.billing.stripe.stripe.Customer.modify",
         side_effect=InvalidRequestError("invalid", param=""),
     )
     create_mock = mocker.patch(
-        "hushline.premium.stripe.Customer.create",
+        "hushline.billing.stripe.stripe.Customer.create",
         return_value=MagicMock(id="cus_new"),
     )
 
@@ -720,7 +721,7 @@ def test_receipt_route_refreshes_stale_url_before_redirect(
     )
     stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id="inv_123").one()
     retrieve_invoice = mocker.patch(
-        "hushline.premium.stripe.Invoice.retrieve",
+        "hushline.billing.stripe.stripe.Invoice.retrieve",
         return_value=MagicMock(
             id="inv_123",
             hosted_invoice_url="https://stripe.com/invoice/fresh",
@@ -776,7 +777,7 @@ def test_receipt_route_redirects_to_stale_url_when_stripe_refresh_fails(
     )
     stripe_invoice = db.session.query(StripeInvoice).filter_by(invoice_id="inv_124").one()
     mocker.patch(
-        "hushline.premium.stripe.Invoice.retrieve",
+        "hushline.billing.stripe.stripe.Invoice.retrieve",
         side_effect=StripeError("refresh failed"),
     )
 
@@ -812,7 +813,7 @@ def test_receipt_route_flashes_when_no_receipt_url_available(
     db.session.commit()
 
     mocker.patch(
-        "hushline.premium.stripe.Invoice.retrieve",
+        "hushline.billing.stripe.stripe.Invoice.retrieve",
         return_value=MagicMock(
             id="inv_125",
             hosted_invoice_url=None,
@@ -1045,7 +1046,7 @@ def test_update_payment_method_creates_billing_portal_session(
     db.session.commit()
     app.config["PUBLIC_BASE_URL"] = "https://safe.example"
     portal_create = mocker.patch(
-        "hushline.premium.stripe.billing_portal.Session.create",
+        "hushline.billing.stripe.stripe.billing_portal.Session.create",
         return_value=MagicMock(url="https://billing.stripe.com/session_123"),
     )
 
@@ -1073,7 +1074,7 @@ def test_update_payment_method_requires_active_subscription(
     user.set_free_tier()
     user.stripe_customer_id = "cus_123"
     db.session.commit()
-    portal_create = mocker.patch("hushline.premium.stripe.billing_portal.Session.create")
+    portal_create = mocker.patch("hushline.billing.stripe.stripe.billing_portal.Session.create")
 
     response = client.post(url_for("premium.update_payment_method"))
 
@@ -1093,7 +1094,7 @@ def test_update_payment_method_stripe_error(
     user.stripe_customer_id = "cus_123"
     db.session.commit()
     portal_create = mocker.patch(
-        "hushline.premium.stripe.billing_portal.Session.create",
+        "hushline.billing.stripe.stripe.billing_portal.Session.create",
         side_effect=StripeError("An error occurred"),
     )
 
@@ -1115,7 +1116,7 @@ def test_update_payment_method_aborts_when_portal_session_has_no_url(
     user.stripe_customer_id = "cus_123"
     db.session.commit()
     mocker.patch(
-        "hushline.premium.stripe.billing_portal.Session.create",
+        "hushline.billing.stripe.stripe.billing_portal.Session.create",
         return_value=MagicMock(url=None),
     )
 
@@ -1150,7 +1151,7 @@ def test_disable_autorenew_success(client: FlaskClient, user: User, mocker: Mock
     assert user.stripe_subscription_cancel_at_period_end is False
 
     mock_stripe_modify = mocker.patch(
-        "hushline.premium.stripe.Subscription.modify", return_value=MagicMock()
+        "hushline.billing.stripe.stripe.Subscription.modify", return_value=MagicMock()
     )
 
     response = client.post(url_for("premium.disable_autorenew"))
@@ -1177,7 +1178,7 @@ def test_disable_autorenew_stripe_error(
     stripe_error_instance = StripeError("An error occurred")
 
     mock_stripe_modify = mocker.patch(
-        "hushline.premium.stripe.Subscription.modify", side_effect=stripe_error_instance
+        "hushline.billing.stripe.stripe.Subscription.modify", side_effect=stripe_error_instance
     )
 
     response = client.post(url_for("premium.disable_autorenew"))
@@ -1218,7 +1219,7 @@ def test_enable_autorenew_success(client: FlaskClient, user: User, mocker: MockF
     assert user.stripe_subscription_cancel_at_period_end is True
 
     mock_stripe_modify = mocker.patch(
-        "hushline.premium.stripe.Subscription.modify", return_value=MagicMock()
+        "hushline.billing.stripe.stripe.Subscription.modify", return_value=MagicMock()
     )
 
     response = client.post(url_for("premium.enable_autorenew"))
@@ -1245,7 +1246,7 @@ def test_enable_autorenew_stripe_error(
     stripe_error_instance = StripeError("An error occurred")
 
     mock_stripe_modify = mocker.patch(
-        "hushline.premium.stripe.Subscription.modify", side_effect=stripe_error_instance
+        "hushline.billing.stripe.stripe.Subscription.modify", side_effect=stripe_error_instance
     )
 
     response = client.post(url_for("premium.enable_autorenew"))
@@ -1284,7 +1285,7 @@ def test_cancel_success(client: FlaskClient, user: User, mocker: MockFixture) ->
     db.session.commit()
 
     mock_stripe_delete = mocker.patch(
-        "hushline.premium.stripe.Subscription.delete", return_value=MagicMock()
+        "hushline.billing.stripe.stripe.Subscription.delete", return_value=MagicMock()
     )
 
     response = client.post(url_for("premium.cancel"))
@@ -1314,7 +1315,7 @@ def test_cancel_stripe_error(client: FlaskClient, user: User, mocker: MockFixtur
     stripe_error_instance = StripeError("An error occurred")
 
     mock_stripe_delete = mocker.patch(
-        "hushline.premium.stripe.Subscription.delete", side_effect=stripe_error_instance
+        "hushline.billing.stripe.stripe.Subscription.delete", side_effect=stripe_error_instance
     )
 
     response = client.post(url_for("premium.cancel"))
@@ -1373,7 +1374,10 @@ def test_premium_index_warns_on_incomplete_subscription(
 ) -> None:
     user.stripe_subscription_id = "sub_123"
     db.session.commit()
-    mocker.patch("hushline.premium.get_subscription", return_value={"status": "incomplete"})
+    mocker.patch(
+        "hushline.premium.get_subscription",
+        return_value=SubscriptionEvent("sub_123", "cus_123", "incomplete", False, 0, 0),
+    )
 
     response = client.get(url_for("premium.index"))
     assert response.status_code == 200
@@ -1492,7 +1496,7 @@ def test_upgrade_missing_business_price_id(client: FlaskClient, business_tier: T
 
 @pytest.mark.usefixtures("_authenticated_user")
 def test_upgrade_create_customer_failure(client: FlaskClient, mocker: MockFixture) -> None:
-    mocker.patch("hushline.premium.create_customer", side_effect=StripeError("boom"))
+    mocker.patch("hushline.premium.create_customer", side_effect=BillingError("boom"))
     response = client.post(url_for("premium.upgrade"))
     assert response.status_code == 302
     assert response.location == url_for("premium.index")
@@ -1501,7 +1505,9 @@ def test_upgrade_create_customer_failure(client: FlaskClient, mocker: MockFixtur
 @pytest.mark.usefixtures("_authenticated_user")
 def test_upgrade_checkout_creation_failure(client: FlaskClient, mocker: MockFixture) -> None:
     mocker.patch("hushline.premium.create_customer")
-    mocker.patch("hushline.premium.stripe.checkout.Session.create", side_effect=StripeError("boom"))
+    mocker.patch(
+        "hushline.billing.stripe.stripe.checkout.Session.create", side_effect=StripeError("boom")
+    )
     response = client.post(url_for("premium.upgrade"))
     assert response.status_code == 500
 
@@ -1512,14 +1518,16 @@ def test_upgrade_checkout_session_without_url_returns_500(
 ) -> None:
     mocker.patch("hushline.premium.create_customer")
     mocker.patch(
-        "hushline.premium.stripe.checkout.Session.create", return_value=MagicMock(url=None)
+        "hushline.billing.stripe.stripe.checkout.Session.create", return_value=MagicMock(url=None)
     )
     response = client.post(url_for("premium.upgrade"))
     assert response.status_code == 500
 
 
 def test_premium_webhook_rejects_invalid_payload(client: FlaskClient, mocker: MockFixture) -> None:
-    mocker.patch("hushline.premium.stripe.Webhook.construct_event", side_effect=ValueError("bad"))
+    mocker.patch(
+        "hushline.billing.stripe.stripe.Webhook.construct_event", side_effect=ValueError("bad")
+    )
 
     response = client.post(
         url_for("premium.webhook"),
@@ -1534,7 +1542,7 @@ def test_premium_webhook_rejects_invalid_signature(
     client: FlaskClient, mocker: MockFixture
 ) -> None:
     mocker.patch(
-        "hushline.premium.stripe.Webhook.construct_event",
+        "hushline.billing.stripe.stripe.Webhook.construct_event",
         side_effect=SignatureVerificationError("bad sig", sig_header="sig"),
     )
 
@@ -1552,8 +1560,10 @@ def test_premium_webhook_ignores_duplicate_event(client: FlaskClient, mocker: Mo
     db.session.add(existing_event)
     db.session.commit()
     mocker.patch(
-        "hushline.premium.stripe.Webhook.construct_event",
-        return_value=MagicMock(id="evt_dup", created=123, type="invoice.created"),
+        "hushline.billing.stripe.stripe.Webhook.construct_event",
+        return_value=stripe.Event.construct_from(
+            {"id": "evt_dup", "created": 123, "type": "invoice.created"}, "sk_test_123"
+        ),
     )
 
     response = client.post(
@@ -1567,8 +1577,11 @@ def test_premium_webhook_ignores_duplicate_event(client: FlaskClient, mocker: Mo
 
 
 def test_premium_webhook_stores_new_event(client: FlaskClient, mocker: MockFixture) -> None:
-    event = MagicMock(id="evt_new", created=456, type="invoice.updated")
-    mocker.patch("hushline.premium.stripe.Webhook.construct_event", return_value=event)
+    event = stripe.Event.construct_from(
+        {"id": "evt_new", "created": 456, "type": "invoice.updated", "data": {"object": {}}},
+        "sk_test_123",
+    )
+    mocker.patch("hushline.billing.stripe.stripe.Webhook.construct_event", return_value=event)
 
     response = client.post(
         url_for("premium.webhook"),
@@ -1600,11 +1613,11 @@ async def test_worker_processes_subscription_created_event(app: Flask, mocker: M
 
     subscription_obj = MagicMock()
     mocker.patch(
-        "hushline.premium.stripe.Subscription.construct_from", return_value=subscription_obj
+        "hushline.billing.stripe.stripe.Subscription.construct_from", return_value=subscription_obj
     )
     handle_created = mocker.patch("hushline.premium.handle_subscription_created")
     mocker.patch(
-        "hushline.premium.stripe.Event.construct_from",
+        "hushline.billing.stripe.stripe.Event.construct_from",
         return_value=MagicMock(
             type="customer.subscription.created",
             data=MagicMock(object={"id": "sub_123"}),
@@ -1622,7 +1635,7 @@ async def test_worker_processes_subscription_created_event(app: Flask, mocker: M
     db.session.refresh(pending)
     assert pending.status == StripeEventStatusEnum.FINISHED
     handle_created.assert_called_once()
-    assert handle_created.call_args.args[0] is subscription_obj
+    assert handle_created.call_args.args[0].id == subscription_obj.id
     assert isinstance(handle_created.call_args.args[1], StripeEvent)
 
 
@@ -1642,12 +1655,12 @@ async def test_worker_marks_event_error_when_handler_raises(
     mocker.patch("hushline.premium.sa.inspect", return_value=inspect_obj)
 
     invoice_obj = MagicMock()
-    mocker.patch("hushline.premium.stripe.Invoice.construct_from", return_value=invoice_obj)
+    mocker.patch("hushline.billing.stripe.stripe.Invoice.construct_from", return_value=invoice_obj)
     mocker.patch(
         "hushline.premium.handle_invoice_updated", side_effect=ValueError("invoice failed")
     )
     mocker.patch(
-        "hushline.premium.stripe.Event.construct_from",
+        "hushline.billing.stripe.stripe.Event.construct_from",
         return_value=MagicMock(type="invoice.updated", data=MagicMock(object={"id": "inv_123"})),
     )
 
@@ -1706,12 +1719,12 @@ async def test_worker_processes_subscription_updated_and_deleted_events(
 
     subscription_obj = MagicMock()
     mocker.patch(
-        "hushline.premium.stripe.Subscription.construct_from", return_value=subscription_obj
+        "hushline.billing.stripe.stripe.Subscription.construct_from", return_value=subscription_obj
     )
     handle_updated = mocker.patch("hushline.premium.handle_subscription_updated")
     handle_deleted = mocker.patch("hushline.premium.handle_subscription_deleted")
     mocker.patch(
-        "hushline.premium.stripe.Event.construct_from",
+        "hushline.billing.stripe.stripe.Event.construct_from",
         side_effect=[
             MagicMock(
                 type="customer.subscription.updated",
@@ -1741,10 +1754,10 @@ async def test_worker_processes_subscription_updated_and_deleted_events(
     assert pending_updated.status == StripeEventStatusEnum.FINISHED
     assert pending_deleted.status == StripeEventStatusEnum.FINISHED
     handle_updated.assert_called_once()
-    assert handle_updated.call_args.args[0] is subscription_obj
+    assert handle_updated.call_args.args[0].id == subscription_obj.id
     assert isinstance(handle_updated.call_args.args[1], StripeEvent)
     handle_deleted.assert_called_once()
-    assert handle_deleted.call_args.args[0] is subscription_obj
+    assert handle_deleted.call_args.args[0].id == subscription_obj.id
     assert isinstance(handle_deleted.call_args.args[1], StripeEvent)
 
 
@@ -1764,10 +1777,10 @@ async def test_worker_processes_invoice_created_event(app: Flask, mocker: MockFi
     mocker.patch("hushline.premium.sa.inspect", return_value=inspect_obj)
 
     invoice_obj = MagicMock()
-    mocker.patch("hushline.premium.stripe.Invoice.construct_from", return_value=invoice_obj)
+    mocker.patch("hushline.billing.stripe.stripe.Invoice.construct_from", return_value=invoice_obj)
     handle_invoice_created_mock = mocker.patch("hushline.premium.handle_invoice_created")
     mocker.patch(
-        "hushline.premium.stripe.Event.construct_from",
+        "hushline.billing.stripe.stripe.Event.construct_from",
         return_value=MagicMock(type="invoice.created", data=MagicMock(object={"id": "inv_abc"})),
     )
 
@@ -1782,7 +1795,7 @@ async def test_worker_processes_invoice_created_event(app: Flask, mocker: MockFi
     db.session.refresh(pending)
     assert pending.status == StripeEventStatusEnum.FINISHED
     handle_invoice_created_mock.assert_called_once()
-    assert handle_invoice_created_mock.call_args.args[0] is invoice_obj
+    assert handle_invoice_created_mock.call_args.args[0].id == invoice_obj.id
     assert isinstance(handle_invoice_created_mock.call_args.args[1], StripeEvent)
 
 
@@ -1804,10 +1817,10 @@ async def test_worker_processes_invoice_payment_succeeded_event(
     mocker.patch("hushline.premium.sa.inspect", return_value=inspect_obj)
 
     invoice_obj = MagicMock()
-    mocker.patch("hushline.premium.stripe.Invoice.construct_from", return_value=invoice_obj)
+    mocker.patch("hushline.billing.stripe.stripe.Invoice.construct_from", return_value=invoice_obj)
     handle_invoice_updated_mock = mocker.patch("hushline.premium.handle_invoice_updated")
     mocker.patch(
-        "hushline.premium.stripe.Event.construct_from",
+        "hushline.billing.stripe.stripe.Event.construct_from",
         return_value=MagicMock(
             type="invoice.payment_succeeded",
             data=MagicMock(object={"id": "inv_abc"}),
@@ -1825,7 +1838,7 @@ async def test_worker_processes_invoice_payment_succeeded_event(
     db.session.refresh(pending)
     assert pending.status == StripeEventStatusEnum.FINISHED
     handle_invoice_updated_mock.assert_called_once()
-    assert handle_invoice_updated_mock.call_args.args[0] is invoice_obj
+    assert handle_invoice_updated_mock.call_args.args[0].id == invoice_obj.id
     assert isinstance(handle_invoice_updated_mock.call_args.args[1], StripeEvent)
 
 
@@ -1850,7 +1863,7 @@ def test_single_tenant_webhook_redacts_payload_and_does_not_enter_premium_queue(
         },
         None,
     )
-    mocker.patch("hushline.premium.stripe.Webhook.construct_event", return_value=event)
+    mocker.patch("hushline.billing.stripe.stripe.Webhook.construct_event", return_value=event)
     response = client.post(
         url_for("premium.webhook"), data=b"{}", headers={"STRIPE_SIGNATURE": "sig"}
     )
@@ -1877,7 +1890,7 @@ def test_single_tenant_webhook_retries_failed_reconciliation_without_storing_pro
         },
         None,
     )
-    mocker.patch("hushline.premium.stripe.Webhook.construct_event", return_value=event)
+    mocker.patch("hushline.billing.stripe.stripe.Webhook.construct_event", return_value=event)
     mocker.patch(
         "hushline.single_tenant_billing.handle_event", side_effect=ServiceUnavailable("pending")
     )

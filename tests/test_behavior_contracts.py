@@ -641,21 +641,21 @@ def test_contract_paid_user_alias_vision_and_subscription_controls(
     assert vision_response.status_code == 200
     assert "Vision Assistant" in vision_response.text
 
-    with patch("hushline.premium.stripe.Subscription.modify", return_value=MagicMock()):
+    with patch("hushline.billing.stripe.stripe.Subscription.modify", return_value=MagicMock()):
         disable_response = client.post(url_for("premium.disable_autorenew"), follow_redirects=False)
     assert disable_response.status_code == 302
     assert disable_response.headers["Location"].endswith(url_for("premium.index"))
     db.session.refresh(user)
     assert user.stripe_subscription_cancel_at_period_end is True
 
-    with patch("hushline.premium.stripe.Subscription.modify", return_value=MagicMock()):
+    with patch("hushline.billing.stripe.stripe.Subscription.modify", return_value=MagicMock()):
         enable_response = client.post(url_for("premium.enable_autorenew"), follow_redirects=False)
     assert enable_response.status_code == 302
     assert enable_response.headers["Location"].endswith(url_for("premium.index"))
     db.session.refresh(user)
     assert user.stripe_subscription_cancel_at_period_end is False
 
-    with patch("hushline.premium.stripe.Subscription.delete", return_value=MagicMock()):
+    with patch("hushline.billing.stripe.stripe.Subscription.delete", return_value=MagicMock()):
         cancel_response = client.post(url_for("premium.cancel"), follow_redirects=False)
     assert cancel_response.status_code == 302
     assert cancel_response.headers["Location"].endswith(url_for("premium.index"))

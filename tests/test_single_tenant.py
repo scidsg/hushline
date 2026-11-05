@@ -101,7 +101,7 @@ def test_registered_free_user_header_upgrade_offers_enabled_plans(
     app.config["SINGLE_TENANT_ENABLED"] = enabled
     assert user.is_free_tier
     remote = mocker.patch("hushline.single_tenant.call")
-    checkout = mocker.patch("hushline.premium.stripe.checkout.Session.create")
+    checkout = mocker.patch("hushline.billing.stripe.stripe.checkout.Session.create")
     page = client.get("/directory")
     assert page.status_code == 200
     header = BeautifulSoup(page.data, "html.parser").select_one("#primary-nav")

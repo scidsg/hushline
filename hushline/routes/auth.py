@@ -41,6 +41,7 @@ from hushline.auth import (
     stash_post_auth_redirect_target,
     totp_code_was_used,
 )
+from hushline.billing import automated_billing_enabled
 from hushline.chat_key_lifecycle import retire_active_chat_key, validate_chat_key_payload
 from hushline.db import db
 from hushline.model import (
@@ -410,7 +411,7 @@ def _complete_pending_login(
             return url_for("single_tenant.setup")
     if not user.onboarding_complete:
         return url_for("onboarding")
-    if current_app.config.get("STRIPE_SECRET_KEY") and user.tier_id is None:
+    if automated_billing_enabled() and user.tier_id is None:
         return url_for("premium.select_tier")
     return pop_post_auth_redirect()
 
@@ -681,7 +682,7 @@ def register_auth_routes(app: Flask) -> None:
                     return redirect(url_for("onboarding"))
 
                 # If premium features are enabled, prompt the user to select a tier if they haven't
-                if app.config.get("STRIPE_SECRET_KEY") and user.tier_id is None:
+                if automated_billing_enabled() and user.tier_id is None:
                     return redirect(url_for("premium.select_tier"))
 
                 return redirect(pop_post_auth_redirect())

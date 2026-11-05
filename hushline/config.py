@@ -409,7 +409,12 @@ def _load_hushline_misc(env: Mapping[str, str]) -> Mapping[str, Any]:
 def _load_stripe(env: Mapping[str, str]) -> Mapping[str, Any]:
     data = {}
 
-    for key in ["STRIPE_PUBLISHABLE_KEY", "STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"]:
+    for key in [
+        "BILLING_PROVIDER",
+        "STRIPE_PUBLISHABLE_KEY",
+        "STRIPE_SECRET_KEY",
+        "STRIPE_WEBHOOK_SECRET",
+    ]:
         if (value := env.get(key)) and value != "":
             data[key] = value
 

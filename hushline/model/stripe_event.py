@@ -2,8 +2,8 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import Mapped, mapped_column
-from stripe import Event
 
+from hushline.billing.domain import BillingEvent
 from hushline.db import db
 from hushline.model.enums import StripeEventStatusEnum
 
@@ -27,7 +27,7 @@ class StripeEvent(Model):
     )
     error_message: Mapped[Optional[str]] = mapped_column(db.Text)
 
-    def __init__(self, event: Event, **kwargs: dict[str, Any]) -> None:
+    def __init__(self, event: BillingEvent, **kwargs: dict[str, Any]) -> None:
         super().__init__(**kwargs)
         self.event_id = event.id
         self.event_created = event.created

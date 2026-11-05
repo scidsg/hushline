@@ -7,6 +7,7 @@ from flask.testing import FlaskClient
 from werkzeug.datastructures import Headers
 
 from hushline import PERMISSIONS_POLICY
+from hushline.billing import init_app as init_billing
 from hushline.config import WEBAUTHN_ENROLLMENT_ENABLED
 from hushline.db import db
 from hushline.model import (
@@ -70,6 +71,7 @@ def test_csp_form_action_omits_stripe_redirect_hosts_when_premium_disabled(
     client: FlaskClient, app: Flask, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setitem(app.config, "STRIPE_SECRET_KEY", "")
+    init_billing(app)
 
     response = client.get(url_for("directory"), follow_redirects=True)
     assert response.status_code == 200

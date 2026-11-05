@@ -3,8 +3,8 @@ from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import Mapped, mapped_column
-from stripe import Invoice
 
+from hushline.billing.domain import InvoiceEvent
 from hushline.db import db
 from hushline.model.enums import StripeInvoiceStatusEnum
 from hushline.model.tier import Tier
@@ -32,7 +32,7 @@ class StripeInvoice(Model):
     user_id: Mapped[int] = mapped_column(db.ForeignKey("users.id"))
     tier_id: Mapped[int] = mapped_column(db.ForeignKey("tiers.id"))
 
-    def __init__(self, invoice: Invoice) -> None:
+    def __init__(self, invoice: InvoiceEvent) -> None:
         if invoice.id:
             self.invoice_id = invoice.id
         if invoice.customer and isinstance(invoice.customer, str):

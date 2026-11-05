@@ -26,6 +26,12 @@ The goal is to keep product thinking grounded in the people Hush Line actually s
 
 ## Deployment Models
 
+Self-hosted operators can use `BILLING_PROVIDER=manual` to grant or revoke premium
+entitlements locally without a payment service. The operator runs
+`flask billing set-tier USER_ID business` or `free`; recipients continue using the
+normal inbox and profile workflows. This does not process payments or grant access
+to the managed Single Tenant provisioning service. See [Billing providers](BILLING-PROVIDERS.md).
+
 | Model                                 | Best Fit                                                                               | Why                                                                      |
 | ------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
 | Managed SaaS                          | Most individual recipients and small teams                                             | Fastest path to a usable tip line with minimal operational overhead      |
