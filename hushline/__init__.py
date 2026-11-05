@@ -10,8 +10,9 @@ from jinja2 import StrictUndefined
 from werkzeug.exceptions import HTTPException, InternalServerError
 from werkzeug.wrappers.response import Response
 
-from hushline import admin, premium, routes, settings, storage
+from hushline import admin, billing, premium, routes, settings, storage
 from hushline.auth import CHAT_KEY_SESSION_ID_SESSION_KEY, rotate_chat_key_session_id
+from hushline.cli_billing import register_billing_commands
 from hushline.cli_encrypted_field import register_encrypted_field_commands
 from hushline.cli_password_hash import register_password_hash_commands
 from hushline.cli_reg import register_reg_commands
@@ -49,7 +50,6 @@ OPENPGP_WASM_SCRIPT_ENDPOINTS = frozenset(
     ("embed_profile", "embed_profile_legacy", "profile", "settings.broadcasts")
 )
 JSDELIVR_SCRIPT_ENDPOINTS = frozenset(("vision",))
-STRIPE_SCRIPT_ENDPOINTS = frozenset(("premium.waiting",))
 
 
 def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
@@ -75,6 +75,7 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
     db.init_app(app)
     migrate.init_app(app, db)
     public_store.init_app(app)
+    billing.init_app(app)
 
     routes.init_app(app)
     from hushline.single_tenant import init_app as init_single_tenant
@@ -83,11 +84,8 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
     for module in [admin, settings, storage]:
         app.register_blueprint(module.create_blueprint())
 
-    if app.config.get("STRIPE_SECRET_KEY"):
+    if app.extensions["billing_provider"].automated:
         app.register_blueprint(premium.create_blueprint(app))
-        # Initialize Stripe
-        with app.app_context():
-            premium.init_stripe()
 
     # Add Content-Security-Policy header to all responses
     @app.after_request
@@ -116,20 +114,8 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
             connect_sources.append("https://cdn.jsdelivr.net")
         if endpoint in OPENPGP_WASM_SCRIPT_ENDPOINTS or endpoint in JSDELIVR_SCRIPT_ENDPOINTS:
             script_sources.append("'wasm-unsafe-eval'")
-        if endpoint in STRIPE_SCRIPT_ENDPOINTS:
-            script_sources.append("https://js.stripe.com")
-            script_element_sources.append("https://js.stripe.com")
-            connect_sources.append("https://api.stripe.com")
-            child_sources = ["https://js.stripe.com"]
-            frame_sources = ["https://js.stripe.com"]
         form_action_sources = ["'self'"]
-        if app.config.get("STRIPE_SECRET_KEY"):
-            form_action_sources.extend(
-                [
-                    "https://checkout.stripe.com",
-                    "https://billing.stripe.com",
-                ]
-            )
+        form_action_sources.extend(billing.get_provider().form_action_origins)
         if embed_asset_origin:
             style_sources.append(embed_asset_origin)
             font_sources.append(embed_asset_origin)
@@ -188,6 +174,7 @@ def create_app(config: Optional[Mapping[str, Any]] = None) -> Flask:
     register_password_hash_commands(app)
     register_reg_commands(app)
     register_stripe_commands(app)
+    register_billing_commands(app)
 
     return app
 
@@ -298,7 +285,7 @@ def configure_jinja(app: Flask) -> None:
             directory_verified_tab_enabled=app.config["DIRECTORY_VERIFIED_TAB_ENABLED"],
             global_csrf_token=generate_csrf(),
             is_onion_service=request.host.lower().endswith(".onion"),
-            is_premium_enabled=bool(app.config.get("STRIPE_SECRET_KEY", False)),
+            is_premium_enabled=billing.automated_billing_enabled(),
             is_single_tenant_enabled=bool(app.config.get("SINGLE_TENANT_ENABLED", False)),
             is_single_tenant_sales_open=bool(
                 app.config.get("SINGLE_TENANT_ACCEPT_PAYMENTS", False)

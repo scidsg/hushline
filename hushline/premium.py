@@ -4,7 +4,6 @@ from datetime import datetime
 from typing import Tuple
 
 import sqlalchemy as sa
-import stripe
 from flask import (
     Blueprint,
     Flask,
@@ -21,6 +20,16 @@ from flask import (
 from werkzeug.wrappers.response import Response
 
 from hushline.auth import authentication_required
+from hushline.billing import get_provider
+from hushline.billing.domain import (
+    BillingError,
+    BillingNotFound,
+    BillingUnavailable,
+    Customer,
+    InvalidWebhook,
+    InvoiceEvent,
+    SubscriptionEvent,
+)
 from hushline.db import db
 from hushline.external_urls import canonical_external_url
 from hushline.model import (
@@ -44,7 +53,8 @@ STRIPE_INVOICE_UPDATE_EVENT_TYPES = {
 
 
 def init_stripe() -> None:
-    stripe.api_key = current_app.config["STRIPE_SECRET_KEY"]
+    # Compatibility entry point for existing operational scripts.
+    get_provider()
 
 
 def create_products_and_prices() -> None:
@@ -62,14 +72,14 @@ def create_products_and_prices() -> None:
         create_product = True
     else:
         try:
-            stripe_product = stripe.Product.retrieve(business_tier.stripe_product_id)
-        except stripe._error.InvalidRequestError:
+            stripe_product = get_provider().product(business_tier.stripe_product_id)
+        except BillingNotFound:
             create_product = True
 
     if create_product:
         # Do we already have a product in Stripe?
         found = False
-        stripe_products = stripe.Product.list(limit=100)
+        stripe_products = get_provider().products()
         for stripe_product in stripe_products:
             if stripe_product.name == business_tier.name:
                 current_app.logger.info(f"Found Stripe product for tier: {business_tier.name}")
@@ -82,11 +92,7 @@ def create_products_and_prices() -> None:
         # Create a product if we didn't find one
         if not found:
             current_app.logger.info(f"Creating Stripe product for tier: {business_tier.name}")
-            stripe_product = stripe.Product.create(
-                name=business_tier.name,
-                type="service",
-                tax_code="txcd_10103001",  # Software as a service (SaaS) - business use
-            )
+            stripe_product = get_provider().create_product(business_tier.name)
             business_tier.stripe_product_id = stripe_product.id
             db.session.add(business_tier)
             db.session.commit()
@@ -99,8 +105,8 @@ def create_products_and_prices() -> None:
         create_price = True
     else:
         try:
-            price = stripe.Price.retrieve(business_tier.stripe_price_id)
-        except stripe._error.InvalidRequestError:
+            price = get_provider().price(business_tier.stripe_price_id)
+        except BillingNotFound:
             create_price = True
 
     if create_price:
@@ -108,7 +114,7 @@ def create_products_and_prices() -> None:
         found = False
         if stripe_product.default_price:
             try:
-                stripe_price = stripe.Price.retrieve(str(stripe_product.default_price))
+                stripe_price = get_provider().price(str(stripe_product.default_price))
                 current_app.logger.info(f"Found Stripe price for tier: {business_tier.name}")
                 business_tier.stripe_price_id = stripe_price.id
                 if stripe_price.unit_amount:
@@ -116,18 +122,13 @@ def create_products_and_prices() -> None:
                 db.session.add(business_tier)
                 db.session.commit()
                 found = True
-            except stripe._error.InvalidRequestError:
+            except BillingNotFound:
                 found = False
 
         # Create a price if we didn't find one
         if not found:
             current_app.logger.info(f"Creating price for tier: {business_tier.name}")
-            price = stripe.Price.create(
-                product=stripe_product.id,
-                unit_amount=business_tier.monthly_amount,
-                currency="usd",
-                recurring={"interval": "month"},
-            )
+            price = get_provider().create_price(stripe_product.id, business_tier.monthly_amount)
             business_tier.stripe_price_id = price.id
             db.session.add(business_tier)
             db.session.commit()
@@ -136,6 +137,9 @@ def create_products_and_prices() -> None:
 
 
 def update_price(tier: Tier) -> None:
+    if not get_provider().automated:
+        return
+
     current_app.logger.info(f"Updating price for tier {tier.name} to {tier.monthly_amount}")
 
     if not tier.stripe_product_id:
@@ -143,7 +147,7 @@ def update_price(tier: Tier) -> None:
         return
 
     # See if we already have an appropriate price for this product
-    prices = stripe.Price.search(query=f'product:"{tier.stripe_product_id}"')
+    prices = get_provider().prices(tier.stripe_product_id)
     found_price_id = None
     for price in prices:
         if price.unit_amount == tier.monthly_amount:
@@ -156,47 +160,36 @@ def update_price(tier: Tier) -> None:
         db.session.add(tier)
         db.session.commit()
 
-        stripe.Product.modify(tier.stripe_product_id, default_price=found_price_id)
+        get_provider().set_default_price(tier.stripe_product_id, found_price_id)
         return
 
     # Otherwise, create a new price
-    price = stripe.Price.create(
-        product=tier.stripe_product_id,
-        unit_amount=tier.monthly_amount,
-        currency="usd",
-        recurring={"interval": "month"},
-    )
+    price = get_provider().create_price(tier.stripe_product_id, tier.monthly_amount)
     tier.stripe_price_id = price.id
     db.session.add(tier)
     db.session.commit()
 
-    stripe.Product.modify(tier.stripe_product_id, default_price=price.id)
+    get_provider().set_default_price(tier.stripe_product_id, price.id)
 
 
-def create_customer(user: User) -> stripe.Customer:
+def create_customer(user: User) -> Customer:
     email: str = user.email if user.email is not None else ""
 
-    if user.stripe_customer_id is not None:
-        try:
-            return stripe.Customer.modify(user.stripe_customer_id, email=email)
-        except stripe._error.InvalidRequestError:
-            user.stripe_customer_id = None
-
-    stripe_customer = stripe.Customer.create(email=email)
+    stripe_customer = get_provider().customer(user.stripe_customer_id, email)
     user.stripe_customer_id = stripe_customer.id
     db.session.add(user)
     db.session.commit()
     return stripe_customer
 
 
-def get_subscription(user: User) -> stripe.Subscription | None:
+def get_subscription(user: User) -> SubscriptionEvent | None:
     if user.stripe_subscription_id is None:
         return None
 
     if user.stripe_subscription_status in TERMINAL_NON_BILLING_SUBSCRIPTION_STATUSES:
         return None
 
-    return stripe.Subscription.retrieve(user.stripe_subscription_id)
+    return get_provider().subscription(user.stripe_subscription_id)
 
 
 def get_business_price_string() -> str:
@@ -215,7 +208,7 @@ def get_business_price_string() -> str:
 
 
 def handle_subscription_created(
-    subscription: stripe.Subscription, stripe_event: StripeEvent | None = None
+    subscription: SubscriptionEvent, stripe_event: StripeEvent | None = None
 ) -> None:
     # customer.subscription.created
 
@@ -252,7 +245,7 @@ def handle_subscription_created(
 
 
 def handle_subscription_updated(
-    subscription: stripe.Subscription, stripe_event: StripeEvent | None = None
+    subscription: SubscriptionEvent, stripe_event: StripeEvent | None = None
 ) -> None:
     # customer.subscription.updated
 
@@ -323,7 +316,7 @@ def handle_subscription_updated(
 
 
 def handle_subscription_deleted(
-    subscription: stripe.Subscription, stripe_event: StripeEvent | None = None
+    subscription: SubscriptionEvent, stripe_event: StripeEvent | None = None
 ) -> None:
     # customer.subscription.deleted
 
@@ -364,9 +357,7 @@ def handle_subscription_deleted(
     raise ValueError(f"Could not find user with subscription ID {subscription.id}")
 
 
-def handle_invoice_created(
-    invoice: stripe.Invoice, stripe_event: StripeEvent | None = None
-) -> None:
+def handle_invoice_created(invoice: InvoiceEvent, stripe_event: StripeEvent | None = None) -> None:
     # invoice.created
 
     try:
@@ -391,7 +382,7 @@ def handle_invoice_created(
     db.session.commit()
 
 
-def _receipt_url_from_invoice(invoice: stripe.Invoice) -> str | None:
+def _receipt_url_from_invoice(invoice: InvoiceEvent) -> str | None:
     hosted_invoice_url = getattr(invoice, "hosted_invoice_url", None)
     if isinstance(hosted_invoice_url, str) and hosted_invoice_url:
         return hosted_invoice_url
@@ -403,7 +394,7 @@ def _receipt_url_from_invoice(invoice: stripe.Invoice) -> str | None:
     return None
 
 
-def _sync_invoice(stripe_invoice: StripeInvoice, invoice: stripe.Invoice) -> None:
+def _sync_invoice(stripe_invoice: StripeInvoice, invoice: InvoiceEvent) -> None:
     stripe_invoice.total = invoice.total
     stripe_invoice.status = StripeInvoiceStatusEnum(invoice.status)
 
@@ -430,9 +421,7 @@ def _redact_stripe_event_payload(stripe_event: StripeEvent | None) -> None:
         stripe_event.event_data = REDACTED_STRIPE_EVENT_DATA
 
 
-def handle_invoice_updated(
-    invoice: stripe.Invoice, stripe_event: StripeEvent | None = None
-) -> None:
+def handle_invoice_updated(invoice: InvoiceEvent, stripe_event: StripeEvent | None = None) -> None:
     # invoice.updated
 
     invoice_id = getattr(invoice, "id", None)
@@ -503,33 +492,23 @@ async def worker(app: Flask) -> None:
                     await asyncio.sleep(2)
                     continue
 
-            event_json = json.loads(stripe_event.event_data)
-            event = stripe.Event.construct_from(event_json, current_app.config["STRIPE_SECRET_KEY"])
-
             current_app.logger.info(
                 f"Processing event {stripe_event.event_type} ({stripe_event.event_id})"
             )
             try:
-                # subscription events
-                if event.type.startswith("customer.subscription."):
-                    subscription: stripe.Subscription = stripe.Subscription.construct_from(
-                        event.data.object, current_app.config["STRIPE_SECRET_KEY"]
-                    )
+                event = get_provider().decode_event(stripe_event.event_data)
+                if event.subscription is not None:
                     if event.type == "customer.subscription.created":
-                        handle_subscription_created(subscription, stripe_event)
+                        handle_subscription_created(event.subscription, stripe_event)
                     elif event.type == "customer.subscription.updated":
-                        handle_subscription_updated(subscription, stripe_event)
+                        handle_subscription_updated(event.subscription, stripe_event)
                     elif event.type == "customer.subscription.deleted":
-                        handle_subscription_deleted(subscription, stripe_event)
-                # invoice events
-                elif event.type.startswith("invoice."):
-                    invoice: stripe.Invoice = stripe.Invoice.construct_from(
-                        event.data.object, current_app.config["STRIPE_SECRET_KEY"]
-                    )
+                        handle_subscription_deleted(event.subscription, stripe_event)
+                elif event.invoice is not None:
                     if event.type == "invoice.created":
-                        handle_invoice_created(invoice, stripe_event)
+                        handle_invoice_created(event.invoice, stripe_event)
                     elif event.type in ["invoice.updated", "invoice.payment_succeeded"]:
-                        handle_invoice_updated(invoice, stripe_event)
+                        handle_invoice_updated(event.invoice, stripe_event)
 
             except (
                 json.JSONDecodeError,
@@ -538,7 +517,7 @@ async def worker(app: Flask) -> None:
                 ValueError,
                 RuntimeError,
                 sa.exc.SQLAlchemyError,
-                stripe._error.StripeError,
+                BillingError,
             ) as e:
                 current_app.logger.error(
                     f"Error processing event {stripe_event.event_type} ({stripe_event.event_id}): {e}\n{stripe_event.event_data}",  # noqa: E501
@@ -569,7 +548,7 @@ def create_blueprint(app: Flask) -> Blueprint:
 
         # Check if we have an incomplete subscription
         stripe_subscription = get_subscription(user)
-        if stripe_subscription and stripe_subscription["status"] == "incomplete":
+        if stripe_subscription and stripe_subscription.status == "incomplete":
             flash("⚠️ Your subscription is incomplete. Please try again.", "warning")
 
         # Load the user's invoices
@@ -603,8 +582,8 @@ def create_blueprint(app: Flask) -> Blueprint:
 
         receipt_url = stripe_invoice.hosted_invoice_url
         try:
-            latest_invoice = stripe.Invoice.retrieve(stripe_invoice.invoice_id)
-        except stripe._error.StripeError as e:
+            latest_invoice = get_provider().invoice(stripe_invoice.invoice_id)
+        except BillingError as e:
             current_app.logger.warning(
                 f"Unable to refresh Stripe invoice {stripe_invoice.invoice_id}: {e}"
             )
@@ -685,30 +664,27 @@ def create_blueprint(app: Flask) -> Blueprint:
         # Make sure the user has a Stripe customer
         try:
             create_customer(user)
-        except stripe._error.StripeError as e:
+        except BillingError as e:
             current_app.logger.error(f"Failed to create Stripe customer: {e}", exc_info=True)
             flash("⚠️ Something went wrong!")
             return redirect(url_for("premium.index"))
 
         # Create a Stripe Checkout session
         try:
-            checkout_session = stripe.checkout.Session.create(
-                client_reference_id=str(user.id),
-                customer=user.stripe_customer_id,
-                line_items=[{"price": business_tier.stripe_price_id, "quantity": 1}],
-                mode="subscription",
-                success_url=canonical_external_url("premium.waiting"),
-                automatic_tax={"enabled": True},
-                customer_update={"address": "auto"},
+            checkout_url = get_provider().checkout(
+                str(user.id),
+                user.stripe_customer_id,
+                business_tier.stripe_price_id,
+                canonical_external_url("premium.waiting"),
             )
-        except stripe._error.StripeError as e:
+        except BillingError as e:
             current_app.logger.error(
                 f"Failed to create Stripe Checkout session: {e}", exc_info=True
             )
             return abort(500)
 
-        if checkout_session.url:
-            return redirect(checkout_session.url)
+        if checkout_url:
+            return redirect(checkout_url)
 
         return abort(500)
 
@@ -726,26 +702,16 @@ def create_blueprint(app: Flask) -> Blueprint:
 
         return_url = canonical_external_url("premium.index")
         try:
-            portal_session = stripe.billing_portal.Session.create(
-                customer=user.stripe_customer_id,
-                return_url=return_url,
-                flow_data={
-                    "type": "payment_method_update",
-                    "after_completion": {
-                        "type": "redirect",
-                        "redirect": {"return_url": return_url},
-                    },
-                },
-            )
-        except stripe._error.StripeError as e:
+            portal_url = get_provider().portal(user.stripe_customer_id, return_url)
+        except BillingError as e:
             current_app.logger.error(
                 f"Failed to create Stripe billing portal session: {e}", exc_info=True
             )
             flash("⚠️ Something went wrong while opening payment settings.")
             return redirect(url_for("premium.index"))
 
-        if portal_session.url:
-            return redirect(portal_session.url)
+        if portal_url:
+            return redirect(portal_url)
 
         return abort(500)
 
@@ -759,8 +725,8 @@ def create_blueprint(app: Flask) -> Blueprint:
 
         if user.stripe_subscription_id:
             try:
-                stripe.Subscription.modify(user.stripe_subscription_id, cancel_at_period_end=True)
-            except stripe._error.StripeError as e:
+                get_provider().set_autorenew(user.stripe_subscription_id, enabled=False)
+            except BillingError as e:
                 current_app.logger.error(f"Stripe error: {e}", exc_info=True)
                 flash("⚠️ Something went wrong while disabling autorenew.")
                 return redirect(url_for("premium.index"))
@@ -789,8 +755,8 @@ def create_blueprint(app: Flask) -> Blueprint:
 
         if user.stripe_subscription_id:
             try:
-                stripe.Subscription.modify(user.stripe_subscription_id, cancel_at_period_end=False)
-            except stripe._error.StripeError as e:
+                get_provider().set_autorenew(user.stripe_subscription_id, enabled=True)
+            except BillingError as e:
                 current_app.logger.error(f"Stripe error: {e}", exc_info=True)
                 flash("⚠️ Something went wrong while enabling autorenew.")
                 return redirect(url_for("premium.index"))
@@ -821,7 +787,7 @@ def create_blueprint(app: Flask) -> Blueprint:
         if user.stripe_subscription_id:
             try:
                 # Cancel the subscription
-                stripe.Subscription.delete(user.stripe_subscription_id)
+                get_provider().cancel(user.stripe_subscription_id)
 
                 # Downgrade the user (the subscription ID will get removed in the webhook)
                 user.set_free_tier()
@@ -834,7 +800,7 @@ def create_blueprint(app: Flask) -> Blueprint:
 
                 flash("💔 Sorry to see you go!")
                 return redirect(url_for("premium.index"))
-            except stripe._error.StripeError as e:
+            except BillingError as e:
                 current_app.logger.error(f"Stripe error: {e}", exc_info=True)
                 flash("⚠️ Something went wrong while canceling your subscription.")
                 return redirect(url_for("premium.index"))
@@ -857,17 +823,15 @@ def create_blueprint(app: Flask) -> Blueprint:
 
     @bp.route("/webhook", methods=["POST"])
     def webhook() -> Response | str | Tuple[Response | str, int]:
-        sig_header = request.headers["STRIPE_SIGNATURE"]
+        sig_header = request.headers.get(get_provider().webhook_signature_header, "")
 
         # Parse the event
         try:
-            event = stripe.Webhook.construct_event(
-                request.data, sig_header, current_app.config.get("STRIPE_WEBHOOK_SECRET")
-            )
+            event = get_provider().validate_webhook(request.data, sig_header)
         except ValueError as e:
             current_app.logger.error(f"Invalid payload: {e}")
             return jsonify(success=False), 400
-        except stripe._error.SignatureVerificationError as e:
+        except InvalidWebhook as e:
             current_app.logger.error(f"Error verifying webhook signature: {e}")
             return jsonify(success=False), 400
 
@@ -879,12 +843,9 @@ def create_blueprint(app: Flask) -> Blueprint:
             current_app.logger.info("Stripe event already seen: %s", event.id)
             return jsonify(success=True)
 
-        from hushline import single_tenant_billing
-        from hushline.single_tenant_client import ServiceUnavailable
-
         try:
-            handled = single_tenant_billing.handle_event(event)
-        except ServiceUnavailable:
+            handled = get_provider().handle_service_event(event)
+        except BillingUnavailable:
             db.session.rollback()
             return jsonify(success=False), 503
         if handled:

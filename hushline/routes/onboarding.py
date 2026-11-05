@@ -12,6 +12,7 @@ from flask import (
 from werkzeug.wrappers.response import Response
 
 from hushline.auth import authentication_required
+from hushline.billing import automated_billing_enabled
 from hushline.crypto import can_encrypt_with_pgp_key, is_valid_pgp_key
 from hushline.db import db
 from hushline.model import User
@@ -215,7 +216,7 @@ def register_onboarding_routes(app: Flask) -> None:
                     db.session.commit()
                     flash("🎉 Congratulations! Your account setup is complete!")
 
-                    if current_app.config.get("STRIPE_SECRET_KEY") and user.tier_id is None:
+                    if automated_billing_enabled() and user.tier_id is None:
                         return redirect(url_for("premium.select_tier"))
                     return redirect(url_for("inbox"))
                 else:
@@ -247,6 +248,6 @@ def register_onboarding_routes(app: Flask) -> None:
         user.onboarding_complete = True
         db.session.commit()
 
-        if current_app.config.get("STRIPE_SECRET_KEY") and user.tier_id is None:
+        if automated_billing_enabled() and user.tier_id is None:
             return redirect(url_for("premium.select_tier"))
         return redirect(url_for("inbox"))

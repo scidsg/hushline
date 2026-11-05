@@ -332,6 +332,14 @@ class User(Model):
         )
 
     @property
+    def has_active_premium_entitlement(self) -> bool:
+        from hushline.billing import get_provider
+
+        if get_provider().name == "manual":
+            return self.is_business_tier
+        return self.is_current_paid_super_user
+
+    @property
     def has_deletion_blocking_stripe_subscription(self) -> bool:
         if self.stripe_subscription_status == StripeSubscriptionStatusEnum.INCOMPLETE_EXPIRED:
             return False

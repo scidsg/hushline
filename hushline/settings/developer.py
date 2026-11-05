@@ -28,7 +28,7 @@ def _render_developer_page(
     status_code: int = 200,
     embed_settings_form: EmbedSettingsForm | None = None,
 ) -> tuple[str, int]:
-    can_manage_profile_embeds = user.is_current_paid_super_user
+    can_manage_profile_embeds = user.has_active_premium_entitlement
     if can_manage_profile_embeds and embed_settings_form is None:
         embed_settings_form = create_embed_settings_form(username)
 
@@ -59,7 +59,7 @@ def register_developer_routes(bp: Blueprint) -> None:
     @authentication_required
     def developer() -> Response | Tuple[str, int]:
         user = db.session.scalars(db.select(User).filter_by(id=session["user_id"])).one()
-        if not (user.is_admin or user.is_current_paid_super_user):
+        if not (user.is_admin or user.has_active_premium_entitlement):
             return abort(401)
 
         username = user.primary_username
@@ -67,7 +67,7 @@ def register_developer_routes(bp: Blueprint) -> None:
             raise Exception("Username was unexpectedly none")
 
         if request.method == "POST":
-            if not user.is_current_paid_super_user:
+            if not user.has_active_premium_entitlement:
                 return abort(401)
             embed_settings_form = create_embed_settings_form(username, submitted=True)
             res = handle_embed_settings_form(username, embed_settings_form)
