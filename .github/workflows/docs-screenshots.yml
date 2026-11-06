@@ -41,7 +41,8 @@ permissions:
 
 jobs:
   capture:
-    runs-on: ubuntu-latest
+    # Playwright 1.55.1 supports Ubuntu 24.04, not the rolling ubuntu-latest image.
+    runs-on: ubuntu-24.04
     steps:
       - name: Validate release tag
         if: ${{ github.event_name == 'release' }}
