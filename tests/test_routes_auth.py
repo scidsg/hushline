@@ -17,7 +17,9 @@ from hushline.auth import (
     PENDING_PASSWORD_REHASH_SESSION_KEY,
     PENDING_PASSWORD_REHASH_SOURCE_DIGEST_SESSION_KEY,
     POST_AUTH_REDIRECT_SESSION_KEY,
+    STRONG_AUTHENTICATION_SESSION_KEY,
     pop_post_auth_redirect,
+    record_strong_authentication,
     stash_post_auth_redirect,
     stash_post_auth_redirect_target,
 )
@@ -84,6 +86,18 @@ def _authenticate_as(client: FlaskClient, user: User) -> None:
         sess["session_id"] = user.session_id
         sess["username"] = user.primary_username.username
         sess["is_authenticated"] = True
+
+
+def test_record_strong_authentication_binds_method_and_session(app: Flask, user: User) -> None:
+    with app.test_request_context("/login"), patch("hushline.auth.time.time", return_value=123):
+        record_strong_authentication(user=user, method="recovery_code")
+
+        assert session[STRONG_AUTHENTICATION_SESSION_KEY] == {
+            "authenticated_at": 123,
+            "method": "recovery_code",
+            "session_id": user.session_id,
+            "user_id": user.id,
+        }
 
 
 @pytest.mark.usefixtures("_authenticated_user")
